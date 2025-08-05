@@ -1,0 +1,87 @@
+$brand-primary: #5C17E5;
+$background-secondary: #F6F8FB;
+
+.sidebar {
+  width: 64px;
+  height: 100vh;
+  background-color: $brand-primary;
+  border-radius: 0 24px 24px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-top: 14px; // Initial padding from the top
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  margin: 0;
+  padding: 0;
+  transition: background 0.2s, opacity 0.2s;
+  position: relative; // Needed for pseudo-element positioning
+
+  .MuiIconButton-root {
+    padding: 0;
+    border-radius: 0;
+    color: white;
+  }
+
+  img {
+    display: block;
+  }
+
+  svg {
+    fill: white !important;
+    filter: invert(100%) brightness(100%);
+    path, polygon, circle, rect {
+      fill: white !important;
+    }
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.sidebar-item-active {
+  background: transparent; // Active item background is transparent
+  position: relative;
+
+  // Pseudo-element for the active state background
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(92, 23, 229, 0.2); // This creates the lighter purple background
+    border-radius: 16px;
+    z-index: -1; // Place it behind the icon
+  }
+}
+
+.settings-icon-border {
+  border: 2px solid $background-secondary;
+  border-radius: 50%;
+  padding: 4px;
+  box-sizing: content-box;
+
+  .MuiIconButton-root {
+    color: white;
+  }
+
+  svg {
+    fill: white !important;
+    filter: invert(100%) brightness(100%);
+    path, polygon, circle, rect {
+      fill: white !important;
+    }
+  }
+}

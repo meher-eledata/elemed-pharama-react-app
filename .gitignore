@@ -1,0 +1,26 @@
+# Ignore node_modules (install inside container)
+node_modules
+
+# Ignore local builds and coverage
+dist
+build
+coverage
+
+# Ignore editor and OS files
+*.log
+.git
+
+# SQLite database files
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+
+# SQLite temporary/journal files
+*.sqlite-journal
+*.sqlite3-journal
+*.db-journal
+*.db3-journal
+
+# Env files
+*.env
