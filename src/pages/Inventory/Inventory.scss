@@ -1,0 +1,229 @@
+
+// inventorymodule scss
+
+.inventory-tabs {
+  display: inline-flex;
+  background-color: #eef4ff;
+  border-radius: 16px;
+  padding: 6px;
+  margin-bottom: 1rem;
+}
+
+.inventory-module-content {
+
+display: flex;
+
+flex-direction: column;
+
+}
+
+
+
+.summary-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  height: 142px;
+
+  .text {
+    font-family: lexend;
+    font-weight: 600;
+    color: #728197;
+    font-size: 16px;
+  }
+
+  .summary-card1 {
+    background: #7f77ff;
+    padding: 16px;
+    border-radius: 16px;
+    flex: 1;
+    position: relative;
+
+    .number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding-right: 68px;
+    }
+    .icon {
+      margin-top: 48px;
+    }
+
+    .percentage {
+      margin-top: 48px;
+      color: #22c55e;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 16px;
+      font-family: lexend;
+      display: flex;
+      justify-content: center;
+    }
+
+    .card-icon1 {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 141px;
+      height: 141px;
+      border-bottom-right-radius: 12px;
+    }
+  }
+
+  .summary-card2 {
+    background: #eceff4;
+    padding: 16px;
+    border-radius: 16px;
+    flex: 1;
+    position: relative;
+
+    .number {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .big-number {
+      font-weight: 600;
+      font-size: 32px;
+      line-height: 36px;
+      font-family: lexend;
+      margin-top: 12px;
+    }
+    .icon {
+      margin-top: 26px;
+    }
+
+    .percentage {
+      margin-top: 24px;
+      color: #f43f5e;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 16px;
+      font-family: lexend;
+    }
+
+    .card-icon2 {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 141px;
+      height: 141px;
+      border-bottom-right-radius: 16px;
+    }
+  }
+
+  .summary-card3 {
+    background: #eceff4;
+    padding: 16px;
+    border-radius: 16px;
+    flex: 1;
+    position: relative;
+
+    .big-number {
+      font-weight: 600;
+      font-size: 32px;
+      line-height: 36px;
+      font-family: lexend;
+      margin-top: 12px;
+    }
+
+    .number {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .percentage {
+      margin-top: 24px;
+      color: #22c55e;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 16px;
+      font-family: lexend;
+    }
+
+    .icon {
+      margin-top: 26px;
+    }
+
+    .card-icon3 {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 141px;
+      height: 141px;
+    }
+  }
+}
+
+.search-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  flex: 1;
+}
+
+.tab-content {
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.MuiContainer-root.my-custom-container {
+  margin-top: 0;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+// ----------------------------------------------------
+// Responsive styles for tablet and mobile
+// ----------------------------------------------------
+@media (max-width: 900px) {
+  .inventory-tabs {
+    flex-direction: column;
+    width: 100%;
+    
+    // Ensure buttons fill the width when stacked
+    .MuiButtonBase-root {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+  }
+
+  .summary-cards {
+    flex-direction: column;
+    height: auto; // Allow height to adjust
+  }
+
+  .summary-card1, .summary-card2, .summary-card3 {
+    padding: 12px;
+    
+    .text {
+      font-size: 14px;
+    }
+    
+    .big-number {
+      font-size: 28px;
+    }
+    
+    .percentage {
+      font-size: 10px;
+    }
+    
+    // Resize the chart images for smaller screens
+    .card-icon1, .card-icon2, .card-icon3 {
+      width: 100px;
+      height: 100px;
+    }
+  }
+
+  .search-filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

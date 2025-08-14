@@ -1,3 +1,4 @@
+
 import './Sidebar.scss';
 
 import { Box, IconButton, Typography, Divider } from '@mui/material';
@@ -28,14 +29,14 @@ const sidebarItems: SidebarItem[] = [
   
   { id: 'group', icon: GroupIcon, alt: 'Group', iconWidth: '32px', iconHeight: '32px', marginTop: '0px' },
   
-  { id: 'vector', icon: VectorIcon, alt: 'Vector', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' }, 
-  { id: 'dollar', icon: DollarIcon, alt: 'Dollar', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' }, 
-  { id: 'mail', icon: MailIcon, alt: 'Mail', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' },
-  { id: 'human', icon: HumanIcon, alt: 'Human', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' },
-  { id: 'box', icon: BoxIcon, alt: 'Box', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' },
-  { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' },
-  { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' },
-  { id: 'gear', icon: GearIcon, alt: 'Gear', iconWidth: '20px', iconHeight: '20px', marginTop: '5px' }
+  { id: 'vector', icon: VectorIcon, alt: 'Vector', iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }, 
+  { id: 'dollar', icon: DollarIcon, alt: 'Dollar', iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }, 
+  { id: 'box', icon: BoxIcon, alt: 'Box', iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  { id: 'human', icon: HumanIcon, alt: 'Human', iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
+  { id: 'mail', icon: MailIcon, alt: 'Mail', iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  { id: 'gear', icon: GearIcon, alt: 'Gear', iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
   
 ];
 
@@ -43,14 +44,14 @@ export const Sidebar: React.FC = () => {
   const [activeItemId, setActiveItemId] = useState<string>('vector');
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
+    <Box sx={{ display: 'flex', height: '100vh', }}>
       <Box
         className="sidebar"
         sx={{
           overflow: 'hidden',
           flexShrink: 0,
           backgroundColor: '#5C17E5',
-          paddingTop: '14px',
+          paddingTop: '10px',
           zIndex: 4,
           display: 'flex',
           flexDirection: 'column',
@@ -90,7 +91,7 @@ export const Sidebar: React.FC = () => {
                   width: '27px',
                   height: '1px',
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  margin: '5px 0', 
+                  margin: '2px 0', 
                 }}
               />
             )}
@@ -108,7 +109,7 @@ export const Sidebar: React.FC = () => {
             <img
               src={SettingsIcon} 
               alt="Settings"
-              style={{ width: '17.91px', height: '20px' }} 
+              style={{ width: '24.91px', height: '24px' }} 
             />
           </IconButton>
         </Box>
