@@ -11,56 +11,52 @@ import {
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { CREATE_PASSWORD_LABELS } from "../../../config/label/createPassword.labels";
+import { CREATE_PASSWORD_CONSTANTS } from '../../../config/constants/createPassword.constants';
 import './CreatePassword.scss';
 
 const CreatePassword: React.FC = () => {
   const navigate = useNavigate();
 
-  const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [newPassword, setNewPassword] = useState<string>('');
-  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const handleClickShowNewPassword = () => {
-    setShowNewPassword((prev) => !prev);
-  };
-
+  const handleClickShowNewPassword = () => setShowNewPassword((prev) => !prev);
   const handleMouseDownNewPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   };
 
-  const handleClickShowConfirmPassword = () => {
+  const handleClickShowConfirmPassword = () =>
     setShowConfirmPassword((prev) => !prev);
-  };
-
-  const handleMouseDownConfirmPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMouseDownConfirmPassword = (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
     event.preventDefault();
   };
 
   const handleConfirmPasswordClick = () => {
-    // Regex for validation:
-    const passwordRegex = /^(?=[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+    const { PASSWORD_REGEX } = CREATE_PASSWORD_CONSTANTS;
 
     if (!newPassword) {
-      setError('Password is required.');
+      setError(CREATE_PASSWORD_LABELS.ERROR_REQUIRED);
       return;
     }
 
-    if (!passwordRegex.test(newPassword)) {
-      setError(
-        'Password must start with a capital letter, include at least one number, one special character, and be at least 8 characters long.'
-      );
+    if (!PASSWORD_REGEX.test(newPassword)) {
+      setError(CREATE_PASSWORD_LABELS.ERROR_INVALID);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(CREATE_PASSWORD_LABELS.ERROR_MISMATCH);
       return;
     }
 
-    setError(null); // All validations passed
+    setError(null);
     navigate('/');
   };
 
@@ -68,15 +64,17 @@ const CreatePassword: React.FC = () => {
     <Box className="create-password-container">
       <Box className="create-password-form">
         <Typography variant="h4" className="title">
-          Create New Password
+          {CREATE_PASSWORD_LABELS.TITLE}
         </Typography>
         <Typography className="description">
-          Set a strong password to secure your account
+          {CREATE_PASSWORD_LABELS.DESCRIPTION}
         </Typography>
 
-        {/* New Password Field */}
+        {/* New Password */}
         <Box className="input-group">
-          <Typography className="label">New Password</Typography>
+          <Typography className="label">
+            {CREATE_PASSWORD_LABELS.NEW_PASSWORD_LABEL}
+          </Typography>
           <TextField
             fullWidth
             type={showNewPassword ? 'text' : 'password'}
@@ -99,14 +97,14 @@ const CreatePassword: React.FC = () => {
             }}
           />
           <Typography className="password-info">
-            *Minimum 8 characters, start with capital, include number & special character
+            {CREATE_PASSWORD_LABELS.PASSWORD_HINT}
           </Typography>
         </Box>
 
-        {/* Confirm New Password Field */}
+        {/* Confirm Password */}
         <Box className="input-group">
           <Typography className="label confirm-password-label">
-            Confirm New Password
+            {CREATE_PASSWORD_LABELS.CONFIRM_PASSWORD_LABEL}
           </Typography>
           <TextField
             fullWidth
@@ -131,14 +129,14 @@ const CreatePassword: React.FC = () => {
           />
         </Box>
 
-        {/* Error Message */}
+        {/* Error */}
         {error && (
           <Typography color="error" className="error-message">
             {error}
           </Typography>
         )}
 
-        {/* Confirm Password Button */}
+        {/* Submit */}
         <Button
           variant="contained"
           color="primary"
@@ -146,7 +144,7 @@ const CreatePassword: React.FC = () => {
           className="confirm-button"
           onClick={handleConfirmPasswordClick}
         >
-          Confirm Password
+          {CREATE_PASSWORD_LABELS.BUTTON_TEXT}
         </Button>
       </Box>
     </Box>
@@ -154,4 +152,3 @@ const CreatePassword: React.FC = () => {
 };
 
 export default CreatePassword;
-

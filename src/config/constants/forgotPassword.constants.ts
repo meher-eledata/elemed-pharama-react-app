@@ -1,0 +1,8 @@
+export const FORGOT_PASSWORD_CONSTANTS = {
+  INPUT_SIZE: 'small',
+  BUTTON_RADIUS: '12px',
+  BUTTON_HEIGHT: '56px',
+  INPUT_RADIUS: '12px',
+  INPUT_HEIGHT: '48px',
+  MAX_WIDTH: '400px',
+};

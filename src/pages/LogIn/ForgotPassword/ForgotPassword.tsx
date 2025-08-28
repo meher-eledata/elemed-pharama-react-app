@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { FORGOT_PASSWORD_LABELS } from '../../../config/label/forgotPassword.labels';
+import { FORGOT_PASSWORD_CONSTANTS } from '../../../config/constants/forgotPassword.constants';
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -9,9 +11,9 @@ const ForgotPassword: React.FC = () => {
   const [touched, setTouched] = useState(false);
 
   const validateEmail = (value: string) => {
-    if (!value.trim()) return 'Email is required';
+    if (!value.trim()) return FORGOT_PASSWORD_LABELS.REQUIRED_ERROR;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) return 'Enter a valid email address';
+    if (!emailRegex.test(value)) return FORGOT_PASSWORD_LABELS.INVALID_ERROR;
     return '';
   };
 
@@ -21,7 +23,6 @@ const ForgotPassword: React.FC = () => {
     setEmailError(error);
     setTouched(true);
 
-    // Submit only if valid
     if (!error) {
       console.log('Forgot password request for:', email);
       navigate('/create-password');
@@ -35,7 +36,7 @@ const ForgotPassword: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        width: '400px',
+        width: FORGOT_PASSWORD_CONSTANTS.MAX_WIDTH,
         mx: 'auto',
         marginBlock: 'auto',
       }}
@@ -52,7 +53,7 @@ const ForgotPassword: React.FC = () => {
           width: '100%',
         }}
       >
-        Forgot Password
+        {FORGOT_PASSWORD_LABELS.TITLE}
       </Typography>
 
       <Typography
@@ -67,18 +68,14 @@ const ForgotPassword: React.FC = () => {
           textAlign: 'left',
         }}
       >
-        Don't worry. Please enter your Email and we'll send you a link to reset your password.
+        {FORGOT_PASSWORD_LABELS.DESCRIPTION}
       </Typography>
 
       <Box
         component="form"
         noValidate
         onSubmit={handleSubmit}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-        }}
+        sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
       >
         <Typography
           sx={{
@@ -90,14 +87,14 @@ const ForgotPassword: React.FC = () => {
             textAlign: 'left',
           }}
         >
-          Email ID
+          {FORGOT_PASSWORD_LABELS.EMAIL_LABEL}
         </Typography>
 
         <TextField
           variant="outlined"
           type="email"
           fullWidth
-          size="small"
+          size={FORGOT_PASSWORD_CONSTANTS.INPUT_SIZE as 'small' | 'medium'}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
@@ -107,14 +104,15 @@ const ForgotPassword: React.FC = () => {
             setTouched(true);
             setEmailError(validateEmail(email));
           }}
-          error={false} // Prevent red border
+          placeholder={FORGOT_PASSWORD_LABELS.EMAIL_PLACEHOLDER}
+          error={false}
           helperText={emailError}
           sx={{
             mb: '16px',
             '& .MuiOutlinedInput-root': {
-              borderRadius: '12px',
+              borderRadius: FORGOT_PASSWORD_CONSTANTS.INPUT_RADIUS,
               backgroundColor: '#FFFFFF',
-              height: '48px',
+              height: FORGOT_PASSWORD_CONSTANTS.INPUT_HEIGHT,
               padding: '0 16px',
               fontFamily: 'Lexend, sans-serif',
               '& fieldset': {
@@ -132,6 +130,13 @@ const ForgotPassword: React.FC = () => {
                 fontWeight: 400,
                 color: '#1A212B',
               },
+              // Autofill override fix
+              '& input:-webkit-autofill': {
+                WebkitBoxShadow: '0 0 0 1000px #FFFFFF inset',
+                WebkitTextFillColor: '#1A212B',
+                caretColor: '#1A212B',
+                transition: 'background-color 5000s ease-in-out 0s',
+              },
             },
             '& .MuiFormHelperText-root': {
               color: emailError ? '#E36414' : 'transparent',
@@ -148,8 +153,8 @@ const ForgotPassword: React.FC = () => {
           fullWidth
           sx={{
             backgroundColor: '#5C17E5',
-            borderRadius: '12px',
-            height: '56px',
+            borderRadius: FORGOT_PASSWORD_CONSTANTS.BUTTON_RADIUS,
+            height: FORGOT_PASSWORD_CONSTANTS.BUTTON_HEIGHT,
             fontSize: '16px',
             fontWeight: 500,
             textTransform: 'none',
@@ -164,7 +169,7 @@ const ForgotPassword: React.FC = () => {
             },
           }}
         >
-          Reset My Password
+          {FORGOT_PASSWORD_LABELS.BUTTON_TEXT}
         </Button>
       </Box>
     </Box>

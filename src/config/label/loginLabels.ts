@@ -1,0 +1,16 @@
+export const LOGIN_LABELS = {
+  TITLE: "Login",
+  USERNAME_LABEL: "Username",
+  USERNAME_PLACEHOLDER: "Enter your username",
+  PASSWORD_LABEL: "Password",
+  PASSWORD_PLACEHOLDER: "••••••••",
+  FORGOT_PASSWORD: "Forgot Password?",
+  LOGIN_BUTTON: "Login",
+  LOGIN_BUTTON_LOADING: "Logging In...",
+  DIVIDER_TEXT: "or",
+  SIGNUP_QUESTION: "Don't have an account?",
+  SIGNUP_LINK: "Sign up",
+  SUCCESS_MESSAGE: "Login successful!",
+  ERROR_INVALID_CREDENTIALS: "Invalid username or password.",
+  ERROR_DEFAULT: "Login failed. Please try again.",
+};

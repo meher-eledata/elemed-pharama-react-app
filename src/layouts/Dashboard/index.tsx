@@ -14,7 +14,7 @@ export const DashboardLayout = () => {
       <Sidebar />
       <Box flexGrow={1} display="flex" flexDirection="column">
         <TopBar name={username || "Guest"} />
-        <Box component="main" flexGrow={1} paddingLeft={3} paddingRight={3} overflow="auto">
+        <Box component="main" flexGrow={1} paddingLeft={3} paddingRight={3} overflow="auto" marginTop={0}>
           <Outlet />
         </Box>
       </Box>

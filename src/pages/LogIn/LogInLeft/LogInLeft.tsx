@@ -1,367 +1,3 @@
-// import React, { useState, useEffect } from 'react';
-// import {
-//   Box,
-//   Button,
-//   TextField,
-//   Typography,
-//   IconButton,
-//   InputAdornment,
-//   Divider,
-//   Alert,
-//   Snackbar,
-// } from '@mui/material';
-// import { Link, useNavigate } from 'react-router-dom';
-// import Visibility from '@mui/icons-material/Visibility';
-// import VisibilityOff from '@mui/icons-material/VisibilityOff';
-// import { useLoginMutation, setCredentials } from "../../../redux/slices/authSlice";
-// import { useDispatch } from 'react-redux';
-
-// const LoginForm: React.FC = () => {
-//   const navigate = useNavigate();
-//   const dispatch = useDispatch();
-
-//   const [username, setUsername] = useState<string>('');
-//   const [password, setPassword] = useState<string>('');
-//   const [showPassword, setShowPassword] = useState<boolean>(false);
-//   const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
-//   const [snackbarOpen, setSnackbarOpen] = useState(false);
-//   const [snackbarMessage, setSnackbarMessage] = useState('');
-//   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
-
-//   const [login, { isLoading, isSuccess, isError, error, data }] = useLoginMutation();
-
-//   useEffect(() => {
-//     if (isSuccess && data) {
-//       // Dispatching setCredentials to store user data (including token) in Redux and sessionStorage.
-//       // Assuming 'data' contains the user object and token after successful login.
-//       dispatch(setCredentials(data));
-//       setSnackbarMessage('Login successful!');
-//       setSnackbarSeverity('success');
-//       setSnackbarOpen(true);
-//       setTimeout(() => {
-//         // Navigate to the '/inventory' page after a short delay
-//         navigate('/inventory');
-//       }, 1000);
-//     } else if (isError) {
-//       let errorMessage = 'Login failed. Please try again.';
-//       if (error && 'status' in error) {
-//         if (error.status === 401) {
-//           errorMessage = 'Invalid username or password.';
-//         } else if (error.status === 400 && (error.data as any)?.error) {
-//           errorMessage = (error.data as { error?: string }).error || 'Bad Request: Unknown error.';
-//         } else {
-//           errorMessage = `Error: ${error.status}`;
-//         }
-//       } else if (error && 'message' in error) {
-//         errorMessage = (error as { message: string }).message;
-//       }
-//       setSnackbarMessage(errorMessage);
-//       setSnackbarSeverity('error');
-//       setSnackbarOpen(true);
-//       console.error('Login error (RTK):', error);
-//     }
-//   }, [isSuccess, isError, data, error, dispatch, navigate]);
-
-//   const validate = () => {
-//     const newErrors: { username?: string; password?: string } = {};
-
-//     if (!username || !username.trim()) {
-//       newErrors.username = 'Username is required';
-//     }
-
-//     if (!password || !password.trim()) {
-//       newErrors.password = 'Password is required';
-//     }
-
-//     setErrors(newErrors);
-//     return Object.keys(newErrors).length === 0;
-//   };
-
-//   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
-//     e.preventDefault();
-
-//     if (!validate()) return;
-
-//     const payload = {
-//       username: username.trim(),
-//       password: password.trim(),
-//     };
-
-//     console.log('Login payload ->', payload);
-
-//     try {
-//       // The useEffect will handle the navigation and state updates based on the success/error of this call.
-//       await login(payload).unwrap();
-//     } catch (err) {
-//       // This catch block will primarily handle errors not caught by the useLoginMutation's 'error' state
-//       // or for immediate feedback if 'unwrap' throws an error.
-//       // The useEffect above will still process the 'isError' state.
-//       console.error('Login failed (unwrap catch):', err);
-//       const errMsg = (err as any)?.data?.error || (err as any)?.data?.message || 'Invalid user credentials';
-//       setSnackbarMessage(errMsg);
-//       setSnackbarSeverity('error');
-//       setSnackbarOpen(true);
-//     }
-//   };
-
-//   const handleClickShowPassword = () => setShowPassword((show) => !show);
-//   const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
-//     event.preventDefault();
-//   };
-//   const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-//     if (reason === 'clickaway') return;
-//     setSnackbarOpen(false);
-//   };
-
-//   return (
-//     <Box
-//       sx={{
-//         fontFamily: 'Lexend, sans-serif',
-//         display: 'flex',
-//         flexDirection: 'column',
-//         width: '100%',
-//         maxWidth: '100%',
-//         mx: 'auto',
-//         alignItems: 'flex-start',
-//         marginBlock: 'auto',
-//       }}
-//     >
-//       <Typography
-//         variant="h4"
-//         sx={{
-//           fontFamily: 'Lexend, sans-serif',
-//           fontWeight: 600,
-//           fontSize: '32px',
-//           lineHeight: '36px',
-//           color: '#1A212B',
-//           mb: '24px',
-//           width: { xs: '100%', sm: '400px' },
-//           height: '36px',
-//           textAlign: 'left',
-//           alignSelf: 'flex-start',
-//         }}
-//       >
-//         Login
-//       </Typography>
-
-//       <Box
-//         component="form"
-//         noValidate
-//         onSubmit={handleSignIn}
-//         sx={{
-//           fontFamily: 'Lexend, sans-serif',
-//           display: 'flex',
-//           flexDirection: 'column',
-//           width: { xs: '100%', sm: '400px' },
-//         }}
-//       >
-//         <Typography
-//           sx={{
-//             fontFamily: 'Lexend, sans-serif',
-//             fontSize: '12px',
-//             fontWeight: 600,
-//             lineHeight: '18px',
-//             color: '#728197',
-//             mb: '4px',
-//           }}
-//         >
-//           Username
-//         </Typography>
-//         <TextField
-//           variant="outlined"
-//           placeholder="Enter your username"
-//           type="text"
-//           fullWidth
-//           size="small"
-//           value={username}
-//           onChange={(e) => setUsername(e.target.value)}
-//           error={!!errors.username}
-//           helperText={errors.username}
-//           autoComplete="off"
-//           sx={{ mb: '24px' }}
-//         />
-
-//         <Typography
-//           sx={{
-//             fontFamily: 'Lexend, sans-serif',
-//             fontSize: '12px',
-//             fontWeight: 500,
-//             lineHeight: '18px',
-//             color: '#525E6F',
-//             mb: '4px',
-//           }}
-//         >
-//           Password
-//         </Typography>
-
-//         <TextField
-//           variant="outlined"
-//           placeholder="••••••••"
-//           type={showPassword ? 'text' : 'password'}
-//           fullWidth
-//           size="small"
-//           value={password}
-//           onChange={(e) => setPassword(e.target.value)}
-//           error={!!errors.password}
-//           helperText={errors.password}
-//           autoComplete="new-password"
-//           InputProps={{
-//             endAdornment: (
-//               <InputAdornment position="end">
-//                 <IconButton
-//                   aria-label="toggle password visibility"
-//                   onClick={handleClickShowPassword}
-//                   onMouseDown={handleMouseDownPassword}
-//                   edge="end"
-//                   sx={{
-//                     p: 0,
-//                     width: '24px',
-//                     height: '24px',
-//                     color: '#1A212B',
-//                   }}
-//                 >
-//                   {showPassword ? <VisibilityOff /> : <Visibility />}
-//                 </IconButton>
-//               </InputAdornment>
-//             ),
-//           }}
-//           sx={{ mb: '24px' }}
-//         />
-
-//         <Box sx={{ mb: '32px', alignSelf: 'flex-start' }}>
-//           <Link to="/ForgotPassword" style={{ textDecoration: 'none' }}>
-//             <Typography
-//               variant="caption"
-//               sx={{
-//                 fontFamily: 'Lexend, sans-serif',
-//                 fontSize: '16px',
-//                 fontWeight: 400,
-//                 lineHeight: '24px',
-//                 color: '#1A212B',
-//                 cursor: 'pointer',
-//                 whiteSpace: 'nowrap',
-//                 textAlign: 'left',
-//               }}
-//             >
-//               Forgot Password?
-//             </Typography>
-//           </Link>
-//         </Box>
-
-//         <Button
-//           type="submit"
-//           variant="contained"
-//           fullWidth
-//           disabled={isLoading}
-//           sx={{
-//             backgroundColor: '#5C17E5',
-//             borderRadius: '12px',
-//             height: '56px',
-//             fontSize: '16px',
-//             fontWeight: 500,
-//             textTransform: 'none',
-//             fontFamily: 'Lexend, sans-serif',
-//             boxShadow: 'none',
-//             color: '#FFFFFF',
-//             lineHeight: '24px',
-//             padding: '16px 24px',
-//             '&:hover': {
-//               backgroundColor: '#4a13b4',
-//               boxShadow: 'none',
-//             },
-//           }}
-//         >
-//           {isLoading ? 'Logging In...' : 'Login'}
-//         </Button>
-
-//         <Box
-//           sx={{
-//             display: 'flex',
-//             alignItems: 'center',
-//             width: '400px',
-//             mb: '24px',
-//           }}
-//         >
-//           <Divider sx={{ flexGrow: 1, height: '1px', backgroundColor: '#CBD4E1' }} />
-//           <Typography
-//             sx={{
-//               fontFamily: 'Lexend, sans-serif',
-//               textAlign: 'center',
-//               fontWeight: 400,
-//               fontSize: '14px',
-//               lineHeight: '20px',
-//               color: '#728197',
-//               mx: '12px',
-//             }}
-//           >
-//             or
-//           </Typography>
-//           <Divider sx={{ flexGrow: 1, height: '1px', backgroundColor: '#CBD4E1' }} />
-//         </Box>
-
-//         <Link
-//           to="/create-password"
-//           style={{ textDecoration: 'none', color: 'inherit', alignSelf: 'center' }}
-//         >
-//           <Box
-//             sx={{
-//               display: 'flex',
-//               justifyContent: 'center',
-//               alignItems: 'center',
-//               width: '400px',
-//               height: '20px',
-//               gap: '8px',
-//             }}
-//           >
-//             <Typography
-//               sx={{
-//                 fontFamily: 'Lexend, sans-serif',
-//                 fontWeight: 400,
-//                 color: '#1A212B',
-//                 fontSize: '14px',
-//                 lineHeight: '20px',
-//               }}
-//             >
-//               Don't have an account?{' '}
-//             </Typography>
-//             <Typography
-//               sx={{
-//                 fontFamily: 'Lexend, sans-serif',
-//                 color: '#2B80EC',
-//                 fontWeight: 400,
-//                 fontSize: '14px',
-//                 cursor: 'pointer',
-//                 lineHeight: '20px',
-//                 textDecoration: 'underline',
-//                 textDecorationColor: '#2B80EC',
-//                 textUnderlineOffset: '2px',
-//               }}
-//             >
-//               Sign up
-//             </Typography>
-//           </Box>
-//         </Link>
-//       </Box>
-
-//       <Snackbar
-//         open={snackbarOpen}
-//         autoHideDuration={6000}
-//         onClose={handleSnackbarClose}
-//         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-//       >
-//         <Alert
-//           onClose={handleSnackbarClose}
-//           severity={snackbarSeverity}
-//           sx={{ width: '100%' }}
-//         >
-//           {snackbarMessage}
-//         </Alert>
-//       </Snackbar>
-//     </Box>
-//   );
-// };
-
-// export default LoginForm;
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -378,8 +14,13 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { useLoginMutation, setCredentials } from "../../../redux/slices/authSlice";
+import { useLoginMutation } from "../../../redux/slices/authSlice";
 import { useDispatch } from 'react-redux';
+
+// Config imports
+import { LOGIN_LABELS } from "../../../config/label/loginLabels"
+import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants"
+import { handleLoginEffect } from "../../../config/helpers/loginHandlers";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -396,79 +37,44 @@ const LoginForm: React.FC = () => {
   const [login, { isLoading, isSuccess, isError, error, data }] = useLoginMutation();
 
   useEffect(() => {
-    if (isSuccess && data) {
-      dispatch(setCredentials(data));
-      setSnackbarMessage('Login successful!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      setTimeout(() => {
-        navigate('/inventory');
-      }, 1000);
-    } else if (isError) {
-      let errorMessage = 'Login failed. Please try again.';
-      if (error && 'status' in error) {
-        if (error.status === 401) {
-          errorMessage = 'Invalid username or password.';
-        } else if (error.status === 400 && (error.data as any)?.error) {
-          errorMessage = (error.data as { error?: string }).error || 'Bad Request: Unknown error.';
-        } else {
-          errorMessage = `Error: ${error.status}`;
-        }
-      } else if (error && 'message' in error) {
-        errorMessage = (error as { message: string }).message;
-      }
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      console.error('Login error (RTK):', error);
-    }
+    handleLoginEffect({
+      isSuccess,
+      isError,
+      data,
+      error,
+      dispatch,
+      navigate,
+      setSnackbarMessage,
+      setSnackbarSeverity,
+      setSnackbarOpen,
+    });
   }, [isSuccess, isError, data, error, dispatch, navigate]);
 
   const validate = () => {
     const newErrors: { username?: string; password?: string } = {};
-
-    if (!username || !username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-
-    if (!password || !password.trim()) {
-      newErrors.password = 'Password is required';
-    }
-
+    if (!username.trim()) newErrors.username = `${LOGIN_LABELS.USERNAME_LABEL} is required`;
+    if (!password.trim()) newErrors.password = `${LOGIN_LABELS.PASSWORD_LABEL} is required`;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!validate()) return;
 
-    const payload = {
-      username: username.trim(),
-      password: password.trim(),
-    };
-
-    console.log('Login payload ->', payload);
-
     try {
-      await login(payload).unwrap();
+      await login({ username: username.trim(), password: password.trim() }).unwrap();
+      navigate('/dashboard');
     } catch (err) {
       console.error('Login failed (unwrap catch):', err);
-      const errMsg = (err as any)?.data?.error || (err as any)?.data?.message || 'Invalid user credentials';
+      const errMsg =
+        (err as any)?.data?.error ||
+        (err as any)?.data?.message ||
+        LOGIN_LABELS.ERROR_INVALID_CREDENTIALS;
       setSnackbarMessage(errMsg);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
-  };
-
-  const handleClickShowPassword = () => setShowPassword((show) => !show);
-  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-  };
-  const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-    if (reason === 'clickaway') return;
-    setSnackbarOpen(false);
   };
 
   return (
@@ -493,44 +99,26 @@ const LoginForm: React.FC = () => {
           lineHeight: '36px',
           color: '#1A212B',
           mb: '24px',
-          width: { xs: '100%', sm: '400px' },
-          height: '36px',
-          textAlign: 'left',
-          alignSelf: 'flex-start',
         }}
       >
-        Login
+        {LOGIN_LABELS.TITLE}
       </Typography>
 
       <Box
         component="form"
         noValidate
         onSubmit={handleSignIn}
-        sx={{
-          fontFamily: 'Lexend, sans-serif',
-          display: 'flex',
-          flexDirection: 'column',
-          width: { xs: '100%', sm: '400px' },
-        }}
+        sx={{ display: 'flex', flexDirection: 'column', width: { xs: '100%', sm: '400px' } }}
       >
-        <Typography
-          sx={{
-            fontFamily: 'Lexend, sans-serif',
-            fontSize: '12px',
-            fontWeight: 600,
-            lineHeight: '18px',
-            color: '#728197',
-            mb: '4px',
-          }}
-        >
-          Username
+        {/* Username Field */}
+        <Typography sx={{ fontSize: '12px', fontWeight: 400, mb: '4px' }}>
+          {LOGIN_LABELS.USERNAME_LABEL}
         </Typography>
         <TextField
-          variant="outlined"
-          placeholder="Enter your username"
+          placeholder={LOGIN_LABELS.USERNAME_PLACEHOLDER}
           type="text"
           fullWidth
-          size="small"
+          size={LOGIN_CONSTANTS.INPUT_SIZE}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           error={!!errors.username}
@@ -539,179 +127,80 @@ const LoginForm: React.FC = () => {
           sx={{ mb: '24px' }}
         />
 
-        <Typography
-          sx={{
-            fontFamily: 'Lexend, sans-serif',
-            fontSize: '12px',
-            fontWeight: 500,
-            lineHeight: '18px',
-            color: '#525E6F',
-            mb: '4px',
-          }}
-        >
-          Password
+        {/* Password Field */}
+        <Typography sx={{ fontSize: '12px', fontWeight: 400, mb: '4px' }}>
+          {LOGIN_LABELS.PASSWORD_LABEL}
         </Typography>
-
         <TextField
-          variant="outlined"
-          placeholder="••••••••"
+          placeholder={LOGIN_LABELS.PASSWORD_PLACEHOLDER}
           type={showPassword ? 'text' : 'password'}
           fullWidth
-          size="small"
+          size={LOGIN_CONSTANTS.INPUT_SIZE}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={!!errors.password}
           helperText={errors.password}
           autoComplete="new-password"
+          sx={{
+            mb: '24px',
+            '& input::-ms-reveal, & input::-ms-clear': {
+              display: 'none',
+            },
+            '& input::-webkit-contacts-auto-fill-button, & input::-webkit-credentials-auto-fill-button': {
+              display: 'none',
+            },
+          }}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton
-                  aria-label="toggle password visibility"
-                  onClick={handleClickShowPassword}
-                  onMouseDown={handleMouseDownPassword}
-                  edge="end"
-                  sx={{
-                    p: 0,
-                    width: '24px',
-                    height: '24px',
-                    color: '#1A212B',
-                  }}
-                >
+                <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
                   {showPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
               </InputAdornment>
             ),
           }}
-          sx={{ mb: '24px' }}
         />
 
+        {/* Forgot Password */}
         <Box sx={{ mb: '32px', alignSelf: 'flex-start' }}>
-          <Link to="/ForgotPassword" style={{ textDecoration: 'none' }}>
-            <Typography
-              variant="caption"
-              sx={{
-                fontFamily: 'Lexend, sans-serif',
-                fontSize: '16px',
-                fontWeight: 400,
-                lineHeight: '24px',
-                color: '#1A212B',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                textAlign: 'left',
-              }}
-            >
-              Forgot Password?
+          <Link to="/Forgot-Password" style={{ textDecoration: 'none' }}>
+            <Typography variant="caption" sx={{ fontSize: '16px', cursor: 'pointer' }}>
+              {LOGIN_LABELS.FORGOT_PASSWORD}
             </Typography>
           </Link>
         </Box>
 
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          disabled={isLoading}
-          sx={{
-            backgroundColor: '#5C17E5',
-            borderRadius: '12px',
-            height: '56px',
-            fontSize: '16px',
-            fontWeight: 500,
-            textTransform: 'none',
-            fontFamily: 'Lexend, sans-serif',
-            boxShadow: 'none',
-            color: '#FFFFFF',
-            lineHeight: '24px',
-            padding: '16px 24px',
-            '&:hover': {
-              backgroundColor: '#4a13b4',
-              boxShadow: 'none',
-            },
-          }}
-        >
-          {isLoading ? 'Logging In...' : 'Login'}
+        {/* Login Button */}
+        <Button type="submit" variant="contained" fullWidth disabled={isLoading}>
+          {isLoading ? LOGIN_LABELS.LOGIN_BUTTON_LOADING : LOGIN_LABELS.LOGIN_BUTTON}
         </Button>
 
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            width: '400px',
-            mb: '24px',
-          }}
-        >
-          <Divider sx={{ flexGrow: 1, height: '1px', backgroundColor: '#CBD4E1' }} />
-          <Typography
-            sx={{
-              fontFamily: 'Lexend, sans-serif',
-              textAlign: 'center',
-              fontWeight: 400,
-              fontSize: '14px',
-              lineHeight: '20px',
-              color: '#728197',
-              mx: '12px',
-            }}
-          >
-            or
-          </Typography>
-          <Divider sx={{ flexGrow: 1, height: '1px', backgroundColor: '#CBD4E1' }} />
+        {/* Divider */}
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '400px', mb: '24px' }}>
+          <Divider sx={{ flexGrow: 1 }} />
+          <Typography sx={{ mx: '12px' }}>{LOGIN_LABELS.DIVIDER_TEXT}</Typography>
+          <Divider sx={{ flexGrow: 1 }} />
         </Box>
 
-        <Link
-          to="/create-password"
-          style={{ textDecoration: 'none', color: 'inherit', alignSelf: 'center' }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              width: '400px',
-              height: '20px',
-              gap: '8px',
-            }}
-          >
-            <Typography
-              sx={{
-                fontFamily: 'Lexend, sans-serif',
-                fontWeight: 400,
-                color: '#1A212B',
-                fontSize: '14px',
-                lineHeight: '20px',
-              }}
-            >
-              Don't have an account?{' '}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: 'Lexend, sans-serif',
-                color: '#2B80EC',
-                fontWeight: 400,
-                fontSize: '14px',
-                cursor: 'pointer',
-                lineHeight: '20px',
-                textDecoration: 'underline',
-                textDecorationColor: '#2B80EC',
-                textUnderlineOffset: '2px',
-              }}
-            >
-              Sign up
+        {/* Signup Link */}
+        <Link to="/create-password" style={{ textDecoration: 'none', alignSelf: 'center' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+            <Typography>{LOGIN_LABELS.SIGNUP_QUESTION}</Typography>
+            <Typography sx={{ color: '#2B80EC', textDecoration: 'underline' }}>
+              {LOGIN_LABELS.SIGNUP_LINK}
             </Typography>
           </Box>
         </Link>
       </Box>
 
+      {/* Snackbar */}
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
+        autoHideDuration={LOGIN_CONSTANTS.SNACKBAR_AUTO_HIDE}
+        onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity={snackbarSeverity}
-          sx={{ width: '100%' }}
-        >
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
