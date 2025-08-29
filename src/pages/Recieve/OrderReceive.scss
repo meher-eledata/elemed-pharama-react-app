@@ -7,50 +7,77 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-   
-    
 
     .title {
-    font-weight: 600;
-    font-family: inherit;
-    height: 40px;
-    line-height: 24px;
-    
+      font-weight: 600;
+      font-family: inherit;
+      height: 40px;
+      line-height: 24px;
     }
 
     .add-btn {
-      background-color:#5C17E5;
+      background-color: #5C17E5;
       border-radius: 12px;
       width: 166px;
       height: 48px;
       font-family: inherit;
       text-transform: none;
-     
     }
   }
 
   .tabs {
+    // Container for the tabs. It gets the gray background, rounded corners, and a border.
     margin-top: 8px;
-    // border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+    border-radius: 8px;
+    background-color: #E0E0E0;
+    overflow: hidden;
+    // Add the border line here
+    border: 1px solid #ccc; 
 
-    .MuiTab-root {
-      text-transform: none;
-      color: #1A212B; 
-      font-family: inherit; 
-      size: 14px;
-      
-    //   &.active {
-    //     font-weight: bold;
-    //   }
+    .MuiTabs-root {
+      min-height: 40px;
+      padding: 0;
     }
 
-    .Mui-selected{
-       border-bottom: 3px solid #000;
+    .MuiTab-root {
+      // General styles for all tabs
+      text-transform: none;
+      font-family: inherit;
+      font-size: 14px;
+      color: #1A212B; 
+      padding: 0 20px;
+      min-height: 40px;
+      min-width: unset;
+      transition: background-color 0.3s ease;
+      background-color: transparent; 
+      flex-grow: 1;
 
+      &:focus, &:hover {
+        outline: none;
+      }
+    }
+
+    // Styles for the active/selected tab
+    .Mui-selected {
+      font-weight: 600; 
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      position: relative;
+      z-index: 1;
+    }
+
+    .MuiTabs-indicator {
+      display: none;
     }
   }
 
   .tab-content {
+    width:'400px';
     margin-top: 24px;
     color: gray;
   }

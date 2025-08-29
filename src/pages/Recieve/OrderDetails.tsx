@@ -67,7 +67,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             <Divider sx={{ marginTop: '16px' }} />
 
             <Box sx={{ display: 'flex', gap: '24px', marginTop: '10px' }}>
-                {/* Supplier Name and GSTIN Field */}
                 <Box
                     sx={{
                         display: 'flex',
@@ -110,7 +109,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     </Box>
                 </Box>
 
-                {/* Invoice No Field */}
                 <Box
                     sx={{
                         display: 'flex',
@@ -154,14 +152,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                         >
                             45788999
                         </Typography>
-                        {/* Placeholder for the dropdown icon */}
                         <Box sx={{ width: '24px', height: '24px' }}>
-                            {/* You would place your SVG or MUI icon component here */}
                         </Box>
                     </Box>
                 </Box>
 
-                {/* Invoice Date Field */}
                 <Box
                     sx={{
                         display: 'flex',
@@ -208,7 +203,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     />
                 </Box>
 
-                {/* Credit Field */}
                 <Box
                     sx={{
                         display: 'flex',
@@ -256,16 +250,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 </Box>
             </Box>
             <Divider sx={{ marginTop: '10px' }} />
-            {/* Figma design section with "Find Product" and "Add Product" */}
             <Box
                 sx={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'flex-start', // Align to the start of the container
+                    justifyContent: 'flex-start',
                     marginTop: '24px',
                     marginBottom: '24px',
                     gap: '16px',
-                    width: '100%', // Set width to take full available space
+                    width: '100%',
                 }}
             >
                 <TextField
@@ -326,8 +319,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'flex-end', // Align to the end to push it to the far right
-                        flexGrow: 1, // Allow this box to grow and push the content to the right
+                        justifyContent: 'flex-end',
+                        flexGrow: 1,
                         height: '24px',
                         padding: '0px',
                         gap: '8px',

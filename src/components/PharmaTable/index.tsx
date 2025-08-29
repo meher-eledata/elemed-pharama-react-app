@@ -43,6 +43,7 @@ export interface TableColumn<T> {
     hide?: boolean;
     render?: (item: T) => React.ReactNode;
     headerRender?: () => React.ReactNode;
+    sortable?: boolean;
 }
 
 interface ReusableTableProps<T> {
@@ -218,7 +219,7 @@ export const ReusableTable = <T,>({
                             {visibleColumns.map((column, index) => (
                                 <TableCell
                                     key={index}
-                                    onClick={() => onSortRequest(column.key as string)}
+                                    onClick={() => column.sortable !== false && onSortRequest(column.key as string)}
                                     sx={{
                                         fontWeight: 'bold',
                                         fontSize: isTabletOrMobile ? '12px' : '14px',
@@ -226,12 +227,12 @@ export const ReusableTable = <T,>({
                                         bgcolor: '#ffffff',
                                         whiteSpace: 'nowrap',
                                         width: getColumnWidth(column.key as string),
-                                        cursor: 'pointer',
+                                        cursor: column.sortable !== false ? 'pointer' : 'default',
                                     }}
                                 >
                                     <Box display="flex" alignItems="center" gap={1}>
                                         {column.headerRender ? column.headerRender() : column.header}
-                                        {column.key !== 'checkbox' && column.key !== 'actions' && (
+                                        {column.sortable !== false && (
                                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                 {sortConfig.key === column.key ? (
                                                     <img
