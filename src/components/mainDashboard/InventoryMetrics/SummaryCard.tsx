@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, Typography, Box, Link } from "@mui/material";
 import TrendUpIcon from "../../../assets/trend-up.svg";
@@ -14,7 +13,8 @@ interface SummaryCardProps {
   };
   actionText?: string;
   icon?: React.ReactNode;
-  onActionClick?: () => void; // 👈 added for modal open
+  onActionClick?: () => void; 
+   disabled?: boolean;
 }
 
 const SummaryCard: React.FC<SummaryCardProps> = ({
@@ -25,6 +25,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   actionText,
   icon,
   onActionClick,
+   disabled = false,
 }) => {
   return (
     <Card
@@ -82,22 +83,26 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
               </Box>
             )}
 
-            {/* Action */}
-            {actionText && (
-              <Link
-                component="button"
-                underline="hover"
-                onClick={onActionClick}
-                sx={{
-                  mt: 1,
-                  ml: 2,
-                  display: "inline-block",
-                  fontFamily: "lexend",
-                }}
-              >
-                {actionText}
-              </Link>
-            )}
+           {/* Action */}
+{actionText && (
+  <Link
+    component="button"
+    underline="hover"
+    onClick={!disabled ? onActionClick : undefined} // 👈 disable click
+    sx={{
+      mt: 1,
+      ml: 2,
+      display: "inline-block",
+      fontFamily: "lexend",
+      color: disabled ? "#94A3B8" : "#5C17E5", // 👈 greyed when disabled
+      pointerEvents: disabled ? "none" : "auto", // 👈 block mouse events
+      cursor: disabled ? "not-allowed" : "pointer",
+    }}
+  >
+    {actionText}
+  </Link>
+)}
+
           </Box>
 
           {icon && <Box sx={{ height: "32px", width: "32px" }}>{icon}</Box>}

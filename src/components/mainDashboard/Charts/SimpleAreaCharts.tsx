@@ -73,7 +73,6 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
   ) => {
     const dailyData = (kpis[dataKey] as DailyData[]) ?? [];
 
-    // Filter & sort by date ASC
     const startDate = dateRange.startDate ? new Date(dateRange.startDate) : null;
     const endDate = dateRange.endDate ? new Date(dateRange.endDate) : null;
 
@@ -86,12 +85,10 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
 
     const seriesData = filteredData.map((d) => d.amount ?? d.count ?? 0);
 
-    // xAxis must match series length
     const xAxisDates = filteredData.map((d) => new Date(d.date).toISOString());
 
-    // Y axis (safe max & 5 ticks)
     const maxVal = Math.max(0, ...seriesData);
-    const safeMax = maxVal <= 0 ? 1 : maxVal; // avoid flat 0–0 axis
+    const safeMax = maxVal <= 0 ? 1 : maxVal; 
     const ticks = 5;
     const inc = safeMax / (ticks - 1);
     const tickInterval = Array.from({ length: ticks }, (_, i) => +(i * inc).toFixed(2));
@@ -166,4 +163,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
 };
 
 export default ThreeChartsComponent;
+
+
+
 

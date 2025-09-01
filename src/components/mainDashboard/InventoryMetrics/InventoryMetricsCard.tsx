@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Grid, Typography, Box, Skeleton } from "@mui/material";
 import SummaryCard from "./SummaryCard";
@@ -9,7 +8,6 @@ import {
 } from "../../../redux/slices/dashboardApi";
 import { ReusableTable, TableColumn } from "../../PharmaTable/index";
 
-// Define the type for the data in the modal
 interface ModalItem {
     product_id: string;
     name: string;
@@ -112,6 +110,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({ dateRange }) =>
             title: "Low Stock Items",
             value: inventoryStats?.belowMinProducts?.length ?? 0,
             actionText: "View Items",
+            disabled: (inventoryStats?.belowMinProducts?.length ?? 0) === 0, // 👈 disable if 0
             onActionClick: () =>
                 handleOpenModal("Low Stock Items", inventoryStats?.belowMinProducts || []),
         },
@@ -119,6 +118,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({ dateRange }) =>
             title: "Excess Stock",
             value: inventoryStats?.aboveMaxProducts?.length ?? 0,
             actionText: "View Items",
+            disabled: (inventoryStats?.aboveMaxProducts?.length ?? 0) === 0, // 👈 disable if 0
             onActionClick: () =>
                 handleOpenModal("Excess Stock", inventoryStats?.aboveMaxProducts || []),
         },
@@ -126,6 +126,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({ dateRange }) =>
             title: "Expired Stock",
             value: inventoryStats?.expiredProducts?.length ?? 0,
             actionText: "View Items",
+            disabled: (inventoryStats?.expiredProducts?.length ?? 0) === 0, // 👈 disable if 0
             onActionClick: () =>
                 handleOpenModal("Expired Stock", inventoryStats?.expiredProducts || []),
         },
@@ -146,6 +147,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({ dateRange }) =>
     ];
 
     const columns: TableColumn<any>[] = [
+        { key: "product_id", header: "ID" },
         { key: "name", header: "Name" },
         { key: "batchNumber", header: "Batch No" },
         { key: "currentQuantity", header: "Quantity" },

@@ -52,7 +52,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         display: "flex",
         flexDirection: "column",
         gap: "4px",
-         fontFamily: "Lexend",
+        fontFamily: "Lexend",
       }}
     >
       <Typography
@@ -128,36 +128,40 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               {editing === "start" ? "Select Start Date" : "Select End Date"}
             </Typography>
             <DateCalendar
-              value={
-                editing === "start" ? dateRange[0] : dateRange[1] || dateRange[0]
-              }
+              value={editing === "start" ? dateRange[0] : dateRange[1] || dateRange[0]}
               onChange={handleSelect}
+              sx={{
+                "& .MuiDayCalendar-header": {
+                  color: "#5C17E5",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                },
+                "& .MuiDayCalendar-weekDayLabel": {
+                  color: "#5C17E5",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                },
+              }}
               slotProps={{
                 day: {
                   sx: {
-                    // This targets the selected state
                     "&.Mui-selected": {
-                      backgroundColor: "transparent !important", // removes background on selection
-                      color: "#1E293B",
+                      backgroundColor: "#5C17E5",
+                      color: "#ffffff",
                       border: "1px solid #6C63FF",
                     },
-                    // This targets the hover, focus, and active (click) states for selected days
                     "&.Mui-selected:hover, &.Mui-selected:focus, &.Mui-selected:active": {
-                      backgroundColor: "transparent !important",
+                      backgroundColor: "#5C17E5",
                       border: "1px solid #6C63FF",
                     },
-                    // This targets the hover, focus, and active states for all days to remove background
-                    "&:hover, &:focus, &:active": {
-                      backgroundColor: "transparent !important",
-                    },
-                    // This handles the ripple effect
                     "& .MuiTouchRipple-root": {
-                        display: "none"
-                    }
+                      display: "none",
+                    },
                   },
                 },
               }}
             />
+
           </Paper>
         </ClickAwayListener>
       </Popper>

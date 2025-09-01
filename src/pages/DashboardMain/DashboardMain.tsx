@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import dayjs, { Dayjs } from "dayjs";
-import { useSelector } from "react-redux"; // Correct import for useSelector
 import InventoryMetrics from "../../components/mainDashboard/InventoryMetrics/InventoryMetricsCard";
 import DateRangeFilter from "../../components/mainDashboard/DateRangeFilter/DateRangeFilter";
 import ThreeChartsComponent from "../../components/mainDashboard/Charts/SimpleAreaCharts";
+
+const useSelector = (selector: any) => selector({ auth: { user: { username: "Guest" } } });
 
 interface RootState {
   auth: {
@@ -19,8 +20,8 @@ const DashboardMain: React.FC = () => {
   const username = useSelector((state: RootState) => state.auth.user?.username);
 
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([
-    dayjs().subtract(30, 'day'), 
-    dayjs(), 
+    dayjs().subtract(30, 'day'),
+    dayjs(),
   ]);
 
   const apiDateRange = {
@@ -30,6 +31,7 @@ const DashboardMain: React.FC = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', paddingBottom: '8px' }}>
+
       <Box
         sx={{
           display: "flex",
@@ -52,6 +54,8 @@ const DashboardMain: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
+            disableRipple
+            disableElevation
             sx={{
               backgroundColor: "#ffffff",
               textTransform: "none",
@@ -63,6 +67,7 @@ const DashboardMain: React.FC = () => {
               mr: "8px",
               padding: "4px 18px",
               "&:hover": { backgroundColor: "#ffffff", boxShadow: "none" },
+              "&:focus": { backgroundColor: "#ffffff" }, // remove focus shade
             }}
           >
             Create Invoice
@@ -71,17 +76,25 @@ const DashboardMain: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
+            disableRipple
+            disableElevation
             sx={{
               backgroundColor: "#5C17E5",
               textTransform: "none",
               fontFamily: "lexend",
               borderRadius: "12px",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
+              "&:focus": { backgroundColor: "#5C17E5" },
             }}
           >
             Add Receive
           </Button>
+
         </Box>
       </Box>
+
+
 
       <Box sx={{ mb: '24px' }}>
         <DateRangeFilter
@@ -90,7 +103,7 @@ const DashboardMain: React.FC = () => {
         />
       </Box>
 
-      <Box>
+      <Box >
         <ThreeChartsComponent dateRange={apiDateRange} />
       </Box>
       <Typography sx={{ fontFamily: 'lexend', fontWeight: '600', paddingTop: '24px', paddingBottom: '12px' }}>

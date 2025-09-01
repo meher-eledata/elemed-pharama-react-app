@@ -1,3 +1,6 @@
+
+
+
 import * as React from 'react';
 import { Card, Box, Typography, IconButton } from '@mui/material';
 import { LineChart } from '@mui/x-charts/LineChart';
@@ -37,64 +40,31 @@ const ChartCard: React.FC<ChartCardProps> = ({
 }) => {
   const csvLinkRef = React.useRef<any>(null);
   const chartRef = React.useRef<HTMLDivElement>(null);
-  const [tooltip, setTooltip] = React.useState({
-    visible: false,
-    x: 0,
-    y: 0,
-    content: { date: '', value: 0 },
-  });
 
   const handleDownload = () => csvLinkRef.current?.link?.click();
 
-  // Ensure exactly ~5 ticks on a band scale (first/last included)
   const bandTickInterval = React.useMemo(() => {
     const n = chartData.xAxis.length;
     if (n <= 5) return () => true;
-    const step = Math.ceil((n - 1) / 4); // 5 ticks => 4 gaps
+    const step = Math.ceil((n - 1) / 4); 
     return (_value: string, index: number) => index % step === 0 || index === n - 1;
   }, [chartData.xAxis.length]);
-
-  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!chartRef.current) return;
-    const svg = chartRef.current.querySelector('svg');
-    if (!svg) return;
-
-    const rect = svg.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const chartWidth = rect.width;
-    const idx = Math.floor((x / chartWidth) * chartData.xAxis.length);
-
-    if (idx >= 0 && idx < chartData.xAxis.length) {
-      const date = chartData.xAxis[idx];
-      const value = chartData.series2[idx];
-      const formatted = new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-      setTooltip({ visible: true, x: x, y: (event.clientY - rect.top) + 10, content: { date: formatted, value } });
-    } else {
-      setTooltip((t) => ({ ...t, visible: false }));
-    }
-  };
-
-  const handleMouseLeave = () => setTooltip((t) => ({ ...t, visible: false }));
 
   return (
     <Card sx={{ width: '445px', borderRadius: '20px', p: 0, mt: '64px' }}>
       <Box sx={{ p: '16px 16px 0 16px', position: 'relative' }}>
         <Box
           ref={chartRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
           sx={{ cursor: 'pointer', position: 'relative' }}
         >
           <LineChart
             xAxis={[{
-              data: chartData.xAxis,           // full array
+              data: chartData.xAxis,          
               scaleType: 'band',
               tickPlacement: 'middle',
               disableLine: true,
               disableTicks: true,
               tickLabelStyle: { fill: '#000', fontSize: 12 },
-              // show ~5 dates dynamically
               tickInterval: bandTickInterval,
               valueFormatter: (date) =>
                 new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
@@ -108,15 +78,27 @@ const ChartCard: React.FC<ChartCardProps> = ({
               tickLabelStyle: { fill: '#BDBDBD', fontSize: 12 },
             }]}
             series={[
-              { data: chartData.series1, color: colors.area, area: true, curve: 'catmullRom', showMark: false },
-              { data: chartData.series2, color: colors.main, area: false, curve: 'catmullRom', showMark: false },
+              { 
+                data: chartData.series1, 
+                color: colors.main, 
+                area: true, 
+                curve: 'catmullRom', 
+                showMark: false,
+                valueFormatter: (value, context) => {
+                  const date = new Date(chartData.xAxis[context.dataIndex]).toLocaleDateString('en-US', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                  });
+                  return `${title} - ${date} - Value: ${value}`;
+                }
+              },
             ]}
             height={160}
-            // Give space for x labels & y labels (no negative margins)
-            margin={{ top: 10, bottom: 10, left: -18, right: 20 }}
+            margin={{ top: 20, bottom: 20, left: -18, right: 20 }}
             disableAxisListener
-            grid={{ horizontal: true, vertical: false }} // avoid duplicate key warnings
-            slots={{ tooltip: () => null }}
+            grid={{ horizontal: true, vertical: false }} 
+            slots={{ tooltip: undefined }}
             sx={{
               '.MuiChartsAxis-bottom .MuiChartsAxis-line, .MuiChartsAxis-left .MuiChartsAxis-line': { stroke: 'none' },
               '.MuiChartsAxis-bottom .MuiChartsAxis-tick, .MuiChartsAxis-left .MuiChartsAxis-tick': { stroke: 'none' },
@@ -124,31 +106,11 @@ const ChartCard: React.FC<ChartCardProps> = ({
               '.MuiChartsGrid-root': { zIndex: 2},
               '.MuiAreaElement-root': { fillOpacity: 0.6, mixBlendMode: 'normal' },
               '.MuiLineElement-root': { strokeWidth: 2 },
-              // ❌ removed translateY(50px) which hid labels
             }}
           />
         </Box>
 
-        {tooltip.visible && (
-          <Box
-            sx={{
-              position: 'absolute',
-              left: tooltip.x,
-              top: tooltip.y,
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              borderRadius: '4px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              zIndex: 1,
-              pointerEvents: 'none',
-              minWidth: '200px',
-              p: 1,
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{title}</Typography>
-            <Typography variant="body2">{tooltip.content.date}</Typography>
-            <Typography variant="body2">Value: {tooltip.content.value}</Typography>
-          </Box>
-        )}
+
       </Box>
 
       <Box sx={{ mt: 2, px: 2, pb: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
