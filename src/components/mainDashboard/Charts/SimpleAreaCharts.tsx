@@ -138,7 +138,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       <Typography sx={{ fontFamily: 'lexend', fontWeight: 600, mb: '12px', mt: '12px' }}>
         Sales Contracts
       </Typography>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} flexWrap="wrap" justifyContent="center">
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap" justifyContent="flex-start" alignItems="stretch">
         <ChartCard
           {...patientsProps}
           colors={{ main: '#6A8EFF', area: '#CEDEFF', percentBg: '#F0FDF4', percentText: '#22C55E' }}

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
@@ -104,7 +105,7 @@ const ForgotPassword: React.FC = () => {
             setTouched(true);
             setEmailError(validateEmail(email));
           }}
-          placeholder={FORGOT_PASSWORD_LABELS.EMAIL_PLACEHOLDER}
+          // placeholder={FORGOT_PASSWORD_LABELS.EMAIL_PLACEHOLDER}
           error={false}
           helperText={emailError}
           sx={{
@@ -177,3 +178,4 @@ const ForgotPassword: React.FC = () => {
 };
 
 export default ForgotPassword;
+

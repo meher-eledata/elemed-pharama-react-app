@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -90,7 +89,7 @@ const CreatePassword: React.FC = () => {
                     onMouseDown={handleMouseDownNewPassword}
                     edge="end"
                   >
-                    {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                    {showNewPassword ?   <Visibility /> : <VisibilityOff />}
                   </IconButton>
                 </InputAdornment>
               ),
@@ -121,7 +120,7 @@ const CreatePassword: React.FC = () => {
                     onMouseDown={handleMouseDownConfirmPassword}
                     edge="end"
                   >
-                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    {showConfirmPassword ?   <Visibility /> : <VisibilityOff />}
                   </IconButton>
                 </InputAdornment>
               ),

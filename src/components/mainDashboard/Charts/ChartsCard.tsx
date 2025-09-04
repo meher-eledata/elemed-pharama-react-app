@@ -51,7 +51,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
   }, [chartData.xAxis.length]);
 
   return (
-    <Card sx={{ width: '445px', borderRadius: '20px', p: 0, mt: '64px' }}>
+    <Card sx={{ width: '100%', maxWidth: 520, flex: '1 1 360px', borderRadius: '20px', p: 0, mt: '24px' }}>
       <Box sx={{ p: '16px 16px 0 16px', position: 'relative' }}>
         <Box
           ref={chartRef}
@@ -64,10 +64,10 @@ const ChartCard: React.FC<ChartCardProps> = ({
               tickPlacement: 'middle',
               disableLine: true,
               disableTicks: true,
-              tickLabelStyle: { fill: '#000', fontSize: 12 },
+              tickLabelStyle: { fill: '#000', fontSize: 8 },
               tickInterval: bandTickInterval,
               valueFormatter: (date) =>
-                new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+                new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'long' }),
             }]}
             yAxis={[{
               min: yAxisConfig.min,
@@ -75,7 +75,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
               tickInterval: yAxisConfig.tickInterval,
               disableLine: true,
               disableTicks: true,
-              tickLabelStyle: { fill: '#BDBDBD', fontSize: 12 },
+              tickLabelStyle: { fill: '#000', fontSize: 12 },
             }]}
             series={[
               { 

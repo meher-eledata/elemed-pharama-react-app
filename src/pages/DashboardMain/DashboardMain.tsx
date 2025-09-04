@@ -37,20 +37,28 @@ const DashboardMain: React.FC = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: 'wrap',
+          columnGap: '12px',
+          rowGap: '12px',
           mb: 1,
+          minWidth: 0,
         }}
       >
         <Typography
           sx={{
             fontFamily: "lexend",
             fontWeight: "600",
-            fontSize: "36px",
+            fontSize: { xs: "24px", sm: "28px", md: "32px", lg: "36px" },
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           Welcome {username}
         </Typography>
 
-        <Box>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           <Button
             variant="contained"
             startIcon={<AddIcon />}

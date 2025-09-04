@@ -9,9 +9,11 @@ import {
   FormControl,
   Select,
   MenuItem,
-  Typography
+  Typography,
+  CircularProgress
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { useGetUniqueSupplierNamesQuery } from "../../../redux/slices/receiveApi";
 
 import {
   CANCEL_BUTTON_STYLE,
@@ -34,6 +36,7 @@ interface ReceiveSupplierModalProps {
   supplier: string;
   setSupplier: (value: string) => void;
   onNext?: () => void;
+  supplierOptions?: string[];
 }
 
 const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
@@ -41,8 +44,15 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
   onClose,
   supplier,
   setSupplier,
-  onNext
+  onNext,
+  supplierOptions
 }) => {
+  const { data: apiSupplierNames, isLoading: loadingSuppliers, error: suppliersError } = useGetUniqueSupplierNamesQuery(undefined, {
+    skip: !open 
+  });
+
+  const availableSuppliers = apiSupplierNames || supplierOptions || [];
+
   return (
     <Dialog
       open={open}
@@ -84,12 +94,29 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
             displayEmpty
             sx={SELECT_STYLE}
             MenuProps={MENU_PROPS}
+            disabled={loadingSuppliers}
           >
             <MenuItem value="">
               <em>{PLACEHOLDER_SELECT}</em>
             </MenuItem>
-            <MenuItem value="supplier1">Supplier 1</MenuItem>
-            <MenuItem value="supplier2">Supplier 2</MenuItem>
+            {loadingSuppliers ? (
+              <MenuItem disabled>
+                <CircularProgress size={20} />
+                <span style={{ marginLeft: 8 }}>Loading suppliers...</span>
+              </MenuItem>
+            ) : suppliersError ? (
+              <MenuItem disabled>
+                <span style={{ color: 'red' }}>Error loading suppliers</span>
+              </MenuItem>
+            ) : availableSuppliers.length > 0 ? (
+              availableSuppliers.map((name) => (
+                <MenuItem key={name} value={name}>{name}</MenuItem>
+              ))
+            ) : (
+              <MenuItem disabled>
+                <em>No suppliers available</em>
+              </MenuItem>
+            )}
           </Select>
         </FormControl>
       </DialogContent>
@@ -99,7 +126,12 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
         <Button onClick={onClose} sx={CANCEL_BUTTON_STYLE}>
           {BUTTON_CANCEL}
         </Button>
-        <Button variant="contained" sx={NEXT_BUTTON_STYLE} onClick={onNext}>
+        <Button 
+          variant="contained" 
+          sx={NEXT_BUTTON_STYLE} 
+          onClick={onNext}
+          disabled={loadingSuppliers}
+        >
           {BUTTON_NEXT}
         </Button>
       </DialogActions>

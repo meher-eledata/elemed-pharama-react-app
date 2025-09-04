@@ -1,3 +1,108 @@
+// .order-receive {
+//   padding-right: 24px;
+//   padding-left: 24px;
+//   font-family: lexend;
+
+//   .header {
+//     display: flex;
+//     justify-content: space-between;
+//     align-items: center;
+
+//     .title {
+//       font-weight: 600;
+//       font-family: inherit;
+//       height: 40px;
+//       line-height: 24px;
+//     }
+
+//     .add-btn {
+//       background-color: #5C17E5;
+//       border-radius: 12px;
+//       width: 166px;
+//       height: 48px;
+//       font-family: inherit;
+//       text-transform: none;
+//     }
+//   }
+
+//   .tabs {
+//     // Container for the tabs. It gets the light blue background, rounded corners, and padding to match inventory module.
+//     margin-top: 8px;
+//     display: inline-flex;
+//     background-color: #eef4ff;
+//     border-radius: 16px;
+//     padding: 6px;
+//     margin-bottom: 1rem; 
+
+//     .MuiTabs-root {
+//       min-height: 40px;
+//       padding: 0;
+//     }
+
+//     .MuiTab-root {
+//       // General styles for all tabs - matching inventory module button styling
+//       text-transform: none;
+//       font-family: lexend;
+//       font-size: 1rem;
+//       line-height: 1.25rem;
+//       font-weight: 500;
+//       color: #1A212B; 
+//       padding: 0;
+//       height: 2.25rem;
+//       width: 8rem;
+//       min-height: unset;
+//       min-width: unset;
+//       transition: background-color 0.3s ease;
+//       background-color: transparent; 
+//       border: 1px solid transparent; // avoid layout shift when showing hover border
+//       border-radius: 0.5rem;
+      
+
+//       &:focus {
+//         outline: none;
+//       }
+
+//       // Hover state for non-selected tabs: show blue border like inventory
+//       &:hover {
+//         outline: none;
+//         border-color: #1976d2;
+//         background-color: #ffffff; // subtle white pill on hover
+//         box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+//       }
+//     }
+
+//     // Selected tab: white by default, turns blue only when hovered
+//     .Mui-selected {
+//       font-weight: 500; 
+//       background-color: #ffffff; // default white pill when selected
+//       color: #1A212B; // dark text like other tabs
+//       border-radius: 0.5rem;
+//       border-color: transparent;
+//       position: relative;
+//       z-index: 1;
+//       box-shadow: 0 6px 16px rgba(21, 101, 192, 0.22);
+
+//       &:hover {
+//         background-color: #1976d2 !important; // blue when hovered
+//         color: #ffffff !important;
+//         border-radius: 0.5rem;
+//         box-shadow: 0 6px 16px rgba(21, 101, 192, 0.35);
+//       }
+//     }
+
+//     .MuiTabs-indicator {
+//       display: none;
+//     }
+//   }
+
+//   .tab-content {
+//     width:'400px';
+//     margin-top: 24px;
+//     color: gray;
+//   }
+// }
+
+
 .order-receive {
   padding-right: 24px;
   padding-left: 24px;
@@ -26,17 +131,14 @@
   }
 
   .tabs {
-    // Container for the tabs. It gets the gray background, rounded corners, and a border.
-    margin-top: 8px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: fit-content;
-    border-radius: 8px;
-    background-color: #E0E0E0;
-    overflow: hidden;
-    // Add the border line here
-    border: 1px solid #ccc; 
+    // Container for the tabs. It gets the light blue background, rounded corners, and padding to match inventory module.
+    margin-top: 12px;
+    display: inline-flex;
+    background-color: #eef4ff;
+    border-radius: 16px;
+    padding: 6px;
+    margin-bottom: 24px;
+    // margin-bottom: 1rem; 
 
     .MuiTabs-root {
       min-height: 40px;
@@ -44,31 +146,58 @@
     }
 
     .MuiTab-root {
-      // General styles for all tabs
+      // General styles for all tabs - matching inventory module button styling
       text-transform: none;
-      font-family: inherit;
-      font-size: 14px;
+      font-family: lexend;
+      font-size: 1rem;
+      line-height: 1.25rem;
+      font-weight: 500;
       color: #1A212B; 
-      padding: 0 20px;
-      min-height: 40px;
+      padding: 0;
+      height: 2.35rem;
+      width: 8.5rem;
+      min-height: unset;
       min-width: unset;
       transition: background-color 0.3s ease;
       background-color: transparent; 
-      flex-grow: 1;
+      border: 1px solid transparent; // avoid layout shift when showing hover border
+      border-radius: 0.5rem;
+     
+      
 
-      &:focus, &:hover {
+      &:focus {
         outline: none;
+      }
+
+      // Hover state for non-selected tabs: show blue border like inventory
+      &:hover {
+        outline: none;
+        border-color: #1976d2;
+        background-color: #ffffff; // subtle white pill on hover
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
       }
     }
 
-    // Styles for the active/selected tab
+    // Selected tab: white by default, turns blue only when hovered
     .Mui-selected {
-      font-weight: 600; 
-      background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      font-weight: 500; 
+      background-color: #ffffff; // default white pill when selected
+      color: #1A212B; // dark text like other tabs
+      border-radius: 0.5rem;
+      border-color: transparent;
       position: relative;
       z-index: 1;
+       box-shadow: 0px 3px 1px -2px rgba(0, 0, 0, 0.2),
+              0px 2px 2px 0px rgba(0, 0, 0, 0.14),
+              0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+      
+
+      &:hover {
+        background-color: #1976d2 !important; // blue when hovered
+        color: #ffffff !important;
+        border-radius: 0.5rem;
+        box-shadow: 0 6px 16px rgba(21, 101, 192, 0.35);
+      }
     }
 
     .MuiTabs-indicator {
@@ -78,7 +207,7 @@
 
   .tab-content {
     width:'400px';
-    margin-top: 24px;
     color: gray;
+    padding: 0;
   }
 }

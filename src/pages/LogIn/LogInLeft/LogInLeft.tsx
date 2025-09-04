@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -10,31 +9,37 @@ import {
   Divider,
   Alert,
   Snackbar,
-} from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
+} from "@mui/material";
+import { Link, useNavigate } from "react-router-dom";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useLoginMutation } from "../../../redux/slices/authSlice";
-import { useDispatch } from 'react-redux';
+import { useDispatch } from "react-redux";
 
 // Config imports
-import { LOGIN_LABELS } from "../../../config/label/loginLabels"
-import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants"
+import { LOGIN_LABELS } from "../../../config/label/loginLabels";
+import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants";
 import { handleLoginEffect } from "../../../config/helpers/loginHandlers";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{
+    username?: string;
+    password?: string;
+  }>({});
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+    "success"
+  );
 
-  const [login, { isLoading, isSuccess, isError, error, data }] = useLoginMutation();
+  const [login, { isLoading, isSuccess, isError, error, data }] =
+    useLoginMutation();
 
   useEffect(() => {
     handleLoginEffect({
@@ -52,8 +57,10 @@ const LoginForm: React.FC = () => {
 
   const validate = () => {
     const newErrors: { username?: string; password?: string } = {};
-    if (!username.trim()) newErrors.username = `${LOGIN_LABELS.USERNAME_LABEL} is required`;
-    if (!password.trim()) newErrors.password = `${LOGIN_LABELS.PASSWORD_LABEL} is required`;
+    if (!username.trim())
+      newErrors.username = `${LOGIN_LABELS.USERNAME_LABEL} is required`;
+    if (!password.trim())
+      newErrors.password = `${LOGIN_LABELS.PASSWORD_LABEL} is required`;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -63,16 +70,19 @@ const LoginForm: React.FC = () => {
     if (!validate()) return;
 
     try {
-      await login({ username: username.trim(), password: password.trim() }).unwrap();
-      navigate('/dashboard');
+      await login({
+        username: username.trim(),
+        password: password.trim(),
+      }).unwrap();
+      navigate("/dashboard");
     } catch (err) {
-      console.error('Login failed (unwrap catch):', err);
+      console.error("Login failed (unwrap catch):", err);
       const errMsg =
         (err as any)?.data?.error ||
         (err as any)?.data?.message ||
         LOGIN_LABELS.ERROR_INVALID_CREDENTIALS;
       setSnackbarMessage(errMsg);
-      setSnackbarSeverity('error');
+      setSnackbarSeverity("error");
       setSnackbarOpen(true);
     }
   };
@@ -80,25 +90,25 @@ const LoginForm: React.FC = () => {
   return (
     <Box
       sx={{
-        fontFamily: 'Lexend, sans-serif',
-        display: 'flex',
-        flexDirection: 'column',
-        width: '100%',
-        maxWidth: '100%',
-        mx: 'auto',
-        alignItems: 'flex-start',
-        marginBlock: 'auto',
+        fontFamily: "Lexend, sans-serif",
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        maxWidth: "100%",
+        // mx: "auto",
+        alignItems: "center",
+        marginBlock: "auto",
       }}
     >
       <Typography
         variant="h4"
         sx={{
-          fontFamily: 'Lexend, sans-serif',
+          fontFamily: "Lexend, sans-serif",
           fontWeight: 600,
-          fontSize: '32px',
-          lineHeight: '36px',
-          color: '#1A212B',
-          mb: '24px',
+          fontSize: "32px",
+          lineHeight: "36px",
+          color: "#1A212B",
+          mb: "24px",
         }}
       >
         {LOGIN_LABELS.TITLE}
@@ -108,10 +118,21 @@ const LoginForm: React.FC = () => {
         component="form"
         noValidate
         onSubmit={handleSignIn}
-        sx={{ display: 'flex', flexDirection: 'column', width: { xs: '100%', sm: '400px' } }}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          width: { xs: "100%", sm: "400px" },
+        }}
       >
         {/* Username Field */}
-        <Typography sx={{ fontSize: '12px', fontWeight: 400, mb: '4px' }}>
+        <Typography
+          sx={{
+            fontSize: "12px",
+            fontWeight: 400,
+            mb: "4px",
+            color: "#728197",
+          }}
+        >
           {LOGIN_LABELS.USERNAME_LABEL}
         </Typography>
         <TextField
@@ -124,16 +145,31 @@ const LoginForm: React.FC = () => {
           error={!!errors.username}
           helperText={errors.username}
           autoComplete="off"
-          sx={{ mb: '24px' }}
+          sx={{
+            mb: "24px",
+            "& .MuiInputBase-root": {
+              color: "#1A212B",
+              borderRadius: "12px", // rounded corners
+              height: "49px", // custom height
+                // border:'1px solid #728197',
+            },
+          }}
         />
 
         {/* Password Field */}
-        <Typography sx={{ fontSize: '12px', fontWeight: 400, mb: '4px' }}>
+        <Typography
+          sx={{
+            fontSize: "12px",
+            fontWeight: 400,
+            mb: "4px",
+            color: "#728197",
+          }}
+        >
           {LOGIN_LABELS.PASSWORD_LABEL}
         </Typography>
         <TextField
           placeholder={LOGIN_LABELS.PASSWORD_PLACEHOLDER}
-          type={showPassword ? 'text' : 'password'}
+          type={showPassword ? "text" : "password"}
           fullWidth
           size={LOGIN_CONSTANTS.INPUT_SIZE}
           value={password}
@@ -142,19 +178,30 @@ const LoginForm: React.FC = () => {
           helperText={errors.password}
           autoComplete="new-password"
           sx={{
-            mb: '24px',
-            '& input::-ms-reveal, & input::-ms-clear': {
-              display: 'none',
+            mb: "24px",
+
+            "& input::-ms-reveal, & input::-ms-clear": {
+              display: "none",
             },
-            '& input::-webkit-contacts-auto-fill-button, & input::-webkit-credentials-auto-fill-button': {
-              display: 'none',
+            "& input::-webkit-contacts-auto-fill-button, & input::-webkit-credentials-auto-fill-button":
+              {
+                display: "none",
+              },
+            "& .MuiInputBase-root": {
+              color: "#1A212B",
+              borderRadius: "12px", // rounded corners
+              height: "49px", // custom height
+              // border:'1px solid #728197',
             },
           }}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                <IconButton
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  edge="end"
+                >
+                  {showPassword ? <Visibility /> : <VisibilityOff />}
                 </IconButton>
               </InputAdornment>
             ),
@@ -162,27 +209,48 @@ const LoginForm: React.FC = () => {
         />
 
         {/* Forgot Password */}
-        <Box sx={{ mb: '32px', alignSelf: 'flex-start' }}>
-          <Link to="/Forgot-Password" style={{ textDecoration: 'none' }}>
-            <Typography variant="caption" sx={{ fontSize: '16px', cursor: 'pointer' }}>
+        <Box sx={{ mb: "32px", alignSelf: "flex-start" }}>
+          <Link to="/Forgot-Password" style={{ textDecoration: "none" }}>
+            <Typography
+              variant="caption"
+              sx={{ fontSize: "16px", cursor: "pointer" ,color:'#1A212B'}}
+            >
               {LOGIN_LABELS.FORGOT_PASSWORD}
             </Typography>
           </Link>
         </Box>
 
         {/* Login Button */}
-        <Button type="submit" variant="contained" fullWidth disabled={isLoading}>
-          {isLoading ? LOGIN_LABELS.LOGIN_BUTTON_LOADING : LOGIN_LABELS.LOGIN_BUTTON}
+        <Button
+          type="submit"
+          variant="contained"
+          // fullWidth
+          disabled={isLoading}
+          disableRipple
+          sx={{
+            height:'56px',     
+            textTransform: "none",
+            bgcolor: "#5C17E5",
+            borderRadius: "12px",
+            fontSize:"16px",
+            // lineHeight:"24px",
+            boxShadow:'none',
+             "&:hover":{bgcolor: "#5C17E5",boxShadow:'none'}
+          }}
+        >
+          {isLoading
+            ? LOGIN_LABELS.LOGIN_BUTTON_LOADING
+            : LOGIN_LABELS.LOGIN_BUTTON}
         </Button>
 
         {/* Divider */}
-        <Box sx={{ display: 'flex', alignItems: 'center', width: '400px', mb: '24px' }}>
+        {/* <Box sx={{ display: 'flex', alignItems: 'center', width: '400px', mb: '24px' }}>
           <Divider sx={{ flexGrow: 1 }} />
           <Typography sx={{ mx: '12px' }}>{LOGIN_LABELS.DIVIDER_TEXT}</Typography>
           <Divider sx={{ flexGrow: 1 }} />
         </Box>
 
-        {/* Signup Link */}
+      
         <Link to="/create-password" style={{ textDecoration: 'none', alignSelf: 'center' }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
             <Typography>{LOGIN_LABELS.SIGNUP_QUESTION}</Typography>
@@ -190,7 +258,7 @@ const LoginForm: React.FC = () => {
               {LOGIN_LABELS.SIGNUP_LINK}
             </Typography>
           </Box>
-        </Link>
+        </Link> */}
       </Box>
 
       {/* Snackbar */}
@@ -198,9 +266,12 @@ const LoginForm: React.FC = () => {
         open={snackbarOpen}
         autoHideDuration={LOGIN_CONSTANTS.SNACKBAR_AUTO_HIDE}
         onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity}>
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>

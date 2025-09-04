@@ -111,12 +111,11 @@ export const ReusableTable = <T,>({
         return 'auto';
     };
 
-    const hasSearchAndFilter = searchAndFilterConfig.filterOptions.length > 0;
+    const hasFilterOptions = searchAndFilterConfig.filterOptions.length > 0;
 
     return (
         <>
-            {hasSearchAndFilter && (
-                <Box
+            <Box
                     sx={{
                         display: 'flex',
                         alignItems: isTabletOrMobile ? 'stretch' : 'center',
@@ -155,29 +154,30 @@ export const ReusableTable = <T,>({
                             marginBottom: isTabletOrMobile ? '12px' : 0,
                         }}
                     />
-                    <Button
-                        variant="contained"
-                        startIcon={<FilterListIcon />}
-                        onClick={onShowFiltersToggle}
-                        sx={{
-                            minWidth: 151,
-                            height: 38,
-                            borderRadius: '12px',
-                            bgcolor: '#ECEFF4',
-                            color: '#1A212B',
-                            textTransform: 'none',
-                            padding: '12px 16px',
-                            marginLeft: isTabletOrMobile ? 0 : '45%',
-                            width: isTabletOrMobile ? '100%' : 'auto',
-                            '&:hover': { bgcolor: '#E0E5EA', },
-                        }}
-                    >
-                        {showFilters ? 'Hide filters' : 'Show filters'}
-                    </Button>
+                    {hasFilterOptions && (
+                        <Button
+                            variant="contained"
+                            startIcon={<FilterListIcon />}
+                            onClick={onShowFiltersToggle}
+                            sx={{
+                                minWidth: 151,
+                                height: 38,
+                                borderRadius: '12px',
+                                bgcolor: '#ECEFF4',
+                                color: '#1A212B',
+                                textTransform: 'none',
+                                padding: '12px 16px',
+                                marginLeft: isTabletOrMobile ? 0 : '45%',
+                                width: isTabletOrMobile ? '100%' : 'auto',
+                                '&:hover': { bgcolor: '#E0E5EA', },
+                            }}
+                        >
+                            {showFilters ? 'Hide filters' : 'Show filters'}
+                        </Button>
+                    )}
                 </Box>
-            )}
 
-            {showFilters && (
+            {hasFilterOptions && showFilters && (
                 <Box
                     display="flex"
                     flexWrap="wrap"

@@ -7,10 +7,9 @@ export const BORDER_COLOR = "#9AA8BC";
 export const TEXT_COLOR = "#728197";
 export const WHITE_COLOR = "#ffffff";
 
-// Typography
 export const FONT_FAMILY = "lexend";
 
-// Shape
+
 export const BORDER_RADIUS = "12px";
 
 // Button Styles
