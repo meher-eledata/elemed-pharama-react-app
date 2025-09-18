@@ -101,9 +101,10 @@ import userProfileImage from "../../assets/UserPhoto.png";
 
 interface TopBarProps {
   name: string;
+  onToggleSidebar?: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ name }) => {
+export const TopBar: React.FC<TopBarProps> = ({ name, onToggleSidebar }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -117,6 +118,8 @@ export const TopBar: React.FC<TopBarProps> = ({ name }) => {
 
   return (
     <Box className="topbar-container">
+      <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center' }}>
+      </Box>
       <Box className="right-controls" sx={{ marginLeft: "auto" }}>
         <IconButton className="notification-icon-button">
           <img src={Notification} alt="icon" />

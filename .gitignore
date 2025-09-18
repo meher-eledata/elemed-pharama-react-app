@@ -23,4 +23,5 @@ coverage
 *.db3-journal
 
 # Env files
-*.env
+*.envnode_modules/
+dist/

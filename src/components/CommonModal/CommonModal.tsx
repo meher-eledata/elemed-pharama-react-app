@@ -31,19 +31,36 @@ const CommonModal: React.FC<CommonModalProps> = ({
           onClick={onClose}
           variant="contained"
           disableElevation
+          disableRipple
           sx={{
-            backgroundColor: ADD_BUTTON_COLOR,
+            backgroundColor: ADD_BUTTON_COLOR, // Base purple
             color: "#FFFFFF",
             textTransform: "none",
             borderRadius: "10px",
             px: 2.5,
-            "&:hover": { backgroundColor: ADD_BUTTON_HOVER_COLOR },
-            "&:focus": { backgroundColor: ADD_BUTTON_HOVER_COLOR },
-            "&:active": { backgroundColor: ADD_BUTTON_HOVER_COLOR },
+            boxShadow: "none",
+            "&:hover": {
+              backgroundColor: ADD_BUTTON_COLOR, // 👈 Same as base color
+              boxShadow: "none",
+            },
+            "&:focus": {
+              backgroundColor: ADD_BUTTON_COLOR,
+              boxShadow: "none",
+            },
+            "&:active": {
+              backgroundColor: ADD_BUTTON_COLOR,
+              boxShadow: "none",
+            },
+            "&.Mui-focusVisible": {
+              backgroundColor: ADD_BUTTON_COLOR,
+              boxShadow: "none",
+            },
           }}
         >
           Close
         </Button>
+
+
       </DialogActions>
     </Dialog>
   );

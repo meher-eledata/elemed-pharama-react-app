@@ -48,7 +48,7 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
   supplierOptions
 }) => {
   const { data: apiSupplierNames, isLoading: loadingSuppliers, error: suppliersError } = useGetUniqueSupplierNamesQuery(undefined, {
-    skip: !open 
+    skip: !open
   });
 
   const availableSuppliers = apiSupplierNames || supplierOptions || [];
@@ -59,14 +59,13 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
       onClose={onClose}
       PaperProps={{ sx: { borderRadius: 3, minWidth: 350 } }}
     >
-      {/* Header */}
       <DialogTitle
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           fontWeight: 600,
-          fontFamily: FONT_FAMILY
+          fontFamily: FONT_FAMILY,
         }}
       >
         {MODAL_TITLE}
@@ -74,8 +73,6 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
           <CloseIcon />
         </IconButton>
       </DialogTitle>
-
-      {/* Content */}
       <DialogContent>
         <FormControl fullWidth size="small">
           <Typography
@@ -87,8 +84,7 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
           >
             {FIND_SUPPLIER_LABEL}
           </Typography>
-
-          <Select
+           <Select
             value={supplier}
             onChange={(e) => setSupplier(e.target.value)}
             displayEmpty
@@ -120,17 +116,37 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
           </Select>
         </FormControl>
       </DialogContent>
-
-      {/* Actions */}
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} sx={CANCEL_BUTTON_STYLE}>
+        <Button
+          onClick={onClose}
+          sx={{
+            ...CANCEL_BUTTON_STYLE,
+            '&:hover': {
+              backgroundColor: 'transparent',
+            },
+            '&.MuiButtonBase-root': {
+              '&.Mui-focusVisible': {
+                backgroundColor: 'transparent',
+              },
+            },
+          }}
+          disableRipple 
+        >
           {BUTTON_CANCEL}
         </Button>
-        <Button 
-          variant="contained" 
-          sx={NEXT_BUTTON_STYLE} 
+
+        <Button
+          variant="contained"
+          sx={{
+            ...NEXT_BUTTON_STYLE,
+            '&:hover': {
+              backgroundColor: NEXT_BUTTON_STYLE.backgroundColor, 
+              boxShadow: 'none',
+            },
+          }}
           onClick={onNext}
-          disabled={loadingSuppliers}
+          disabled={loadingSuppliers || !supplier}
+          disableRipple
         >
           {BUTTON_NEXT}
         </Button>

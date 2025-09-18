@@ -12,6 +12,7 @@ import {
   FilterOption,
 } from "../../components/PharmaTable";
 
+
 interface OrderReceiveRow {
   poNo: string;
   date: string;
@@ -22,6 +23,8 @@ interface OrderReceiveRow {
 
 const Masterpage: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+
 //   const [activeTab, setActiveTab] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showFilters, setShowFilters] = useState<boolean>(false);
@@ -127,6 +130,8 @@ const Masterpage: React.FC = () => {
           onPageChange={setCurrentPage}
           onSortRequest={handleSortRequest}
           sortConfig={sortConfig}
+          selectedRows={selectedRows}         
+      setSelectedRows={setSelectedRows}
 
           
         />

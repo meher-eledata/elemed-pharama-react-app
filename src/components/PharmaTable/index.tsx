@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from 'react';
+import React, { ChangeEvent, useState } from 'react';
 import {
     Table,
     TableBody,
@@ -41,14 +41,18 @@ export interface TableColumn<T> {
     key: keyof T | 'checkbox' | 'actions' | string;
     header: string;
     hide?: boolean;
+    sortable?: boolean;
     render?: (item: T) => React.ReactNode;
     headerRender?: () => React.ReactNode;
-    sortable?: boolean;
+    columnWidth?: string;
+
 }
 
 interface ReusableTableProps<T> {
     columns: TableColumn<T>[];
     data: T[];
+    selectedRows: number[];
+    setSelectedRows: React.Dispatch<React.SetStateAction<number[]>>;
     emptyMessage?: string;
     searchAndFilterConfig: SearchAndFilterConfig;
     currentSearchTerm: string;
@@ -68,6 +72,8 @@ interface ReusableTableProps<T> {
 export const ReusableTable = <T,>({
     columns,
     data,
+    selectedRows,
+    setSelectedRows,
     emptyMessage = 'No data available',
     searchAndFilterConfig,
     currentSearchTerm,
@@ -85,6 +91,7 @@ export const ReusableTable = <T,>({
 }: ReusableTableProps<T>) => {
     const theme = useTheme();
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('md'));
+
 
     const visibleColumns = columns.filter((col) => !col.hide);
     const totalPages = Math.ceil(totalRows / rowsPerPage);
@@ -111,11 +118,30 @@ export const ReusableTable = <T,>({
         return 'auto';
     };
 
-    const hasFilterOptions = searchAndFilterConfig.filterOptions.length > 0;
+    const hasSearchAndFilter = searchAndFilterConfig.filterOptions.length > 0;
+
+    const allSelected = selectedRows.length === data.length && data.length > 0;
+
+    const handleSelectAll = () => {
+        if (allSelected) {
+            setSelectedRows([]);
+        } else {
+            setSelectedRows(data.map((_, idx) => idx));
+        }
+    };
+
+    const handleSelectRow = (rowIndex: number) => {
+        if (selectedRows.includes(rowIndex)) {
+            setSelectedRows(selectedRows.filter((i) => i !== rowIndex));
+        } else {
+            setSelectedRows([...selectedRows, rowIndex]);
+        }
+    };
 
     return (
         <>
-            <Box
+            {hasSearchAndFilter && (
+                <Box
                     sx={{
                         display: 'flex',
                         alignItems: isTabletOrMobile ? 'stretch' : 'center',
@@ -137,7 +163,7 @@ export const ReusableTable = <T,>({
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
-                                    <SearchIcon sx={{ color: '#728197', fontSize: '24px', backgroundColor: '#ffffff' }} />
+                                    <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
                                 </InputAdornment>
                             ),
                             sx: {
@@ -154,30 +180,29 @@ export const ReusableTable = <T,>({
                             marginBottom: isTabletOrMobile ? '12px' : 0,
                         }}
                     />
-                    {hasFilterOptions && (
-                        <Button
-                            variant="contained"
-                            startIcon={<FilterListIcon />}
-                            onClick={onShowFiltersToggle}
-                            sx={{
-                                minWidth: 151,
-                                height: 38,
-                                borderRadius: '12px',
-                                bgcolor: '#ECEFF4',
-                                color: '#1A212B',
-                                textTransform: 'none',
-                                padding: '12px 16px',
-                                marginLeft: isTabletOrMobile ? 0 : '45%',
-                                width: isTabletOrMobile ? '100%' : 'auto',
-                                '&:hover': { bgcolor: '#E0E5EA', },
-                            }}
-                        >
-                            {showFilters ? 'Hide filters' : 'Show filters'}
-                        </Button>
-                    )}
+                    <Button
+                        variant="contained"
+                        startIcon={<FilterListIcon />}
+                        onClick={onShowFiltersToggle}
+                        sx={{
+                            minWidth: 151,
+                            height: 38,
+                            borderRadius: '12px',
+                            bgcolor: '#ECEFF4',
+                            color: '#1A212B',
+                            textTransform: 'none',
+                            padding: '12px 16px',
+                            marginLeft: isTabletOrMobile ? 0 : '45%',
+                            width: isTabletOrMobile ? '100%' : 'auto',
+                            '&:hover': { bgcolor: '#E0E5EA', },
+                        }}
+                    >
+                        {showFilters ? 'Hide filters' : 'Show filters'}
+                    </Button>
                 </Box>
+            )}
 
-            {hasFilterOptions && showFilters && (
+            {showFilters && (
                 <Box
                     display="flex"
                     flexWrap="wrap"
@@ -214,24 +239,35 @@ export const ReusableTable = <T,>({
                 }}
             >
                 <Table stickyHeader sx={{ minWidth: 650 }}>
+
                     <TableHead>
                         <TableRow>
                             {visibleColumns.map((column, index) => (
                                 <TableCell
                                     key={index}
+                                    // Check if the column is NOT explicitly set to false
                                     onClick={() => column.sortable !== false && onSortRequest(column.key as string)}
                                     sx={{
-                                        fontWeight: 'bold',
+                                        fontWeight: 500,
                                         fontSize: isTabletOrMobile ? '12px' : '14px',
                                         padding: '12px',
                                         bgcolor: '#ffffff',
                                         whiteSpace: 'nowrap',
                                         width: getColumnWidth(column.key as string),
+                                        // Set cursor to pointer unless sortable is explicitly false
                                         cursor: column.sortable !== false ? 'pointer' : 'default',
                                     }}
                                 >
                                     <Box display="flex" alignItems="center" gap={1}>
-                                        {column.headerRender ? column.headerRender() : column.header}
+                                        {column.key === 'checkbox' ? (
+                                            <Checkbox
+                                                indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
+                                                onChange={handleSelectAll}
+                                                sx={{ p: 0 }}
+                                            />
+                                        ) : column.headerRender ? column.headerRender() : column.header}
+
+                                        {/* Only render the sorting box if the column is NOT explicitly false */}
                                         {column.sortable !== false && (
                                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                 {sortConfig.key === column.key ? (
@@ -284,7 +320,13 @@ export const ReusableTable = <T,>({
                                                 width: getColumnWidth(column.key as string),
                                             }}
                                         >
-                                            {column.render ? column.render(row) : (row as any)[column.key]}
+                                            {column.key === 'checkbox' ? (
+                                                <Checkbox
+                                                    checked={selectedRows.includes(rowIndex)}
+                                                    onChange={() => handleSelectRow(rowIndex)}
+                                                    sx={{ p: 0 }}
+                                                />
+                                            ) : column.render ? column.render(row) : (row as any)[column.key]}
                                         </TableCell>
                                     ))}
                                 </TableRow>
@@ -370,3 +412,4 @@ export const ReusableTable = <T,>({
         </>
     );
 };
+

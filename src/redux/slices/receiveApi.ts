@@ -109,7 +109,7 @@ export const receiveApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Receive"],
+  tagTypes: ["Receive", "ReceiptLines"] as const,
   endpoints: (builder) => ({
     getCurrentPurchaseOrders: builder.query<PurchaseOrder[], void>({
       query: () => "receive/current-purchase-orders",
@@ -182,7 +182,7 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      providesTags: ["Receive"],
+      providesTags: ["Receive", "ReceiptLines"],
     }),
 
     editReceiptLineQuantity: builder.mutation<
@@ -194,7 +194,7 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive"],
+      invalidatesTags: ["Receive", "ReceiptLines"],
     }),
 
     deleteReceiptLine: builder.mutation<
@@ -206,7 +206,7 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive"],
+      invalidatesTags: ["Receive", "ReceiptLines"],
     }),
   }),
 });

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Box, Button, Tabs, Tab, Typography } from "@mui/material";
+import { Box, Button, Typography, Snackbar, Alert } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import "./OrderReceive.scss";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
@@ -7,18 +8,24 @@ import ReceiveSupplierModal from "../../components/Modal/ReceiveSupplier/Receive
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog"
 import CommonModal from "../../components/CommonModal/CommonModal";
 import ProductDetailsModalContent from "./ProductDetailsModalContent";
+import LastModal from "../../components/Modal/lastOne/LastModal";
 
 import {
   ORDER_RECEIVE_TITLE,
   ADD_RECEIVE_BUTTON,
   TAB_RECEIVE_HISTORY,
   TAB_CURRENT_ORDER,
+  ORDER_RECEIVE_TABLE_HEADERS,
+  PURCHASE_ORDER_TABLE_HEADERS,
+  ORDER_RECEIVE_MESSAGES,
+  ORDER_RECEIVE_DIALOG,
+  ORDER_RECEIVE_MODAL,
 } from "../../config/label/OrderReceive.labels";
 import {
   ADD_BUTTON_COLOR,
-  ADD_BUTTON_HOVER_COLOR,
-  TAB_INDICATOR_STYLE,
+  ORDER_RECEIVE_CONSTANTS,
 } from "../../config/constants/OrderReceive.constants";
+import { baseButtonStyle } from "../../config/constants/inventoryConstants";
 
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
@@ -46,6 +53,7 @@ export interface ProductItem {
 }
 
 export interface OrderReceiveRow {
+  receiptId: number;
   reNo: string;
   poNo: string;
   supplier: string;
@@ -57,6 +65,7 @@ export interface OrderReceiveRow {
 }
 
 export interface PurchaseOrderRow {
+  receiptId: number;
   poNo: string;
   orderedDate: string;
   supplier: string;
@@ -66,6 +75,7 @@ export interface PurchaseOrderRow {
 }
 
 const OrderReceive: React.FC = () => {
+  const navigate = useNavigate();
   const [open, setOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(1);
 
@@ -81,65 +91,110 @@ const OrderReceive: React.FC = () => {
   const [supplier, setSupplier] = useState("");
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<OrderReceiveRow | null>(null);
-  const { data: receipts, isLoading: loadingReceipts, error: receiptsError, refetch: refetchReceipts } = useGetReceiptsQuery(undefined, { skip: activeTab !== 1 });
-  const { data: purchaseOrders, isLoading: loadingPurchaseOrders, error: purchaseOrdersError, refetch: refetchPurchaseOrders } = useGetCurrentPurchaseOrdersQuery(undefined, { skip: activeTab !== 2 });
+  const [isLastModalOpen, setIsLastModalOpen] = useState<boolean>(false);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const { data: receipts, isLoading: loadingReceipts, error: receiptsError, refetch: refetchReceipts } = useGetReceiptsQuery(undefined, {
+    skip: activeTab !== 2,
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  });
+  const { data: purchaseOrders, isLoading: loadingPurchaseOrders, error: purchaseOrdersError, refetch: refetchPurchaseOrders } = useGetCurrentPurchaseOrdersQuery(undefined, {
+    skip: activeTab !== 1,
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  });
 
   const [editReceipt, { isLoading: saving }] = useEditReceiptMutation();
   const [deleteReceipt, { isLoading: deleting }] = useDeleteReceiptMutation();
 
   const [selectedReceiptId, setSelectedReceiptId] = useState<number | null>(null);
-  const { data: receiptLines } = useGetReceiptLinesQuery(
+  const { data: receiptLines, isLoading: loadingReceiptLines, error: receiptLinesError } = useGetReceiptLinesQuery(
     selectedReceiptId !== null ? { receipt_id: selectedReceiptId } : (undefined as any),
     { skip: selectedReceiptId === null }
   );
 
   const mappedReceipts: OrderReceiveRow[] = useMemo(() => {
-    return (receipts || []).map((receipt, idx) => ({
-      reNo: `RA${receipt.id}`,
-      poNo: String(receipt.po_id),
-      supplier: receipt.supplier_name,
-      received: receipt.received_on,
-      status: receipt.receipt_status,
-      reBy: receipt.received_by,
-      amt: receipt.total_amount,
-      products: []
-    }));
+    return (receipts || [])
+      .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
+      .map((receipt, idx) => ({
+        receiptId: receipt.id,
+        reNo: `RA${receipt.id}`,
+        poNo: String(receipt.po_id),
+        supplier: receipt.supplier_name,
+        received: receipt.received_on,
+        status: receipt.receipt_status,
+        reBy: receipt.received_by,
+        amt: receipt.total_amount,
+        products: []
+      }));
   }, [receipts]);
 
   const mappedPurchaseOrders: PurchaseOrderRow[] = useMemo(() => {
-    return (purchaseOrders || []).map((po) => ({
-      poNo: po.po_number,
-      orderedDate: po.ordered_date,
-      supplier: po.supplier_name,
-      totalAmount: po.total_amount,
-      status: po.status,
-      createdBy: po.created_by ? String(po.created_by) : undefined
-    }));
+    return (purchaseOrders || [])
+      .filter((po) => po.status.toLowerCase() !== 'received') // FIX: Exclude 'received' orders from current orders tab
+      .map((po, index) => ({
+        receiptId: index + 1000, 
+        poNo: po.po_number,
+        orderedDate: po.ordered_date,
+        supplier: po.supplier_name,
+        totalAmount: po.total_amount,
+        status: po.status,
+        createdBy: po.created_by ? String(po.created_by) : 'System'
+      }));
   }, [purchaseOrders]);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [rowToDeleteId, setRowToDeleteId] = useState<string | null>(null);
 
-
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
   const handleEditClick = (row: OrderReceiveRow) => {
     setEditingRowId(row.reNo);
     setEditingDraft({ ...row });
   };
-
   const buildChanges = (original: OrderReceiveRow, draft: OrderReceiveRow): EditReceiptRequest => {
     const originalReceipt = receipts?.find(r => `RA${r.id}` === original.reNo);
     if (!originalReceipt) {
       throw new Error("Original receipt not found");
     }
 
+    const parsedPoId = Number(draft.poNo);
+    const safePoId = Number.isNaN(parsedPoId) ? originalReceipt.po_id : parsedPoId;
+
+    const parsedAmount = Number(draft.amt);
+    const safeAmount = Number.isNaN(parsedAmount) ? originalReceipt.total_amount : parsedAmount;
+
     return {
       id: originalReceipt.id,
-      po_id: Number(draft.poNo),
+      po_id: safePoId,
       received_on: draft.received,
       received_by: draft.reBy,
       receipt_status: draft.status,
-      total_amount: draft.amt
+      total_amount: safeAmount
     };
+  };
+
+  const extractApiErrorMessage = (error: any): string => {
+    try {
+      // RTK Query error shapes
+      if (error?.data) {
+        if (typeof error.data === 'string') return error.data;
+        if (typeof error.data?.message === 'string') return error.data.message;
+        if (Array.isArray(error.data?.errors) && error.data.errors.length > 0) {
+          const first = error.data.errors[0];
+          if (typeof first === 'string') return first;
+          if (typeof first?.message === 'string') return first.message;
+        }
+      }
+      if (typeof error?.error === 'string') return error.error;
+      if (typeof error?.message === 'string') return error.message;
+    } catch (_) {
+      // no-op
+    }
+    return 'Unexpected error occurred';
   };
 
   const handleSaveClick = async (row: OrderReceiveRow) => {
@@ -151,12 +206,18 @@ const OrderReceive: React.FC = () => {
     try {
       const editRequest = buildChanges(row, editingDraft);
       await editReceipt(editRequest).unwrap();
-      const updated = currentReceiptsOverride.length > 0 ? currentReceiptsOverride : tableData;
-      const next = updated.map((r) => (r.reNo === row.reNo ? { ...r, ...editingDraft } : r));
-      setCurrentReceiptsOverride(next);
-      setTableData(next);
+      // Refetch from server to ensure DB changes are reflected
+      await refetchReceipts();
+      // Clear overrides so we show fresh server data
+      setCurrentReceiptsOverride([]);
+      setSnackbarSeverity('success');
+      setSnackbarMessage('Updated successfully');
+      setSnackbarOpen(true);
     } catch (e) {
       console.error("Save failed", e);
+      setSnackbarSeverity('error');
+      setSnackbarMessage(`Update failed: ${extractApiErrorMessage(e)}`);
+      setSnackbarOpen(true);
     } finally {
       setEditingRowId(null);
       setEditingDraft(null);
@@ -192,8 +253,17 @@ const OrderReceive: React.FC = () => {
       const newData = tableData.filter((r) => r.reNo !== rowToDeleteId);
       setTableData(newData);
       setCurrentReceiptsOverride((prev) => prev.filter((r) => r.reNo !== rowToDeleteId));
+      // Ensure server state sync
+      await refetchReceipts();
+      setCurrentReceiptsOverride([]);
+      setSnackbarSeverity('success');
+      setSnackbarMessage('Deleted successfully');
+      setSnackbarOpen(true);
     } catch (e) {
       console.error("Delete failed", e);
+      setSnackbarSeverity('error');
+      setSnackbarMessage(`Delete failed: ${extractApiErrorMessage(e)}`);
+      setSnackbarOpen(true);
     } finally {
       setIsDeleteDialogOpen(false);
       setRowToDeleteId(null);
@@ -202,8 +272,7 @@ const OrderReceive: React.FC = () => {
 
   const handleViewDetailsClick = (row: OrderReceiveRow) => {
     setSelectedProduct(row);
-    const receiptId = Number(row.reNo.replace('RA', ''));
-    setSelectedReceiptId(receiptId);
+    setSelectedReceiptId(row.receiptId);
     setIsDetailsModalOpen(true);
   };
 
@@ -226,14 +295,14 @@ const OrderReceive: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 1) {
-      setTableData(currentReceiptsData);
-    } else if (activeTab === 2) {
       setPurchaseOrderData(mappedPurchaseOrders);
+    } else if (activeTab === 2) {
+      setTableData(currentReceiptsData);
     }
   }, [activeTab, currentReceiptsData, mappedPurchaseOrders]);
 
   const sortedData = useMemo(() => {
-    if (activeTab === 1) {
+    if (activeTab === 2) {
       let sortableItems = [...tableData];
 
       if (searchTerm.trim()) {
@@ -280,33 +349,33 @@ const OrderReceive: React.FC = () => {
     }
   }, [activeTab, tableData, purchaseOrderData, sortConfig, searchTerm]);
 
-  const rowsPerPage = 5;
+  const rowsPerPage = ORDER_RECEIVE_CONSTANTS.TABLE.ROWS_PER_PAGE;
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
     return sortedData.slice(startIndex, endIndex);
   }, [sortedData, currentPage, rowsPerPage]);
 
-  const totalRows = activeTab === 1 ? tableData.length : purchaseOrderData.length;
+  const totalRows = activeTab === 2 ? tableData.length : purchaseOrderData.length;
 
-  const columns: TableColumn<OrderReceiveRow>[] = [
+  const orderReceiveColumns: TableColumn<OrderReceiveRow>[] = [
     {
       key: "reNo",
-      header: "Receipt number",
+      header: ORDER_RECEIVE_TABLE_HEADERS.RECEIPT_NUMBER,
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <>
-            <span>{row.reNo}</span>
-            <VisibilityIcon
-              sx={{ fontSize: '18px', color: '#666', cursor: 'pointer' }}
-              onClick={() => handleViewDetailsClick(row)}
-            />
-          </>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: ORDER_RECEIVE_CONSTANTS.TABLE.ACTION_GAP }}>
+          <span>{row.reNo}</span>
+          <VisibilityIcon
+            sx={{ fontSize: ORDER_RECEIVE_CONSTANTS.ICONS.RECEIPT_VIEW_SIZE, color: ORDER_RECEIVE_CONSTANTS.ICONS.MUTED_COLOR, cursor: 'pointer' }}
+            onClick={() => handleViewDetailsClick(row)}
+          />
         </Box>
       )
     },
     {
-      key: "poNo", header: "PO number", render: (row) => (
+      key: "poNo",
+      header: ORDER_RECEIVE_TABLE_HEADERS.PO_NUMBER,
+      render: (row) => (
         editingRowId === row.reNo ? (
           <input
             type="text"
@@ -320,12 +389,16 @@ const OrderReceive: React.FC = () => {
       )
     },
     {
-      key: "supplier", header: "Supplier name", render: (row) => (
+      key: "supplier",
+      header: ORDER_RECEIVE_TABLE_HEADERS.SUPPLIER_NAME,
+      render: (row) => (
         <span>{row.supplier}</span>
       )
     },
     {
-      key: "received", header: "Received on", render: (row) => (
+      key: "received",
+      header: ORDER_RECEIVE_TABLE_HEADERS.RECEIVED_ON,
+      render: (row) => (
         editingRowId === row.reNo ? (
           <input
             type="text"
@@ -338,8 +411,29 @@ const OrderReceive: React.FC = () => {
         )
       )
     },
+    // {
+    //   key: "status",
+    //   header: ORDER_RECEIVE_TABLE_HEADERS.RECEIVED_STATUS,
+    //   render: (row) => (
+    //     editingRowId === row.reNo ? (
+    //       <input
+    //         type="text"
+    //         value={editingDraft?.status ?? ''}
+    //         onChange={(e) => setEditingDraft((prev) => (prev ? { ...prev, status: e.target.value } : prev))}
+    //         style={{ width: '100%', boxSizing: 'border-box' }}
+    //       />
+    //     ) : (
+    //       <span>{row.status}</span>
+    //     )
+    //   )
+    // },
+
     {
-      key: "status", header: "Received status", render: (row) => (
+      key: "status",
+      header: ORDER_RECEIVE_TABLE_HEADERS.RECEIVED_STATUS,
+      // Key change: Set sortable to false
+      sortable: false,
+      render: (row) => (
         editingRowId === row.reNo ? (
           <input
             type="text"
@@ -353,7 +447,9 @@ const OrderReceive: React.FC = () => {
       )
     },
     {
-      key: "reBy", header: "Created by", render: (row) => (
+      key: "reBy",
+      header: ORDER_RECEIVE_TABLE_HEADERS.CREATED_BY,
+      render: (row) => (
         editingRowId === row.reNo ? (
           <input
             type="text"
@@ -367,7 +463,9 @@ const OrderReceive: React.FC = () => {
       )
     },
     {
-      key: "amt", header: "Total amount", render: (row) => (
+      key: "amt",
+      header: ORDER_RECEIVE_TABLE_HEADERS.TOTAL_AMOUNT,
+      render: (row) => (
         editingRowId === row.reNo ? (
           <input
             type="number"
@@ -382,54 +480,96 @@ const OrderReceive: React.FC = () => {
     },
     {
       key: "actions",
-      header: "",
+      header: ORDER_RECEIVE_TABLE_HEADERS.ACTIONS,
       sortable: false,
+      columnWidth: "10%",
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}> {/* gap between total and icons */}
           {editingRowId === row.reNo ? (
-            <>
-              <CheckIcon sx={{ color: '#000000', cursor: 'pointer' }} onClick={() => handleSaveClick(row)} />
-              <CloseIcon sx={{ color: '#000000', cursor: 'pointer' }} onClick={() => handleCancelClick()} />
-              <DeleteIcon sx={{ color: '#000000', cursor: 'pointer' }} onClick={() => handleDeleteClick(row.reNo)} />
-            </>
+            <Box sx={{ display: 'flex', gap: '12px' }}> {/* fixed gap between icons */}
+              <CheckIcon
+                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }}
+                onClick={() => handleSaveClick(row)}
+              />
+              <CloseIcon
+                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }}
+                onClick={() => handleCancelClick()}
+              />
+              <DeleteIcon
+                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }}
+                onClick={() => handleDeleteClick(row.reNo)}
+              />
+            </Box>
           ) : (
-            <EditIcon sx={{ color: '#666', cursor: 'pointer' }} onClick={() => handleEditClick(row)} />
+            <Box sx={{ display: 'flex', gap: '18px' }}> {/* fixed gap between icons */}
+              <EditIcon
+                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }}
+                onClick={() => handleEditClick(row)}
+              />
+              <DeleteIcon
+                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }}
+                onClick={() => handleDeleteClick(row.reNo)}
+              />
+            </Box>
           )}
         </Box>
       )
     }
   ];
 
+  const handlePurchaseOrderClick = (row: PurchaseOrderRow) => {
+    // Navigate to OrderDetails page with selected supplier and PO number
+    navigate('/receive/order-details', { 
+      state: { 
+        selectedSupplier: row.supplier,
+        selectedPO: row.poNo,
+        selectedOrder: row
+      } 
+    });
+  };
+
   const purchaseOrderColumns: TableColumn<PurchaseOrderRow>[] = [
     {
+      key: "reNo",
+      header: PURCHASE_ORDER_TABLE_HEADERS.RECEIPT_NUMBER,
+      render: (row) => <span>RA{row.receiptId}</span>
+    },
+    {
       key: "poNo",
-      header: "PO number",
-      render: (row) => <span>{row.poNo}</span>
+      header: PURCHASE_ORDER_TABLE_HEADERS.PO_NUMBER,
+      render: (row) => (
+        <span 
+          style={{ cursor: 'pointer' }}
+          onClick={() => handlePurchaseOrderClick(row)}
+        >
+          {row.poNo}
+        </span>
+      )
     },
     {
       key: "orderedDate",
-      header: "Ordered date",
+      header: PURCHASE_ORDER_TABLE_HEADERS.ORDERED_DATE,
       render: (row) => <span>{row.orderedDate}</span>
     },
     {
       key: "supplier",
-      header: "Supplier name",
+      header: PURCHASE_ORDER_TABLE_HEADERS.SUPPLIER_NAME,
       render: (row) => <span>{row.supplier}</span>
     },
     {
       key: "totalAmount",
-      header: "Total amount",
+      header: PURCHASE_ORDER_TABLE_HEADERS.TOTAL_AMOUNT,
       render: (row) => <span>{row.totalAmount}</span>
     },
     {
       key: "status",
-      header: "Status",
+      header: PURCHASE_ORDER_TABLE_HEADERS.STATUS,
       render: (row) => <span>{row.status}</span>
     },
     {
       key: "createdBy",
-      header: "Created by",
-      render: (row) => <span>{row.createdBy || '-'}</span>
+      header: PURCHASE_ORDER_TABLE_HEADERS.CREATED_BY,
+      render: (row) => <span>{row.createdBy || 'System'}</span>
     }
   ];
 
@@ -458,86 +598,163 @@ const OrderReceive: React.FC = () => {
         <Typography variant="h5" className="title">
           {ORDER_RECEIVE_TITLE}
         </Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            className="add-btn"
+            disableRipple
+            sx={{
+              backgroundColor: ADD_BUTTON_COLOR,
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
+              "&:focus": { backgroundColor: "#5C17E5" },
+              "&:active": { backgroundColor: "#5C17E5" },
+              "& .MuiButton-startIcon": {
+                "& > *:nth-of-type(1)": {
+                  fontSize: "24px",
+                },
+              },
+            }}
+            onClick={() => setOpen(true)}
+          >
+            {ADD_RECEIVE_BUTTON}
+          </Button>
+        </Box>
+      </Box>
+      <Box
+        className="inventory-tabs"
+        sx={{ mb: '24px', display: 'inline-flex', bgcolor: '#eef4ff', borderRadius: '16px', p: '6px', gap: '8px' }}
+      >
         <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          className="add-btn"
-          disableRipple
+          onClick={() => handleTabChange({} as any, 1)}
           sx={{
-            backgroundColor: ADD_BUTTON_COLOR,
-            boxShadow: "none",
-            "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
-            "&:focus": { backgroundColor: "#5C17E5" },
-            "&:active": { backgroundColor: "#5C17E5" },
+            ...baseButtonStyle,
+            width: '8.5rem',
+            height: '2.35rem',
+            backgroundColor: activeTab === 1 ? '#ffffff' : 'transparent',
+            borderRadius: activeTab === 1 ? '0.5rem' : 0,
+            border: '1px solid transparent',
+            boxShadow: activeTab === 1
+              ? '0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12)'
+              : 'none',
+            ...(activeTab === 1
+              ? {
+                '&:hover': {
+                  outline: 'none',
+                  backgroundColor: '#1976d2',
+                  color: '#000000',
+                  boxShadow: '0 6px 16px rgba(21, 101, 192, 0.35)'
+                }
+              }
+              : {
+                '&:hover': {
+                  outline: 'none',
+                  backgroundColor: '#ffffff',
+                  borderColor: '#1976d2',
+                  boxShadow: '0 2px 8px rgba(25, 118, 210, 0.15)'
+                }
+              })
           }}
-          onClick={() => setOpen(true)}
         >
-          {ADD_RECEIVE_BUTTON}
+          {TAB_CURRENT_ORDER}
+        </Button>
+        <Button
+          onClick={() => handleTabChange({} as any, 2)}
+          sx={{
+            ...baseButtonStyle,
+            width: '8.5rem',
+            height: '2.35rem',
+            backgroundColor: activeTab === 2 ? '#ffffff' : 'transparent',
+            borderRadius: activeTab === 2 ? '0.5rem' : 0,
+            border: '1px solid transparent',
+            boxShadow: activeTab === 2
+              ? '0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12)'
+              : 'none',
+            ...(activeTab === 2
+              ? {
+                '&:hover': {
+                  outline: 'none',
+                  backgroundColor: '#1976d2',
+                  color: '#000000',
+                  boxShadow: '0 6px 16px rgba(21, 101, 192, 0.35)'
+                }
+              }
+              : {
+                '&:hover': {
+                  outline: 'none',
+                  backgroundColor: '#ffffff',
+                  borderColor: '#1976d2',
+                  boxShadow: '0 2px 8px rgba(25, 118, 210, 0.15)'
+                }
+              })
+          }}
+        >
+          {TAB_RECEIVE_HISTORY}
         </Button>
       </Box>
-      <Box className="tabs" sx={{ mb: '24px' }}>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          TabIndicatorProps={{ style: TAB_INDICATOR_STYLE }}
-          sx={{ '& .MuiTabs-flexContainer': { gap: '8px' } }}
-        >
-          <Tab label={TAB_RECEIVE_HISTORY} />
-          <Tab label={TAB_CURRENT_ORDER} />
-        </Tabs>
-      </Box>
       <Box className="tab-content">
-        {loadingReceipts && activeTab === 1 ? (
-          <Typography variant="body2">Loading receipts...</Typography>
-        ) : loadingPurchaseOrders && activeTab === 2 ? (
-          <Typography variant="body2">Loading purchase orders...</Typography>
-        ) : receiptsError && activeTab === 1 ? (
+        {loadingReceipts && activeTab === 2 ? (
+          <Typography variant="body2">{ORDER_RECEIVE_MESSAGES.LOADING_RECEIPTS}</Typography>
+        ) : loadingPurchaseOrders && activeTab === 1 ? (
+          <Typography variant="body2">{ORDER_RECEIVE_MESSAGES.LOADING_ORDERS}</Typography>
+        ) : receiptsError && activeTab === 2 ? (
           <Box>
-            <Typography variant="body2" color="error">Failed to load receipts.</Typography>
+            <Typography variant="body2" color="error">{ORDER_RECEIVE_MESSAGES.LOAD_RECEIPTS_FAILED}</Typography>
             <Button size="small" onClick={() => refetchReceipts()}>Retry</Button>
           </Box>
-        ) : purchaseOrdersError && activeTab === 2 ? (
+        ) : purchaseOrdersError && activeTab === 1 ? (
           <Box>
-            <Typography variant="body2" color="error">Failed to load purchase orders.</Typography>
+            <Typography variant="body2" color="error">{ORDER_RECEIVE_MESSAGES.LOAD_ORDERS_FAILED}</Typography>
             <Button size="small" onClick={() => refetchPurchaseOrders()}>Retry</Button>
           </Box>
-        ) : activeTab === 1 ? (
-          <ReusableTable<OrderReceiveRow>
-            columns={columns}
-            data={paginatedData as OrderReceiveRow[]}
-            searchAndFilterConfig={{ filterOptions: [] }}
-            currentSearchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            showFilters={false}
-            onShowFiltersToggle={() => { }}
-            currentFilterKey={""}
-            onFilterSelect={() => { }}
-            totalRows={sortedData.length}
-            rowsPerPage={rowsPerPage}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            onSortRequest={handleSortRequest}
-            sortConfig={sortConfig}
-          />
         ) : (
-          <ReusableTable<PurchaseOrderRow>
-            columns={purchaseOrderColumns}
-            data={paginatedData as PurchaseOrderRow[]}
-            searchAndFilterConfig={{ filterOptions: [] }}
-            currentSearchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            showFilters={false}
-            onShowFiltersToggle={() => { }}
-            currentFilterKey={""}
-            onFilterSelect={() => { }}
-            totalRows={sortedData.length}
-            rowsPerPage={rowsPerPage}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            onSortRequest={handleSortRequest}
-            sortConfig={sortConfig}
-          />
+          <>
+            {activeTab === 1 ? (
+              <ReusableTable<PurchaseOrderRow>
+                columns={purchaseOrderColumns}
+                data={paginatedData as PurchaseOrderRow[]}
+                emptyMessage={ORDER_RECEIVE_MESSAGES.EMPTY_ORDERS}
+                searchAndFilterConfig={{ filterOptions: [] }}
+                currentSearchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                showFilters={false}
+                onShowFiltersToggle={() => { }}
+                currentFilterKey={""}
+                onFilterSelect={() => { }}
+                totalRows={sortedData.length}
+                rowsPerPage={rowsPerPage}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onSortRequest={handleSortRequest}
+                sortConfig={sortConfig}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+              />
+            ) : (
+              <ReusableTable<OrderReceiveRow>
+                columns={orderReceiveColumns}
+                data={paginatedData as OrderReceiveRow[]}
+                emptyMessage={ORDER_RECEIVE_MESSAGES.EMPTY_RECEIPTS}
+                searchAndFilterConfig={{ filterOptions: [] }}
+                currentSearchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                showFilters={false}
+                onShowFiltersToggle={() => { }}
+                currentFilterKey={""}
+                onFilterSelect={() => { }}
+                totalRows={sortedData.length}
+                rowsPerPage={rowsPerPage}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onSortRequest={handleSortRequest}
+                sortConfig={sortConfig}
+                selectedRows={selectedRows}
+               setSelectedRows={setSelectedRows}
+              />
+            )}
+          </>
         )}
       </Box>
       <ReceiveSupplierModal
@@ -547,24 +764,12 @@ const OrderReceive: React.FC = () => {
         setSupplier={setSupplier}
         onNext={async () => {
           try {
-            const filtered = (receipts || []).filter(receipt => !supplier || receipt.supplier_name === supplier);
-            const mapped: OrderReceiveRow[] = filtered.map((receipt, idx) => ({
-              reNo: `RA${receipt.id}`,
-              poNo: String(receipt.po_id),
-              supplier: receipt.supplier_name,
-              received: receipt.received_on,
-              status: receipt.receipt_status,
-              reBy: receipt.received_by,
-              amt: receipt.total_amount,
-              products: []
-            }));
-            setCurrentReceiptsOverride(mapped);
-            setTableData(mapped);
-            setActiveTab(1);
-            setSearchTerm("");
-            setCurrentPage(1);
+            
+            navigate('/receive/order-details', { 
+              state: { selectedSupplier: supplier } 
+            });
           } catch (e) {
-            console.error("Supplier action failed", e);
+            console.error("Navigation failed", e);
           } finally {
             setOpen(false);
           }
@@ -575,14 +780,25 @@ const OrderReceive: React.FC = () => {
         open={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Confirm Deletion"
-        message="Are you sure you want to delete this record? This action cannot be undone."
+        title={ORDER_RECEIVE_DIALOG.DELETE_TITLE}
+        message={ORDER_RECEIVE_DIALOG.DELETE_MESSAGE}
       />
 
-      <CommonModal
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={ORDER_RECEIVE_CONSTANTS.SNACKBAR.AUTOHIDE_MS}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={ORDER_RECEIVE_CONSTANTS.SNACKBAR.ANCHOR}
+      >
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+
+        <CommonModal
         open={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
-        title="Details of products"
+        title={ORDER_RECEIVE_MODAL.DETAILS_TITLE}
         content={
           <ProductDetailsModalContent
             productData={
@@ -610,3 +826,4 @@ const OrderReceive: React.FC = () => {
 };
 
 export default OrderReceive;
+

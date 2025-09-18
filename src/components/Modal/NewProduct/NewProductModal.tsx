@@ -1,190 +1,157 @@
-// import React from 'react';
-// import { Modal, Box, Typography, TextField, Button, Grid } from '@mui/material'; 
-// import styled  from '@mui/system';
+import React from 'react';
+import { Modal, Box, Typography, TextField, Button, Grid, IconButton } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import styled from '@mui/system/styled';
+import { NEW_PRODUCT_MODAL_CONSTANTS } from '../../../config/constants/NewProductModal.constants';
+import { NEW_PRODUCT_MODAL_LABELS } from '../../../config/label/NewProductModal.labels';
 
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    height: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
+    borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
+    backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
+    '& fieldset': {
+      borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+      borderWidth: '1px',
+    },
+    '&:hover fieldset': {
+      borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+      borderWidth: '1px',
+    },
+  },
 
-// const StyledTextField = styled(TextField)(({ theme }) => ({
-//   marginBottom: '16px', 
+  '& .MuiInputBase-input': {
+    height: '100%',
+    display: 'block',
+    padding: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_PADDING,
+    boxSizing: 'border-box',
+    textAlign: 'center',
+    lineHeight: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
+    fontFamily: 'Lexend, sans-serif',
+    fontWeight: 400,
+    color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
+  },
 
-//   '& .MuiOutlinedInput-root': {
-//     height: '40px', 
-//     borderRadius: '12px', 
-//     backgroundColor: '#FFFFFF', 
-//     '& fieldset': {
-//       borderColor: '#9AABBC', 
-//       borderWidth: '1px', 
-//     },
-//     '&:hover fieldset': {
-//       borderColor: '#9AABBC',
-//     },
-//     '&.Mui-focused fieldset': {
-//       borderColor: '#9AABBC',
-//       borderWidth: '1px',
-//     },
-//   },
+  '& .MuiInputBase-input::placeholder': {
+    color: '#728197',
+    opacity: 1,
+    textAlign: 'center',
+  },
 
-//   '& .MuiInputBase-input': {
-//     padding: '12px 16px', 
-//     lineHeight: '20px', 
-//     fontFamily: 'Lexend, sans-serif', 
-//     fontWeight: 400, // Font weight from Figma
-//     color: '#728197', // Text color from Figma (for actual input text if different from placeholder)
-//   },
+  '& .MuiInputLabel-root': {
+    fontSize: '14px',
+    fontFamily: 'Lexend, sans-serif',
+    fontWeight: 400,
+    color: '#728197',
+    '&.MuiInputLabel-shrink': {
+      transform: 'translate(14px, -9px) scale(0.75)',
+    },
+  },
+}));
 
-//   // Styles for the placeholder text
-//   '& .MuiInputBase-input::placeholder': {
-//     color: '#728197', // Placeholder color from Figma
-//     opacity: 1, // Ensure placeholder is not faded by default browser styles
-//   },
+interface NewProductModalProps {
+  open: boolean;
+  onClose: () => void;
+}
 
-//   // Styles for the label (if used) to match the text style if needed, though placeholder is dominant here
-//   '& .MuiInputLabel-root': {
-//     fontSize: '14px',
-//     fontFamily: 'Lexend, sans-serif',
-//     fontWeight: 400,
-//     color: '#728197', // Label color
-//     // Adjust label position if it clashes with padding
-//     '&.MuiInputLabel-shrink': {
-//       transform: 'translate(14px, -9px) scale(0.75)', // Adjusted for smaller font and position when shrunk
-//     },
-//   },
-// }));
+const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose }) => {
+  const modalContentStyle = {
+    position: 'absolute' as const,
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.WIDTH,
+    maxWidth: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
+    bgcolor: 'background.paper',
+    borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
+    boxShadow: 24,
+    p: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.PADDING,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.GAP,
+    outline: 'none',
+    maxHeight: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
+    overflowY: 'auto',
+  };
 
-// // Interface for the modal's props
-// interface NewProductModalProps {
-//   open: boolean; // Controls if the modal is open or closed
-//   onClose: () => void; // Callback function when the modal is requested to close
-// }
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      aria-labelledby="new-product-modal-title"
+      aria-describedby="new-product-modal-description"
+    >
+      <Box sx={modalContentStyle}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+          <Typography
+            id="new-product-modal-title"
+            variant="h6"
+            component="h2"
+            sx={{
+              fontFamily: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
+              fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
+              fontSize: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
+              color: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
+            }}
+          >
+            {NEW_PRODUCT_MODAL_LABELS.TITLE}
+          </Typography>
+          <IconButton aria-label="close" onClick={onClose} sx={{ position: 'absolute', right: -6, top: -6, color: '#728197' }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-// // React functional component for the New Product Modal
-// const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose }) => {
-//   // Inline style for the modal's content Box
-//   const modalContentStyle = {
-//     position: 'absolute' as 'absolute', // Absolute positioning for centering
-//     top: '50%',
-//     left: '50%',
-//     transform: 'translate(-50%, -50%)', // Centers the modal
-//     width: '90%', // Responsive width, max 800px
-//     maxWidth: 800, // Maximum width of the modal
-//     bgcolor: 'background.paper', // Material-UI theme background color
-//     borderRadius: '8px', // Assuming a border radius for the modal container itself
-//     boxShadow: 24, // Standard Material-UI shadow
-//     p: 4, // Padding inside the modal (overall padding)
-//     display: 'flex',
-//     flexDirection: 'column',
-//     gap: '24px', // Gap between the title, form grid, and buttons
-//     outline: 'none', // Remove default modal outline
-//   };
+        <Grid container spacing={2} rowSpacing={2} component="div">
+          {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((label, idx) => (
+            <Grid key={idx} item xs={12} sm={6} component="div">
+              <StyledTextField fullWidth label={label} variant="outlined" placeholder={label} />
+            </Grid>
+          ))}
+        </Grid>
 
-//   return (
-//     <Modal
-//       open={open}
-//       onClose={onClose}
-//       aria-labelledby="new-product-modal-title"
-//       aria-describedby="new-product-modal-description"
-//     >
-//       <Box sx={modalContentStyle}>
-//         {/* Modal Title */}
-//         <Typography
-//           id="new-product-modal-title"
-//           variant="h6"
-//           component="h2"
-//           sx={{
-//             fontFamily: 'Lexend, sans-serif',
-//             fontWeight: 700, 
-//             fontSize: '20px', 
-//             color: '#333', 
-//           }}
-//         >
-//           New Product
-//         </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px' }}>
+          <Button
+            variant="outlined"
+            onClick={onClose}
+            sx={{
+              color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.COLOR,
+              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_COLOR,
+              borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_RADIUS,
+              padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.PADDING,
+              textTransform: 'none',
+              border: 'none',
+              '&:hover': {
+                backgroundColor: '#FFFFFF',
+                boxShadow: 'none',
+                border: 'none'
+              }
+            }}
+          >
+            {NEW_PRODUCT_MODAL_LABELS.BUTTON_CANCEL}
+          </Button>
+          <Button
+            variant="contained"
+            sx={{
+              bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BG,
+              color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.COLOR,
+              borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BORDER_RADIUS,
+              height: 36,
+              padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.PADDING,
+              textTransform: 'none',
+              '&:hover': {
+                bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.HOVER_BG,
+              }
+            }}
+          >
+            {NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD}
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+  );
+};
 
-//         <Grid container spacing={2} rowSpacing={2} component="div">
-//           {/* First Column of Inputs */}
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="SIN" variant="outlined" placeholder="SIN" />
-//           </Grid>
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="HSN Category" variant="outlined" placeholder="HSN Category" />
-//           </Grid>
-
-//           {/* Second Column of Inputs */}
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="MRP (INR)" variant="outlined" placeholder="MRP (INR)" />
-//           </Grid>
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Generic Name" variant="outlined" placeholder="Generic Name" />
-//           </Grid>
-
-//           {/* Third Column of Inputs */}
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Package Info (Eg 1,10)" variant="outlined" placeholder="Package Info (Eg 1,10)" />
-//           </Grid>
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Type" variant="outlined" placeholder="Type" />
-//           </Grid>
-
-//           {/* Fourth Column of Inputs */}
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Product Code" variant="outlined" placeholder="Product Code" />
-//           </Grid>
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Barcode" variant="outlined" placeholder="Barcode" />
-//           </Grid>
-
-//           {/* Fifth Column of Inputs */}
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Min Qty" variant="outlined" placeholder="Min Qty" />
-//           </Grid>
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Product Location" variant="outlined" placeholder="Product Location" />
-//           </Grid>
-
-//           {/* Sixth Column (Single Input) */}
-//           <Grid item xs={12} sm={6} component="div">
-//             <StyledTextField fullWidth label="Reorder Level" variant="outlined" placeholder="Reorder Level" />
-//           </Grid>
-//         </Grid>
-
-//         {/* Action Buttons */}
-//         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px' }}>
-//           {/* Cancel Button */}
-//           <Button
-//             variant="outlined"
-//             onClick={onClose}
-//             sx={{
-//               color: '#6B7280', // Text gray
-//               borderColor: '#D1D5DB', // Border gray
-//               borderRadius: '8px',
-//               padding: '8px 24px',
-//               textTransform: 'none', // Prevent uppercase transform
-//               '&:hover': {
-//                 borderColor: '#9CA3AF', // Darker border on hover
-//               }
-//             }}
-//           >
-//             Cancel
-//           </Button>
-//           {/* Add Button */}
-//           <Button
-//             variant="contained"
-//             sx={{
-//               bgcolor: '#4F46E5', // Indigo 600
-//               color: '#FFFFFF',
-//               borderRadius: '8px',
-//               padding: '8px 24px',
-//               textTransform: 'none', // Prevent uppercase transform
-//               '&:hover': {
-//                 bgcolor: '#4338CA', // Darker indigo on hover
-//               }
-//             }}
-//           >
-//             Add
-//           </Button>
-//         </Box>
-//       </Box>
-//     </Modal>
-//   );
-// };
-
-// export default NewProductModal;
+export default NewProductModal;

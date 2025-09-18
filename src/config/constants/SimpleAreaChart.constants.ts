@@ -1,0 +1,6 @@
+export const DASHBOARD_CONSTANTS = {
+    CHART_HEIGHT: 300,
+    Y_AXIS_TICKS: 5,
+    DEFAULT_FILE_DURATION: "NA_to_NA",
+  };
+  

@@ -1,6 +1,4 @@
-
 import './Sidebar.scss';
-
 import { Box, IconButton, Typography, Divider } from '@mui/material';
 import React, { useState, } from 'react';
 import { useNavigate } from "react-router-dom";
@@ -15,8 +13,6 @@ import HumanIcon from '../../assets/Human.svg';
 import MailIcon from '../../assets/Mail.svg';
 import VectorIcon from '../../assets/Vector.svg';
 import SettingsIcon from '../../assets/Setting.svg';
-
-
 interface SidebarItem {
   id: string;
   icon: string;
@@ -27,9 +23,8 @@ interface SidebarItem {
   label: string;
   route?: string;
 }
-
 const sidebarItems: SidebarItem[] = [
-  { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Dashboard", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' },
+  { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' },
   { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: "Sales", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
   { id: 'box', icon: BoxIcon, alt: 'Box', label: "Inventory", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
   { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
@@ -38,17 +33,16 @@ const sidebarItems: SidebarItem[] = [
   { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
   { id: 'gear', icon: GearIcon, alt: 'Gear', label: "Tools", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
 ];
-
 interface SidebarProps {
   onOpenChange?: (isOpen: boolean) => void;
+  isOpen?: boolean; // controlled open state (from parent)
 }
-
-export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const [activeItemId, setActiveItemId] = useState<string>('vector');
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = typeof isOpen === 'boolean' ? isOpen : uncontrolledOpen;
   const navigate = useNavigate();
-
-  return (
+return (
     <Box sx={{ display: 'flex', height: '100vh', }}>
       <Box
         className="sidebar"
@@ -70,23 +64,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange }) => {
           transition: "width 0.3s ease",
 
         }}
-        onMouseEnter={() => { setOpen(true); onOpenChange && onOpenChange(true); }}
-        onMouseLeave={() => { setOpen(false); onOpenChange && onOpenChange(false); }}
       >
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '0 12px 12px 12px',
-          width: '100%'
-        }}>
-          <img src={GroupIcon} alt="Logo" style={{ width: '32px', height: '32px' }} />
-          {open && (
-            <Typography variant="subtitle1" sx={{ fontSize: '18px', fontWeight: 700 }}>
-              Pharma App
-            </Typography>
-          )}
-        </Box>
+         <Box
+  sx={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '0 12px 12px 12px',
+    width: '100%',
+    cursor: 'pointer', // make it clickable
+  }}
+  onClick={() => {
+    setUncontrolledOpen(prev => !prev); // toggle sidebar
+    if (onOpenChange) onOpenChange(!open); // notify parent if needed
+  }}
+>
+  <img src={GroupIcon} alt="Logo" style={{ width: '32px', height: '32px' }} />
+  {open && (
+    <Typography variant="subtitle1" sx={{ fontSize: '18px', fontWeight: 700 }}>
+      Pharma App
+    </Typography>
+  )}
+</Box>
+
 
         {sidebarItems.map(item => (
           <React.Fragment key={item.id}>
@@ -146,7 +146,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange }) => {
             paddingBottom: '24px',
             display: 'flex',
             width: '100%',
-            // alignItems:'center',
             justifyContent: open ? "center" : "flex-start",
           }}
         >

@@ -5,6 +5,8 @@ import dayjs, { Dayjs } from "dayjs";
 import InventoryMetrics from "../../components/mainDashboard/InventoryMetrics/InventoryMetricsCard";
 import DateRangeFilter from "../../components/mainDashboard/DateRangeFilter/DateRangeFilter";
 import ThreeChartsComponent from "../../components/mainDashboard/Charts/SimpleAreaCharts";
+import { DASHBOARD_MAIN_CONSTANTS } from "../../config/constants/DashboardMain.constants";
+import { DASHBOARD_MAIN_LABELS } from "../../config/label/DashboardMain.labels";
 
 const useSelector = (selector: any) => selector({ auth: { user: { username: "Guest" } } });
 
@@ -30,7 +32,7 @@ const DashboardMain: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', paddingBottom: '8px' }}>
+    <Box sx={{ minHeight: DASHBOARD_MAIN_CONSTANTS.PAGE.MIN_HEIGHT, paddingBottom: DASHBOARD_MAIN_CONSTANTS.PAGE.PADDING_BOTTOM }}>
 
       <Box
         sx={{
@@ -46,39 +48,44 @@ const DashboardMain: React.FC = () => {
       >
         <Typography
           sx={{
-            fontFamily: "lexend",
-            fontWeight: "600",
-            fontSize: { xs: "24px", sm: "28px", md: "32px", lg: "36px" },
-            lineHeight: 1.2,
+            fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
+            fontWeight: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_WEIGHT,
+            fontSize: {
+              xs: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_XS,
+              sm: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_SM,
+              md: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_MD,
+              lg: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_LG,
+            },
+            lineHeight: DASHBOARD_MAIN_CONSTANTS.HEADER.LINE_HEIGHT,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
         >
-          Welcome {username}
+          {DASHBOARD_MAIN_LABELS.WELCOME_PREFIX} {username}
         </Typography>
 
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: DASHBOARD_MAIN_CONSTANTS.TOOLBAR.GAP }}>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             disableRipple
             disableElevation
             sx={{
-              backgroundColor: "#ffffff",
+              backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BACKGROUND,
               textTransform: "none",
-              fontFamily: "lexend",
-              borderRadius: "12px",
-              color: "#525E6F",
-              border: "2px solid #27313F",
+              fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
+              borderRadius: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BORDER_RADIUS,
+              color: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.COLOR,
+              border: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BORDER,
               boxShadow: "none",
               mr: "8px",
-              padding: "4px 18px",
-              "&:hover": { backgroundColor: "#ffffff", boxShadow: "none" },
-              "&:focus": { backgroundColor: "#ffffff" }, // remove focus shade
+              padding: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.PADDING,
+              "&:hover": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BACKGROUND, boxShadow: "none" },
+              "&:focus": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BACKGROUND },
             }}
           >
-            Create Invoice
+            {DASHBOARD_MAIN_LABELS.CREATE_INVOICE}
           </Button>
 
           <Button
@@ -87,35 +94,31 @@ const DashboardMain: React.FC = () => {
             disableRipple
             disableElevation
             sx={{
-              backgroundColor: "#5C17E5",
+              backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BACKGROUND,
               textTransform: "none",
-              fontFamily: "lexend",
-              borderRadius: "12px",
+              fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
+              borderRadius: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BORDER_RADIUS,
               boxShadow: "none",
-              "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
-              "&:focus": { backgroundColor: "#5C17E5" },
+              "&:hover": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BACKGROUND, boxShadow: "none" },
+              "&:focus": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BACKGROUND },
             }}
           >
-            Add Receive
+            {DASHBOARD_MAIN_LABELS.ADD_RECEIVE}
           </Button>
 
         </Box>
       </Box>
-
-
-
-      <Box sx={{ mb: '24px' }}>
+       <Box sx={{ mb: '24px' }}>
         <DateRangeFilter
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
         />
       </Box>
-
-      <Box >
+       <Box >
         <ThreeChartsComponent dateRange={apiDateRange} />
       </Box>
-      <Typography sx={{ fontFamily: 'lexend', fontWeight: '600', paddingTop: '24px', paddingBottom: '12px' }}>
-        Inventory & key Metrics
+      <Typography sx={{ fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY, fontWeight: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_WEIGHT, paddingTop: '28px', paddingBottom: '12px' }}>
+        {DASHBOARD_MAIN_LABELS.INVENTORY_HEADER}
       </Typography>
 
       <InventoryMetrics dateRange={apiDateRange} />

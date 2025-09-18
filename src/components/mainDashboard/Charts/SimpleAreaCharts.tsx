@@ -2,6 +2,8 @@ import * as React from 'react';
 import { Box, Stack, Grid, Typography, Skeleton } from '@mui/material';
 import ChartCard from './ChartsCard';
 import { useGetInvoiceKpisQuery } from '../../../redux/slices/dashboardApi';
+import { DASHBOARD_LABELS } from '../../../config/label/SimpleAreaChart.label';
+import { DASHBOARD_CONSTANTS } from '../../../config/constants/SimpleAreaChart.constants';
 
 interface DailyData {
   date: string;
@@ -36,7 +38,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       <Grid container spacing={4} mt={1}>
         {[1, 2, 3].map((i) => (
           <Grid item xs={12} md={4} key={i}>
-            <Skeleton variant="rectangular" height={300} />
+            <Skeleton variant="rectangular" height={DASHBOARD_CONSTANTS.CHART_HEIGHT} />
           </Grid>
         ))}
       </Grid>
@@ -46,7 +48,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
   if (error) {
     return (
       <Box sx={{ p: 2, textAlign: 'center' }}>
-        <Typography color="error">Failed to load chart data.</Typography>
+        <Typography color="error">{DASHBOARD_LABELS.ERROR_LOADING}</Typography>
       </Box>
     );
   }
@@ -63,7 +65,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
 
   const fileDuration = `${formatDateForFile(dateRange.startDate)}_to_${formatDateForFile(
     dateRange.endDate
-  )}`;
+  )}` || DASHBOARD_CONSTANTS.DEFAULT_FILE_DURATION;
 
   const prepareChartProps = (
     title: string,
@@ -84,12 +86,11 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const seriesData = filteredData.map((d) => d.amount ?? d.count ?? 0);
-
     const xAxisDates = filteredData.map((d) => new Date(d.date).toISOString());
 
     const maxVal = Math.max(0, ...seriesData);
-    const safeMax = maxVal <= 0 ? 1 : maxVal; 
-    const ticks = 5;
+    const safeMax = maxVal <= 0 ? 1 : maxVal;
+    const ticks = DASHBOARD_CONSTANTS.Y_AXIS_TICKS;
     const inc = safeMax / (ticks - 1);
     const tickInterval = Array.from({ length: ticks }, (_, i) => +(i * inc).toFixed(2));
 
@@ -129,32 +130,38 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       }));
   };
 
-  const revenueProps = prepareChartProps('Revenue', 'revenueByDay', 'totalRevenue', '$');
-  const salesProps = prepareChartProps('Sales', 'salesByDay', 'totalSales');
-  const patientsProps = prepareChartProps('Patients', 'uniquePatientsByDay', 'uniquePatients');
+  const revenueProps = prepareChartProps(DASHBOARD_LABELS.CHART_REVENUE, 'revenueByDay', 'totalRevenue', '$');
+  const salesProps = prepareChartProps(DASHBOARD_LABELS.CHART_SALES, 'salesByDay', 'totalSales');
+  const patientsProps = prepareChartProps(DASHBOARD_LABELS.CHART_PATIENTS, 'uniquePatientsByDay', 'uniquePatients');
 
   return (
     <Box sx={{ p: 0, width: '100%' }}>
-      <Typography sx={{ fontFamily: 'lexend', fontWeight: 600, mb: '12px', mt: '12px' }}>
-        Sales Contracts
+      <Typography sx={{ fontFamily: 'lexend', fontWeight: 600, mb: '12px', mt: '28px' }}>
+        {DASHBOARD_LABELS.SALES_CONTRACTS_TITLE}
       </Typography>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap" justifyContent="flex-start" alignItems="stretch">
+      <Stack 
+        direction={{ xs: 'column', md: 'row' }} 
+        spacing={4} 
+        flexWrap="wrap" 
+        justifyContent={{ xs: 'stretch', md: 'flex-start' }}
+        alignItems={{ xs: 'stretch', md: 'stretch' }}
+      >
         <ChartCard
           {...patientsProps}
           colors={{ main: '#6A8EFF', area: '#CEDEFF', percentBg: '#F0FDF4', percentText: '#22C55E' }}
-          csvData={getCsvData(kpis.uniquePatientsByDay, 'count', 'Unique Patients')}
+          csvData={getCsvData(kpis.uniquePatientsByDay, 'count', DASHBOARD_LABELS.CSV_UNIQUE_PATIENTS)}
           filename={`unique_patients_report_${fileDuration}.csv`}
         />
         <ChartCard
           {...revenueProps}
           colors={{ main: '#FF6AA6', area: '#FFCEE6', percentBg: '#F0FDF4', percentText: '#22C55E' }}
-          csvData={getCsvData(kpis.revenueByDay, 'amount', 'Total Revenue')}
+          csvData={getCsvData(kpis.revenueByDay, 'amount', DASHBOARD_LABELS.CSV_TOTAL_REVENUE)}
           filename={`total_revenue_report_${fileDuration}.csv`}
         />
         <ChartCard
           {...salesProps}
           colors={{ main: '#6AFF9E', area: '#CEFFEE', percentBg: '#F0FDF4', percentText: '#22C55E' }}
-          csvData={getCsvData(kpis.salesByDay, 'count', 'Total Sales')}
+          csvData={getCsvData(kpis.salesByDay, 'count', DASHBOARD_LABELS.CSV_TOTAL_SALES)}
           filename={`total_sales_report_${fileDuration}.csv`}
         />
       </Stack>
@@ -163,7 +170,5 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
 };
 
 export default ThreeChartsComponent;
-
-
 
 

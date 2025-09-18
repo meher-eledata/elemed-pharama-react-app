@@ -9,11 +9,12 @@ import {
   IconButton
 } from '@mui/material';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-
+import PlusIcon from "../../assets/PlusIcon.svg";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { SerializedError } from "@reduxjs/toolkit";
+import AddIcon from "@mui/icons-material/Add";
+import NewProductModal from "../../components/Modal/NewProduct/NewProductModal"; 
 
-// RTK Query hooks
 import {
   useGetLowStockQuery,
   useGetExcessStockQuery,
@@ -21,12 +22,11 @@ import {
   useGetInventorySummaryQuery,
 } from '../../redux/slices/inventoryApi';
 
-// Type-only import of the InventoryItem interface from your slice
+
 import type { InventoryItem as RTKInventoryItem } from '../../redux/slices/inventoryApi';
 
 import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
 
-// Labels & constants
 import { INVENTORY_LABELS, FILTER_OPTIONS } from '../../config/label/inventoryLabels';
 import {
   baseButtonStyle,
@@ -41,8 +41,8 @@ import {
 } from '../../config/constants/inventoryConstants';
 
 import '../Inventory/Inventory.scss';
+import { display } from '@mui/system';
 
-// ----------------- Custom type guards -----------------
 function isFetchBaseQueryError(error: unknown): error is FetchBaseQueryError {
   return typeof error === "object" && error != null && "status" in error;
 }
@@ -54,10 +54,7 @@ function isErrorWithMessage(error: unknown): error is { message: string } {
     "message" in error &&
     typeof (error as any).message === "string"
   );
-}
-// ------------------------------------------------------
-
-// Local types for table rows / filters
+} 
 type StockType = 'low' | 'excess' | 'expired';
 type InventoryItem = RTKInventoryItem & {
   batchNumber?: string;
@@ -84,7 +81,11 @@ const InventoryModule: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
-  // RTK Query hooks
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+
+  const [isNewProductModalOpen, setIsNewProductModalOpen] =
+      useState<boolean>(false);
+
   const { data: lowStockItems = [], isLoading: isLowStockLoading, error: lowStockError } =
     useGetLowStockQuery(undefined, { skip: selectedStockType !== 'low' });
 
@@ -97,7 +98,6 @@ const InventoryModule: React.FC = () => {
   const { data: inventorySummary, isLoading: isSummaryLoading /*, error: summaryError */ } =
     useGetInventorySummaryQuery();
 
-  // Which dataset to show in table
   const currentTableData = useMemo(() => {
     switch (selectedStockType) {
       case 'low':
@@ -137,7 +137,6 @@ const InventoryModule: React.FC = () => {
     }
   }, [selectedStockType, lowStockError, excessStockError, expiredStockError]);
 
-  // Reset per-tab
   useEffect(() => {
     setPage(1);
     setSelectedItems([]);
@@ -151,8 +150,10 @@ const InventoryModule: React.FC = () => {
     backgroundColor: selectedStockType === tab ? '#ffffff' : 'transparent',
     borderRadius: selectedStockType === tab ? '0.5rem' : 0,
   });
-
-  const handleTabClick = (tab: StockType) => setSelectedStockType(tab);
+  const handleTabClick = (tab: StockType) => {
+    setSelectedStockType(tab); 
+    setSelectedRows([]); // Clear selected rows when tab changes
+  };
 
   const filteredData = useMemo(() => {
     if (!searchQuery) return currentTableData;
@@ -295,7 +296,7 @@ const InventoryModule: React.FC = () => {
 
   const renderActionsCell = () => (
     <Box display="flex" gap={1} alignItems="center">
-      <IconButton sx={{ color: '#5C17E5' }} size="small">
+      <IconButton sx={{ color: '#728197' }} size="small">
         <img src={ASSET_PATHS.Cart} alt={INVENTORY_LABELS.addToCartAltText} style={{ width: 20, height: 20 }} />
       </IconButton>
       <IconButton sx={{ color: '#728197' }} size="small">
@@ -373,11 +374,53 @@ const InventoryModule: React.FC = () => {
   const { columns, searchAndFilterConfig } = useMemo(() => getTableProps(), [selectedStockType]);
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 0, px: { xs: 2, sm: 3, md: 4 } }}>
+    <Container maxWidth="xl" disableGutters sx={{mb: 0, px: { xs: 2, sm: 3, md: 1 } }}>
       <Box className="inventory-container">
+        <Box 
+        sx={{
+          display:"flex",
+          justifyContent:"space-between",
+       
+        }}> 
         <Typography variant="h4" sx={headerTitleStyle}>
+
+
           {INVENTORY_LABELS.pageTitle}
         </Typography>
+         <Button
+          sx={{
+            height: "40px",
+            borderRadius: "12px",
+            border: "none",
+            backgroundColor: "#5C17E5",
+            padding: "12px 16px",
+            gap: "10px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textTransform: "none",
+            fontFamily: "Lexend",
+            fontWeight: 500,
+            fontSize: "16px",
+            lineHeight: "24px",
+            color: "#f9fbfcff",
+            whiteSpace: "nowrap",
+            minWidth: "fit-content",
+            "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
+          }}
+          onClick={() => setIsNewProductModalOpen(true)}
+          
+          startIcon={<AddIcon />}
+          disableRipple
+          disableElevation
+        >
+          Add Product
+        </Button>
+      </Box>
+        <NewProductModal
+              open={isNewProductModalOpen}
+              onClose={() => setIsNewProductModalOpen(false)}
+            />
 
         <Box className="inventory-tabs">
           <Button
@@ -413,9 +456,9 @@ const InventoryModule: React.FC = () => {
               <Typography variant="h3" className="big-number">
                 {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.belowMinCount ?? 0}
               </Typography>
-              <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" />
+              {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="error" className="percentage">
-                44.29%
+                {/* 44.29% */}
               </Typography>
             </Box>
             <img src={ASSET_PATHS.Chart1} alt="icon" className="card-icon1" />
@@ -429,9 +472,9 @@ const InventoryModule: React.FC = () => {
               <Typography variant="h3" className="big-number">
                 {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.aboveMaxCount ?? 0}
               </Typography>
-              <img src={ASSET_PATHS.TrendDown} alt="icon" className="icon" />
+              {/* <img src={ASSET_PATHS.TrendDown} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="success.main" className="percentage">
-                2.8%
+                {/* 2.8% */}
               </Typography>
             </Box>
             <img src={ASSET_PATHS.Chart2} alt="icon" className="card-icon2" />
@@ -445,13 +488,13 @@ const InventoryModule: React.FC = () => {
               <Typography variant="h3" className="big-number">
                 {isSummaryLoading ? <CircularProgress size={24} /> : (inventorySummary?.pastExpiryCount ?? 0)}
               </Typography>
-              <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" />
+              {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography
                 variant="caption"
                 color="success.main"
                 className="percentage"
               >
-                8%
+                {/* 8% */}
               </Typography>
             </Box>
             <img src={ASSET_PATHS.Chart3} alt="icon" className="card-icon3" />
@@ -479,6 +522,8 @@ const InventoryModule: React.FC = () => {
         <ReusableTable
           data={paginatedData as InventoryItem[]}
           columns={columns}
+          selectedRows={selectedRows}
+  setSelectedRows={setSelectedRows}
           searchAndFilterConfig={searchAndFilterConfig}
           currentSearchTerm={searchQuery}
           onSearchChange={(e) => setSearchQuery(e.target.value)}
