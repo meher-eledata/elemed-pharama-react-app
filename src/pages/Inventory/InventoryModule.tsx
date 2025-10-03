@@ -82,6 +82,10 @@ const InventoryModule: React.FC = () => {
   const [page, setPage] = useState(1);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: '',
+    direction: 'asc'
+  });
 
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
       useState<boolean>(false);
@@ -143,6 +147,7 @@ const InventoryModule: React.FC = () => {
     setFilterType('name');
     setSearchQuery('');
     setShowFilters(false);
+    setSortConfig({ key: '', direction: 'asc' });
   }, [selectedStockType]);
 
   const getButtonStyle = (tab: StockType) => ({
@@ -156,53 +161,125 @@ const InventoryModule: React.FC = () => {
   };
 
   const filteredData = useMemo(() => {
-    if (!searchQuery) return currentTableData;
+    let filtered = currentTableData;
 
-    const lowerCaseQuery = searchQuery.toLowerCase();
-    const isNumericFilter = !isNaN(parseFloat(searchQuery));
+    // Apply search filter
+    if (searchQuery) {
+      const lowerCaseQuery = searchQuery.toLowerCase();
+      const isNumericFilter = !isNaN(parseFloat(searchQuery));
 
-    return currentTableData.filter((item) => {
-      switch (filterType) {
-        case 'name':
-          return item.name.toLowerCase().includes(lowerCaseQuery);
-        case 'batchNumber':
-          return 'batchNumber' in item && item.batchNumber?.toLowerCase().includes(lowerCaseQuery);
-        case 'currentQuantity': {
-          if (!isNumericFilter) return false;
-          const currentQty = item.currentQuantity;
-          if (selectedStockType === 'low' || selectedStockType === 'expired') {
-            return (currentQty ?? 0) <= parseFloat(searchQuery);
+      filtered = filtered.filter((item) => {
+        switch (filterType) {
+          case 'name':
+            return item.name.toLowerCase().includes(lowerCaseQuery);
+          case 'batchNumber':
+            return 'batchNumber' in item && item.batchNumber?.toLowerCase().includes(lowerCaseQuery);
+          case 'currentQuantity': {
+            if (!isNumericFilter) return false;
+            const currentQty = item.currentQuantity;
+            if (selectedStockType === 'low' || selectedStockType === 'expired') {
+              return (currentQty ?? 0) <= parseFloat(searchQuery);
+            }
+            if (selectedStockType === 'excess') {
+              return (currentQty ?? 0) >= parseFloat(searchQuery);
+            }
+            return false;
           }
-          if (selectedStockType === 'excess') {
-            return (currentQty ?? 0) >= parseFloat(searchQuery);
+          case 'minQuantity':
+            return isNumericFilter
+              ? 'minQuantity' in item && (item.minQuantity ?? 0) >= parseFloat(searchQuery)
+              : false;
+          case 'maxQuantity':
+            return isNumericFilter
+              ? 'maxQuantity' in item && (item.maxQuantity ?? 0) <= parseFloat(searchQuery)
+              : false;
+          case 'expiryDate': {
+            const searchDate = new Date(searchQuery);
+            return isNaN(searchDate.getTime())
+              ? false
+              : 'expiryDate' in item && new Date(item.expiryDate as string) <= searchDate;
           }
-          return false;
+          case 'daysPastExpiry':
+            return isNumericFilter
+              ? 'daysPastExpiry' in item && (item.daysPastExpiry ?? 0) >= parseFloat(searchQuery)
+              : false;
+          default:
+            return true;
         }
-        case 'minQuantity':
-          return isNumericFilter
-            ? 'minQuantity' in item && (item.minQuantity ?? 0) >= parseFloat(searchQuery)
-            : false;
-        case 'maxQuantity':
-          return isNumericFilter
-            ? 'maxQuantity' in item && (item.maxQuantity ?? 0) <= parseFloat(searchQuery)
-            : false;
-        case 'expiryDate': {
-          const searchDate = new Date(searchQuery);
-          return isNaN(searchDate.getTime())
-            ? false
-            : 'expiryDate' in item && new Date(item.expiryDate as string) <= searchDate;
+      });
+    }
+
+    // Apply sorting
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        switch (sortConfig.key) {
+          case 'name':
+            aValue = a.name.toLowerCase();
+            bValue = b.name.toLowerCase();
+            break;
+          case 'currentQuantity':
+            aValue = a.currentQuantity ?? 0;
+            bValue = b.currentQuantity ?? 0;
+            break;
+          case 'minQuantity':
+            aValue = a.minQuantity ?? 0;
+            bValue = b.minQuantity ?? 0;
+            break;
+          case 'maxQuantity':
+            aValue = a.maxQuantity ?? 0;
+            bValue = b.maxQuantity ?? 0;
+            break;
+          case 'batchNumber':
+            aValue = a.batchNumber ?? '';
+            bValue = b.batchNumber ?? '';
+            break;
+          case 'expiryDate':
+            aValue = new Date(a.expiryDate ?? '');
+            bValue = new Date(b.expiryDate ?? '');
+            break;
+          case 'daysPastExpiry':
+            aValue = a.daysPastExpiry ?? 0;
+            bValue = b.daysPastExpiry ?? 0;
+            break;
+          default:
+            return 0;
         }
-        case 'daysPastExpiry':
-          return isNumericFilter
-            ? 'daysPastExpiry' in item && (item.daysPastExpiry ?? 0) >= parseFloat(searchQuery)
-            : false;
-        default:
-          return true;
-      }
-    });
-  }, [currentTableData, searchQuery, filterType, selectedStockType]);
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [currentTableData, searchQuery, filterType, selectedStockType, sortConfig]);
 
   const handlePageChange = (newPage: number) => setPage(newPage);
+
+  const handleSortRequest = (key: string) => {
+    setSortConfig(prevConfig => {
+      if (prevConfig.key === key) {
+        // Toggle direction if same column
+        return {
+          key,
+          direction: prevConfig.direction === 'asc' ? 'desc' : 'asc'
+        };
+      } else {
+        // New column, start with ascending
+        return {
+          key,
+          direction: 'asc'
+        };
+      }
+    });
+  };
 
   const paginatedData = useMemo(() => {
     const startIndex = (page - 1) * ROWS_PER_PAGE;
@@ -312,11 +389,11 @@ const InventoryModule: React.FC = () => {
     switch (selectedStockType) {
       case 'low':
         columns = [
-          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox },
+          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: renderCurrentQtyCell },
           { key: 'minQuantity', header: INVENTORY_LABELS.minimumQuantityHeader, render: (item) => (item as InventoryItem).minQuantity },
-          { key: 'actions', header: '', render: renderActionsCell },
+          { key: 'actions', header: '', render: renderActionsCell, sortable: false },
         ];
         searchAndFilterConfig = {
           filterOptions: [
@@ -329,11 +406,11 @@ const InventoryModule: React.FC = () => {
 
       case 'excess':
         columns = [
-          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox },
+          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: renderCurrentQtyCell },
           { key: 'maxQuantity', header: INVENTORY_LABELS.maximumQuantityHeader, render: (item) => (item as InventoryItem).maxQuantity },
-          { key: 'actions', header: '', render: renderActionsCell },
+          { key: 'actions', header: '', render: renderActionsCell, sortable: false },
         ];
         searchAndFilterConfig = {
           filterOptions: [
@@ -346,13 +423,13 @@ const InventoryModule: React.FC = () => {
 
       case 'expired':
         columns = [
-          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox },
+          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
           { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate },
           { key: 'daysPastExpiry', header: INVENTORY_LABELS.daysPastExpiryHeader, render: (item) => (item as InventoryItem).daysPastExpiry },
-          { key: 'actions', header: '', render: renderActionsCell },
+          { key: 'actions', header: '', render: renderActionsCell, sortable: false },
         ];
         searchAndFilterConfig = {
           filterOptions: [
@@ -530,16 +607,13 @@ const InventoryModule: React.FC = () => {
           showFilters={showFilters}
           onShowFiltersToggle={() => setShowFilters(!showFilters)}
           currentFilterKey={filterType}
-          onFilterSelect={(key) => setFilterType(key as FilterKey)}
+          onFilterSelect={(key, value) => setFilterType(key as FilterKey)}
           totalRows={filteredData.length}
           rowsPerPage={ROWS_PER_PAGE}
           currentPage={page}
           onPageChange={handlePageChange}
-          onSortRequest={() => {}}
-          sortConfig={{
-            key: "",
-            direction: "asc",
-          }}
+          onSortRequest={handleSortRequest}
+          sortConfig={sortConfig}
         />
       )}
     </Container>

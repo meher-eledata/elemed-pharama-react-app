@@ -115,7 +115,7 @@ export const receiveApi = createApi({
       query: () => "receive/current-purchase-orders",
       providesTags: ["Receive"],
     }),
-    getUniqueSupplierNames: builder.query<string[], void>({
+    getUniqueSupplierNames: builder.query<{supplier_name: string, supplier_id: number}[], void>({
       query: () => "receive/unique-supplier-names",
       providesTags: ["Receive"],
     }),

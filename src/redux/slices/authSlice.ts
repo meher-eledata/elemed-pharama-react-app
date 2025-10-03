@@ -15,10 +15,17 @@ export const authApi = createApi({
                 body: credentials,
             }),
         }),
+        passwordRecovery: builder.mutation<PasswordRecoveryResponse, PasswordRecoveryRequest>({
+            query: (body) => ({
+                url: 'password-recovery',
+                method: 'POST',
+                body,
+            }),
+        }),
     }),
 });
 
-export const { useLoginMutation } = authApi;
+export const { useLoginMutation, usePasswordRecoveryMutation } = authApi;
 
 interface User {
     id: number;
@@ -36,6 +43,14 @@ interface LoginResponse {
 interface LoginRequest {
     username: string;
     password: string;
+}
+
+interface PasswordRecoveryRequest {
+    username: string;
+}
+
+interface PasswordRecoveryResponse {
+    message: string;
 }
 
 interface AuthState {

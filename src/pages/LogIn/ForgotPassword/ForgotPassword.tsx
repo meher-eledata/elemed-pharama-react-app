@@ -1,32 +1,47 @@
 
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography } from '@mui/material';
+import { Box, Button, TextField, Typography, Alert, Snackbar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { FORGOT_PASSWORD_LABELS } from '../../../config/label/forgotPassword.labels';
 import { FORGOT_PASSWORD_CONSTANTS } from '../../../config/constants/forgotPassword.constants';
+import { usePasswordRecoveryMutation } from '../../../redux/slices/authSlice';
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
   const [touched, setTouched] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  const [passwordRecovery, { isLoading }] = usePasswordRecoveryMutation();
 
-  const validateEmail = (value: string) => {
+  const validateUsername = (value: string) => {
     if (!value.trim()) return FORGOT_PASSWORD_LABELS.REQUIRED_ERROR;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) return FORGOT_PASSWORD_LABELS.INVALID_ERROR;
+    if (value.trim().length < 3) return FORGOT_PASSWORD_LABELS.INVALID_ERROR;
     return '';
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const error = validateEmail(email);
-    setEmailError(error);
+    const error = validateUsername(username);
+    setUsernameError(error);
     setTouched(true);
 
     if (!error) {
-      console.log('Forgot password request for:', email);
-      navigate('/create-password');
+      try {
+        const result = await passwordRecovery({ username: username.trim() }).unwrap();
+        setShowSuccess(true);
+        setErrorMessage('');
+        // Optionally navigate after a delay
+        setTimeout(() => {
+          navigate('/create-password');
+        }, 2000);
+      } catch (error: any) {
+        setErrorMessage(error?.data?.message || FORGOT_PASSWORD_LABELS.ERROR_MESSAGE);
+        setShowError(true);
+      }
     }
   };
 
@@ -88,26 +103,26 @@ const ForgotPassword: React.FC = () => {
             textAlign: 'left',
           }}
         >
-          {FORGOT_PASSWORD_LABELS.EMAIL_LABEL}
+          {FORGOT_PASSWORD_LABELS.USERNAME_LABEL}
         </Typography>
 
         <TextField
           variant="outlined"
-          type="email"
+          type="text"
           fullWidth
           size={FORGOT_PASSWORD_CONSTANTS.INPUT_SIZE as 'small' | 'medium'}
-          value={email}
+          value={username}
           onChange={(e) => {
-            setEmail(e.target.value);
-            if (touched) setEmailError(validateEmail(e.target.value));
+            setUsername(e.target.value);
+            if (touched) setUsernameError(validateUsername(e.target.value));
           }}
           onBlur={() => {
             setTouched(true);
-            setEmailError(validateEmail(email));
+            setUsernameError(validateUsername(username));
           }}
-          // placeholder={FORGOT_PASSWORD_LABELS.EMAIL_PLACEHOLDER}
-          error={false}
-          helperText={emailError}
+          placeholder={FORGOT_PASSWORD_LABELS.USERNAME_PLACEHOLDER}
+          error={!!usernameError}
+          helperText={usernameError}
           sx={{
             mb: '16px',
             '& .MuiOutlinedInput-root': {
@@ -152,6 +167,7 @@ const ForgotPassword: React.FC = () => {
           type="submit"
           variant="contained"
           fullWidth
+          disabled={isLoading}
           sx={{
             backgroundColor: '#5C17E5',
             borderRadius: FORGOT_PASSWORD_CONSTANTS.BUTTON_RADIUS,
@@ -168,11 +184,47 @@ const ForgotPassword: React.FC = () => {
               backgroundColor: '#4a13b4',
               boxShadow: 'none',
             },
+            '&:disabled': {
+              backgroundColor: '#9AA8BC',
+              color: '#FFFFFF',
+            },
           }}
         >
-          {FORGOT_PASSWORD_LABELS.BUTTON_TEXT}
+          {isLoading ? FORGOT_PASSWORD_LABELS.LOADING_MESSAGE : FORGOT_PASSWORD_LABELS.BUTTON_TEXT}
         </Button>
       </Box>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={showSuccess}
+        autoHideDuration={4000}
+        onClose={() => setShowSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowSuccess(false)} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          {FORGOT_PASSWORD_LABELS.SUCCESS_MESSAGE}
+        </Alert>
+      </Snackbar>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={showError}
+        autoHideDuration={4000}
+        onClose={() => setShowError(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowError(false)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

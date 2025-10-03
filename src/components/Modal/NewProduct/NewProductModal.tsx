@@ -1,54 +1,322 @@
-import React from 'react';
-import { Modal, Box, Typography, TextField, Button, Grid, IconButton } from '@mui/material';
+// import React from 'react';
+// import { Modal, Box, Typography, TextField, Button, Grid, IconButton } from '@mui/material';
+// import CloseIcon from '@mui/icons-material/Close';
+// import styled from '@mui/system/styled';
+// import { NEW_PRODUCT_MODAL_CONSTANTS } from '../../../config/constants/NewProductModal.constants';
+// import { NEW_PRODUCT_MODAL_LABELS } from '../../../config/label/NewProductModal.labels';
+
+// const StyledTextField = styled(TextField)(({ theme }) => ({
+//   '& .MuiOutlinedInput-root': {
+//     height: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
+//     borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
+//     backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
+//     '& fieldset': {
+//       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+//       borderWidth: '1px',
+//     },
+//     '&:hover fieldset': {
+//       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+//     },
+//     '&.Mui-focused fieldset': {
+//       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+//       borderWidth: '1px',
+//     },
+//   },
+
+//   '& .MuiInputBase-input': {
+//     height: '100%',
+//     display: 'block',
+//     padding: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_PADDING,
+//     boxSizing: 'border-box',
+//     textAlign: 'center',
+//     lineHeight: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
+//     fontFamily: 'Lexend, sans-serif',
+//     fontWeight: 400,
+//     color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
+//   },
+
+//   '& .MuiInputBase-input::placeholder': {
+//     color: '#728197',
+//     opacity: 1,
+//     textAlign: 'center',
+//   },
+
+//   '& .MuiInputLabel-root': {
+//     fontSize: '14px',
+//     fontFamily: 'Lexend, sans-serif',
+//     fontWeight: 400,
+//     color: '#728197',
+//     '&.MuiInputLabel-shrink': {
+//       transform: 'translate(14px, -9px) scale(0.75)',
+//     },
+//   },
+// }));
+
+// interface NewProductModalProps {
+//   open: boolean;
+//   onClose: () => void;
+// }
+
+// const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose }) => {
+//   const modalContentStyle = {
+//     position: 'absolute' as const,
+//     top: '50%',
+//     left: '50%',
+//     transform: 'translate(-50%, -50%)',
+//     width: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.WIDTH,
+//     maxWidth: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
+//     bgcolor: 'background.paper',
+//     borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
+//     boxShadow: 24,
+//     p: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.PADDING,
+//     display: 'flex',
+//     flexDirection: 'column' as const,
+//     gap: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.GAP,
+//     outline: 'none',
+//     maxHeight: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
+//     overflowY: 'auto',
+//   };
+
+//   return (
+//     <Modal
+//       open={open}
+//       onClose={onClose}
+//       aria-labelledby="new-product-modal-title"
+//       aria-describedby="new-product-modal-description"
+//     >
+//       <Box sx={modalContentStyle}>
+//         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+//           <Typography
+//             id="new-product-modal-title"
+//             variant="h6"
+//             component="h2"
+//             sx={{
+//               fontFamily: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
+//               fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
+//               fontSize: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
+//               color: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
+//             }}
+//           >
+//             {NEW_PRODUCT_MODAL_LABELS.TITLE}
+//           </Typography>
+//           <IconButton aria-label="close" onClick={onClose} sx={{ position: 'absolute', right: -6, top: -6, color: '#728197' }}>
+//             <CloseIcon />
+//           </IconButton>
+//         </Box>
+
+//         <Grid container spacing={4} rowSpacing={3} component="div">
+//           {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((label, idx) => (
+//             <Grid key={idx} item xs={12} sm={6} component="div">
+//               <StyledTextField fullWidth label={label} variant="outlined" placeholder={label} />
+//             </Grid>
+//           ))}
+//         </Grid>
+
+//         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px' }}>
+//           <Button
+//             variant="outlined"
+//             onClick={onClose}
+//             sx={{
+//               color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.COLOR,
+//               borderColor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_COLOR,
+//               borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_RADIUS,
+//               padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.PADDING,
+//               textTransform: 'none',
+//               border: 'none',
+//               '&:hover': {
+//                 backgroundColor: '#FFFFFF',
+//                 boxShadow: 'none',
+//                 border: 'none'
+//               }
+//             }}
+//           >
+//             {NEW_PRODUCT_MODAL_LABELS.BUTTON_CANCEL}
+//           </Button>
+//           <Button
+//             variant="contained"
+//             sx={{
+//               bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BG,
+//               color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.COLOR,
+//               borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BORDER_RADIUS,
+//               height: 36,
+//               padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.PADDING,
+//               textTransform: 'none',
+//               '&:hover': {
+//                 bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.HOVER_BG,
+//               }
+//             }}
+//           >
+//             {NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD}
+//           </Button>
+//         </Box>
+//       </Box>
+//     </Modal>
+//   );
+// };
+
+// export default NewProductModal;
+
+
+import React, { useState } from 'react';
+import { Modal, Box, Typography, TextField, Button, Grid, IconButton, Alert, CircularProgress } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import CloseIcon from '@mui/icons-material/Close';
 import styled from '@mui/system/styled';
-import { NEW_PRODUCT_MODAL_CONSTANTS } from '../../../config/constants/NewProductModal.constants';
-import { NEW_PRODUCT_MODAL_LABELS } from '../../../config/label/NewProductModal.labels';
+import { useAddProductMutation } from '../../../redux/slices/inventoryApi';
 
+// Enhanced constants for better UI
+export const NEW_PRODUCT_MODAL_CONSTANTS = {
+  MODAL: {
+    WIDTH: '90%',
+    MAX_WIDTH: '700px',
+    BORDER_RADIUS: '12px',
+    PADDING: '24px',
+    GAP: '20px',
+    MAX_HEIGHT: '90vh',
+    BACKGROUND: '#ffffff',
+    BOX_SHADOW: '0 20px 60px rgba(0, 0, 0, 0.15)',
+  },
+  HEADER: {
+    TITLE_FONT_FAMILY: 'Lexend, sans-serif',
+    TITLE_WEIGHT: 600,
+    TITLE_SIZE: '22px',
+    TITLE_COLOR: '#1a202c',
+    MARGIN_BOTTOM: '8px',
+  },
+  TEXTFIELD: {
+    HEIGHT: '44px',
+    BORDER_RADIUS: '8px',
+    BG: '#ffffff',
+    BORDER_COLOR: '#e2e8f0',
+    INPUT_PADDING: '0 12px',
+    INPUT_COLOR: '#2d3748',
+    FOCUS_BORDER_COLOR: '#5C17E5',
+    LABEL_COLOR: '#4a5568',
+    FONT_SIZE: '14px',
+  },
+  BUTTONS: {
+    OUTLINED: {
+      COLOR: '#4a5568',
+      BORDER_COLOR: '#e2e8f0',
+      BORDER_RADIUS: '8px',
+      PADDING: '8px 16px',
+      HEIGHT: '40px',
+      FONT_SIZE: '14px',
+      FONT_WEIGHT: 500,
+    },
+    CONTAINED: {
+      BG: '#5C17E5',
+      COLOR: '#FFFFFF',
+      BORDER_RADIUS: '8px',
+      PADDING: '8px 16px',
+      HEIGHT: '40px',
+      FONT_SIZE: '14px',
+      FONT_WEIGHT: 500,
+      HOVER_BG: '#4a11c1',
+      BOX_SHADOW: '0 2px 8px rgba(92, 23, 229, 0.3)',
+    }
+  },
+  GRID: {
+    SPACING: 2,
+    ROW_SPACING: 2,
+  }
+};
+
+export const NEW_PRODUCT_MODAL_LABELS = {
+  TITLE: 'New Product',
+  FIELDS: [
+    { key: 'product_name', label: 'Product name', type: 'text' },
+    { key: 'product_code', label: 'Product code', type: 'text' },
+    { key: 'type', label: 'Type', type: 'text' },
+    { key: 'brand_name', label: 'Brand name', type: 'text' },
+    { key: 'hsn_id', label: 'HSN code', type: 'text' },
+    { key: 'package_info', label: 'Package info', type: 'text' },
+    { key: 'unit_of_measure', label: 'Unit of measure', type: 'text' },
+    { key: 'mrp', label: 'MRP', type: 'number' },
+    { key: 'min_quantity', label: 'Minimum quantity', type: 'number' },
+    { key: 'max_quantity', label: 'Maximum quantity', type: 'number' },
+    { key: 'expiry', label: 'Expiry date', type: 'date' }
+  ],
+  BUTTON_CANCEL: 'Cancel',
+  BUTTON_ADD: 'Add'
+} as const;
+
+// Enhanced StyledTextField component with modern styling
 const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     height: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
     borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
     backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
+    fontSize: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
+    transition: 'all 0.2s ease-in-out',
+    
     '& fieldset': {
       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
-      borderWidth: '1px',
+      borderWidth: '2px',
+      transition: 'border-color 0.2s ease-in-out',
     },
+    
     '&:hover fieldset': {
-      borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+      borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+      borderWidth: '2px',
     },
+    
     '&.Mui-focused fieldset': {
-      borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
-      borderWidth: '1px',
+      borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+      borderWidth: '2px',
+      boxShadow: `0 0 0 3px ${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR}20`,
+    },
+    
+    '&.Mui-error fieldset': {
+      borderColor: '#e53e3e',
+      borderWidth: '2px',
     },
   },
 
   '& .MuiInputBase-input': {
     height: '100%',
-    display: 'block',
     padding: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_PADDING,
     boxSizing: 'border-box',
-    textAlign: 'center',
-    lineHeight: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
     fontFamily: 'Lexend, sans-serif',
-    fontWeight: 400,
+    fontWeight: 500,
     color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
-  },
-
-  '& .MuiInputBase-input::placeholder': {
-    color: '#728197',
-    opacity: 1,
-    textAlign: 'center',
+    fontSize: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
+    
+    '&::placeholder': {
+      color: '#a0aec0',
+      opacity: 1,
+      fontWeight: 400,
+    },
   },
 
   '& .MuiInputLabel-root': {
     fontSize: '14px',
     fontFamily: 'Lexend, sans-serif',
-    fontWeight: 400,
-    color: '#728197',
+    fontWeight: 500,
+    color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+    backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
+    padding: '0 4px',
+    
     '&.MuiInputLabel-shrink': {
-      transform: 'translate(14px, -9px) scale(0.75)',
+      transform: 'translate(14px, -9px) scale(0.85)',
+      color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+      backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
     },
+    
+    '&.Mui-focused': {
+      color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+    },
+  },
+
+  '& .MuiFormHelperText-root': {
+    fontSize: '12px',
+    fontFamily: 'Lexend, sans-serif',
+    fontWeight: 400,
+    marginLeft: '4px',
+    marginTop: '4px',
   },
 }));
 
@@ -58,75 +326,349 @@ interface NewProductModalProps {
 }
 
 const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose }) => {
-  const modalContentStyle = {
-    position: 'absolute' as const,
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.WIDTH,
-    maxWidth: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
-    bgcolor: 'background.paper',
-    borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
-    boxShadow: 24,
-    p: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.PADDING,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.GAP,
-    outline: 'none',
-    maxHeight: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
-    overflowY: 'auto',
+  const [addProduct, { isLoading, error, isSuccess }] = useAddProductMutation();
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    product_name: '',
+    product_code: '',
+    type: '',
+    brand_name: '',
+    hsn_id: '',
+    package_info: '',
+    unit_of_measure: '',
+    mrp: '',
+    min_quantity: '',
+    max_quantity: '',
+    expiry: ''
+  });
+
+  const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const handleInputChange = (key: string, value: string) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    // Clear error when user starts typing
+    if (formErrors[key]) {
+      setFormErrors(prev => ({ ...prev, [key]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.product_name.trim()) errors.product_name = 'Product name is required';
+    if (!formData.product_code.trim()) errors.product_code = 'Product code is required';
+    if (!formData.type.trim()) errors.type = 'Type is required';
+    if (!formData.brand_name.trim()) errors.brand_name = 'Brand name is required';
+    if (!formData.hsn_id.trim()) errors.hsn_id = 'HSN code is required';
+    if (!formData.package_info.trim()) errors.package_info = 'Package info is required';
+    if (!formData.unit_of_measure.trim()) errors.unit_of_measure = 'Unit of measure is required';
+    if (!formData.mrp || isNaN(Number(formData.mrp))) errors.mrp = 'Valid MRP is required';
+    if (!formData.min_quantity || isNaN(Number(formData.min_quantity))) errors.min_quantity = 'Valid minimum quantity is required';
+    if (!formData.max_quantity || isNaN(Number(formData.max_quantity))) errors.max_quantity = 'Valid maximum quantity is required';
+    if (!expiryDate) errors.expiry = 'Expiry date is required';
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    try {
+      const productData = {
+        product_name: formData.product_name,
+        product_code: formData.product_code,
+        type: formData.type,
+        hsn_id: formData.hsn_id,
+        package_info: formData.package_info,
+        unit_of_measure: formData.unit_of_measure,
+        max_quantity: Number(formData.max_quantity),
+        min_quantity: Number(formData.min_quantity),
+        expiry: expiryDate ? expiryDate.format('YYYY-MM-DD') : '',
+        mrp: Number(formData.mrp),
+        brand_name: formData.brand_name,
+      };
+
+      await addProduct(productData).unwrap();
+      
+      // Reset form and close modal on success
+      setFormData({
+        product_name: '',
+        product_code: '',
+        type: '',
+        brand_name: '',
+        hsn_id: '',
+        package_info: '',
+        unit_of_measure: '',
+        mrp: '',
+        min_quantity: '',
+        max_quantity: '',
+        expiry: ''
+      });
+      setExpiryDate(null);
+      setFormErrors({});
+      onClose();
+    } catch (err) {
+      console.error('Failed to add product:', err);
+    }
+  };
+
+  const handleClose = () => {
+    setFormData({
+      product_name: '',
+      product_code: '',
+      type: '',
+      brand_name: '',
+      hsn_id: '',
+      package_info: '',
+      unit_of_measure: '',
+      mrp: '',
+      min_quantity: '',
+      max_quantity: '',
+      expiry: ''
+    });
+    setExpiryDate(null);
+    setFormErrors({});
+    onClose();
   };
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       aria-labelledby="new-product-modal-title"
       aria-describedby="new-product-modal-description"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+      }}
     >
-      <Box sx={modalContentStyle}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+      <Box sx={{
+        position: 'relative',
+        width: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.WIDTH,
+        maxWidth: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
+        bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BACKGROUND,
+        borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
+        boxShadow: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BOX_SHADOW,
+        p: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.PADDING,
+        display: 'flex',
+        flexDirection: 'column' as const,
+        gap: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.GAP,
+        outline: 'none',
+        maxHeight: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
+        overflowY: 'auto',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+      }}>
+        {/* Enhanced Header */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #e2e8f0',
+          pb: 1.5,
+          mb: 1
+        }}>
           <Typography
             id="new-product-modal-title"
-            variant="h6"
+            variant="h5"
             component="h2"
             sx={{
               fontFamily: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
               fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
               fontSize: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
               color: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
+              margin: 0,
             }}
           >
             {NEW_PRODUCT_MODAL_LABELS.TITLE}
           </Typography>
-          <IconButton aria-label="close" onClick={onClose} sx={{ position: 'absolute', right: -6, top: -6, color: '#728197' }}>
-            <CloseIcon />
+          <IconButton 
+            aria-label="close" 
+            onClick={handleClose} 
+            sx={{ 
+              color: '#718096',
+              backgroundColor: '#f7fafc',
+              borderRadius: '8px',
+              width: '32px',
+              height: '32px',
+              '&:hover': {
+                backgroundColor: '#edf2f7',
+                color: '#2d3748',
+              }
+            }}
+          >
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
 
-        <Grid container spacing={2} rowSpacing={2} component="div">
-          {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((label, idx) => (
-            <Grid key={idx} item xs={12} sm={6} component="div">
-              <StyledTextField fullWidth label={label} variant="outlined" placeholder={label} />
-            </Grid>
-          ))}
-        </Grid>
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 3,
+              borderRadius: '12px',
+              backgroundColor: '#fed7d7',
+              color: '#c53030',
+              border: '1px solid #feb2b2',
+              '& .MuiAlert-icon': {
+                color: '#c53030',
+              }
+            }}
+          >
+            Failed to add product. Please try again.
+          </Alert>
+        )}
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px' }}>
+        {/* Enhanced Form Grid */}
+        <Box sx={{ flex: 1 }}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Grid 
+              container 
+              spacing={NEW_PRODUCT_MODAL_CONSTANTS.GRID.SPACING} 
+              rowSpacing={NEW_PRODUCT_MODAL_CONSTANTS.GRID.ROW_SPACING}
+              sx={{ mb: 2 }}
+            >
+              {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((field, idx) => (
+                <Grid key={idx} item xs={12} sm={6} component="div">
+                  {field.key === 'expiry' ? (
+                    <Box>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: 'Lexend, sans-serif'
+                        }}
+                      >
+                        {field.label}
+                      </Typography>
+                      <DatePicker
+                        value={expiryDate}
+                        onChange={(newValue) => {
+                          setExpiryDate(newValue);
+                          if (formErrors.expiry) {
+                            setFormErrors(prev => ({ ...prev, expiry: '' }));
+                          }
+                        }}
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            variant: 'outlined',
+                            error: !!formErrors.expiry,
+                            helperText: formErrors.expiry,
+                            placeholder: 'Select expiry date',
+                            sx: {
+                              '& .MuiOutlinedInput-root': {
+                                height: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
+                                borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
+                                backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
+                                fontSize: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
+                                '& fieldset': {
+                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+                                  borderWidth: '2px',
+                                },
+                                '&:hover fieldset': {
+                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                                  borderWidth: '2px',
+                                },
+                                '&.Mui-focused fieldset': {
+                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                                  borderWidth: '2px',
+                                  boxShadow: `0 0 0 3px ${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR}20`,
+                                },
+                              },
+                            }
+                          }
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: 'Lexend, sans-serif'
+                        }}
+                      >
+                        {field.label}
+                      </Typography>
+                      <StyledTextField 
+                        fullWidth 
+                        variant="outlined" 
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                        type={field.type}
+                        value={formData[field.key as keyof typeof formData]}
+                        onChange={(e) => handleInputChange(field.key, e.target.value)}
+                        error={!!formErrors[field.key]}
+                        helperText={formErrors[field.key]}
+                        InputProps={{
+                          sx: {
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                              borderWidth: '2px',
+                            },
+                          }
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Grid>
+              ))}
+            </Grid>
+          </LocalizationProvider>
+        </Box>
+
+        {/* Enhanced Action Buttons */}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'flex-end', 
+          gap: '12px', 
+          pt: 2,
+          borderTop: '1px solid #e2e8f0',
+          mt: 'auto'
+        }}>
           <Button
             variant="outlined"
-            onClick={onClose}
+            onClick={handleClose}
+            disabled={isLoading}
             sx={{
               color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.COLOR,
               borderColor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_COLOR,
               borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_RADIUS,
               padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.PADDING,
+              height: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.HEIGHT,
+              fontSize: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.FONT_SIZE,
+              fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.FONT_WEIGHT,
               textTransform: 'none',
-              border: 'none',
+              borderWidth: '2px',
+              backgroundColor: '#ffffff',
               '&:hover': {
-                backgroundColor: '#FFFFFF',
-                boxShadow: 'none',
-                border: 'none'
+                backgroundColor: '#f7fafc',
+                borderColor: '#cbd5e0',
+                borderWidth: '2px',
+              },
+              '&:disabled': {
+                backgroundColor: '#f7fafc',
+                borderColor: '#e2e8f0',
+                color: '#a0aec0',
               }
             }}
           >
@@ -134,19 +676,40 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose }) => {
           </Button>
           <Button
             variant="contained"
+            onClick={handleSubmit}
+            disabled={isLoading}
             sx={{
               bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BG,
               color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.COLOR,
               borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BORDER_RADIUS,
-              height: 36,
               padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.PADDING,
+              height: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.HEIGHT,
+              fontSize: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.FONT_SIZE,
+              fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.FONT_WEIGHT,
               textTransform: 'none',
+              boxShadow: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BOX_SHADOW,
               '&:hover': {
                 bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.HOVER_BG,
-              }
+                boxShadow: '0 6px 16px rgba(92, 23, 229, 0.4)',
+                transform: 'translateY(-1px)',
+              },
+              '&:disabled': {
+                bgcolor: '#cbd5e0',
+                color: '#a0aec0',
+                boxShadow: 'none',
+                transform: 'none',
+              },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
-            {NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD}
+            {isLoading ? (
+              <>
+                <CircularProgress size={20} sx={{ mr: 1.5, color: 'white' }} />
+                Adding Product...
+              </>
+            ) : (
+              NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD
+            )}
           </Button>
         </Box>
       </Box>

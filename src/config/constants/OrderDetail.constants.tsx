@@ -16,3 +16,27 @@ export const buttonSizes = {
 export const typography = {
   headerSize: '36px',
 };
+
+export const supplierOptions = [
+  "Supplier X",
+  "Supplier Y", 
+  "Supplier Z",
+  "Acme Pharma",
+  "MediCare Pvt Ltd",
+];
+
+export const paymentMethods = [
+  "Cash",
+  "Credit Card",
+  "Bank Transfer",
+  "Cheque",
+  "UPI",
+];
+
+export const paymentVendors = [
+  "HDFC Bank",
+  "ICICI Bank",
+  "SBI Bank",
+  "Axis Bank",
+  "Kotak Bank",
+];

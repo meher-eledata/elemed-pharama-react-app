@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, Typography, Box, Link } from "@mui/material";
-import TrendUpIcon from "../../../assets/trend-up.svg";
-import TrendDownIcon from "../../../assets/trend-down.svg";
+// import TrendUpIcon from "../../../assets/trend-up.svg";
+// import TrendDownIcon from "../../../assets/trend-down.svg";
 import { SUMMARY_CARD_CONSTANTS } from "../../../config/constants/SummaryCard.constants";
 import { SUMMARY_CARD_LABELS } from "../../../config/label/SummaryCard.labels";
 
@@ -74,14 +74,14 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
               <Box display="flex" alignItems="center" mt={1} ml={1}>
                 {trend.direction === "up" ? (
                   <img
-                    src={TrendUpIcon}
+                    // src={TrendUpIcon}
                     alt={SUMMARY_CARD_LABELS.TREND_UP_ALT}
                     width={SUMMARY_CARD_CONSTANTS.TREND.ICON_SIZE}
                     height={SUMMARY_CARD_CONSTANTS.TREND.ICON_SIZE}
                   />
                 ) : (
                   <img
-                    src={TrendDownIcon}
+                    // src={TrendDownIcon}
                     alt={SUMMARY_CARD_LABELS.TREND_DOWN_ALT}
                     width={SUMMARY_CARD_CONSTANTS.TREND.ICON_SIZE}
                     height={SUMMARY_CARD_CONSTANTS.TREND.ICON_SIZE}

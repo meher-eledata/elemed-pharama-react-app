@@ -35,6 +35,7 @@ export type FilterOption = {
 
 export interface SearchAndFilterConfig {
     filterOptions: FilterOption[];
+    customFilters?: React.ReactNode;
 }
 
 export interface TableColumn<T> {
@@ -45,7 +46,6 @@ export interface TableColumn<T> {
     render?: (item: T) => React.ReactNode;
     headerRender?: () => React.ReactNode;
     columnWidth?: string;
-
 }
 
 interface ReusableTableProps<T> {
@@ -59,14 +59,15 @@ interface ReusableTableProps<T> {
     onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
     showFilters: boolean;
     onShowFiltersToggle: () => void;
-    currentFilterKey: string;
-    onFilterSelect: (key: string) => void;
+    currentFilterKey?: string; // Made optional
+    onFilterSelect: (key: string, value: string | null) => void; // Updated this line
     totalRows: number;
     rowsPerPage: number;
     currentPage: number;
     onPageChange: (newPage: number) => void;
     onSortRequest: (key: string) => void;
     sortConfig: { key: string; direction: 'asc' | 'desc' };
+    currentFilter?: { [key: string]: string | null }; // Added this prop for better state management
 }
 
 export const ReusableTable = <T,>({
@@ -88,10 +89,10 @@ export const ReusableTable = <T,>({
     onPageChange,
     onSortRequest,
     sortConfig,
+    currentFilter, // Destructure the new prop
 }: ReusableTableProps<T>) => {
     const theme = useTheme();
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('md'));
-
 
     const visibleColumns = columns.filter((col) => !col.hide);
     const totalPages = Math.ceil(totalRows / rowsPerPage);
@@ -219,13 +220,14 @@ export const ReusableTable = <T,>({
                     {searchAndFilterConfig.filterOptions.map((option: FilterOption) => (
                         <Button
                             key={option.key}
-                            variant={currentFilterKey === option.key ? 'contained' : 'outlined'}
-                            onClick={() => onFilterSelect(option.key)}
+                            variant={currentFilter?.[option.key] ? 'contained' : 'outlined'} // Use currentFilter to determine button state
+                            onClick={() => onFilterSelect(option.key, currentFilter?.[option.key] ? null : 'value-placeholder')} // Example logic for selecting/clearing
                             sx={{ textTransform: 'none', width: isTabletOrMobile ? '100%' : 'auto' }}
                         >
                             {option.label}
                         </Button>
                     ))}
+                    {searchAndFilterConfig.customFilters}
                 </Box>
             )}
 
@@ -239,13 +241,11 @@ export const ReusableTable = <T,>({
                 }}
             >
                 <Table stickyHeader sx={{ minWidth: 650 }}>
-
                     <TableHead>
                         <TableRow>
                             {visibleColumns.map((column, index) => (
                                 <TableCell
                                     key={index}
-                                    // Check if the column is NOT explicitly set to false
                                     onClick={() => column.sortable !== false && onSortRequest(column.key as string)}
                                     sx={{
                                         fontWeight: 500,
@@ -254,7 +254,6 @@ export const ReusableTable = <T,>({
                                         bgcolor: '#ffffff',
                                         whiteSpace: 'nowrap',
                                         width: getColumnWidth(column.key as string),
-                                        // Set cursor to pointer unless sortable is explicitly false
                                         cursor: column.sortable !== false ? 'pointer' : 'default',
                                     }}
                                 >
@@ -267,7 +266,6 @@ export const ReusableTable = <T,>({
                                             />
                                         ) : column.headerRender ? column.headerRender() : column.header}
 
-                                        {/* Only render the sorting box if the column is NOT explicitly false */}
                                         {column.sortable !== false && (
                                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                 {sortConfig.key === column.key ? (
@@ -305,8 +303,16 @@ export const ReusableTable = <T,>({
                                 <TableRow
                                     key={rowIndex}
                                     sx={{
-                                        '&:hover': { backgroundColor: '#fafafa' },
-                                        backgroundColor: rowIndex % 2 === 0 ? '#ECEFF4' : '#FFFFFF',
+                                        backgroundColor: '#FFFFFF !important',
+                                        '&:hover': {
+                                            backgroundColor: '#FFFFFF !important',
+                                        },
+                                        '&:focus': {
+                                            backgroundColor: '#FFFFFF !important',
+                                        },
+                                        '&:active': {
+                                            backgroundColor: '#FFFFFF !important',
+                                        },
                                     }}
                                 >
                                     {visibleColumns.map((column, colIndex) => (
@@ -412,4 +418,3 @@ export const ReusableTable = <T,>({
         </>
     );
 };
-
