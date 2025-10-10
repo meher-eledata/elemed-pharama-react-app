@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { receiveApi } from "../../redux/slices/receiveApi";
+import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation } from "../../redux/slices/receiveApi";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
@@ -92,6 +92,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
+  const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [sortConfig, setSortConfig] = useState<{
@@ -116,13 +118,30 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const selectedSupplier = (location.state as any)?.selectedSupplier || "";
   const selectedPO = (location.state as any)?.selectedPO || "";
   const selectedOrder = (location.state as any)?.selectedOrder || null;
-  const [supplierName, setSupplierName] = useState<string>(selectedSupplier);
-  const [poNumber, setPoNumber] = useState<string>(selectedPO);
+  const isEditMode = (location.state as any)?.isEditMode || false;
+  const receiptId = (location.state as any)?.receiptId || null;
+  const receiptNumber = (location.state as any)?.receiptNumber || "";
+  
+  // Initialize form fields based on edit mode or new order
+  const [supplierName, setSupplierName] = useState<string>(
+    isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier
+  );
+  const [poNumber, setPoNumber] = useState<string>(
+    isEditMode && selectedOrder ? selectedOrder.poNo : selectedPO
+  );
 
   // Save functionality states
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  
+  // Track original receipt lines for change detection
+  const [originalReceiptLines, setOriginalReceiptLines] = useState<PharmaTableRow[]>([]);
+  
+  // Delete functionality states
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState<boolean>(false);
 
   // Start with empty table - rows will be added when products are selected
   const [pharmaTableData, setPharmaTableData] = useState<PharmaTableRow[]>([]);
@@ -182,6 +201,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [isSuppliersLoading, setIsSuppliersLoading] = useState<boolean>(false);
   const [suppliersError, setSuppliersError] = useState<string | null>(null);
 
+  // API state for products by supplier
+  const [productOptions, setProductOptions] = useState<string[]>([]);
+  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
   // Direct API call for supplier names
   const fetchSupplierNames = async () => {
     try {
@@ -211,21 +235,58 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   };
 
+  // Function to fetch ALL products (not filtered by supplier)
+  const fetchAllProducts = async () => {
+    try {
+      setIsProductsLoading(true);
+      setProductsError(null);
+      
+      const response = await fetch('http://localhost:3000/api/receive/get-products', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const products = await response.json();
+      console.log('All products API response data:', products);
+      
+      // Extract product names from the response - API returns array of [name, id] arrays
+      const productNames = products
+        .filter((product: any) => product && Array.isArray(product) && product.length >= 2)
+        .map((product: any) => product[0]) // First element is the product name
+        .filter((name: string) => name && name.trim() !== '');
+      
+      console.log('Extracted all product names:', productNames);
+      setProductOptions(productNames);
+    } catch (error) {
+      console.error('Error fetching all products:', error);
+      setProductsError(error instanceof Error ? error.message : 'Failed to fetch products');
+      setProductOptions([]);
+    } finally {
+      setIsProductsLoading(false);
+    }
+  };
+
   // Retry function for failed API calls
   const retryFetchSuppliers = () => {
     fetchSupplierNames();
   };
 
-  // Function to transform form data to API payload
+  // Function to transform form data to API payload for NEW receipts
   const transformFormDataToApiPayload = () => {
     // Find supplier ID from supplier options
     const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
-    const supplierId = selectedSupplierData?.supplier_id || 0;
+    const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
 
     // Transform table data to lines format
     const lines = pharmaTableData.map((row, index) => ({
       product: row.productId,
-      product_id: 100 + index, // Generate product ID (you might want to get this from actual product data)
+      product_id: null, // Let backend handle product ID assignment
       received_qty: row.qtyReceived,
       free_qty: row.qtyFree,
       expiry_date: row.batch, // Using batch field for expiry date
@@ -238,7 +299,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const payload = {
       supplier_name: supplierName,
-      supplier_id: supplierId,
+      // Only include supplier_id if it's an existing supplier
+      ...(isExistingSupplier && { supplier_id: selectedSupplierData.supplier_id }),
       po_number: poNumber,
       payment_method: paymentMethod,
       payment_vendor: paymentVendor,
@@ -252,8 +314,162 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return payload;
   };
 
-  // Function to submit receipt data
-  const submitReceipt = async () => {
+  // Function to detect changes between original and current data
+  const detectChanges = () => {
+    const originalIds = new Set(originalReceiptLines.map(row => row.id));
+    const currentIds = new Set(pharmaTableData.map(row => row.id));
+    
+    // Helper function to check if an ID is a database ID (numeric) or a new product ID (timestamp)
+    const isDatabaseId = (id: string | undefined) => {
+      if (!id) return false;
+      // Database IDs are numeric, new product IDs are timestamps (long numbers)
+      return /^\d+$/.test(id) && parseInt(id) < 1000000000000; // Timestamps are > 1000000000000
+    };
+    
+    // Find deleted lines (in original but not in current)
+    const deleted = originalReceiptLines
+      .filter(originalRow => !currentIds.has(originalRow.id))
+      .map(row => ({ receipt_line_id: parseInt(row.id || '0') }));
+    
+    // Find added lines (in current but not in original, or new products with timestamp IDs)
+    const added = pharmaTableData
+      .filter(currentRow => {
+        // If it's not in original IDs, it's either deleted and re-added, or truly new
+        if (!originalIds.has(currentRow.id)) return true;
+        // If it has a timestamp ID, it's a new product
+        if (currentRow.id && !isDatabaseId(currentRow.id)) return true;
+        return false;
+      })
+      .map(row => ({
+        product: row.productId,
+        product_id: 101, // This might need to be adjusted based on your data structure
+        received_qty: row.qtyReceived,
+        free_qty: row.qtyFree,
+        expiry_date: row.batch,
+        unit_price: row.pp,
+        cgst: row.sp,
+        sgst: row.mrp,
+        igst: row.cgst,
+        discount: typeof row.sgst === 'number' ? row.sgst : 0
+      }));
+    
+    // Find edited lines (in both original and current, with database IDs, and with different values)
+    const edited = pharmaTableData
+      .filter(currentRow => {
+        // Must be a database ID (not a new product)
+        if (!isDatabaseId(currentRow.id)) return false;
+        
+        const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
+        if (!originalRow) return false;
+        
+        // Check if any field has changed
+        return (
+          originalRow.productId !== currentRow.productId ||
+          originalRow.qtyReceived !== currentRow.qtyReceived ||
+          originalRow.qtyFree !== currentRow.qtyFree ||
+          originalRow.batch !== currentRow.batch ||
+          originalRow.pp !== currentRow.pp ||
+          originalRow.sp !== currentRow.sp ||
+          originalRow.mrp !== currentRow.mrp ||
+          originalRow.cgst !== currentRow.cgst ||
+          originalRow.sgst !== currentRow.sgst
+        );
+      })
+      .map(row => ({
+        receipt_line_id: parseInt(row.id || '0'),
+        po_line_id: parseInt(row.id || '0'), // This might need to be adjusted based on your data structure
+        batch_id: 1, // This might need to be adjusted based on your data structure
+        product_id: 101, // This might need to be adjusted based on your data structure
+        product_name: row.productId,
+        received_qty: row.qtyReceived,
+        free_qty: row.qtyFree,
+        unit_price: row.pp.toString(),
+        cgst: row.sp.toString(),
+        sgst: row.mrp.toString(),
+        igst: row.cgst.toString(),
+        discount: (typeof row.sgst === 'number' ? row.sgst : 0).toString()
+      }));
+
+    return { deleted, added, edited };
+  };
+
+  // Function to transform form data to EDIT payload for existing receipts
+  const transformFormDataToEditPayload = () => {
+    // Find supplier ID from supplier options
+    const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
+    const supplierId = selectedSupplierData ? selectedSupplierData.supplier_id : 0;
+
+    // Detect what actually changed
+    const { deleted, added, edited } = detectChanges();
+
+    const payload = {
+      receipt_id: receiptId,
+      po_id: parseInt(poNumber) || 1,
+      supplier_name: supplierName,
+      supplier_id: supplierId,
+      po_number: poNumber,
+      payment_method: paymentMethod,
+      payment_vendor: paymentVendor,
+      transaction_number: transactionNumber,
+      notes: "",
+      created_by: "meher",
+      Deleted: deleted,
+      Added: added,
+      Edited: edited
+    };
+
+    console.log('Edit API Payload being sent:', payload);
+    console.log('Changes detected:', { deleted: deleted.length, added: added.length, edited: edited.length });
+    console.log('Original receipt lines:', originalReceiptLines);
+    console.log('Current receipt lines:', pharmaTableData);
+    return payload;
+  };
+
+  // Function to delete receipt
+  const deleteReceipt = async () => {
+    if (!isEditMode || !receiptId) {
+      setDeleteError('No receipt selected for deletion');
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setDeleteError(null);
+      setDeleteSuccess(false);
+
+      const response = await fetch(`http://localhost:3000/api/receive/delete-receipt/${receiptId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add authorization header if needed
+          // 'Authorization': `Bearer ${token}`
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      console.log('Receipt deleted successfully');
+      setDeleteSuccess(true);
+      
+      // Invalidate cache to refresh data
+      dispatch(receiveApi.util.invalidateTags(['Receive']));
+      
+      // Navigate back to the main receive page after successful deletion
+      setTimeout(() => {
+        navigate('/receive/order-receive');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error deleting receipt:', error);
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete receipt');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSubmitReceipt = async () => {
     try {
       setIsSaving(true);
       setSaveError(null);
@@ -266,31 +482,21 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         return;
       }
 
-      const payload = transformFormDataToApiPayload();
-
-      const response = await fetch('http://localhost:3000/api/receive/submit-receipt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add authorization header if needed
-          // 'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      let result;
+      
+      if (isEditMode && receiptId) {
+        // Use editReceipt API for existing receipts
+        const payload = transformFormDataToEditPayload();
+        result = await editReceipt(payload).unwrap();
+        console.log('Receipt updated successfully:', result);
+      } else {
+        // Use submitReceipt API for new receipts
+        const payload = transformFormDataToApiPayload();
+        result = await submitReceipt(payload).unwrap();
+        console.log('Receipt submitted successfully:', result);
       }
-
-      const result = await response.json();
-      console.log('Receipt submitted successfully:', result);
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
       
       setSaveSuccess(true);
-      
-      // Invalidate cache to refresh purchase order table
-      dispatch(receiveApi.util.invalidateTags(['Receive']));
       
       // Reset form after successful save and navigate back to main page
       setTimeout(() => {
@@ -310,9 +516,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         navigate('/receive/order-receive');
       }, 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting receipt:', error);
-      setSaveError(error instanceof Error ? error.message : 'Failed to submit receipt');
+      
+      // More detailed error handling
+      let errorMessage = 'Failed to submit receipt';
+      
+      if (error?.data) {
+        if (typeof error.data === 'string') {
+          errorMessage = error.data;
+        } else if (error.data.message) {
+          errorMessage = error.data.message;
+        } else if (error.data.error) {
+          errorMessage = error.data.error;
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      setSaveError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -390,6 +612,75 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   useEffect(() => {
     fetchSupplierNames();
   }, []);
+
+  // Fetch all products on component mount (not filtered by supplier)
+  useEffect(() => {
+    fetchAllProducts();
+  }, []);
+
+  // Load existing receipt data when in edit mode
+  useEffect(() => {
+    if (isEditMode && receiptId) {
+      fetchReceiptLines();
+    }
+  }, [isEditMode, receiptId]);
+
+  // Function to fetch existing receipt lines
+  const fetchReceiptLines = async () => {
+    if (!receiptId) {
+      console.log('No receiptId provided for fetchReceiptLines');
+      return;
+    }
+
+    console.log('Fetching receipt lines for receiptId:', receiptId);
+
+    try {
+      const response = await fetch('http://localhost:3000/api/receive/get-receipt-lines', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ receipt_id: receiptId })
+      });
+
+      console.log('Receipt lines API response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const receiptLines = await response.json();
+      console.log('Receipt lines API response data:', receiptLines);
+      
+      // Transform API response to PharmaTableRow format
+      const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => ({
+        id: line.receipt_line_id?.toString() || line.id?.toString() || index.toString(),
+        productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
+        qtyReceived: line.received_qty || 0,
+        qtyFree: line.free_qty || 0,
+        batch: line.expiry_date || '',
+        pp: parseFloat(line.unit_price) || 0,
+        sp: parseFloat(line.cgst) || 0,
+        mrp: parseFloat(line.sgst) || 0,
+        cgst: parseFloat(line.igst) || 0,
+        sgst: parseFloat(line.discount) || 0,
+        igst: 0,
+        disc: 0,
+        margPercent: 0,
+        salesDiscPercent: 0,
+        isEditing: false,
+      }));
+
+      setPharmaTableData(transformedLines);
+      // Store original data for change detection
+      setOriginalReceiptLines(transformedLines);
+    } catch (error) {
+      console.error('Error fetching receipt lines:', error);
+      // Set empty array on error
+      setPharmaTableData([]);
+      setOriginalReceiptLines([]);
+    }
+  };
 
   // Transform supplier options to extract supplier names
   const transformedSupplierOptions = useMemo(() => {
@@ -708,7 +999,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             fontSize: typography.headerSize,
           }}
         >
-          {labels.orderDetails}
+          {isEditMode ? `${labels.orderDetails} (Editing ${receiptNumber})` : labels.orderDetails}
         </Typography>
       </Box>
       <Divider sx={{ marginTop: "16px", border: "0.5px solid #CBD4E1" }} />
@@ -1281,18 +1572,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       </Box>
       <Divider sx={{ marginTop: "10px", border: "0.3px solid #CBD4E14D" }} />
 
-      {/* Find Product row (UPDATED: Autocomplete to control clear icon visibility) */}
+      {/* Find Product section */}
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
+          flexDirection: "column",
           marginTop: "24px",
           marginBottom: "24px",
           gap: "16px",
           width: "100%",
         }}
       >
+        {/* Find Product row */}
         <Box
           sx={{
             display: "flex",
@@ -1314,10 +1605,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           <Autocomplete
             key={isProductSelected ? 'selected' : 'not-selected'}
             freeSolo
-                options={[
-                  ...masterProducts.map((p) => p.productName),
-                  orderLabels.addProducts,
-                ]}
+            options={[
+              ...(isProductsLoading ? ["Loading products..."] : productOptions.filter(option => option && typeof option === 'string')),
+              orderLabels.addProducts,
+            ]}
             value={findProductTerm}
             onInputChange={(_, v) => {
               console.log('Input changed:', v);
@@ -1333,7 +1624,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 return;
               }
               const value = (v as string) || "";
-              if (value && value !== orderLabels.addProducts) {
+              if (value && value !== orderLabels.addProducts && value !== "Loading products...") {
                 // Keep the product in the input field AND add to table
                 setFindProductTerm(value);
                 addProductToTable(value);
@@ -1404,7 +1695,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                placeholder={orderLabels.search}
+                placeholder={
+                  isProductsLoading 
+                    ? "Loading products..." 
+                    : productsError 
+                    ? "Error loading products" 
+                    : orderLabels.search
+                }
                 variant="outlined"
                 sx={{
                   width: "344px",
@@ -1491,6 +1788,69 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         </Box>
 
+        {/* Extra search bar for edit mode - positioned under Find Product */}
+        {isEditMode && (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+            }}
+          >
+            <TextField
+              placeholder="Search for items in the table below..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              variant="outlined"
+              sx={{
+                width: "100%",
+                "& .MuiOutlinedInput-root": {
+                  height: "40px",
+                  borderRadius: "8px",
+                  backgroundColor: "#FFFFFF",
+                  border: "1px solid #D1D5DB",
+                  "& fieldset": { 
+                    borderColor: "transparent",
+                    display: "none",
+                  },
+                  "&:hover fieldset": { 
+                    borderColor: "transparent",
+                  },
+                  "&.Mui-focused fieldset": { 
+                    borderColor: "transparent",
+                    outline: "none",
+                  },
+                  "&.Mui-focused": {
+                    outline: "none",
+                    border: "1px solid #D1D5DB",
+                  },
+                  "&:hover": {
+                    border: "1px solid #D1D5DB",
+                  },
+                },
+                "& .MuiInputBase-input": {
+                  padding: "8px 12px",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 400,
+                  lineHeight: "20px",
+                  color: "#6B7280",
+                  "&::placeholder": {
+                    color: "#9CA3AF",
+                    opacity: 1,
+                  },
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start" sx={{ marginLeft: "12px" }}>
+                    <SearchIcon sx={{ color: "#9CA3AF", width: "16px", height: "16px" }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        )}
       </Box>
 
       {/* Pharma Table */}
@@ -1534,150 +1894,215 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       </Box>
 
       {/* Footer actions */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "12px", mt: 3 }}>
-        <Button
-          variant="outlined"
-          disableRipple
-          onClick={() => {
-            // Clear all form data and table
-            setPharmaTableData([]);
-            setFindProductTerm("");
-            setEditingRowId(null);
-            setEditingData({});
-            setSupplierName("");
-            setPoNumber("");
-            setInvoiceDate("");
-            setTransactionNumber("");
-            setPaymentVendor("");
-            setIsProductSelected(false);
-          }}
-          sx={{
-            borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
-            color: themeColors.cancelButtonBorder || "#27313F",
-            backgroundColor: "transparent",
-            "&:hover": { 
-              backgroundColor: "transparent",
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 3 }}>
+        {/* Left side buttons */}
+        <Box sx={{ display: "flex", gap: "12px" }}>
+          <Button
+            variant="outlined"
+            disableRipple
+            onClick={() => {
+              // Clear all form data and table
+              setPharmaTableData([]);
+              setFindProductTerm("");
+              setEditingRowId(null);
+              setEditingData({});
+              setSupplierName("");
+              setPoNumber("");
+              setInvoiceDate("");
+              setTransactionNumber("");
+              setPaymentVendor("");
+              setIsProductSelected(false);
+              
+              // Navigate back to order-receive page
+              navigate('/receive/order-receive');
+            }}
+            sx={{
               borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
               color: themeColors.cancelButtonBorder || "#27313F",
-              borderWidth: "2px",
-            },
-            "&:focus": {
               backgroundColor: "transparent",
-              borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
-              color: themeColors.cancelButtonBorder || "#27313F",
-              borderWidth: "2px",
-            },
-            "&:active": {
-              backgroundColor: "transparent",
-              borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
-              color: themeColors.cancelButtonBorder || "#27313F",
-              borderWidth: "2px",
-            },
-            "& .MuiOutlinedInput-root": {
-              "&:hover fieldset": {
+              "&:hover": { 
+                backgroundColor: "transparent",
                 borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
+                color: themeColors.cancelButtonBorder || "#27313F",
                 borderWidth: "2px",
               },
-            },
-            height: "48px",
-            width: "86px",
-            borderRadius: "12px",
-            fontFamily: "Lexend",
-            fontWeight: 500,
-            fontSize: "12px",
-            lineHeight: "24px",
-            border: "2px solid",
-            textTransform: "none",
-            "& .MuiButton-outlined": {
+              "&:focus": {
+                backgroundColor: "transparent",
+                borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
+                color: themeColors.cancelButtonBorder || "#27313F",
+                borderWidth: "2px",
+              },
+              "&:active": {
+                backgroundColor: "transparent",
+                borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
+                color: themeColors.cancelButtonBorder || "#27313F",
+                borderWidth: "2px",
+              },
+              "& .MuiOutlinedInput-root": {
+                "&:hover fieldset": {
+                  borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
+                  borderWidth: "2px",
+                },
+              },
+              height: "48px",
+              width: "86px",
+              borderRadius: "12px",
+              fontFamily: "Lexend",
+              fontWeight: 500,
+              fontSize: "12px",
+              lineHeight: "24px",
               border: "2px solid",
-              "&:hover": {
+              textTransform: "none",
+              "& .MuiButton-outlined": {
                 border: "2px solid",
+                "&:hover": {
+                  border: "2px solid",
+                },
               },
-            },
-          }}
-        >
-          {orderLabels.cancelButton}
-        </Button>
-        <Button
-          variant="contained"
-          disableRipple
-          disableElevation
-          disabled={isSaving || pharmaTableData.length === 0}
-          onClick={submitReceipt}
-          sx={{
-            backgroundColor: saveSuccess ? "#10B981" : isSaving ? "#6B7280" : "#5C17E5",
-            "&:hover": {
-              backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
-              boxShadow: "none",
-            },
-            "&:focus": {
-              backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
-              boxShadow: "none",
-            },
-            "&:active": {
-              backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
-              boxShadow: "none",
-            },
-            "&:focus-visible": {
-              backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
-              boxShadow: "none",
-            },
-            "&.Mui-focusVisible": {
-              backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
-              boxShadow: "none",
-            },
-            "& .MuiTouchRipple-root": {
-              display: "none",
-            },
-            "& .MuiButtonBase-root": {
+            }}
+          >
+            {orderLabels.cancelButton}
+          </Button>
+          <Button
+            variant="contained"
+            disableRipple
+            disableElevation
+            disabled={isSaving || (isEditMode && pharmaTableData.length === 0)}
+            onClick={handleSubmitReceipt}
+            sx={{
+              backgroundColor: saveSuccess ? "#10B981" : isSaving ? "#6B7280" : "#5C17E5",
+              "&:hover": {
+                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                boxShadow: "none",
+              },
+              "&:focus": {
+                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                boxShadow: "none",
+              },
               "&:active": {
                 backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                boxShadow: "none",
               },
-            },
-            "& .MuiButton-contained": {
-              "&:active": {
+              "&:focus-visible": {
                 backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                boxShadow: "none",
               },
-            },
-            "& .MuiButton-root": {
-              "&:active": {
+              "&.Mui-focusVisible": {
                 backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                boxShadow: "none",
               },
-            },
-            "&::before": {
-              display: "none",
-            },
-            "&::after": {
-              display: "none",
-            },
-            borderRadius: "12px",
-            width: "86px",
-            height: "48px",
-            fontFamily: "Lexend",
-            textTransform: "none",
-            boxShadow: "none",
-            position: "relative",
-            overflow: "hidden",
-            "& *": {
+              "& .MuiTouchRipple-root": {
+                display: "none",
+              },
+              "& .MuiButtonBase-root": {
+                "&:active": {
+                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                },
+              },
+              "& .MuiButton-contained": {
+                "&:active": {
+                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                },
+              },
+              "& .MuiButton-root": {
+                "&:active": {
+                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                },
+              },
+              "&::before": {
+                display: "none",
+              },
+              "&::after": {
+                display: "none",
+              },
+              borderRadius: "12px",
+              width: "86px",
+              height: "48px",
+              fontFamily: "Lexend",
+              textTransform: "none",
+              boxShadow: "none",
+              position: "relative",
+              overflow: "hidden",
+              "& *": {
+                "&:active": {
+                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                },
+              },
+            }}
+          >
+            {isSaving ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : saveSuccess ? (
+              "Saved!"
+            ) : (
+              orderLabels.saveButton
+            )}
+          </Button>
+        </Box>
+        
+        {/* Right side - Delete button (edit mode only) */}
+        {isEditMode && (
+          <Button
+            variant="contained"
+            disableRipple
+            disabled={isDeleting}
+            onClick={deleteReceipt}
+            sx={{
+              backgroundColor: "#EF4444",
+              color: "#FFFFFF",
+              border: "2px solid #EF4444",
+              "&:hover": { 
+                backgroundColor: "#DC2626",
+                borderColor: "#DC2626",
+                color: "#FFFFFF",
+                borderWidth: "2px",
+              },
+              "&:focus": {
+                backgroundColor: "#DC2626",
+                borderColor: "#DC2626",
+                color: "#FFFFFF",
+                borderWidth: "2px",
+              },
               "&:active": {
-                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: "#DC2626",
+                borderColor: "#DC2626",
+                color: "#FFFFFF",
+                borderWidth: "2px",
               },
-            },
-          }}
-        >
-          {isSaving ? (
-            <CircularProgress size={16} color="inherit" />
-          ) : saveSuccess ? (
-            "Saved!"
-          ) : (
-            orderLabels.saveButton
-          )}
-        </Button>
+              "&:disabled": {
+                backgroundColor: "#6B7280",
+                borderColor: "#6B7280",
+                color: "#FFFFFF",
+              },
+              height: "48px",
+              borderRadius: "12px",
+              fontFamily: "Lexend",
+              fontWeight: 500,
+              fontSize: "12px",
+              lineHeight: "24px",
+              textTransform: "none",
+              minWidth: "140px",
+              boxShadow: "none",
+            }}
+          >
+            {isDeleting ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : deleteSuccess ? (
+              "Deleted!"
+            ) : (
+              "Delete the full receipt"
+            )}
+          </Button>
+        )}
       </Box>
 
       <NewProductModal
         open={isNewProductModalOpen}
         onClose={() => setIsNewProductModalOpen(false)}
+        onProductAdded={() => {
+          // Refresh the product list when a new product is added
+          fetchAllProducts();
+        }}
       />
 
       {/* Error Snackbar */}
@@ -1709,6 +2134,36 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           sx={{ width: '100%' }}
         >
           Receipt submitted successfully!
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!deleteError}
+        autoHideDuration={6000}
+        onClose={() => setDeleteError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setDeleteError(null)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {deleteError}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={deleteSuccess}
+        autoHideDuration={3000}
+        onClose={() => setDeleteSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setDeleteSuccess(false)} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          Receipt deleted successfully!
         </Alert>
       </Snackbar>
     </>

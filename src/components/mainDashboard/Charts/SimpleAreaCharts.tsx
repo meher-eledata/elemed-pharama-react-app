@@ -74,12 +74,31 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
     totalPrefix = ''
   ) => {
     const dailyData = (kpis[dataKey] as DailyData[]) ?? [];
+    
+    // Add safety check for dailyData
+    if (!Array.isArray(dailyData)) {
+      return {
+        title,
+        metric: `${totalPrefix}0`,
+        chartData: {
+          xAxis: [],
+          series1: [],
+          series2: [],
+        },
+        yAxisConfig: {
+          min: 0,
+          max: 1,
+          tickInterval: [0, 1],
+        },
+      };
+    }
 
     const startDate = dateRange.startDate ? new Date(dateRange.startDate) : null;
     const endDate = dateRange.endDate ? new Date(dateRange.endDate) : null;
 
     const filteredData = dailyData
       .filter((item) => {
+        if (!item || !item.date) return false;
         const d = new Date(item.date);
         return (!startDate || d >= startDate) && (!endDate || d <= endDate);
       })
@@ -96,7 +115,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
 
     return {
       title,
-      metric: `${totalPrefix}${kpis[totalKey]}`,
+      metric: `${totalPrefix}${kpis[totalKey] ?? 0}`,
       chartData: {
         xAxis: xAxisDates,
         series1: seriesData,
@@ -111,11 +130,17 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
   };
 
   const getCsvData = (data: DailyData[], valueKey: 'amount' | 'count', header: string) => {
+    // Add safety check for undefined data
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+
     const startDate = dateRange.startDate ? new Date(dateRange.startDate) : null;
     const endDate = dateRange.endDate ? new Date(dateRange.endDate) : null;
 
     return data
       .filter((item) => {
+        if (!item || !item.date) return false;
         const d = new Date(item.date);
         return (!startDate || d >= startDate) && (!endDate || d <= endDate);
       })
@@ -149,19 +174,19 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
         <ChartCard
           {...patientsProps}
           colors={{ main: '#6A8EFF', area: '#CEDEFF', percentBg: '#F0FDF4', percentText: '#22C55E' }}
-          csvData={getCsvData(kpis.uniquePatientsByDay, 'count', DASHBOARD_LABELS.CSV_UNIQUE_PATIENTS)}
+          csvData={getCsvData(kpis?.uniquePatientsByDay || [], 'count', DASHBOARD_LABELS.CSV_UNIQUE_PATIENTS)}
           filename={`unique_patients_report_${fileDuration}.csv`}
         />
         <ChartCard
           {...revenueProps}
           colors={{ main: '#FF6AA6', area: '#FFCEE6', percentBg: '#F0FDF4', percentText: '#22C55E' }}
-          csvData={getCsvData(kpis.revenueByDay, 'amount', DASHBOARD_LABELS.CSV_TOTAL_REVENUE)}
+          csvData={getCsvData(kpis?.revenueByDay || [], 'amount', DASHBOARD_LABELS.CSV_TOTAL_REVENUE)}
           filename={`total_revenue_report_${fileDuration}.csv`}
         />
         <ChartCard
           {...salesProps}
           colors={{ main: '#6AFF9E', area: '#CEFFEE', percentBg: '#F0FDF4', percentText: '#22C55E' }}
-          csvData={getCsvData(kpis.salesByDay, 'count', DASHBOARD_LABELS.CSV_TOTAL_SALES)}
+          csvData={getCsvData(kpis?.salesByDay || [], 'count', DASHBOARD_LABELS.CSV_TOTAL_SALES)}
           filename={`total_sales_report_${fileDuration}.csv`}
         />
       </Stack>

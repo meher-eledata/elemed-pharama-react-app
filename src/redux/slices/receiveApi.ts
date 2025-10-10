@@ -26,12 +26,45 @@ export interface Receipt {
 }
 
 export interface EditReceiptRequest {
-  id: number;
+  receipt_id: number;
   po_id: number;
-  received_on: string;
-  received_by: string;
-  receipt_status: string;
-  total_amount: number;
+  supplier_name: string;
+  supplier_id: number;
+  po_number: string;
+  payment_method: string;
+  payment_vendor: string;
+  transaction_number: string;
+  notes: string;
+  created_by: string;
+  Deleted: Array<{
+    receipt_line_id: number;
+  }>;
+  Added: Array<{
+    product: string;
+    product_id: number;
+    received_qty: number;
+    free_qty: number;
+    expiry_date: string;
+    unit_price: number;
+    cgst: number;
+    sgst: number;
+    igst: number;
+    discount: number;
+  }>;
+  Edited: Array<{
+    receipt_line_id: number;
+    po_line_id: number;
+    batch_id: number;
+    product_id: number;
+    product_name: string;
+    received_qty: number;
+    free_qty: number;
+    unit_price: string;
+    cgst: string;
+    sgst: string;
+    igst: string;
+    discount: string;
+  }>;
 }
 
 export interface EditReceiptResponse {
@@ -159,7 +192,7 @@ export const receiveApi = createApi({
 
     editReceipt: builder.mutation<EditReceiptResponse, EditReceiptRequest>({
       query: (body) => ({
-        url: "receive/edit-receipts",
+        url: "receive/edit-receipt",
         method: "POST",
         body,
       }),
@@ -208,6 +241,40 @@ export const receiveApi = createApi({
       }),
       invalidatesTags: ["Receive", "ReceiptLines"],
     }),
+
+    // Submit receipt endpoint
+    submitReceipt: builder.mutation<
+      { message: string; receiptId: number },
+      {
+        supplier_name: string;
+        supplier_id?: number; // Make supplier_id optional
+        po_number: string;
+        payment_method: string;
+        payment_vendor: string;
+        transaction_number: string;
+        notes: string;
+        created_by: string;
+        lines: Array<{
+          product: string;
+          product_id: number | null; // Allow null for product_id
+          received_qty: number;
+          free_qty: number;
+          expiry_date: string;
+          unit_price: number;
+          cgst: number;
+          sgst: number;
+          igst: number;
+          discount: number;
+        }>;
+      }
+    >({
+      query: (body) => ({
+        url: "receive/submit-receipt",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Receive"],
+    }),
   }),
 });
 
@@ -223,4 +290,5 @@ export const {
   useGetReceiptLinesQuery,
   useEditReceiptLineQuantityMutation,
   useDeleteReceiptLineMutation,
+  useSubmitReceiptMutation,
 } = receiveApi;

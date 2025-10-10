@@ -8,6 +8,12 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
 import AddIcon from "@mui/icons-material/Add";
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import SearchIcon from "@mui/icons-material/Search";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import "./OrderReceive.scss";
 import { ReusableTable, TableColumn, FilterOption } from "../../components/PharmaTable";
 import ReceiveSupplierModal from "../../components/Modal/ReceiveSupplier/ReceiveSupplierModal";
@@ -15,41 +21,49 @@ import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDial
 import CommonModal from "../../components/CommonModal/CommonModal";
 import ProductDetailsModalContent from "./ProductDetailsModalContent";
 import LastModal from "../../components/Modal/lastOne/LastModal";
-
 import {
-  ORDER_RECEIVE_TITLE,
-  ADD_RECEIVE_BUTTON,
-  TAB_RECEIVE_HISTORY,
-  // TAB_CURRENT_ORDER,
-  ORDER_RECEIVE_TABLE_HEADERS,
-  PURCHASE_ORDER_TABLE_HEADERS,
-  ORDER_RECEIVE_MESSAGES,
-  ORDER_RECEIVE_DIALOG,
-  ORDER_RECEIVE_MODAL,
+  ORDER_RECEIVE_TITLE, ADD_RECEIVE_BUTTON, TAB_RECEIVE_HISTORY,
+  ORDER_RECEIVE_TABLE_HEADERS, PURCHASE_ORDER_TABLE_HEADERS,
+  ORDER_RECEIVE_MESSAGES, ORDER_RECEIVE_DIALOG, ORDER_RECEIVE_MODAL,
 } from "../../config/label/OrderReceive.labels";
-import {
-  ADD_BUTTON_COLOR,
-  ORDER_RECEIVE_CONSTANTS,
-} from "../../config/constants/OrderReceive.constants";
+import { ADD_BUTTON_COLOR, ORDER_RECEIVE_CONSTANTS } from "../../config/constants/OrderReceive.constants";
 import { baseButtonStyle } from "../../config/constants/inventoryConstants";
 
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from "@mui/icons-material/Search";
-import FilterListIcon from "@mui/icons-material/FilterList";
-
 import {
-  useGetReceiptsQuery,
-  useEditReceiptMutation,
-  useDeleteReceiptMutation,
-  useGetCurrentPurchaseOrdersQuery,
-  useGetReceiptLinesQuery,
-  Receipt,
-  EditReceiptRequest,
-  PurchaseOrder
+  useGetReceiptsQuery, useEditReceiptMutation, useDeleteReceiptMutation,
+  useGetCurrentPurchaseOrdersQuery, useGetReceiptLinesQuery,
+  Receipt, EditReceiptRequest, PurchaseOrder
 } from "../../redux/slices/receiveApi";
+
+// Shared styles
+const commonStyles = {
+  inputField: {
+    '& .MuiOutlinedInput-root': {
+      height: '32px', borderRadius: '6px', backgroundColor: '#FFFFFF',
+      '& fieldset': { borderColor: '#D1D5DB', borderWidth: '1px' },
+      '&:hover fieldset': { borderColor: '#9CA3AF' },
+      '&.Mui-focused fieldset': { borderColor: '#3B82F6', borderWidth: '1px' },
+    },
+    '& .MuiOutlinedInput-input': { padding: '6px 8px', fontSize: '13px', color: '#374151' },
+  },
+  numberInput: {
+    '& input[type=number]': { MozAppearance: 'textfield', WebkitAppearance: 'none', appearance: 'textfield' },
+    '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': { WebkitAppearance: 'none', margin: 0 }
+  },
+  searchField: {
+    '& .MuiOutlinedInput-root': {
+      height: '40px', borderRadius: '12px', backgroundColor: '#fff',
+      boxShadow: 'inset 0 0 0 1px #BFD1E6', '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+      '&:hover': { boxShadow: 'inset 0 0 0 1px #AFC3DD' },
+      '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #9EB6D6' },
+    }
+  },
+  filterButton: {
+    minWidth: 160, height: 40, borderRadius: '12px', bgcolor: '#EEF2F7',
+    color: '#1A212B', textTransform: 'none', px: 2, border: '1px solid #D7DFEA',
+    boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)', '&:hover': { bgcolor: '#E6EBF2' }, fontWeight: 600,
+  }
+};
 
 export interface ProductItem {
   productName: string;
@@ -173,8 +187,15 @@ const OrderReceive: React.FC = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
   
   const handleEditClick = (row: OrderReceiveRow) => {
-    setEditingRowId(row.reNo);
-    setEditingDraft({ ...row });
+    // Navigate to Order Details page with the selected order data
+    navigate('/receive/order-details', {
+      state: {
+        isEditMode: true,
+        selectedOrder: row,
+        receiptId: row.receiptId,
+        receiptNumber: row.reNo
+      }
+    });
   };
   
   const buildChanges = (original: OrderReceiveRow, draft: OrderReceiveRow): EditReceiptRequest => {

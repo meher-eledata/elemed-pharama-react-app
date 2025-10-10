@@ -497,6 +497,11 @@ const InventoryModule: React.FC = () => {
         <NewProductModal
               open={isNewProductModalOpen}
               onClose={() => setIsNewProductModalOpen(false)}
+              onProductAdded={() => {
+                // The inventory queries will automatically refetch due to RTK Query cache invalidation
+                // No additional action needed here as the queries use providesTags: ["Inventory"]
+                console.log('New product added - inventory data will refresh automatically');
+              }}
             />
 
         <Box className="inventory-tabs">

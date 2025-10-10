@@ -2,24 +2,37 @@ import React, { useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import dayjs, { Dayjs } from "dayjs";
+import { useSelector } from "react-redux";
 import InventoryMetrics from "../../components/mainDashboard/InventoryMetrics/InventoryMetricsCard";
 import DateRangeFilter from "../../components/mainDashboard/DateRangeFilter/DateRangeFilter";
 import ThreeChartsComponent from "../../components/mainDashboard/Charts/SimpleAreaCharts";
 import { DASHBOARD_MAIN_CONSTANTS } from "../../config/constants/DashboardMain.constants";
 import { DASHBOARD_MAIN_LABELS } from "../../config/label/DashboardMain.labels";
 
-const useSelector = (selector: any) => selector({ auth: { user: { username: "Guest" } } });
-
 interface RootState {
   auth: {
     user: {
       username: string;
+      first_name: string;
+      last_name: string;
     } | null;
   };
 }
 
 const DashboardMain: React.FC = () => {
-  const username = useSelector((state: RootState) => state.auth.user?.username);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const displayName = user ? (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username) : "Guest";
+  
+  // Generate initials from user data
+  const getInitials = () => {
+    if (!user) return "G";
+    if (user.first_name && user.last_name) {
+      return (user.first_name[0] + user.last_name[0]).toUpperCase();
+    } else if (user.username) {
+      return user.username.substring(0, 2).toUpperCase();
+    }
+    return "G";
+  };
 
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([
     dayjs().subtract(30, 'day'),
@@ -62,7 +75,7 @@ const DashboardMain: React.FC = () => {
             textOverflow: 'ellipsis',
           }}
         >
-          {DASHBOARD_MAIN_LABELS.WELCOME_PREFIX} {username}
+          {DASHBOARD_MAIN_LABELS.WELCOME_PREFIX} {displayName}
         </Typography>
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: DASHBOARD_MAIN_CONSTANTS.TOOLBAR.GAP }}>

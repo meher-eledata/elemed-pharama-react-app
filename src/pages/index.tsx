@@ -9,6 +9,9 @@ import OrderReceive from "../pages/Recieve/OrderReceive";
 import OrderDetails from "../pages/Recieve/OrderDetails";
 import DashboardMain from "../pages/DashboardMain/DashboardMain"
 import Masterpage from "./Masters/MasterPage";
+import Sale from "./Sales/salepage";
+import SalesReceipt from "./Sales/SalesReceipt";
+
 
 // Import your labels here, as you need to pass them to the component
 import { orderLabels } from '../config/label/OrderDetail.labels'
@@ -40,6 +43,11 @@ export const Pages = () => {
      <Route path="/master" element={<DashboardLayout/>}> 
      <Route index element={<Masterpage/>}/>
      </Route>
+
+     <Route path="/sales" element={<DashboardLayout/>}>
+  <Route index element={<Sale/>}/>
+  <Route path="receipt" element={<SalesReceipt/>}/>
+</Route>
 
     </Routes>
   );

@@ -267,7 +267,6 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     '&.Mui-focused fieldset': {
       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
-      boxShadow: `0 0 0 3px ${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR}20`,
     },
     
     '&.Mui-error fieldset': {
@@ -323,9 +322,10 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 interface NewProductModalProps {
   open: boolean;
   onClose: () => void;
+  onProductAdded?: () => void; // Callback to notify parent when product is added
 }
 
-const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose }) => {
+const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProductAdded }) => {
   const [addProduct, { isLoading, error, isSuccess }] = useAddProductMutation();
   
   // Form state
@@ -410,6 +410,12 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose }) => {
       });
       setExpiryDate(null);
       setFormErrors({});
+      
+      // Notify parent component that a product was added
+      if (onProductAdded) {
+        onProductAdded();
+      }
+      
       onClose();
     } catch (err) {
       console.error('Failed to add product:', err);
