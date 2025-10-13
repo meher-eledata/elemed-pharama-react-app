@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Box, Button, Tabs, Tab, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import {
@@ -33,7 +33,7 @@ const Masterpage: React.FC = () => {
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
-  }>({ key: "", direction: "asc" });
+  }>({ key: "poNo", direction: "asc" });
 
   const columns: TableColumn<OrderReceiveRow>[] = [
     { key: "poNo", header: "PO No" },
@@ -47,6 +47,10 @@ const Masterpage: React.FC = () => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
+    } else if (sortConfig.key === key && sortConfig.direction === "desc") {
+      // Revert to default sorting instead of clearing
+      setSortConfig({ key: "poNo", direction: "asc" });
+      return;
     }
     setSortConfig({ key, direction });
   };
@@ -67,6 +71,29 @@ const Masterpage: React.FC = () => {
       minimumQty: 50,
     },
   ];
+
+  // Apply sorting to data
+  const sortedData = useMemo(() => {
+    // Always apply sorting - if no specific sort, use default
+    const currentSort = sortConfig.key || 'poNo';
+    const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
+    
+    return [...data].sort((a, b) => {
+      const aValue = a[currentSort as keyof OrderReceiveRow];
+      const bValue = b[currentSort as keyof OrderReceiveRow];
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return currentDirection === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else if (typeof aValue === "number" && typeof bValue === "number") {
+        return currentDirection === "asc"
+          ? aValue - bValue
+          : bValue - aValue;
+      }
+      return 0;
+    });
+  }, [data, sortConfig]);
 
   const filterOptions: FilterOption[] = [
     { key: "poNo", label: "PO No" },
@@ -116,7 +143,7 @@ const Masterpage: React.FC = () => {
         }}>
         <ReusableTable<OrderReceiveRow > 
           columns={columns}
-          data={data}
+          data={sortedData}
           searchAndFilterConfig={{ filterOptions }}
           currentSearchTerm={searchTerm}
           onSearchChange={(e) => setSearchTerm(e.target.value)}
@@ -124,7 +151,7 @@ const Masterpage: React.FC = () => {
           onShowFiltersToggle={() => setShowFilters((prev) => !prev)}
           currentFilterKey={filterKey}
           onFilterSelect={setFilterKey}
-          totalRows={data.length}
+          totalRows={sortedData.length}
           rowsPerPage={5}
           currentPage={currentPage}
           onPageChange={setCurrentPage}

@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent } from 'react';
 import {
   Box,
   Typography,
   Button,
   Divider,
   TextField,
-  styled
+  styled,
+  IconButton
 } from '@mui/material';
 import TickMarkIcon from '../../assets/TickMark.svg';
 import PlusSymbol from '../../assets/PlusSymbol.svg';
 import DownArrow from '../../assets/DownArrow.svg';
+import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
+import DeleteNewIcon from '../../assets/DeleteNew.svg';
+import NewBoxIcon from '../../assets/NewBox.svg';
+import CustomerModal from '../../components/Modal/NewCustomer/CustomerModal';
 
 // Styled components
 const SalesReceiptContainer = styled(Box)({
@@ -68,13 +73,6 @@ const PaymentToggleContainer = styled(Box)({
   flexShrink: 0,
 });
 
-const PaymentLabels = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  marginLeft: '8px',
-});
-
 const PaymentLabel = styled(Typography)<{ active?: boolean }>(({ active }) => ({
   fontFamily: "'Lexend', sans-serif",
   fontWeight: active ? 700 : 400,
@@ -103,21 +101,61 @@ const HorizontalDivider = styled(Divider)({
   margin: '20px 0',
 });
 
-// Customer and Doctor Details Section
+// --- START: FIXED/NEW STYLED COMPONENTS FOR CUSTOMER/DOCTOR SECTION ---
+
 const CustomerDoctorSection = styled(Box)({
   display: 'flex',
-  flexDirection: 'column',
-  gap: '0px',
-  marginTop: '24px',
+  gap: '40px', // Gap between the two main columns (Customer/Doctor)
+  marginTop: '16px', // Reduced from 24px to move fields up
+  position: 'relative',
+  paddingBottom: '16px', // Add some padding for the bottom row spacing
+  // Allow sections to wrap if screen is too small
+  '@media (max-width: 1200px)': {
+    flexDirection: 'column',
+    gap: '24px',
+  },
 });
 
-const InputRow = styled(Box)({
+const CustomerDoctorDivider = styled(Divider)({
+  position: 'absolute',
+  top: '0',
+  bottom: '0',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  height: '100%',
+  borderColor: '#D1D5DB',
+  borderStyle: 'dashed',
+  borderWidth: '1px',
+  zIndex: 1,
+  '@media (max-width: 1200px)': {
+    display: 'none', // Hide vertical divider on smaller screens
+  },
+});
+
+const CustomerDetailsColumn = styled(Box)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '16px', // Restored original gap
+  minWidth: '400px',
+  flex: '1', // Take up available space
+});
+
+const DoctorInvoiceColumn = styled(Box)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '16px', // Restored original gap
+  minWidth: '400px',
+  flex: '1', // Take up available space
+});
+
+const SectionRow = styled(Box)({
   display: 'flex',
   alignItems: 'center',
-  gap: '16px',
+  gap: '20px',
   flexWrap: 'wrap',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-start',
 });
+
 
 const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
@@ -151,18 +189,18 @@ const StyledTextField = styled(TextField)({
 });
 
 const CustomerNameField = styled(StyledTextField)({
-  width: '440px',
-  height: '62px',
+  width: '400px',
+  height: '48px',
 });
 
 const PhoneNoField = styled(StyledTextField)({
-  width: '212px',
-  height: '40px',
+  width: '180px', // Smaller width to match image
+  height: '48px',
 });
 
 const CityField = styled(StyledTextField)({
-  width: '206px',
-  height: '40px',
+  width: '100px', // Smaller width for City dropdown to match image
+  height: '48px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
@@ -174,15 +212,13 @@ const CityField = styled(StyledTextField)({
 });
 
 const DoctorNameField = styled(StyledTextField)({
-  width: '440px',
-  height: '62px',
-  marginLeft: '16px',
+  width: '400px',
+  height: '48px',
 });
 
 const HospitalIdField = styled(StyledTextField)({
-  width: '212px',
-  height: '40px',
-  marginLeft: '31px',
+  width: '180px', // Smaller width to match image
+  height: '48px',
 });
 
 const AddButton = styled(Button)({
@@ -206,8 +242,8 @@ const AddButton = styled(Button)({
 });
 
 const AddLoyaltyButton = styled(AddButton)({
-  marginLeft: '8px', // Move Add Loyalty button to the right
-});
+  marginLeft: '98px', // Move the Add Loyalty button more to the right
+})
 
 const PlusIcon = styled('img')({
   width: '19.5px',
@@ -227,8 +263,10 @@ const DropdownIcon = styled('img')({
 const InvoiceDetails = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
-  gap: '8px',
-  marginLeft: 'auto',
+  gap: '4px',
+  marginLeft: 'auto', // Push to the right
+  minWidth: '150px',
+  alignItems: 'flex-start', 
 });
 
 const InvoiceText = styled(Typography)({
@@ -237,17 +275,12 @@ const InvoiceText = styled(Typography)({
   fontWeight: 400,
   color: '#1A212B',
   lineHeight: '20px',
+  '&:first-of-type': {
+      fontWeight: 500, // Make the label bolder
+  }
 });
+// --- END: FIXED/NEW STYLED COMPONENTS FOR CUSTOMER/DOCTOR SECTION ---
 
-const VerticalDivider = styled(Box)({
-  position: 'absolute',
-  left: 'calc(50% - 50px)', // Move a little bit back to the left
-  top: '0',
-  bottom: '0',
-  width: '1px',
-  borderLeft: '1px dashed #D1D5DB',
-  zIndex: 1,
-});
 
 const ActionButtons = styled(Box)({
   display: 'flex',
@@ -347,11 +380,271 @@ const ToggleThumb = styled(Box)<{ active: boolean }>(({ active }) => ({
   justifyContent: 'center',
 }));
 
+// Sales Receipt Item interface
+interface SalesReceiptItem {
+  id: string;
+  productName: string;
+  manufacturer: string;
+  batch: string;
+  expiryDate: string;
+  quantity: string;
+  unitPrice: string;
+  mrp: string;
+  discount: string;
+  discountPercent: string;
+  cgst: string;
+  cgstPercent: string;
+  sgst: string;
+  sgstPercent: string;
+  igst: string;
+  igstPercent: string;
+  amount: string;
+}
+
 const SalesReceipt: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'credit' | 'cash'>('cash');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: '',
+    direction: 'asc'
+  });
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [currentSearchTerm, setCurrentSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentFilterKey, setCurrentFilterKey] = useState<string>('');
+  const [currentFilter, setCurrentFilter] = useState<{ [key: string]: string | null }>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+
+  // Sample data for the sales receipt table
+  const [salesItems, setSalesItems] = useState<SalesReceiptItem[]>([
+    {
+      id: '1',
+      productName: '2-0 Mersilk Syringe',
+      manufacturer: 'CENTAUR PHARMACEU...',
+      batch: '2897655790...',
+      expiryDate: '09/25',
+      quantity: '28 Caps...',
+      unitPrice: '29.03',
+      mrp: '29.03',
+      discount: '00.00',
+      discountPercent: '0.00',
+      cgst: '50.00',
+      cgstPercent: '9.00',
+      sgst: '50.00',
+      sgstPercent: '9.00',
+      igst: '50.00',
+      igstPercent: '0.00',
+      amount: '50.00'
+    },
+    {
+      id: '2',
+      productName: '3-0 Mersilk 90cm NW 5003 SUTURE',
+      manufacturer: 'CENTAUR PHARMACEU...',
+      batch: '3289765764...',
+      expiryDate: '09/25',
+      quantity: '3 Caps...',
+      unitPrice: '19.00',
+      mrp: '29.03',
+      discount: '2.00',
+      discountPercent: '0.00',
+      cgst: '5.00',
+      cgstPercent: '9.00',
+      sgst: '5.00',
+      sgstPercent: '9.00',
+      igst: '5.00',
+      igstPercent: '0.00',
+      amount: '5.00'
+    }
+  ]);
 
   const handlePaymentToggle = () => {
     setPaymentMethod(paymentMethod === 'cash' ? 'credit' : 'cash');
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    setSalesItems(items => items.filter(item => item.id !== itemId));
+  };
+
+  const handleEditItem = (itemId: string) => {
+    console.log('Edit item:', itemId);
+  };
+
+  const handleSort = (column: string) => {
+    setSortConfig(prevConfig => ({
+      key: column,
+      direction: prevConfig.key === column && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setCurrentSearchTerm(event.target.value);
+  };
+
+  const handleShowFiltersToggle = () => {
+    setShowFilters(!showFilters);
+  };
+
+  const handleFilterSelect = (key: string, value: string | null) => {
+    setCurrentFilterKey(key);
+    setCurrentFilter(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleOpenCustomerModal = () => {
+    setIsCustomerModalOpen(true);
+  };
+
+  const handleCloseCustomerModal = () => {
+    setIsCustomerModalOpen(false);
+  };
+
+  const handleCustomerSubmit = (customerData: any) => {
+    console.log('Customer data submitted:', customerData);
+    // Here you can add logic to save the customer data
+    // For now, just logging the data
+  };
+
+  // Table columns configuration
+  const columns: TableColumn<SalesReceiptItem>[] = [
+    {
+      key: 'productName',
+      header: 'Product Name',
+      sortable: true,
+      render: (item) => (
+        <Box>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            {item.productName}
+          </Typography>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
+            Mfg: {item.manufacturer}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'batch',
+      header: 'Batch',
+      render: (item) => (
+        <Box>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            {item.batch}
+          </Typography>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
+            Exp: {item.expiryDate}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'quantity',
+      header: 'Qty',
+      render: (item) => (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.quantity}
+        </Typography>
+      )
+    },
+    {
+      key: 'unitPrice',
+      header: 'Unit/Price',
+      render: (item) => (
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            Rs. {item.unitPrice}
+          </Typography>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
+            MRP: {item.mrp}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'discount',
+      header: 'Dis',
+      render: (item) => (
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            Rs. {item.discount}
+          </Typography>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
+            {item.discountPercent}%
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'cgst',
+      header: 'CGST',
+      render: (item) => (
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            {item.cgst}
+          </Typography>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
+            {item.cgstPercent}%
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'sgst',
+      header: 'SGST',
+      render: (item) => (
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            {item.sgst}
+          </Typography>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
+            {item.sgstPercent}%
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'igst',
+      header: 'IGST',
+      render: (item) => (
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            {item.igst}
+          </Typography>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
+            {item.igstPercent}%
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      render: (item) => (
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+            {item.amount}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      sortable: false,
+      render: (item) => (
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+          <IconButton onClick={() => handleDeleteItem(item.id)} sx={{ padding: '4px' }}>
+            <img src={DeleteNewIcon} alt="Delete" style={{ width: '16px', height: '16px' }} />
+          </IconButton>
+          <IconButton onClick={() => handleEditItem(item.id)} sx={{ padding: '4px' }}>
+            <img src={NewBoxIcon} alt="Edit" style={{ width: '16px', height: '16px' }} />
+          </IconButton>
+        </Box>
+      )
+    }
+  ];
+
+  // Search and filter configuration - empty to hide search and filter UI
+  const searchAndFilterConfig: SearchAndFilterConfig = {
+    filterOptions: []
   };
 
   return (
@@ -412,70 +705,116 @@ const SalesReceipt: React.FC = () => {
       <HorizontalDivider />
 
       {/* Customer and Doctor Details Section */}
-      <CustomerDoctorSection sx={{ position: 'relative' }}>
-        {/* Single Vertical Divider spanning both rows */}
-        <VerticalDivider />
-        
-        {/* First Row */}
-        <InputRow>
-          <CustomerNameField
-            label="Customer Name"
-            variant="outlined"
-            placeholder="Customer Name"
-          />
-          <AddButton>
-            <PlusIcon src={PlusSymbol} alt="Plus" />
-            Add Customer
-          </AddButton>
-          <DoctorNameField
-            label="Doctor Name"
-            variant="outlined"
-            placeholder="Doctor Name"
-          />
-          <InvoiceDetails>
-            <InvoiceText>Invoice No :</InvoiceText>
-            <InvoiceText>786889090556</InvoiceText>
-          </InvoiceDetails>
-        </InputRow>
+      <CustomerDoctorSection>
+        {/* Vertical divider separating the two main columns */}
+        <CustomerDoctorDivider orientation="vertical" />
 
-        {/* Second Row */}
-        <InputRow>
-          <PhoneNoField
-            label="Phone No"
-            variant="outlined"
-            placeholder="Phone No"
-          />
-          <Box sx={{ position: 'relative' }}>
-            <CityField
-              label="City"
+        {/* Customer Details Column */}
+        <CustomerDetailsColumn>
+          {/* Customer Row 1 */}
+          <SectionRow>
+            <CustomerNameField
+              label="Customer Name"
               variant="outlined"
-              placeholder="City"
+              placeholder="Customer Name"
             />
-            <DropdownIcon src={DownArrow} alt="Dropdown" />
-          </Box>
-          <AddLoyaltyButton>
-            <PlusIcon src={PlusSymbol} alt="Plus" />
-            Add Loyalty
-          </AddLoyaltyButton>
-          <HospitalIdField
-            label="Hospital ID"
-            variant="outlined"
-            placeholder="Hospital ID"
-          />
-          <Box sx={{ position: 'relative' }}>
-            <CityField
-              label="City"
+            <AddButton onClick={handleOpenCustomerModal}>
+              <PlusIcon src={PlusSymbol} alt="Plus" />
+              Add Customer
+            </AddButton>
+          </SectionRow>
+
+          {/* Customer Row 2 */}
+          <SectionRow>
+            <PhoneNoField
+              label="Phone No"
               variant="outlined"
-              placeholder="City"
+              placeholder="Phone No"
             />
-            <DropdownIcon src={DownArrow} alt="Dropdown" />
-          </Box>
-          <InvoiceDetails>
-            <InvoiceText>Invoice Date :</InvoiceText>
-            <InvoiceText>15 Aug 2025</InvoiceText>
-          </InvoiceDetails>
-        </InputRow>
+            <Box sx={{ position: 'relative' }}>
+              <CityField
+                label="City"
+                variant="outlined"
+                placeholder="City"
+              />
+              <DropdownIcon src={DownArrow} alt="Dropdown" />
+            </Box>
+            <AddLoyaltyButton>
+              <PlusIcon src={PlusSymbol} alt="Plus" />
+              Add Loyalty
+            </AddLoyaltyButton>
+          </SectionRow>
+        </CustomerDetailsColumn>
+
+        {/* Doctor and Invoice Column */}
+        <DoctorInvoiceColumn>
+          {/* Doctor/Invoice Row 1 */}
+          <SectionRow>
+            <DoctorNameField
+              label="Doctor Name"
+              variant="outlined"
+              placeholder="Doctor Name"
+            />
+            <InvoiceDetails>
+              <InvoiceText>Invoice No :</InvoiceText>
+              <InvoiceText>786889090556</InvoiceText>
+            </InvoiceDetails>
+          </SectionRow>
+
+          {/* Doctor/Invoice Row 2 */}
+          <SectionRow>
+            <HospitalIdField
+              label="Hospital ID"
+              variant="outlined"
+              placeholder="Hospital ID"
+            />
+            <Box sx={{ position: 'relative' }}>
+              <CityField
+                label="City"
+                variant="outlined"
+                placeholder="City"
+              />
+              <DropdownIcon src={DownArrow} alt="Dropdown" />
+            </Box>
+            <InvoiceDetails>
+              <InvoiceText>Invoice Date :</InvoiceText>
+              <InvoiceText>15 Aug 2025</InvoiceText>
+            </InvoiceDetails>
+          </SectionRow>
+        </DoctorInvoiceColumn>
       </CustomerDoctorSection>
+
+      {/* Sales Receipt Table */}
+      <Box sx={{ marginTop: '32px' }}>
+        <ReusableTable
+          columns={columns}
+          data={salesItems}
+          selectedRows={selectedRows}
+          setSelectedRows={setSelectedRows}
+          emptyMessage="No sales items found"
+          searchAndFilterConfig={searchAndFilterConfig}
+          currentSearchTerm={currentSearchTerm}
+          onSearchChange={handleSearchChange}
+          showFilters={showFilters}
+          onShowFiltersToggle={handleShowFiltersToggle}
+          currentFilterKey={currentFilterKey}
+          onFilterSelect={handleFilterSelect}
+          totalRows={salesItems.length}
+          rowsPerPage={rowsPerPage}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onSortRequest={handleSort}
+          sortConfig={sortConfig}
+          currentFilter={currentFilter}
+        />
+      </Box>
+
+      {/* Customer Modal */}
+      <CustomerModal
+        isOpen={isCustomerModalOpen}
+        onClose={handleCloseCustomerModal}
+        onSubmit={handleCustomerSubmit}
+      />
     </SalesReceiptContainer>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Button,
@@ -40,6 +40,12 @@ export default function SalePage() {
 
   // 🆕 Dummy state for SP/MRP toggle (defaulting to SP for the "active" style)
   const [priceType, setPriceType] = useState<'SP' | 'MRP'>('SP');
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'name',
+    direction: 'asc'
+  });
 
 
   const products: Product[] = [
@@ -62,6 +68,42 @@ export default function SalePage() {
       expiry: "2 Jun, 2025",
     },
   ];
+
+  // Sorting handler
+  const handleSortRequest = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      // Revert to default sorting instead of clearing
+      setSortConfig({ key: 'name', direction: 'asc' });
+      return;
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Apply sorting to products
+  const sortedProducts = useMemo(() => {
+    // Always apply sorting - if no specific sort, use default
+    const currentSort = sortConfig.key || 'name';
+    const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
+    
+    return [...products].sort((a, b) => {
+      const aValue = a[currentSort as keyof Product];
+      const bValue = b[currentSort as keyof Product];
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return currentDirection === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else if (typeof aValue === "number" && typeof bValue === "number") {
+        return currentDirection === "asc"
+          ? aValue - bValue
+          : bValue - aValue;
+      }
+      return 0;
+    });
+  }, [products, sortConfig]);
 
   // Note: Checkbox handling is now managed by the ReusableTable component
   // The table will automatically handle select all and individual row selection
@@ -278,21 +320,21 @@ export default function SalePage() {
 
       {/* Table */}
       <ReusableTable
-        data={products}
+        data={sortedProducts}
         columns={columns}
-        selectedRows={selectedItems.map(id => products.findIndex(p => p.id === id))} // Convert string IDs to indices
+        selectedRows={selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))} // Convert string IDs to indices
         setSelectedRows={(newSelected: number[] | ((prevState: number[]) => number[])) => {
           // Convert indices back to string IDs
-          const indices = typeof newSelected === 'function' ? newSelected(selectedItems.map(id => products.findIndex(p => p.id === id))) : newSelected;
-          const newSelectedIds = indices.map((index: number) => products[index].id);
+          const indices = typeof newSelected === 'function' ? newSelected(selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))) : newSelected;
+          const newSelectedIds = indices.map((index: number) => sortedProducts[index].id);
           setSelectedItems(newSelectedIds);
         }}
-        totalRows={products.length}
+        totalRows={sortedProducts.length}
         rowsPerPage={5}
         currentPage={1}
         onPageChange={() => {}}
-        onSortRequest={() => {}}
-        sortConfig={{ key: "", direction: "asc" }}
+        onSortRequest={handleSortRequest}
+        sortConfig={sortConfig}
         searchAndFilterConfig={{ filterOptions: [] }}
         currentSearchTerm=""
         onSearchChange={() => {}}

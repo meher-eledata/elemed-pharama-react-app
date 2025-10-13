@@ -758,29 +758,14 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
 
   const onSortRequest = (key: string) => {
     let direction: "asc" | "desc" = "asc";
-    // If the same header is clicked, toggle the direction
     if (sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
+    } else if (sortConfig.key === key && sortConfig.direction === "desc") {
+      // Revert to default sorting instead of clearing
+      setSortConfig({ key: "productName", direction: "asc" });
+      return;
     }
-
-    // Sort the data and update the state
-    const sortedData = [...modalData].sort((a, b) => {
-      const aValue = a[key as keyof ModalItem];
-      const bValue = b[key as keyof ModalItem];
-
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return direction === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return direction === "asc" ? aValue - bValue : bValue - aValue;
-      }
-      return 0;
-    });
-
-    setModalData(sortedData); // Update the state with the sorted data
-    setSortConfig({ key, direction }); // Update the sort configuration
+    setSortConfig({ key, direction });
   };
 
   if (isLoading) {

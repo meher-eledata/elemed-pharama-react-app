@@ -83,9 +83,12 @@ const InventoryModule: React.FC = () => {
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
-    key: '',
+    key: 'name',
     direction: 'asc'
   });
+
+  // Debug: Log sortConfig changes
+  console.log('InventoryModule sortConfig:', sortConfig);
 
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
       useState<boolean>(false);
@@ -209,54 +212,56 @@ const InventoryModule: React.FC = () => {
       });
     }
 
-    // Apply sorting
-    if (sortConfig.key) {
-      filtered = [...filtered].sort((a, b) => {
-        let aValue: any;
-        let bValue: any;
+    // Apply sorting - always sort, use default if no specific sort
+    const currentSortKey = sortConfig.key || 'name';
+    const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
+    
+    filtered = [...filtered].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
 
-        switch (sortConfig.key) {
-          case 'name':
-            aValue = a.name.toLowerCase();
-            bValue = b.name.toLowerCase();
-            break;
-          case 'currentQuantity':
-            aValue = a.currentQuantity ?? 0;
-            bValue = b.currentQuantity ?? 0;
-            break;
-          case 'minQuantity':
-            aValue = a.minQuantity ?? 0;
-            bValue = b.minQuantity ?? 0;
-            break;
-          case 'maxQuantity':
-            aValue = a.maxQuantity ?? 0;
-            bValue = b.maxQuantity ?? 0;
-            break;
-          case 'batchNumber':
-            aValue = a.batchNumber ?? '';
-            bValue = b.batchNumber ?? '';
-            break;
-          case 'expiryDate':
-            aValue = new Date(a.expiryDate ?? '');
-            bValue = new Date(b.expiryDate ?? '');
-            break;
-          case 'daysPastExpiry':
-            aValue = a.daysPastExpiry ?? 0;
-            bValue = b.daysPastExpiry ?? 0;
-            break;
-          default:
-            return 0;
-        }
+      switch (currentSortKey) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'currentQuantity':
+          aValue = a.currentQuantity ?? 0;
+          bValue = b.currentQuantity ?? 0;
+          break;
+        case 'minQuantity':
+          aValue = a.minQuantity ?? 0;
+          bValue = b.minQuantity ?? 0;
+          break;
+        case 'maxQuantity':
+          aValue = a.maxQuantity ?? 0;
+          bValue = b.maxQuantity ?? 0;
+          break;
+        case 'batchNumber':
+          aValue = a.batchNumber ?? '';
+          bValue = b.batchNumber ?? '';
+          break;
+        case 'expiryDate':
+          aValue = new Date(a.expiryDate ?? '');
+          bValue = new Date(b.expiryDate ?? '');
+          break;
+        case 'daysPastExpiry':
+          aValue = a.daysPastExpiry ?? 0;
+          bValue = b.daysPastExpiry ?? 0;
+          break;
+        default:
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+      }
 
-        if (aValue < bValue) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
+      if (aValue < bValue) {
+        return currentDirection === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return currentDirection === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
 
     return filtered;
   }, [currentTableData, searchQuery, filterType, selectedStockType, sortConfig]);
@@ -264,21 +269,15 @@ const InventoryModule: React.FC = () => {
   const handlePageChange = (newPage: number) => setPage(newPage);
 
   const handleSortRequest = (key: string) => {
-    setSortConfig(prevConfig => {
-      if (prevConfig.key === key) {
-        // Toggle direction if same column
-        return {
-          key,
-          direction: prevConfig.direction === 'asc' ? 'desc' : 'asc'
-        };
-      } else {
-        // New column, start with ascending
-        return {
-          key,
-          direction: 'asc'
-        };
-      }
-    });
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      // Revert to default sorting instead of clearing
+      setSortConfig({ key: 'name', direction: 'asc' });
+      return;
+    }
+    setSortConfig({ key, direction });
   };
 
   const paginatedData = useMemo(() => {

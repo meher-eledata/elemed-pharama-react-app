@@ -23,6 +23,9 @@ export interface Receipt {
   received_by: string;
   receipt_status: string;
   total_amount: number;
+  transaction_number?: string;
+  payment_vendor?: string;
+  invoice_date?: string;
 }
 
 export interface EditReceiptRequest {
@@ -90,6 +93,9 @@ export interface ReceiptLine {
   received_qty: number;
   hsn_id: string;
   total_amount: number;
+  transaction_number?: string;
+  payment_vendor?: string;
+  invoice_date?: string;
 }
 
 export interface GetReceiptLinesRequest {

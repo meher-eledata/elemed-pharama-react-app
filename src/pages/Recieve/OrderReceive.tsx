@@ -10,10 +10,10 @@ import { RootState } from "../../redux/store";
 import AddIcon from "@mui/icons-material/Add";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from "@mui/icons-material/Search";
-import FilterListIcon from "@mui/icons-material/FilterList";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import "./OrderReceive.scss";
 import { ReusableTable, TableColumn, FilterOption } from "../../components/PharmaTable";
 import ReceiveSupplierModal from "../../components/Modal/ReceiveSupplier/ReceiveSupplierModal";
@@ -34,6 +34,29 @@ import {
   useGetCurrentPurchaseOrdersQuery, useGetReceiptLinesQuery,
   Receipt, EditReceiptRequest, PurchaseOrder
 } from "../../redux/slices/receiveApi";
+
+// Custom TickMark component
+const TickMarkIcon = (props: any) => (
+  <svg
+    {...(props as any)}
+    width="18"
+    height="18"
+    viewBox="0 0 16 16"
+    fill="none"
+    style={{
+      pointerEvents: "none",
+      color: "currentColor",
+    }}
+  >
+    <path
+      d="M13.5 4.5L6 12L2.5 8.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 // Shared styles
 const commonStyles = {
@@ -72,6 +95,9 @@ export interface ProductItem {
   hsnCode: string;
   amount: number;
   lineId?: number;
+  transaction_number?: string;
+  payment_vendor?: string;
+  invoice_date?: string;
 }
 
 export interface OrderReceiveRow {
@@ -84,6 +110,9 @@ export interface OrderReceiveRow {
   reBy: string;
   amt: number;
   products: ProductItem[];
+  transaction_number?: string;
+  payment_vendor?: string;
+  invoice_date?: string;
 }
 
 export interface PurchaseOrderRow {
@@ -105,7 +134,7 @@ const OrderReceive: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: "", direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: "reNo", direction: 'desc' });
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filters, setFilters] = useState<{ [key: string]: string | null }>({});
   const [dateRange, setDateRange] = useState<{ startDate: Dayjs | null; endDate: Dayjs | null }>({
@@ -161,7 +190,10 @@ const OrderReceive: React.FC = () => {
         status: receipt.receipt_status,
         reBy: receipt.received_by,
         amt: receipt.total_amount,
-        products: []
+        products: [],
+        transaction_number: receipt.transaction_number || '',
+        payment_vendor: receipt.payment_vendor || '',
+        invoice_date: receipt.invoice_date || receipt.received_on, // Use invoice_date if available, fallback to received_on
       }));
   }, [receipts]);
 
@@ -193,7 +225,10 @@ const OrderReceive: React.FC = () => {
         isEditMode: true,
         selectedOrder: row,
         receiptId: row.receiptId,
-        receiptNumber: row.reNo
+        receiptNumber: row.reNo,
+        transactionNumber: row.transaction_number || '',
+        paymentVendor: row.payment_vendor || '',
+        invoiceDate: row.invoice_date || ''
       }
     });
   };
@@ -211,12 +246,19 @@ const OrderReceive: React.FC = () => {
     const safeAmount = Number.isNaN(parsedAmount) ? originalReceipt.total_amount : parsedAmount;
 
     return {
-      id: originalReceipt.id,
+      receipt_id: originalReceipt.id,
       po_id: safePoId,
-      received_on: draft.received,
-      received_by: draft.reBy,
-      receipt_status: draft.status,
-      total_amount: safeAmount
+      supplier_name: originalReceipt.supplier_name,
+      supplier_id: 0, // Default value since not available in Receipt
+      po_number: draft.poNo,
+      payment_method: '', // Default value since not available in Receipt
+      payment_vendor: '', // Default value since not available in Receipt
+      transaction_number: '', // Default value since not available in Receipt
+      notes: '', // Default value since not available in Receipt
+      created_by: originalReceipt.received_by, // Use received_by as created_by
+      Deleted: [],
+      Edited: [],
+      Added: []
     };
   };
 
@@ -238,9 +280,46 @@ const OrderReceive: React.FC = () => {
     return 'Unexpected error occurred';
   };
 
+  // Function to validate inline editing fields
+  const validateInlineEditing = () => {
+    if (!editingDraft) {
+      console.log('Validation failed: No editing draft');
+      return false;
+    }
+    
+    // Only require PO Number and Total Amount as essential fields
+    const isValid = editingDraft.poNo?.trim() && 
+                   editingDraft.amt && editingDraft.amt > 0;
+    
+    console.log('Inline editing validation:', {
+      poNo: editingDraft.poNo,
+      received: editingDraft.received,
+      reBy: editingDraft.reBy,
+      amt: editingDraft.amt,
+      isValid
+    });
+    
+    return isValid;
+  };
+
   const handleSaveClick = async (row: OrderReceiveRow) => {
     if (!editingDraft) {
       setEditingRowId(null);
+      return;
+    }
+
+    // Validate required fields for inline editing (only essential fields)
+    if (!editingDraft.poNo?.trim()) {
+      setSnackbarSeverity('error');
+      setSnackbarMessage('Please fill in the PO Number');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (!editingDraft.amt || editingDraft.amt <= 0) {
+      setSnackbarSeverity('error');
+      setSnackbarMessage('Please enter a valid Total Amount');
+      setSnackbarOpen(true);
       return;
     }
 
@@ -568,10 +647,19 @@ const OrderReceive: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {editingRowId === row.reNo ? (
             <Box sx={{ display: 'flex', gap: '12px' }}>
-              <CheckIcon
-                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }}
-                onClick={() => handleSaveClick(row)}
-              />
+              <Box
+                onClick={() => validateInlineEditing() ? handleSaveClick(row) : null}
+                sx={{ 
+                  cursor: validateInlineEditing() ? 'pointer' : 'not-allowed',
+                  color: validateInlineEditing() ? ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR : '#9CA3AF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: validateInlineEditing() ? 1 : 0.5
+                }}
+              >
+                <TickMarkIcon />
+              </Box>
               <CloseIcon
                 sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }}
                 onClick={() => handleCancelClick()}
@@ -656,6 +744,10 @@ const OrderReceive: React.FC = () => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      // Clear sorting by setting empty key
+      setSortConfig({ key: "", direction: 'asc' });
+      return;
     }
     setSortConfig({ key, direction });
   };
@@ -779,7 +871,11 @@ const OrderReceive: React.FC = () => {
                   />
                   <Button
                     variant="contained"
-                    startIcon={<FilterListIcon sx={{ color: '#1A212B', fontSize: 18 }} />}
+                    startIcon={
+                      showFilters 
+                        ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+                        : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+                    }
                     onClick={handleShowFiltersToggle}
                     sx={{
                       minWidth: 160,
@@ -799,7 +895,7 @@ const OrderReceive: React.FC = () => {
                   </Button>
                 </Box>
                 {showFilters && (
-                  <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
+                  <Box sx={{ display: 'flex', gap: 4, mb: 2, alignItems: 'flex-start' }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <Typography sx={{ fontSize: '12px', color: '#728197' }}>Supplier Name</Typography>
                       <Select
@@ -877,34 +973,57 @@ const OrderReceive: React.FC = () => {
                               textField: {
                                 size: 'small',
                                 sx: {
-                                  width: 120,
+                                  width: 150,
                                   '& .MuiOutlinedInput-root': {
                                     height: '40px',
-                                    borderRadius: '12px',
+                                    borderRadius: '16px',
                                     backgroundColor: '#ffffff',
                                     border: '1px solid #D1D5DB',
                                     '& .MuiOutlinedInput-notchedOutline': {
                                       border: 'none',
+                                      borderRadius: '16px',
                                     },
                                     '&:hover': {
                                       border: '2px solid #D1D5DB',
+                                      borderRadius: '16px',
                                       '& .MuiOutlinedInput-notchedOutline': {
                                         border: 'none',
+                                        borderRadius: '16px',
                                       },
                                     },
                                     '&.Mui-focused': {
                                       border: '2px solid #D1D5DB',
+                                      borderRadius: '16px',
                                       outline: 'none',
                                       '& .MuiOutlinedInput-notchedOutline': {
                                         border: 'none',
+                                        borderRadius: '16px',
                                       },
                                     },
                                   },
                                   '& .MuiInputLabel-root': {
-                                    color: '#000000',
+                                    color: '#728197',
                                     '&.Mui-focused': {
-                                      color: '#000000',
+                                      color: '#728197',
                                     },
+                                  },
+                                  '& .MuiOutlinedInput-input::placeholder': {
+                                    color: '#728197',
+                                    opacity: 1,
+                                  },
+                                  '& .MuiOutlinedInput-input': {
+                                    color: '#728197',
+                                    '&::placeholder': {
+                                      color: '#728197',
+                                      opacity: 1,
+                                    },
+                                  },
+                                  '& input::placeholder': {
+                                    color: '#728197',
+                                    opacity: 1,
+                                  },
+                                  '& input': {
+                                    color: '#728197',
                                   },
                                 },
                               },
@@ -997,7 +1116,6 @@ const OrderReceive: React.FC = () => {
                               },
                             }}
                           />
-                          <Typography sx={{ fontSize: '14px', color: '#728197' }}>to</Typography>
                           <DatePicker
                             label="To"
                             value={dateRange.endDate}
@@ -1006,34 +1124,57 @@ const OrderReceive: React.FC = () => {
                               textField: {
                                 size: 'small',
                                 sx: {
-                                  width: 120,
+                                  width: 150,
                                   '& .MuiOutlinedInput-root': {
                                     height: '40px',
-                                    borderRadius: '12px',
+                                    borderRadius: '16px',
                                     backgroundColor: '#ffffff',
                                     border: '1px solid #D1D5DB',
                                     '& .MuiOutlinedInput-notchedOutline': {
                                       border: 'none',
+                                      borderRadius: '16px',
                                     },
                                     '&:hover': {
                                       border: '2px solid #D1D5DB',
+                                      borderRadius: '16px',
                                       '& .MuiOutlinedInput-notchedOutline': {
                                         border: 'none',
+                                        borderRadius: '16px',
                                       },
                                     },
                                     '&.Mui-focused': {
                                       border: '2px solid #D1D5DB',
+                                      borderRadius: '16px',
                                       outline: 'none',
                                       '& .MuiOutlinedInput-notchedOutline': {
                                         border: 'none',
+                                        borderRadius: '16px',
                                       },
                                     },
                                   },
                                   '& .MuiInputLabel-root': {
-                                    color: '#000000',
+                                    color: '#728197',
                                     '&.Mui-focused': {
-                                      color: '#000000',
+                                      color: '#728197',
                                     },
+                                  },
+                                  '& .MuiOutlinedInput-input::placeholder': {
+                                    color: '#728197',
+                                    opacity: 1,
+                                  },
+                                  '& .MuiOutlinedInput-input': {
+                                    color: '#728197',
+                                    '&::placeholder': {
+                                      color: '#728197',
+                                      opacity: 1,
+                                    },
+                                  },
+                                  '& input::placeholder': {
+                                    color: '#728197',
+                                    opacity: 1,
+                                  },
+                                  '& input': {
+                                    color: '#728197',
                                   },
                                 },
                               },
@@ -1237,6 +1378,9 @@ const OrderReceive: React.FC = () => {
                     quantity: line.received_qty,
                     hsnCode: line.hsn_id,
                     amount: line.total_amount,
+                    transaction_number: line.transaction_number || '',
+                    payment_vendor: line.payment_vendor || '',
+                    invoice_date: line.invoice_date || '',
                   })) as ProductItem[],
                 }
                 : null

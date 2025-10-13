@@ -13,6 +13,10 @@ import {
   Alert,
   Snackbar,
 } from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs, { Dayjs } from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation } from "../../redux/slices/receiveApi";
@@ -20,8 +24,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import SaveIcon from "@mui/icons-material/Save";
-import CancelIcon from "@mui/icons-material/Cancel";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 
@@ -37,9 +39,8 @@ import TickMarkSvg from "../../assets/Right.svg";
 import PlusIcon from "../../assets/PlusIcon.svg";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
-import DropDownIcon from "../../assets/DropDown.svg"; // This is the image for the dropdown icon
-
-// <-- Import masterProducts only
+import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
+import DropDownIcon from "../../assets/DropDown.svg"; 
 import { masterProducts, ProductMaster } from "../../data/masterData";
 
 interface OrderDetailsProps {
@@ -62,10 +63,11 @@ export interface PharmaTableRow {
   margPercent: number | string;
   salesDiscPercent: number | string;
   isEditing?: boolean;
+  transaction_number?: string;
+  payment_vendor?: string;
+  invoice_date?: string;
 }
 
-// Custom InputAdornment component for the dropdown icon
-// Adjusted size to match the smaller arrow in the reference image.
 const CustomDropdownIcon = (props: any) => (
   <svg
     {...(props as any)}
@@ -88,6 +90,28 @@ const CustomDropdownIcon = (props: any) => (
   </svg>
 );
 
+const TickMarkIcon = (props: any) => (
+  <svg
+    {...(props as any)}
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    style={{
+      pointerEvents: "none",
+      color: "currentColor",
+    }}
+  >
+    <path
+      d="M13.5 4.5L6 12L2.5 8.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -99,7 +123,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
-  }>({ key: "", direction: "asc" });
+  }>({ key: "productName", direction: "asc" });
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
     useState<boolean>(false);
 
@@ -121,6 +145,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const isEditMode = (location.state as any)?.isEditMode || false;
   const receiptId = (location.state as any)?.receiptId || null;
   const receiptNumber = (location.state as any)?.receiptNumber || "";
+  const navigationTransactionNumber = (location.state as any)?.transactionNumber || "";
+  const navigationPaymentVendor = (location.state as any)?.paymentVendor || "";
+  const navigationInvoiceDate = (location.state as any)?.invoiceDate || "";
   
   // Initialize form fields based on edit mode or new order
   const [supplierName, setSupplierName] = useState<string>(
@@ -152,6 +179,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   
   // State to track if a product was selected from dropdown
   const [isProductSelected, setIsProductSelected] = useState<boolean>(false);
+  
+  // State for delete confirmation dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [rowToDeleteId, setRowToDeleteId] = useState<string | null>(null);
+  
+  // State for receipt delete confirmation dialog
+  const [isReceiptDeleteDialogOpen, setIsReceiptDeleteDialogOpen] = useState<boolean>(false);
 
   // Reusable input field styles
   const inputFieldStyles = {
@@ -425,10 +459,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return payload;
   };
 
-  // Function to delete receipt
-  const deleteReceipt = async () => {
+  // Function to show receipt delete confirmation dialog
+  const deleteReceipt = () => {
     if (!isEditMode || !receiptId) {
       setDeleteError('No receipt selected for deletion');
+      return;
+    }
+    setIsReceiptDeleteDialogOpen(true);
+  };
+
+  // Function to confirm receipt deletion
+  const handleConfirmReceiptDelete = async () => {
+    if (!isEditMode || !receiptId) {
+      setIsReceiptDeleteDialogOpen(false);
       return;
     }
 
@@ -456,7 +499,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       // Invalidate cache to refresh data
       dispatch(receiveApi.util.invalidateTags(['Receive']));
       
-      // Navigate back to the main receive page after successful deletion
       setTimeout(() => {
         navigate('/receive/order-receive');
       }, 2000);
@@ -466,6 +508,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setDeleteError(error instanceof Error ? error.message : 'Failed to delete receipt');
     } finally {
       setIsDeleting(false);
+      setIsReceiptDeleteDialogOpen(false);
     }
   };
 
@@ -475,9 +518,27 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setSaveError(null);
       setSaveSuccess(false);
 
-      // Validate required fields
-      if (!supplierName || !poNumber || pharmaTableData.length === 0) {
-        setSaveError('Please fill in all required fields and add at least one product');
+      if (!supplierName.trim()) {
+        setSaveError('Please fill in the Supplier Name');
+        setIsSaving(false);
+        return;
+      }
+      
+      if (!poNumber.trim()) {
+        setSaveError('Please fill in the PO Number');
+        setIsSaving(false);
+        return;
+      }
+      
+      if (pharmaTableData.length === 0) {
+        setSaveError('Please add at least one product to the table');
+        setIsSaving(false);
+        return;
+      }
+      
+      const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
+      if (incompleteProducts.length > 0) {
+        setSaveError('Please complete all required fields for products (Product Name and Quantity Received)');
         setIsSaving(false);
         return;
       }
@@ -485,14 +546,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       let result;
       
       if (isEditMode && receiptId) {
-        // Use editReceipt API for existing receipts
-        const payload = transformFormDataToEditPayload();
-        result = await editReceipt(payload).unwrap();
+        // Use editReceipt API for existing receipts (Edit Receive Flow)
+        const editPayload = transformFormDataToEditPayload();
+        result = await editReceipt(editPayload).unwrap();
         console.log('Receipt updated successfully:', result);
       } else {
-        // Use submitReceipt API for new receipts
-        const payload = transformFormDataToApiPayload();
-        result = await submitReceipt(payload).unwrap();
+        // Use submitReceipt API for new receipts (Add Receive Flow)
+        const submitPayload = transformFormDataToApiPayload();
+        result = await submitReceipt(submitPayload).unwrap();
         console.log('Receipt submitted successfully:', result);
       }
       
@@ -511,9 +572,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setPaymentVendor("");
         setIsProductSelected(false);
         setSaveSuccess(false);
-        
-        // Navigate back to the main receive page to see updated data
-        navigate('/receive/order-receive');
+                navigate('/receive/order-receive');
       }, 2000);
 
     } catch (error: any) {
@@ -563,8 +622,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setPharmaTableData(prev => [...prev, newProduct]);
     setEditingRowId(newProduct.id!);
     setEditingData(newProduct);
-    // Don't clear the search term - keep it in the input field
-    setIsProductSelected(true); // Mark that a product was selected
+    // Reset the product selected state since we're clearing the field
+    setIsProductSelected(false);
   };
 
   // Function to start editing a row
@@ -596,16 +655,68 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   // Function to delete a row
   const deleteRow = (rowId: string) => {
-    setPharmaTableData(prev => prev.filter(row => row.id !== rowId));
-    if (editingRowId === rowId) {
-      setEditingRowId(null);
-      setEditingData({});
+    setRowToDeleteId(rowId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Function to confirm delete
+  const handleConfirmDelete = () => {
+    if (rowToDeleteId) {
+      setPharmaTableData(prev => prev.filter(row => row.id !== rowToDeleteId));
+      if (editingRowId === rowToDeleteId) {
+        setEditingRowId(null);
+        setEditingData({});
+      }
     }
+    setIsDeleteDialogOpen(false);
+    setRowToDeleteId(null);
   };
 
   // Function to update editing data
   const updateEditingData = (field: keyof PharmaTableRow, value: string | number) => {
     setEditingData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Function to validate if all required fields are filled
+  const validateRequiredFields = () => {
+    // Check basic required fields
+    if (!supplierName.trim()) {
+      console.log('Validation failed: Supplier name is empty');
+      return false;
+    }
+    if (!poNumber.trim()) {
+      console.log('Validation failed: PO Number is empty');
+      return false;
+    }
+    
+    // Check if there's at least one product in the table
+    if (pharmaTableData.length === 0) {
+      console.log('Validation failed: No products in table');
+      return false;
+    }
+    
+    // Check if at least one product has essential fields filled (only Product Name and Quantity)
+    const hasValidProducts = pharmaTableData.some(row => {
+      const isValid = row.productId && row.productId.trim() !== '' && 
+             row.qtyReceived && row.qtyReceived > 0;
+      console.log('Product validation:', {
+        productId: row.productId,
+        qtyReceived: row.qtyReceived,
+        batch: row.batch,
+        pp: row.pp,
+        isValid
+      });
+      return isValid;
+    });
+    
+    console.log('Overall validation result:', hasValidProducts);
+    return hasValidProducts;
+  };
+
+  // Function to check if a specific product row is complete
+  const isProductRowComplete = (row: PharmaTableRow) => {
+    return row.productId && row.productId.trim() !== '' && 
+           row.qtyReceived && row.qtyReceived > 0;
   };
 
   // Fetch supplier names on component mount
@@ -652,6 +763,34 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       const receiptLines = await response.json();
       console.log('Receipt lines API response data:', receiptLines);
       
+      // Initialize transaction_number and payment_vendor from first receipt line if available
+      if (receiptLines && receiptLines.length > 0) {
+        const firstLine = receiptLines[0];
+        if (firstLine.transaction_number) {
+          setTransactionNumber(firstLine.transaction_number);
+        } else if (navigationTransactionNumber) {
+          setTransactionNumber(navigationTransactionNumber);
+        }
+        if (firstLine.payment_vendor) {
+          setPaymentVendor(firstLine.payment_vendor);
+        } else if (navigationPaymentVendor) {
+          setPaymentVendor(navigationPaymentVendor);
+        }
+      } else {
+        // Fallback to navigation state if no receipt lines
+        if (navigationTransactionNumber) {
+          setTransactionNumber(navigationTransactionNumber);
+        }
+        if (navigationPaymentVendor) {
+          setPaymentVendor(navigationPaymentVendor);
+        }
+      }
+      
+      // Initialize invoice date from navigation state (since it's not in receipt lines)
+      if (navigationInvoiceDate) {
+        setInvoiceDate(navigationInvoiceDate);
+      }
+      
       // Transform API response to PharmaTableRow format
       const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => ({
         id: line.receipt_line_id?.toString() || line.id?.toString() || index.toString(),
@@ -669,6 +808,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         margPercent: 0,
         salesDiscPercent: 0,
         isEditing: false,
+        transaction_number: line.transaction_number || '',
+        payment_vendor: line.payment_vendor || '',
+        invoice_date: line.invoice_date || navigationInvoiceDate || '',
       }));
 
       setPharmaTableData(transformedLines);
@@ -754,15 +896,24 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
-          <TextField
-            size="small"
-            value={editingData.batch || ""}
-            onChange={(e) => updateEditingData("batch", e.target.value)}
-            variant="outlined"
-            fullWidth
-            placeholder="DD/MM/YYYY"
-            sx={inputFieldStyles}
-          />
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              value={editingData.batch ? dayjs(editingData.batch, 'DD/MM/YYYY') : null}
+              onChange={(newValue: Dayjs | null) => {
+                const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
+                updateEditingData("batch", formattedDate);
+              }}
+              minDate={dayjs()} // Disable past dates
+              slotProps={{
+                textField: {
+                  size: 'small',
+                  fullWidth: true,
+                  placeholder: 'DD/MM/YYYY',
+                  sx: inputFieldStyles
+                }
+              }}
+            />
+          </LocalizationProvider>
         ) : (
           <span>{row.batch}</span>
         )
@@ -790,7 +941,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     },
     {
       key: "sp",
-      header: orderLabels.cgst,
+      header: `${orderLabels.cgst} (%)`,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -804,13 +955,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             sx={numberInputStyles}
           />
         ) : (
-          <span>{row.sp}%</span>
+          <span>{row.sp}</span>
         )
       ),
     },
     {
       key: "mrp",
-      header: orderLabels.sgst,
+      header: `${orderLabels.sgst} (%)`,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -824,13 +975,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             sx={numberInputStyles}
           />
         ) : (
-          <span>{row.mrp}%</span>
+          <span>{row.mrp}</span>
         )
       ),
     },
     {
       key: "cgst",
-      header: orderLabels.igst,
+      header: `${orderLabels.igst} (%)`,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -844,13 +995,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             sx={numberInputStyles}
           />
         ) : (
-          <span>{row.cgst}%</span>
+          <span>{row.cgst}</span>
         )
       ),
     },
     {
       key: "sgst",
-      header: orderLabels.discount,
+      header: `${orderLabels.discount} (%)`,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -879,18 +1030,30 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               <IconButton
                 size="small"
                 onClick={saveRow}
-                color="primary"
-                sx={{ padding: '4px' }}
+                sx={{ 
+                  padding: '4px',
+                  color: '#10B981',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    color: '#059669'
+                  }
+                }}
               >
-                <SaveIcon fontSize="small" />
+                <TickMarkIcon />
               </IconButton>
               <IconButton
                 size="small"
                 onClick={cancelEditing}
-                color="secondary"
-                sx={{ padding: '4px' }}
+                sx={{ 
+                  padding: '4px',
+                  color: '#EF4444',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    color: '#DC2626'
+                  }
+                }}
               >
-                <CancelIcon fontSize="small" />
+                <CloseIcon fontSize="small" />
               </IconButton>
             </>
           ) : (
@@ -934,6 +1097,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
+    } else if (sortConfig.key === key && sortConfig.direction === "desc") {
+      // Revert to default sorting instead of clearing
+      setSortConfig({ key: "productName", direction: "asc" });
+      return;
     }
     setSortConfig({ key, direction });
   };
@@ -954,23 +1121,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       );
     }
 
-    if (sortConfig.key) {
-      sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key as keyof PharmaTableRow];
-        const bValue = b[sortConfig.key as keyof PharmaTableRow];
+    // Always apply sorting - if no specific sort, use default
+    const currentSortKey = sortConfig.key || 'productName';
+    const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
+    
+    sortableItems.sort((a, b) => {
+      const aValue = a[currentSortKey as keyof PharmaTableRow];
+      const bValue = b[currentSortKey as keyof PharmaTableRow];
 
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          return sortConfig.direction === "asc"
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
-        } else if (typeof aValue === "number" && typeof bValue === "number") {
-          return sortConfig.direction === "asc"
-            ? aValue - bValue
-            : bValue - aValue;
-        }
-        return 0;
-      });
-    }
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return currentDirection === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else if (typeof aValue === "number" && typeof bValue === "number") {
+        return currentDirection === "asc"
+          ? aValue - bValue
+          : bValue - aValue;
+      }
+      return 0;
+    });
     return sortableItems;
   }, [pharmaTableData, sortConfig, searchTerm]);
 
@@ -1337,13 +1506,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         </Box>
         
-        {/* Payment method (UPDATED icon component is fine, no clear icon needed) */}
+        {/* Payment method (UPDATED: Autocomplete for searchable dropdown) */}
         <Box
           sx={{
             display: "flex",
             flexDirection: "column",
             width: "274px",
-            gap: "6px", 
+            gap: "4px",
           }}
         >
           <Typography
@@ -1358,54 +1527,68 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             {orderLabels.paymentMethod}
           </Typography>
 
-          <TextField
-            select
+          <Autocomplete
+            freeSolo
+            options={paymentMethods.filter((method) => method.toLowerCase().includes(paymentMethod.toLowerCase()))}
             value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            variant="outlined"
-            fullWidth
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "12px",
-                height: "48px",
-                backgroundColor: "#FFFFFF",
-                "& fieldset": {
-                  borderColor: "#9AA8BC",
-                },
-                "&:hover fieldset": {
-                  borderColor: "#9AA8BC",
-                },
-                "&.Mui-focused fieldset": {
-                  borderColor: "#9AA8BC",
-                  outline: "none",
-                },
-                "&.Mui-focused": {
-                  outline: "none",
-                },
-              },
-              "& .MuiOutlinedInput-input": {
-                padding: "12px 16px",
-                fontFamily: "Lexend",
-                fontSize: "16px",
-                lineHeight: "24px",
-                color: "#728197",
-              },
-              // Style for the default Select icon wrapper
-              "& .MuiSelect-icon": {
-                right: '16px', 
-              }
-            }}
-            SelectProps={{
-              // Use the updated CustomDropdownIcon
-              IconComponent: CustomDropdownIcon, 
-            }}
-          >
-            {paymentMethods.map((method) => (
-              <MenuItem key={method} value={method}>
-                {method}
-              </MenuItem>
-            ))}
-          </TextField>
+            onInputChange={(_, v) => setPaymentMethod(v)}
+            onChange={(_, v) => setPaymentMethod(v || "")}
+            disableClearable
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Select payment method"
+                variant="outlined"
+                fullWidth
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    height: "48px",
+                    backgroundColor: "#FFFFFF",
+                    "& fieldset": {
+                      borderColor: "#9AA8BC",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#9AA8BC",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#9AA8BC",
+                      outline: "none",
+                    },
+                    "&.Mui-focused": {
+                      outline: "none",
+                    },
+                  },
+                  "& .MuiOutlinedInput-input": {
+                    padding: "12px 16px",
+                    fontFamily: "Lexend",
+                    fontSize: "16px",
+                    lineHeight: "24px",
+                    color: "#728197",
+                  },
+                }}
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {/* Custom Dropdown Icon positioned at the very end */}
+                      <InputAdornment 
+                        position="end" 
+                        sx={{ 
+                          marginRight: '8px', 
+                          transform: 'translateY(0)' 
+                        }}
+                      >
+                        <CustomDropdownIcon />
+                      </InputAdornment>
+                      {/* Autocomplete's default toggle button (chevron) is rendered here if not handled by renderInput */}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
         </Box>
 
         {/* Payment vendor field (UPDATED: Autocomplete to control clear icon visibility) */}
@@ -1621,13 +1804,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             onChange={(_, v) => {
               if (v === orderLabels.addProducts) {
                 setIsNewProductModalOpen(true);
+                setFindProductTerm(""); // Clear field when opening modal
                 return;
               }
               const value = (v as string) || "";
               if (value && value !== orderLabels.addProducts && value !== "Loading products...") {
-                // Keep the product in the input field AND add to table
-                setFindProductTerm(value);
+                // Add product to table and immediately clear the input field
                 addProductToTable(value);
+                // Use setTimeout to ensure the clear happens after the selection
+                setTimeout(() => {
+                  setFindProductTerm("");
+                }, 0);
               } else {
                 setFindProductTerm(value);
               }
@@ -1637,6 +1824,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               if (e.key === 'Enter' && findProductTerm && findProductTerm !== orderLabels.addProducts) {
                 e.preventDefault();
                 addProductToTable(findProductTerm);
+                // Use setTimeout to ensure the clear happens after adding
+                setTimeout(() => {
+                  setFindProductTerm("");
+                }, 0);
               }
             }}
             onFocus={() => setIsFindProductFocused(true)}
@@ -1803,7 +1994,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               onChange={handleSearchChange}
               variant="outlined"
               sx={{
-                width: "100%",
+                width: "344px",
                 "& .MuiOutlinedInput-root": {
                   height: "40px",
                   borderRadius: "8px",
@@ -1967,7 +2158,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             variant="contained"
             disableRipple
             disableElevation
-            disabled={isSaving || (isEditMode && pharmaTableData.length === 0)}
+            disabled={isSaving || !validateRequiredFields()}
             onClick={handleSubmitReceipt}
             sx={{
               backgroundColor: saveSuccess ? "#10B981" : isSaving ? "#6B7280" : "#5C17E5",
@@ -2166,6 +2357,22 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           Receipt deleted successfully!
         </Alert>
       </Snackbar>
+
+      <ConfirmationDialog
+        open={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Product"
+        message="Are you sure you want to delete this product from the table?"
+      />
+
+      <ConfirmationDialog
+        open={isReceiptDeleteDialogOpen}
+        onClose={() => setIsReceiptDeleteDialogOpen(false)}
+        onConfirm={handleConfirmReceiptDelete}
+        title="Delete Receipt"
+        message="Are you sure you want to delete the entire receipt? This action cannot be undone."
+      />
     </>
   );
 };

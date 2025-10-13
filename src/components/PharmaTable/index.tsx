@@ -21,11 +21,13 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import sortIcon from '../../assets/sort_icon.svg';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 
 export type FilterOption = {
     key: string;
@@ -91,6 +93,8 @@ export const ReusableTable = <T,>({
     sortConfig,
     currentFilter, // Destructure the new prop
 }: ReusableTableProps<T>) => {
+    // Debug: Log sortConfig received by PharmaTable
+    console.log('PharmaTable received sortConfig:', sortConfig);
     const theme = useTheme();
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -183,7 +187,11 @@ export const ReusableTable = <T,>({
                     />
                     <Button
                         variant="contained"
-                        startIcon={<FilterListIcon />}
+                        startIcon={
+                            showFilters 
+                                ? <FilterListOffIcon />
+                                : <FilterAltIcon />
+                        }
                         onClick={onShowFiltersToggle}
                         sx={{
                             minWidth: 151,
@@ -248,8 +256,11 @@ export const ReusableTable = <T,>({
                                     key={index}
                                     onClick={() => column.sortable !== false && onSortRequest(column.key as string)}
                                     sx={{
+                                        fontFamily: "'Lexend', sans-serif",
                                         fontWeight: 500,
-                                        fontSize: isTabletOrMobile ? '12px' : '14px',
+                                        fontSize: '16px',
+                                        lineHeight: '24px',
+                                        color: '#1A212B',
                                         padding: '12px',
                                         bgcolor: '#ffffff',
                                         whiteSpace: 'nowrap',
@@ -267,29 +278,37 @@ export const ReusableTable = <T,>({
                                         ) : column.headerRender ? column.headerRender() : column.header}
 
                                         {column.sortable !== false && (
-                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                {sortConfig.key === column.key ? (
-                                                    <img
-                                                        src={sortIcon}
-                                                        alt="Sort"
-                                                        style={{
-                                                            width: 12,
-                                                            height: 12,
-                                                            transform: sortConfig.direction === 'asc' ? 'rotate(0deg)' : 'rotate(180deg)',
-                                                            transition: 'transform 0.2s',
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <img
-                                                        src={sortIcon}
-                                                        alt="Sort"
-                                                        style={{
-                                                            width: 12,
-                                                            height: 12,
-                                                            opacity: 0.5,
-                                                        }}
-                                                    />
-                                                )}
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.2 }}>
+                                                <KeyboardArrowUpIcon
+                                                    sx={{
+                                                        fontSize: 16,
+                                                        color: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#5C17E5' : '#B0BEC5',
+                                                        fontWeight: sortConfig.key === column.key && sortConfig.direction === 'asc' ? 'bold' : 'normal',
+                                                        backgroundColor: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#F3E8FF' : 'transparent',
+                                                        borderRadius: '4px',
+                                                        padding: '2px',
+                                                        transition: 'all 0.3s ease',
+                                                        '&:hover': {
+                                                            color: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#4A14C7' : '#5C17E5',
+                                                            backgroundColor: '#F3E8FF',
+                                                        },
+                                                    }}
+                                                />
+                                                <KeyboardArrowDownIcon
+                                                    sx={{
+                                                        fontSize: 16,
+                                                        color: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#5C17E5' : '#B0BEC5',
+                                                        fontWeight: sortConfig.key === column.key && sortConfig.direction === 'desc' ? 'bold' : 'normal',
+                                                        backgroundColor: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#F3E8FF' : 'transparent',
+                                                        borderRadius: '4px',
+                                                        padding: '2px',
+                                                        transition: 'all 0.3s ease',
+                                                        '&:hover': {
+                                                            color: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#4A14C7' : '#5C17E5',
+                                                            backgroundColor: '#F3E8FF',
+                                                        },
+                                                    }}
+                                                />
                                             </Box>
                                         )}
                                     </Box>
@@ -319,7 +338,11 @@ export const ReusableTable = <T,>({
                                         <TableCell
                                             key={colIndex}
                                             sx={{
-                                                fontSize: isTabletOrMobile ? '11px' : '13px',
+                                                fontFamily: "'Lexend', sans-serif",
+                                                fontWeight: 400,
+                                                fontSize: '14px',
+                                                lineHeight: '20px',
+                                                color: '#1A212B',
                                                 padding: '12px',
                                                 whiteSpace: 'normal',
                                                 wordBreak: 'break-word',

@@ -137,29 +137,39 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
       </Box>
       <Paper variant="outlined" sx={{ p: PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.PAPER_PADDING }}>
         <Grid container spacing={PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.GRID_SPACING} alignItems="center">
-          <Grid item xs={2}>
+          <Grid item xs={1.5}>
             <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
               {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.PRODUCT_NAME}
             </Typography>
           </Grid>
-          <Grid item xs={2}>
+          <Grid item xs={1.5}>
             <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
               {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.TYPE}
             </Typography>
           </Grid>
-          <Grid item xs={2}>
+          <Grid item xs={1.5}>
             <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
               {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.QUANTITY}
             </Typography>
           </Grid>
-          <Grid item xs={2}>
+          <Grid item xs={1.5}>
             <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
               {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.HSN_CODE}
             </Typography>
           </Grid>
-          <Grid item xs={2}>
+          <Grid item xs={1.5}>
             <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
               {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.AMOUNT}
+            </Typography>
+          </Grid>
+          <Grid item xs={1.5}>
+            <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
+              Transaction Number
+            </Typography>
+          </Grid>
+          <Grid item xs={1.5}>
+            <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
+              Payment Vendor
             </Typography>
           </Grid>
         </Grid>
@@ -173,13 +183,13 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
         ) : (
           editableProducts.map((product, index) => (
           <Grid container spacing={PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.GRID_SPACING} sx={{ mt: PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.ROW_MARGIN_TOP }} alignItems="center" key={index}>
-            <Grid item xs={2}>
+            <Grid item xs={1.5}>
               <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.productName}</Typography>
             </Grid>
-            <Grid item xs={2}>
+            <Grid item xs={1.5}>
               <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.type}</Typography>
             </Grid>
-            <Grid item xs={2}>
+            <Grid item xs={1.5}>
               {/* {editingIndex === index ? (
                 <TextField
                   name="quantity"
@@ -193,11 +203,17 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
                 <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.quantity}</Typography>
               {/* )} */}
             </Grid>
-            <Grid item xs={2}>
+            <Grid item xs={1.5}>
               <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.hsnCode}</Typography>
             </Grid>
-            <Grid item xs={2}>
+            <Grid item xs={1.5}>
               <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.amount}</Typography>
+            </Grid>
+            <Grid item xs={1.5}>
+              <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.transaction_number || 'N/A'}</Typography>
+            </Grid>
+            <Grid item xs={1.5}>
+              <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.payment_vendor || 'N/A'}</Typography>
             </Grid>
             {/* <Grid item xs={2} sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'flex-start' }}>
               {editingIndex === index ? (
