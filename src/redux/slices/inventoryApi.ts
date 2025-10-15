@@ -5,10 +5,14 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 // Define interfaces for your API responses
 export interface InventoryItem {
-  id: string;
+  id?: string;
   name: string;
-  quantity: number;
+  currentQuantity: number;
+  minQuantity?: number;
+  maxQuantity?: number;
+  batchNumber?: string;
   expiryDate?: string;
+  daysPastExpiry?: number;
 }
 
 export interface InventorySummary {
@@ -83,7 +87,6 @@ export const inventoryApi = createApi({
       providesTags: ["Inventory"],
     }),
     getInventorySummary: builder.query<InventorySummary, void>({
-      // Corrected endpoint name to match the API
       query: () => "inventory/get-alert-counts",
       providesTags: ["Inventory"],
     }),

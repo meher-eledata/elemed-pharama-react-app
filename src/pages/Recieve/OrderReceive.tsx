@@ -471,7 +471,9 @@ const OrderReceive: React.FC = () => {
 
       if (searchTerm.trim()) {
         sortableItems = sortableItems.filter(item =>
-          item.reNo.toLowerCase().includes(searchTerm.toLowerCase())
+          item.reNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.reBy.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
 
@@ -848,7 +850,7 @@ const OrderReceive: React.FC = () => {
                   }}
                 >
                   <TextField
-                    placeholder="Search..."
+                    placeholder="Search by receipt number, supplier, or received by..."
                     value={searchTerm}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => handleSearchChange(e)}
                     InputProps={{
@@ -863,8 +865,8 @@ const OrderReceive: React.FC = () => {
                         backgroundColor: '#fff',
                         boxShadow: 'inset 0 0 0 1px #BFD1E6',
                         '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-                        '&:hover': { boxShadow: 'inset 0 0 0 1px #AFC3DD' },
-                        '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #9EB6D6' },
+                        '&:hover': { boxShadow: 'inset 0 0 0 1px #5C17E5' },
+                        '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #5C17E5' },
                       },
                     }}
                     sx={{ flex: 1, borderRadius: '12px' }}

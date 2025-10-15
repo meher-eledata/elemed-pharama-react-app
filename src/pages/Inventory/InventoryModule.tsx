@@ -56,13 +56,7 @@ function isErrorWithMessage(error: unknown): error is { message: string } {
   );
 } 
 type StockType = 'low' | 'excess' | 'expired';
-type InventoryItem = RTKInventoryItem & {
-  batchNumber?: string;
-  minQuantity?: number;
-  maxQuantity?: number;
-  currentQuantity?: number;
-  daysPastExpiry?: number;
-};
+type InventoryItem = RTKInventoryItem;
 type FilterKey =
   | 'name'
   | 'batchNumber'
@@ -102,8 +96,15 @@ const InventoryModule: React.FC = () => {
   const { data: expiredStockItems = [], isLoading: isExpiredStockLoading, error: expiredStockError } =
     useGetExpiredStockQuery(undefined, { skip: selectedStockType !== 'expired' });
 
-  const { data: inventorySummary, isLoading: isSummaryLoading /*, error: summaryError */ } =
+  const { data: inventorySummary, isLoading: isSummaryLoading, error: summaryError } =
     useGetInventorySummaryQuery();
+
+  // Debug: Log API responses
+  console.log('Inventory Summary:', inventorySummary);
+  console.log('Summary Error:', summaryError);
+  console.log('Low Stock Items:', lowStockItems);
+  console.log('Excess Stock Items:', excessStockItems);
+  console.log('Expired Stock Items:', expiredStockItems);
 
   const currentTableData = useMemo(() => {
     switch (selectedStockType) {
@@ -150,7 +151,7 @@ const InventoryModule: React.FC = () => {
     setFilterType('name');
     setSearchQuery('');
     setShowFilters(false);
-    setSortConfig({ key: '', direction: 'asc' });
+    setSortConfig({ key: 'name', direction: 'asc' });
   }, [selectedStockType]);
 
   const getButtonStyle = (tab: StockType) => ({
@@ -212,9 +213,9 @@ const InventoryModule: React.FC = () => {
       });
     }
 
-    // Apply sorting - always sort, use default if no specific sort
-    const currentSortKey = sortConfig.key || 'name';
-    const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
+    // Apply sorting - always sort using current sortConfig
+    const currentSortKey = sortConfig.key;
+    const currentDirection = sortConfig.direction;
     
     filtered = [...filtered].sort((a, b) => {
       let aValue: any;
@@ -273,9 +274,8 @@ const InventoryModule: React.FC = () => {
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
-      // Revert to default sorting instead of clearing
-      setSortConfig({ key: 'name', direction: 'asc' });
-      return;
+      // Cycle back to ascending for the same column
+      direction = 'asc';
     }
     setSortConfig({ key, direction });
   };
@@ -288,7 +288,7 @@ const InventoryModule: React.FC = () => {
 
   const handleSelectAllClick = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const allIds = paginatedData.map((item) => item.id);
+      const allIds = paginatedData.map((item) => item.id || item.name);
       setSelectedItems(allIds);
       return;
     }
@@ -327,8 +327,8 @@ const InventoryModule: React.FC = () => {
 
   const renderRowCheckbox = (item: InventoryItem) => (
     <Checkbox
-      checked={selectedItems.indexOf(item.id) !== -1}
-      onClick={(event) => handleRowClick(event, item.id)}
+      checked={selectedItems.indexOf(item.id || item.name) !== -1}
+      onClick={(event) => handleRowClick(event, item.id || item.name)}
       icon={<Box sx={checkboxBoxStyle} />}
       checkedIcon={<Box sx={checkboxCheckedBoxStyle} />}
       sx={checkboxStyle}

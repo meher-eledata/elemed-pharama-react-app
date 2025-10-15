@@ -151,7 +151,24 @@ const LoginForm: React.FC = () => {
               color: "#1A212B",
               borderRadius: "12px", // rounded corners
               height: "49px", // custom height
-                // border:'1px solid #728197',
+              "& fieldset": {
+                borderColor: "#9AA8BC",
+              },
+              "&:hover fieldset": {
+                borderColor: "#9AA8BC",
+              },
+              "&.Mui-focused fieldset": {
+                borderColor: "#5C17E5",
+                outline: "none",
+              },
+              "&.Mui-focused": {
+                outline: "none",
+              },
+            },
+            "& .MuiOutlinedInput-root": {
+              "&.Mui-focused": {
+                outline: "none",
+              },
             },
           }}
         />
@@ -191,7 +208,24 @@ const LoginForm: React.FC = () => {
               color: "#1A212B",
               borderRadius: "12px", // rounded corners
               height: "49px", // custom height
-              // border:'1px solid #728197',
+              "& fieldset": {
+                borderColor: "#9AA8BC",
+              },
+              "&:hover fieldset": {
+                borderColor: "#9AA8BC",
+              },
+              "&.Mui-focused fieldset": {
+                borderColor: "#5C17E5",
+                outline: "none",
+              },
+              "&.Mui-focused": {
+                outline: "none",
+              },
+            },
+            "& .MuiOutlinedInput-root": {
+              "&.Mui-focused": {
+                outline: "none",
+              },
             },
           }}
           InputProps={{

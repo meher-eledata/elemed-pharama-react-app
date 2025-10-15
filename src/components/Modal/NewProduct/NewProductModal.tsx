@@ -564,14 +564,23 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                             setFormErrors(prev => ({ ...prev, expiry: '' }));
                           }
                         }}
+                        openTo="day"
                         slotProps={{
                           textField: {
                             fullWidth: true,
                             variant: 'outlined',
                             error: !!formErrors.expiry,
                             helperText: formErrors.expiry,
-                            placeholder: 'Select expiry date',
+                            placeholder: 'Enter expiry date',
                             sx: {
+                              '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                                borderWidth: '2px',
+                              },
+                              '& .MuiOutlinedInput-root:hover fieldset': {
+                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                                borderWidth: '2px',
+                              },
                               '& .MuiOutlinedInput-root': {
                                 height: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
                                 borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
@@ -582,7 +591,11 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                                   borderWidth: '2px',
                                 },
                                 '&:hover fieldset': {
-                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                                  borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                                  borderWidth: '2px',
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
                                   borderWidth: '2px',
                                 },
                                 '&.Mui-focused fieldset': {
@@ -590,9 +603,167 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                                   borderWidth: '2px',
                                   boxShadow: `0 0 0 3px ${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR}20`,
                                 },
+                                '&.Mui-focused': {
+                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                                  borderWidth: '2px',
+                                },
+                              },
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+                                borderWidth: '2px',
+                              },
+                              '&:focus-within .MuiOutlinedInput-notchedOutline': {
+                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                                borderWidth: '2px',
+                              },
+                              '&:focus-within fieldset': {
+                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                                borderWidth: '2px',
+                              },
+                              '&:hover': {
+                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                              },
+                              '&:hover .MuiOutlinedInput-root': {
+                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                              },
+                              '&:hover .MuiOutlinedInput-root fieldset': {
+                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
+                                borderWidth: '2px',
+                              },
+                              '& .MuiInputLabel-root': {
+                                color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                                '&.Mui-focused': {
+                                  color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                                },
+                              },
+                              '& .MuiOutlinedInput-input::placeholder': {
+                                color: '#728197',
+                                opacity: 1,
+                              },
+                              '& .MuiOutlinedInput-input': {
+                                color: '#728197',
+                                fontWeight: '400',
+                                '&::placeholder': {
+                                  color: '#728197',
+                                  opacity: 1,
+                                  fontWeight: '400',
+                                },
+                              },
+                              '& input::placeholder': {
+                                color: '#728197',
+                                opacity: 1,
+                                fontWeight: '400',
+                              },
+                              '& input': {
+                                color: '#728197',
+                                fontWeight: '400',
                               },
                             }
-                          }
+                          },
+                          popper: {
+                            placement: 'top-start',
+                            modifiers: [
+                              {
+                                name: 'flip',
+                                enabled: false, // Disable automatic flipping to prevent opening downward
+                              },
+                              {
+                                name: 'preventOverflow',
+                                options: {
+                                  boundary: 'viewport',
+                                  altBoundary: true,
+                                },
+                              },
+                            ],
+                            sx: {
+                              '& .MuiPaper-root': {
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                                border: '1px solid #E6ECF5',
+                              },
+                              '& .MuiDayCalendar-root': {
+                                width: '280px',
+                                padding: '16px',
+                              },
+                              '& .MuiDayCalendar-header': {
+                                color: '#5C17E5',
+                                fontWeight: '600',
+                                fontSize: '14px',
+                                marginBottom: '8px',
+                              },
+                              '& .MuiDayCalendar-weekDayLabel': {
+                                color: '#5C17E5',
+                                fontWeight: '600',
+                                fontSize: '12px',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              },
+                              '& .MuiDayCalendar-weekContainer': {
+                                marginBottom: '4px',
+                              },
+                              '& .MuiPickersDay-root': {
+                                width: '32px',
+                                height: '32px',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1A212B',
+                                borderRadius: '50%',
+                                margin: '2px',
+                                backgroundColor: 'transparent',
+                                '&:hover': {
+                                  backgroundColor: '#F3E8FF !important',
+                                  color: '#5C17E5 !important',
+                                },
+                                '&.Mui-selected': {
+                                  backgroundColor: '#5C17E5 !important',
+                                  color: '#ffffff !important',
+                                  '&:hover': {
+                                    backgroundColor: '#4A14C7 !important',
+                                    color: '#ffffff !important',
+                                  },
+                                },
+                                '&.MuiPickersDay-today': {
+                                  border: '1px solid #D1D5DB',
+                                  color: '#5C17E5',
+                                  backgroundColor: 'transparent',
+                                  '&:hover': {
+                                    backgroundColor: '#F3E8FF !important',
+                                    color: '#5C17E5 !important',
+                                  },
+                                  '&.Mui-selected': {
+                                    backgroundColor: '#5C17E5 !important',
+                                    color: '#ffffff !important',
+                                    '&:hover': {
+                                      backgroundColor: '#4A14C7 !important',
+                                      color: '#ffffff !important',
+                                    },
+                                  },
+                                },
+                              },
+                              '& .MuiPickersCalendarHeader-root': {
+                                padding: '0 8px 16px 8px',
+                                '& .MuiPickersCalendarHeader-labelContainer': {
+                                  '& .MuiPickersCalendarHeader-label': {
+                                    fontSize: '16px',
+                                    fontWeight: '600',
+                                    color: '#1A212B',
+                                  },
+                                },
+                                '& .MuiIconButton-root': {
+                                  color: '#5C17E5',
+                                  '&:hover': {
+                                    backgroundColor: '#F3E8FF',
+                                  },
+                                },
+                              },
+                            },
+                          },
                         }}
                       />
                     </Box>

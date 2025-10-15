@@ -904,13 +904,170 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 updateEditingData("batch", formattedDate);
               }}
               minDate={dayjs()} // Disable past dates
+              openTo="day"
               slotProps={{
                 textField: {
                   size: 'small',
                   fullWidth: true,
                   placeholder: 'DD/MM/YYYY',
-                  sx: inputFieldStyles
-                }
+                  sx: {
+                    '& .MuiOutlinedInput-root': {
+                      height: '32px',
+                      borderRadius: '6px',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #9AA8BC',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        border: 'none',
+                        borderRadius: '6px',
+                      },
+                      '&:hover': {
+                        border: '2px solid #9AA8BC',
+                        borderRadius: '6px',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          border: 'none',
+                          borderRadius: '6px',
+                        },
+                      },
+                      '&.Mui-focused': {
+                        border: '2px solid #9AA8BC',
+                        borderRadius: '6px',
+                        outline: 'none',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          border: 'none',
+                          borderRadius: '6px',
+                        },
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: '#728197',
+                      '&.Mui-focused': {
+                        color: '#728197',
+                      },
+                    },
+                    '& .MuiOutlinedInput-input::placeholder': {
+                      color: '#728197',
+                      opacity: 1,
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      color: '#728197',
+                      padding: '6px 8px',
+                      fontSize: '13px',
+                      lineHeight: '18px',
+                      '&::placeholder': {
+                        color: '#728197',
+                        opacity: 1,
+                      },
+                    },
+                    '& input::placeholder': {
+                      color: '#728197',
+                      opacity: 1,
+                    },
+                    '& input': {
+                      color: '#728197',
+                    },
+                  },
+                },
+                popper: {
+                  placement: 'bottom-start',
+                  modifiers: [
+                    {
+                      name: 'flip',
+                      enabled: false, // Disable automatic flipping to prevent opening upward
+                    },
+                    {
+                      name: 'preventOverflow',
+                      options: {
+                        boundary: 'viewport',
+                        altBoundary: true,
+                      },
+                    },
+                  ],
+                  sx: {
+                    '& .MuiPaper-root': {
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                      border: '1px solid #E6ECF5',
+                    },
+                    '& .MuiDayCalendar-root': {
+                      width: '280px',
+                      padding: '16px',
+                    },
+                    '& .MuiDayCalendar-header': {
+                      color: '#5C17E5',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      marginBottom: '8px',
+                    },
+                    '& .MuiDayCalendar-weekDayLabel': {
+                      color: '#5C17E5',
+                      fontWeight: '600',
+                      fontSize: '12px',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                    '& .MuiDayCalendar-weekContainer': {
+                      marginBottom: '4px',
+                    },
+                    '& .MuiPickersDay-root': {
+                      width: '32px',
+                      height: '32px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#1A212B',
+                      borderRadius: '50%',
+                      margin: '2px',
+                      backgroundColor: 'transparent',
+                      '&:hover': {
+                        backgroundColor: '#F3E8FF !important',
+                        color: '#5C17E5 !important',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: '#5C17E5 !important',
+                        color: '#ffffff !important',
+                        '&:hover': {
+                          backgroundColor: '#4A14C7 !important',
+                          color: '#ffffff !important',
+                        },
+                      },
+                      '&.MuiPickersDay-today': {
+                        border: '1px solid #D1D5DB',
+                        color: '#5C17E5',
+                        backgroundColor: 'transparent',
+                        '&:hover': {
+                          backgroundColor: '#F3E8FF !important',
+                          color: '#5C17E5 !important',
+                        },
+                        '&.Mui-selected': {
+                          backgroundColor: '#5C17E5 !important',
+                          color: '#ffffff !important',
+                          '&:hover': {
+                            backgroundColor: '#4A14C7 !important',
+                            color: '#ffffff !important',
+                          },
+                        },
+                      },
+                    },
+                    '& .MuiPickersCalendarHeader-root': {
+                      padding: '0 8px 16px 8px',
+                      '& .MuiPickersCalendarHeader-labelContainer': {
+                        '& .MuiPickersCalendarHeader-label': {
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#1A212B',
+                        },
+                      },
+                      '& .MuiIconButton-root': {
+                        color: '#5C17E5',
+                        '&:hover': {
+                          backgroundColor: '#F3E8FF',
+                        },
+                      },
+                    },
+                  },
+                },
               }}
             />
           </LocalizationProvider>
@@ -1409,7 +1566,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         </Box>
 
-        {/* Invoice Date field (kept unchanged) */}
+        {/* Invoice Date field (UPDATED: DatePicker implementation) */}
         <Box
           sx={{
             display: "flex",
@@ -1430,80 +1587,110 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             {orderLabels.invoiceDate}
           </Typography>
 
-          <TextField
-            variant="outlined"
-            fullWidth
-            value={invoiceDate}
-            onChange={(e) => {
-              let value = e.target.value;
-              
-              // Remove all non-digit characters
-              const digitsOnly = value.replace(/\D/g, "");
-              
-              // Format with slashes
-              let formatted = "";
-              if (digitsOnly.length > 0) {
-                formatted = digitsOnly.substring(0, 2);
-              }
-              if (digitsOnly.length >= 3) {
-                formatted += "/" + digitsOnly.substring(2, 4);
-              }
-              if (digitsOnly.length >= 5) {
-                formatted += "/" + digitsOnly.substring(4, 8);
-              }
-              
-              setInvoiceDate(formatted);
-            }}
-            inputProps={{ inputMode: "numeric", pattern: "[0-9/]*", maxLength: 10 }}
-            onKeyDown={(e) => {
-              // Allow backspace, delete, arrow keys, tab, escape
-              if ([8, 9, 27, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
-                  // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                  (e.keyCode === 65 && e.ctrlKey === true) ||
-                  (e.keyCode === 67 && e.ctrlKey === true) ||
-                  (e.keyCode === 86 && e.ctrlKey === true) ||
-                  (e.keyCode === 88 && e.ctrlKey === true)) {
-                return;
-              }
-              // Allow only numbers
-              if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-                e.preventDefault();
-              }
-            }}
-            placeholder={orderLabels.dateFormat}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "12px",
-                height: "48px",
-                backgroundColor: "#FFFFFF",
-                "& fieldset": { borderColor: "#9AA8BC" },
-                "&:hover fieldset": { borderColor: "#9AA8BC" },
-                "&.Mui-focused fieldset": { 
-                  borderColor: "#9AA8BC",
-                  outline: "none",
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              value={invoiceDate ? dayjs(invoiceDate, 'DD/MM/YYYY') : null}
+              onChange={(newValue: Dayjs | null) => {
+                const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
+                setInvoiceDate(formattedDate);
+              }}
+              slotProps={{
+                textField: {
+                  size: 'small',
+                  fullWidth: true,
+                  placeholder: orderLabels.dateFormat,
                 },
-                "&.Mui-focused": {
-                  outline: "none",
+                popper: {
+                  placement: 'bottom-start',
+                  sx: {
+                    '& .MuiPaper-root': {
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                      border: '1px solid #E6ECF5',
+                    },
+                    '& .MuiDayCalendar-root': {
+                      width: '280px',
+                      padding: '16px',
+                    },
+                    '& .MuiDayCalendar-header': {
+                      color: '#5C17E5',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      marginBottom: '8px',
+                    },
+                    '& .MuiDayCalendar-weekDayLabel': {
+                      color: '#5C17E5',
+                      fontWeight: '600',
+                      fontSize: '12px',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                    '& .MuiDayCalendar-weekContainer': {
+                      marginBottom: '4px',
+                    },
+                    '& .MuiPickersDay-root': {
+                      width: '32px',
+                      height: '32px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#1A212B',
+                      borderRadius: '50%',
+                      margin: '2px',
+                      backgroundColor: 'transparent',
+                      '&:hover': {
+                        backgroundColor: '#F3E8FF !important',
+                        color: '#5C17E5 !important',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: '#5C17E5 !important',
+                        color: '#ffffff !important',
+                        '&:hover': {
+                          backgroundColor: '#4A14C7 !important',
+                          color: '#ffffff !important',
+                        },
+                      },
+                      '&.MuiPickersDay-today': {
+                        border: '1px solid #D1D5DB',
+                        color: '#5C17E5',
+                        backgroundColor: 'transparent',
+                        '&:hover': {
+                          backgroundColor: '#F3E8FF !important',
+                          color: '#5C17E5 !important',
+                        },
+                        '&.Mui-selected': {
+                          backgroundColor: '#5C17E5 !important',
+                          color: '#ffffff !important',
+                          '&:hover': {
+                            backgroundColor: '#4A14C7 !important',
+                            color: '#ffffff !important',
+                          },
+                        },
+                      },
+                    },
+                    '& .MuiPickersCalendarHeader-root': {
+                      padding: '0 8px 16px 8px',
+                      '& .MuiPickersCalendarHeader-labelContainer': {
+                        '& .MuiPickersCalendarHeader-label': {
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#1A212B',
+                        },
+                      },
+                      '& .MuiIconButton-root': {
+                        color: '#5C17E5',
+                        '&:hover': {
+                          backgroundColor: '#F3E8FF',
+                        },
+                      },
+                    },
+                  },
                 },
-              },
-              "& .MuiOutlinedInput-input": {
-                padding: "12px 16px",
-                fontFamily: "Lexend",
-                fontSize: "16px",
-                lineHeight: "24px",
-                color: "#728197",
-              },
-            }}
-            InputProps={{
-              endAdornment: invoiceDate ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setInvoiceDate("")}>
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            }}
-          />
+              }}
+            />
+          </LocalizationProvider>
         </Box>
         
         {/* Payment method (UPDATED: Autocomplete for searchable dropdown) */}
@@ -2005,18 +2192,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     display: "none",
                   },
                   "&:hover fieldset": { 
-                    borderColor: "transparent",
+                    borderColor: "#5C17E5",
                   },
                   "&.Mui-focused fieldset": { 
-                    borderColor: "transparent",
+                    borderColor: "#5C17E5",
                     outline: "none",
                   },
                   "&.Mui-focused": {
                     outline: "none",
-                    border: "1px solid #D1D5DB",
+                    border: "3px solid #5C17E5",
                   },
                   "&:hover": {
-                    border: "1px solid #D1D5DB",
+                    border: "2px solid #5C17E5",
                   },
                 },
                 "& .MuiInputBase-input": {

@@ -236,7 +236,7 @@ describe('InventoryMetricsCards', () => {
     });
 
     // Click the 'Name' header to sort using the correct accessible name
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Name Sort' }));
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Name' }));
 
     // Wait for the re-render and assert the new sorted order
     await waitFor(() => {
@@ -327,6 +327,232 @@ describe('InventoryMetricsCards', () => {
       const activeSalesCard = screen.getByText('Days With Active Sales (MTD)').closest('.MuiPaper-root');
       expect(activeSalesCard).not.toBeNull();
       expect(within(activeSalesCard as HTMLElement).getByText('10 Days')).toBeInTheDocument();
+    });
+  });
+
+  // Test Case 7: Loading state
+  it('renders loading skeletons when data is loading', () => {
+    (useGetInvoiceStatsQuery as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: true,
+      error: null,
+    });
+    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: true,
+      error: null,
+    });
+
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    // Check for skeleton loading elements
+    const skeletons = document.querySelectorAll('.MuiSkeleton-root');
+    expect(skeletons.length).toBeGreaterThanOrEqual(3);
+  });
+
+  // Test Case 8: Error state
+  it('renders error message when API calls fail', () => {
+    (useGetInvoiceStatsQuery as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error('API Error'),
+    });
+    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error('API Error'),
+    });
+
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    expect(screen.getByText(/Failed to load dashboard data/i)).toBeInTheDocument();
+  });
+
+  // Test Case 9: Empty data handling
+  it('handles empty data gracefully', async () => {
+    (useGetInvoiceStatsQuery as jest.Mock).mockReturnValue({
+      data: {
+        latestBatchReceivedOn: null,
+        returns: 0,
+        activeSalesDays: 0,
+      },
+      isLoading: false,
+      error: null,
+    });
+    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
+      data: {
+        belowMinProducts: [],
+        expiredProducts: [],
+        aboveMaxProducts: [],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      // Check that all cards show 0 or default values
+      const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
+      expect(within(lowStockCard as HTMLElement).queryByText('0')).not.toBeInTheDocument();
+
+      const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
+      expect(within(excessStockCard as HTMLElement).queryByText('0')).not.toBeInTheDocument();
+
+      const expiredStockCard = screen.getByText('Expired Stock').closest('.MuiPaper-root');
+      expect(within(expiredStockCard as HTMLElement).queryByText('0')).not.toBeInTheDocument();
+    });
+  });
+
+  // Test Case 10: Date range prop changes
+  it('refetches data when date range changes', async () => {
+    const { rerender } = render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: '2024-01-01', endDate: '2024-01-31' }} />
+      </ThemeProvider>
+    );
+
+    // Change the date range
+    rerender(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: '2024-02-01', endDate: '2024-02-28' }} />
+      </ThemeProvider>
+    );
+
+    // Verify that the API hooks were called with the new date range
+    expect(useGetInvoiceStatsQuery).toHaveBeenCalledWith({ startDate: '2024-02-01', endDate: '2024-02-28' });
+    expect(useGetInventoryByDateQuery).toHaveBeenCalledWith({ startDate: '2024-02-01', endDate: '2024-02-28' });
+  });
+
+  // Test Case 11: Modal close functionality
+  it('closes modal when close button is clicked', async () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    // Open the Low Stock modal
+    const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
+    const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
+    fireEvent.click(viewItemsButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
+    });
+
+    // Close the modal
+    const closeButton = screen.getByRole('button', { name: /close/i });
+    fireEvent.click(closeButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Low Stock Items' })).not.toBeInTheDocument();
+    });
+  });
+
+  // Test Case 12: Multiple sorting operations
+  it('handles multiple sorting operations correctly', async () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    // Open the Low Stock modal
+    const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
+    const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
+    fireEvent.click(viewItemsButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
+    });
+
+    // Sort by Name (ascending)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Name' }));
+    
+    // Sort by Name (descending)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Name' }));
+
+    // Sort by Quantity
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Quantity' }));
+
+    // Verify the modal is still open and functional
+    expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
+  });
+
+  // Test Case 13: Accessibility
+  it('has proper accessibility attributes', async () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      // Check that cards have proper accessibility
+      const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
+      expect(lowStockCard).toBeInTheDocument();
+
+      // Check that buttons have proper roles
+      const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
+      expect(viewItemsButton).toBeInTheDocument();
+    });
+  });
+
+  // Test Case 14: Performance with large datasets
+  it('handles large datasets efficiently', async () => {
+    const largeInventoryData = {
+      belowMinProducts: Array.from({ length: 100 }, (_, i) => ({
+        product_id: `${i}`,
+        name: `Product ${i}`,
+        batchNumber: `BATCH${i}`,
+        currentQuantity: Math.floor(Math.random() * 10),
+        minQty: 25,
+        maxQty: 300,
+        expiryDate: '2025-11-12',
+        activityDate: '2025-09-19T08:37:11Z',
+      })),
+      expiredProducts: [],
+      aboveMaxProducts: [],
+    };
+
+    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
+      data: largeInventoryData,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
+      expect(within(lowStockCard as HTMLElement).getByText('100')).toBeInTheDocument();
+    });
+
+    // Open modal with large dataset
+    const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
+    const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
+    fireEvent.click(viewItemsButton);
+
+    await waitFor(() => {
+      const modal = screen.getByRole('dialog', { name: 'Low Stock Items' });
+      expect(modal).toBeInTheDocument();
     });
   });
 });

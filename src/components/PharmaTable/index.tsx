@@ -145,6 +145,27 @@ export const ReusableTable = <T,>({
 
     return (
         <>
+            <style>
+                {`
+                    .pharma-table-search input:focus,
+                    .pharma-table-search input:focus-visible,
+                    .pharma-table-search .MuiOutlinedInput-root:focus,
+                    .pharma-table-search .MuiOutlinedInput-root:focus-visible,
+                    .pharma-table-search .MuiOutlinedInput-notchedOutline,
+                    .pharma-table-search .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+                    .pharma-table-search .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+                    .pharma-table-search .MuiInputBase-root:focus,
+                    .pharma-table-search .MuiInputBase-root:focus-visible,
+                    .pharma-table-search .MuiInputBase-root.Mui-focused {
+                        outline: none !important;
+                        box-shadow: none !important;
+                    }
+                    .pharma-table-search .MuiOutlinedInput-root.Mui-focused {
+                        outline: none !important;
+                        box-shadow: none !important;
+                    }
+                `}
+            </style>
             {hasSearchAndFilter && (
                 <Box
                     sx={{
@@ -161,6 +182,7 @@ export const ReusableTable = <T,>({
                     }}
                 >
                     <TextField
+                        className="pharma-table-search"
                         placeholder={getPlaceholder()}
                         value={currentSearchTerm}
                         onChange={onSearchChange}
@@ -176,6 +198,30 @@ export const ReusableTable = <T,>({
                                 borderRadius: '12px',
                                 backgroundColor: '#ffffff',
                                 border: '1px solid #9AA8bc',
+                                outline: 'none !important',
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    border: 'none !important',
+                                },
+                                '&:hover': {
+                                    border: '1px solid #5C17E5 !important',
+                                    outline: 'none !important',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        border: 'none !important',
+                                    },
+                                },
+                                '&.Mui-focused': {
+                                    border: '2px solid #5C17E5 !important',
+                                    outline: 'none !important',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        border: 'none !important',
+                                    },
+                                },
+                                '&:focus': {
+                                    outline: 'none !important',
+                                },
+                                '&:focus-visible': {
+                                    outline: 'none !important',
+                                },
                             },
                         }}
                         sx={{
@@ -183,6 +229,33 @@ export const ReusableTable = <T,>({
                             borderRadius: '12px',
                             border: '5px',
                             marginBottom: isTabletOrMobile ? '12px' : 0,
+                            '& .MuiOutlinedInput-root': {
+                                outline: 'none !important',
+                                '&:focus': {
+                                    outline: 'none !important',
+                                },
+                                '&:focus-visible': {
+                                    outline: 'none !important',
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    border: 'none !important',
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    border: 'none !important',
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    border: 'none !important',
+                                },
+                            },
+                            '& .MuiInputBase-root': {
+                                outline: 'none !important',
+                                '&:focus': {
+                                    outline: 'none !important',
+                                },
+                                '&:focus-visible': {
+                                    outline: 'none !important',
+                                },
+                            },
                         }}
                     />
                     <Button
@@ -246,9 +319,24 @@ export const ReusableTable = <T,>({
                     border: '1px solid #9AABB',
                     p: 0,
                     overflowX: 'auto',
+                    maxWidth: '100%',
+                    '&::-webkit-scrollbar': {
+                        height: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                        backgroundColor: '#f1f1f1',
+                        borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                        backgroundColor: '#c1c1c1',
+                        borderRadius: '4px',
+                        '&:hover': {
+                            backgroundColor: '#a8a8a8',
+                        },
+                    },
                 }}
             >
-                <Table stickyHeader sx={{ minWidth: 650 }}>
+                <Table stickyHeader sx={{ minWidth: 1200 }}>
                     <TableHead>
                         <TableRow>
                             {visibleColumns.map((column, index) => (
@@ -266,6 +354,7 @@ export const ReusableTable = <T,>({
                                         whiteSpace: 'nowrap',
                                         width: getColumnWidth(column.key as string),
                                         cursor: column.sortable !== false ? 'pointer' : 'default',
+                                        textAlign: 'left',
                                     }}
                                 >
                                     <Box display="flex" alignItems="center" gap={1}>
@@ -323,6 +412,7 @@ export const ReusableTable = <T,>({
                                     key={rowIndex}
                                     sx={{
                                         backgroundColor: '#FFFFFF !important',
+                                        borderBottom: 'none',
                                         '&:hover': {
                                             backgroundColor: '#FFFFFF !important',
                                         },
@@ -347,6 +437,7 @@ export const ReusableTable = <T,>({
                                                 whiteSpace: 'normal',
                                                 wordBreak: 'break-word',
                                                 width: getColumnWidth(column.key as string),
+                                                textAlign: 'left',
                                             }}
                                         >
                                             {column.key === 'checkbox' ? (

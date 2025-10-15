@@ -11,6 +11,7 @@ import {
 import TickMarkIcon from '../../assets/TickMark.svg';
 import PlusSymbol from '../../assets/PlusSymbol.svg';
 import DownArrow from '../../assets/DownArrow.svg';
+import DropDown from '../../assets/DropDown.svg';
 import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
 import DeleteNewIcon from '../../assets/DeleteNew.svg';
 import NewBoxIcon from '../../assets/NewBox.svg';
@@ -120,7 +121,7 @@ const CustomerDoctorDivider = styled(Divider)({
   position: 'absolute',
   top: '0',
   bottom: '0',
-  left: '50%',
+  left: '47%',
   transform: 'translateX(-50%)',
   height: '100%',
   borderColor: '#D1D5DB',
@@ -168,8 +169,14 @@ const StyledTextField = styled(TextField)({
     '&:hover fieldset': {
       border: 'none',
     },
+    '&:hover': {
+      border: '1px solid #5C17E5',
+    },
     '&.Mui-focused fieldset': {
-      border: '1px solid #D1D5DB', // Keep same border color when focused
+      border: 'none',
+    },
+    '&.Mui-focused': {
+      border: '2px solid #5C17E5',
     },
   },
   '& .MuiInputLabel-root': {
@@ -177,7 +184,7 @@ const StyledTextField = styled(TextField)({
     fontSize: '16px',
     color: '#1A212B !important', // Force the color to be applied
     '&.Mui-focused': {
-      color: '#1A212B !important', // Keep same color when focused
+      color: '#5C17E5 !important', // Purple color when focused
     },
   },
   '& .MuiInputBase-input': {
@@ -199,7 +206,7 @@ const PhoneNoField = styled(StyledTextField)({
 });
 
 const CityField = styled(StyledTextField)({
-  width: '100px', // Smaller width for City dropdown to match image
+  width: '200px', // Smaller width for City dropdown to match image
   height: '48px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
@@ -242,7 +249,7 @@ const AddButton = styled(Button)({
 });
 
 const AddLoyaltyButton = styled(AddButton)({
-  marginLeft: '98px', // Move the Add Loyalty button more to the right
+  // marginLeft: '98px', // Move the Add Loyalty button more to the right
 })
 
 const PlusIcon = styled('img')({
@@ -255,8 +262,7 @@ const DropdownIcon = styled('img')({
   height: '9px',
   position: 'absolute',
   right: '16px',
-  top: '50%',
-  transform: 'translateY(-50%)',
+  top: '16px',
   pointerEvents: 'none',
 });
 
@@ -281,6 +287,108 @@ const InvoiceText = styled(Typography)({
 });
 // --- END: FIXED/NEW STYLED COMPONENTS FOR CUSTOMER/DOCTOR SECTION ---
 
+// --- START: FINANCIAL SUMMARY SECTION STYLED COMPONENTS ---
+
+const FinancialSummaryContainer = styled(Box)({
+  width: '100%', // Full width to match table
+  height: 'auto', // Auto height to accommodate content
+  backgroundColor: '#E0EDFF',
+  borderRadius: '12px',
+  padding: '10px', // Reduced padding
+  marginTop: '24px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0px', // No gap to allow custom spacing
+});
+
+const SummaryRow = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  width: '100%',
+});
+
+const SummaryFieldsGroup = styled(Box)({
+  display: 'flex',
+  gap: '48px', // Much larger gap between different label-input pairs
+  alignItems: 'flex-start',
+});
+
+const SummaryFieldRight = styled(Box)({
+  display: 'flex',
+  alignItems: 'center', // Changed from flex-start to center for better alignment
+  gap: '4px', // Increased gap slightly for better spacing
+  minHeight: '36px', // Ensure consistent height
+});
+
+const SummaryField = styled(Box)({
+  display: 'flex',
+  alignItems: 'center', // Changed from flex-start to center for better alignment
+  gap: '4px', // Increased gap slightly for better spacing
+  minHeight: '36px', // Ensure consistent height
+});
+
+const SummaryLabel = styled(Typography)({
+  fontFamily: "'Lexend', sans-serif",
+  fontWeight: 500,
+  fontSize: '12px',
+  lineHeight: '18px',
+  color: '#728197',
+  textAlign: 'left',
+  width: '80px', // Fixed width for perfect alignment
+  whiteSpace: 'normal',
+  display: 'flex',
+  alignItems: 'center', // Center the text vertically within the label area
+  justifyContent: 'flex-start', // Align text to the left within the label area
+});
+
+const SummaryInput = styled('input')({
+  width: '72px',
+  height: '36px',
+  borderRadius: '12px',
+  border: '1px solid #9AA8BC',
+  backgroundColor: '#FFFFFF',
+  padding: '12px 16px',
+  fontFamily: "'Lexend', sans-serif",
+  fontWeight: 400,
+  fontSize: '16px',
+  lineHeight: '24px',
+  color: '#1A212B',
+  textAlign: 'left',
+  outline: 'none',
+  boxSizing: 'border-box',
+  '&:focus': {
+    borderColor: '#5C17E5',
+  },
+  '&:read-only': {
+    cursor: 'default',
+  },
+});
+
+const SummaryInputLarge = styled('input')({
+  width: '96px',
+  height: '36px',
+  borderRadius: '12px',
+  border: '1px solid #9AA8BC',
+  backgroundColor: '#FFFFFF',
+  padding: '12px 16px',
+  fontFamily: "'Lexend', sans-serif",
+  fontWeight: 400,
+  fontSize: '16px',
+  lineHeight: '24px',
+  color: '#1A212B',
+  textAlign: 'left',
+  outline: 'none',
+  boxSizing: 'border-box',
+  '&:focus': {
+    borderColor: '#5C17E5',
+  },
+  '&:read-only': {
+    cursor: 'default',
+  },
+});
+
+// --- END: FINANCIAL SUMMARY SECTION STYLED COMPONENTS ---
 
 const ActionButtons = styled(Box)({
   display: 'flex',
@@ -548,7 +656,7 @@ const SalesReceipt: React.FC = () => {
       key: 'unitPrice',
       header: 'Unit/Price',
       render: (item) => (
-        <Box sx={{ textAlign: 'right' }}>
+        <Box sx={{ textAlign: 'left' }}>
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
             Rs. {item.unitPrice}
           </Typography>
@@ -562,7 +670,7 @@ const SalesReceipt: React.FC = () => {
       key: 'discount',
       header: 'Dis',
       render: (item) => (
-        <Box sx={{ textAlign: 'right' }}>
+        <Box sx={{ textAlign: 'left' }}>
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
             Rs. {item.discount}
           </Typography>
@@ -576,7 +684,7 @@ const SalesReceipt: React.FC = () => {
       key: 'cgst',
       header: 'CGST',
       render: (item) => (
-        <Box sx={{ textAlign: 'right' }}>
+        <Box sx={{ textAlign: 'left' }}>
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
             {item.cgst}
           </Typography>
@@ -590,7 +698,7 @@ const SalesReceipt: React.FC = () => {
       key: 'sgst',
       header: 'SGST',
       render: (item) => (
-        <Box sx={{ textAlign: 'right' }}>
+        <Box sx={{ textAlign: 'left' }}>
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
             {item.sgst}
           </Typography>
@@ -604,7 +712,7 @@ const SalesReceipt: React.FC = () => {
       key: 'igst',
       header: 'IGST',
       render: (item) => (
-        <Box sx={{ textAlign: 'right' }}>
+        <Box sx={{ textAlign: 'left' }}>
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
             {item.igst}
           </Typography>
@@ -618,7 +726,7 @@ const SalesReceipt: React.FC = () => {
       key: 'amount',
       header: 'Amount',
       render: (item) => (
-        <Box sx={{ textAlign: 'right' }}>
+        <Box sx={{ textAlign: 'left' }}>
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
             {item.amount}
           </Typography>
@@ -642,7 +750,6 @@ const SalesReceipt: React.FC = () => {
     }
   ];
 
-  // Search and filter configuration - empty to hide search and filter UI
   const searchAndFilterConfig: SearchAndFilterConfig = {
     filterOptions: []
   };
@@ -747,14 +854,17 @@ const SalesReceipt: React.FC = () => {
         </CustomerDetailsColumn>
 
         {/* Doctor and Invoice Column */}
+        {/* <CustomerDoctorDivider orientation="vertical" /> */}
         <DoctorInvoiceColumn>
           {/* Doctor/Invoice Row 1 */}
+          {/* <CustomerDoctorDivider orientation="vertical" /> */}
           <SectionRow>
             <DoctorNameField
               label="Doctor Name"
               variant="outlined"
               placeholder="Doctor Name"
             />
+            {/* <CustomerDoctorDivider orientation="vertical" /> */}
             <InvoiceDetails>
               <InvoiceText>Invoice No :</InvoiceText>
               <InvoiceText>786889090556</InvoiceText>
@@ -776,6 +886,7 @@ const SalesReceipt: React.FC = () => {
               />
               <DropdownIcon src={DownArrow} alt="Dropdown" />
             </Box>
+            <CustomerDoctorDivider orientation="vertical" />
             <InvoiceDetails>
               <InvoiceText>Invoice Date :</InvoiceText>
               <InvoiceText>15 Aug 2025</InvoiceText>
@@ -808,6 +919,115 @@ const SalesReceipt: React.FC = () => {
           currentFilter={currentFilter}
         />
       </Box>
+
+      {/* No. Of. Copies Dropdown */}
+      <Box sx={{ marginTop: '24px', marginBottom: '24px' }}>
+        <Box sx={{ position: 'relative', display: 'inline-block' }}>
+          <StyledTextField
+            label="No. Of. Copies"
+            variant="outlined"
+            placeholder=""
+            sx={{ 
+              width: '206px', 
+              height: '40px',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #9AA8BC',
+                padding: '12px 40px 12px 16px',
+                '& fieldset': {
+                  border: 'none',
+                },
+                '&:hover fieldset': {
+                  border: 'none',
+                },
+                '&.Mui-focused fieldset': {
+                  border: '1px solid #9AA8BC',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '14px',
+                color: '#728197',
+                '&.Mui-focused': {
+                  color: '#728197',
+                },
+              },
+              '& .MuiInputBase-input': {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '14px',
+                color: '#1A212B',
+                padding: '0',
+              },
+            }}
+          />
+          <DropdownIcon src={DropDown} alt="Dropdown" />
+        </Box>
+      </Box>
+
+      {/* Financial Summary Section */}
+      <FinancialSummaryContainer>
+        {/* First Row */}
+        <SummaryRow>
+          <SummaryFieldsGroup>
+            <SummaryField>
+              <SummaryLabel>Out Standing (Rs)</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+            <SummaryField>
+              <SummaryLabel>Avl. Loyal Points</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+            <SummaryField>
+              <SummaryLabel>Redeemable (Rs)</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+            <SummaryField>
+              <SummaryLabel>Disc (Rs)</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+          </SummaryFieldsGroup>
+          <SummaryFieldRight>
+            <SummaryLabel>Sub Total (Rs)</SummaryLabel>
+            <SummaryInputLarge value="0.0" readOnly />
+          </SummaryFieldRight>
+        </SummaryRow>
+
+        {/* Horizontal Divider */}
+        <Box sx={{ 
+          width: '100%', 
+          height: '1px', 
+          backgroundColor: '#7281974D', 
+          margin: '16px 0',
+          opacity: 0.8
+        }} />
+
+        {/* Second Row */}
+        <SummaryRow>
+          <SummaryFieldsGroup>
+            <SummaryField>
+              <SummaryLabel>Tax (Rs)</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+            <SummaryField>
+              <SummaryLabel>Loyalty Applied (Rs)</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+            <SummaryField>
+              <SummaryLabel>Round Off (Rs)</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+            <SummaryField>
+              <SummaryLabel>Disc (%)</SummaryLabel>
+              <SummaryInput value="0.0" readOnly />
+            </SummaryField>
+          </SummaryFieldsGroup>
+          <SummaryFieldRight>
+            <SummaryLabel>Net Amount (Rs)</SummaryLabel>
+            <SummaryInputLarge value="0.0" readOnly />
+          </SummaryFieldRight>
+        </SummaryRow>
+      </FinancialSummaryContainer>
 
       {/* Customer Modal */}
       <CustomerModal

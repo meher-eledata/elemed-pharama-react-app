@@ -212,14 +212,15 @@ export default function SalePage() {
             minWidth: 200,
             '& .MuiOutlinedInput-root': {
               borderRadius: '8px',
+              '&:hover fieldset': {
+                borderColor: '#5C17E5',
+              },
               '&.Mui-focused fieldset': {
                 borderColor: '#5C17E5',
-              
               },
             },
             '& .MuiInputLabel-root.Mui-focused': {
               color: '#5C17E5',
-                
             },
           }}
         />
@@ -234,14 +235,15 @@ export default function SalePage() {
             width: 80,
             '& .MuiOutlinedInput-root': {
               borderRadius: '8px',
+              '&:hover fieldset': {
+                borderColor: '#5C17E5',
+              },
               '&.Mui-focused fieldset': {
                 borderColor: '#5C17E5',
-            
               },
             },
             '& .MuiInputLabel-root.Mui-focused': {
               color: '#5C17E5',
-              
             },
           }}
         />
