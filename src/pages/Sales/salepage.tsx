@@ -1,73 +1,386 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Box, Typography, Snackbar, Alert } from "@mui/material";
+import { StandardButton } from "../../components/Common";
+import { useDispatch, useSelector } from "react-redux";
+import { ReusableTable } from "../../components/PharmaTable";
+import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
+import { 
+  useGetProductTypeQuery, 
+  useLazyGetProductTypeQuery, 
+  useValidateSaleMutation
+} from "../../redux/slices/salesApi";
+import { useGetProductsQuery } from "../../redux/slices/receiveApi";
+import { 
+  addToCart,
+  removeFromCart,
+  updateItemQuantity,
+  updateItemDetails,
+  clearCart,
+  setCartItems,
+  saveFormData,
+  clearFormData,
+  bulkDeleteItems,
+  selectCartItems,
+  selectCartTotal,
+  selectCartItemsCount,
+  selectFormData,
+  CartItem
+} from "../../redux/slices/cartSlice";
+import { RootState } from "../../redux/store";
+import { SALES_PAGE_LABELS } from "../../config/label/SalesPage.labels";
+import { SALES_PAGE_CONSTANTS } from "../../config/constants/SalesPage.constants";
+import { useDebounce } from "../../hooks/useDebounce";
+
+// Import Types
+import { Product } from "./SalesPage.types";
+
+// Import Utilities
 import {
-  Box,
-  Button,
-  Typography,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  // 🆕 Import Divider and Paper if you want to apply the Figma styling
-  // import { Divider, Paper, Stack } from "@mui/material"; 
-} from "@mui/material";
-import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import { ReusableTable, TableColumn } from "../../components/PharmaTable";
-// 💡 NOTE: The previous conversation mentioned ProductSearchBar.
-// If you want to use the previous Figma implementation, you need to import it here.
-// For now, I'll stick to fixing the checkbox issue in the current code structure.
+  processProductOptions,
+  extractProductId,
+  calculateCartTotal,
+  canAddToCart,
+  createCartItem,
+  getInitialFormState,
+} from "./SalesPage.utils";
 
-interface Product {
-  id: string;
-  name: string;
-  batch: string;
-  avlQty: string;
-  mrp: number;
-  sp: number;
-  expiry: string;
-}
+// Import Table Columns
+import { getTableColumns } from "./SalesPage.columns";
 
-const productTypes = ["CAPSULE", "TABLET", "SYRUP"];
-const brands = ["Brand A", "Brand B", "Brand C"];
+// Import Components
+import ProductSelectionForm from "./components/ProductSelectionForm";
+import ValidationErrorAlert from "./components/ValidationErrorAlert";
+import BulkActionsBar from "./components/BulkActionsBar";
+
+// Mock products data
+const products: Product[] = [
+  {
+    id: "1",
+    name: "2-0 Mersilk Syringe",
+    batch: "2897655790...",
+    avlQty: "28 Capsule",
+    mrp: 50,
+    sp: 50,
+    expiry: "21 May, 2025",
+    quantity: 10,
+    type: "Capsule",
+    discount: 0,
+  },
+  {
+    id: "2",
+    name: "3-0 Mersilk 90cm NW 5003 SUTURE",
+    batch: "3289765764...",
+    avlQty: "3 Capsule",
+    mrp: 5,
+    sp: 5,
+    expiry: "2 Jun, 2025",
+    quantity: 10,
+    type: "Capsule",
+    discount: 0,
+  },
+];
 
 export default function SalePage() {
-  const [productType, setProductType] = useState(productTypes[0]);
-  const [brand, setBrand] = useState(brands[0]);
-  const [qty, setQty] = useState(10);
-  const [findProduct, setFindProduct] = useState("OTTOCAP CAPSULE");
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
-
-  // 🆕 Dummy state for SP/MRP toggle (defaulting to SP for the "active" style)
-  const [priceType, setPriceType] = useState<'SP' | 'MRP'>('SP');
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   
-  // Sorting state
+  // Redux selectors
+  const cartItems = useSelector(selectCartItems);
+  const cartTotal = useSelector(selectCartTotal);
+  const cartItemsCount = useSelector(selectCartItemsCount);
+  const formData = useSelector(selectFormData);
+  
+  // Form State
+  const [productType, setProductType] = useState("");
+  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [brand, setBrand] = useState(SALES_PAGE_CONSTANTS.BRANDS[0]);
+  const [qty, setQty] = useState(SALES_PAGE_CONSTANTS.DEFAULT_QUANTITY);
+  const [discount, setDiscount] = useState(SALES_PAGE_CONSTANTS.DEFAULT_DISCOUNT);
+  const [findProduct, setFindProduct] = useState("");
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [productsData, setProductsData] = useState<Product[]>(products);
+  const [isProductSelected, setIsProductSelected] = useState(false);
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [validationError, setValidationError] = useState<string>("");
+  const [validatedData, setValidatedData] = useState<any>(null);
+  const [productId, setProductId] = useState<string>("");
+
+  // UI State
+  const [priceType, setPriceType] = useState<'SP' | 'MRP'>(SALES_PAGE_CONSTANTS.PRICE_TYPE_SP as 'SP');
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+  
+  // Toast State
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
+  
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
-    key: 'name',
-    direction: 'asc'
+    key: SALES_PAGE_CONSTANTS.DEFAULT_SORT_KEY,
+    direction: SALES_PAGE_CONSTANTS.SORT_DIRECTION_ASC
   });
 
+  // RTK Query hooks
+  const { 
+    data: apiProducts = [], 
+    isLoading: isProductsLoading,
+    error: productsError,
+    isFetching: isProductsFetching
+  } = useGetProductsQuery();
+  const [getProductType, { isLoading: isProductTypeLoading }] = useLazyGetProductTypeQuery();
+  const [validateSale, { isLoading: isValidating }] = useValidateSaleMutation();
+  
+  // Cart is managed by Redux - no need for session storage
+  useEffect(() => {
+    console.log('🛒 Cart loaded from Redux:', cartItems);
+  }, [cartItems]);
+  
+  // Debug: Log API response
+  useEffect(() => {
+    if (productsError) {
+      console.error('Products API Error Details:', productsError);
+    }
+    if (apiProducts.length > 0) {
+    } else {
+    }
+  }, [apiProducts, isProductsLoading, productsError, isProductsFetching]);
+  
+  // Extract product names for autocomplete
+  const productOptions = useMemo(() => processProductOptions(apiProducts), [apiProducts]);
 
-  const products: Product[] = [
-    {
-      id: "1",
-      name: "2-0 Mersilk Syringe",
-      batch: "2897655790...",
-      avlQty: "28 Capsule",
-      mrp: 50,
-      sp: 50,
-      expiry: "21 May, 2025",
-    },
-    {
-      id: "2",
-      name: "3-0 Mersilk 90cm NW 5003 SUTURE",
-      batch: "3289765764...",
-      avlQty: "3 Capsule",
-      mrp: 5,
-      sp: 5,
-      expiry: "2 Jun, 2025",
-    },
-  ];
+  // Helper function to show toast messages
+  const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
+  // Monitor validation error state changes
+  useEffect(() => {
+  }, [validationError]);
+
+  // Debounced validation parameters
+  const debouncedQty = useDebounce(qty, 500);
+  const debouncedProductType = useDebounce(productType, 500);
+  const debouncedDiscount = useDebounce(discount, 500);
+
+  // Validate sale with debouncing
+  useEffect(() => {
+    const validateProduct = async () => {
+      if (!findProduct || !productId || debouncedQty <= 0 || !debouncedProductType) {
+        setValidationError("");
+        setValidatedData(null);
+        return;
+      }
+
+      try {
+        const requestPayload = {
+          product_name: findProduct,
+          product_id: productId,
+          quantity: debouncedQty,
+          type: debouncedProductType,
+          disc: debouncedDiscount / 100,
+        };
+        
+        console.log('🔄 Debounced validation call with params:', requestPayload);
+        
+        // Direct API call with debounced parameters
+        const response = await validateSale(requestPayload).unwrap();
+
+        if (response.message && !response.mrp && !response.selling_price) {
+          console.error('❌ Backend returned error in success response:', response.message);
+          setValidatedData(null);
+          setValidationError(response.message);
+        } else {
+          setValidatedData(response);
+          setValidationError("");
+        }
+      } catch (error: any) {
+        console.error('❌ Validation error:', error);
+        setValidatedData(null);
+        
+        let errorMessage = "";
+        if (error.data && error.data.message) {
+          errorMessage = error.data.message;
+        } else if (error.data && error.data.error) {
+          errorMessage = error.data.error;
+        } else if (error.message) {
+          errorMessage = error.message;
+        } else if (typeof error.data === 'string') {
+          errorMessage = error.data;
+        } else {
+          errorMessage = "Unable to validate product availability";
+        }
+        
+        setValidationError(errorMessage);
+      }
+    };
+
+    validateProduct();
+  }, [findProduct, productId, debouncedQty, debouncedProductType, debouncedDiscount, validateSale]);
+
+  // Product Selection Handlers
+  const handleProductInputChange = (value: string) => {
+    setFindProduct(value);
+    if (value !== findProduct) {
+      setIsProductSelected(false);
+      setProductId("");
+      setValidationError("");
+      setValidatedData(null);
+    }
+  };
+
+  const handleProductChange = async (value: string | null) => {
+    if (value && typeof value === 'string') {
+      setFindProduct(value);
+      setIsProductSelected(true);
+      
+      setProductType("");
+      setAvailableTypes([]);
+      setShowTypeDropdown(false);
+      setValidationError("");
+      setValidatedData(null);
+      
+      const productID = extractProductId(apiProducts, value);
+      
+      
+      if (productID) {
+        setProductId(productID);
+        
+        const numericId = parseInt(productID);
+        if (numericId > 0) {
+          try {
+            const result = await getProductType({ productID: numericId }).unwrap();
+            
+            if (result && result.length > 0) {
+              const types = result.map(item => item.type).filter(type => type && type.trim() !== '');
+              setAvailableTypes(types);
+              setShowTypeDropdown(true);
+              
+              if (types.length === 1) {
+                setProductType(types[0]);
+              } else if (types.length > 1) {
+              }
+            } else {
+              setShowTypeDropdown(false);
+            }
+          } catch (error) {
+            console.error('Error fetching product types:', error);
+            setShowTypeDropdown(false);
+          }
+        }
+      } else {
+        console.error('❌ Failed to extract product ID from selected product');
+      }
+    } else {
+      handleClearProduct();
+    }
+  };
+
+  const handleClearProduct = () => {
+    const initialState = getInitialFormState(
+      SALES_PAGE_CONSTANTS.DEFAULT_QUANTITY,
+      SALES_PAGE_CONSTANTS.DEFAULT_DISCOUNT
+    );
+    setFindProduct(initialState.findProduct);
+    setQty(initialState.qty);
+    setDiscount(initialState.discount);
+    setProductType(initialState.productType);
+    setAvailableTypes(initialState.availableTypes);
+    setShowTypeDropdown(initialState.showTypeDropdown);
+    setIsProductSelected(initialState.isProductSelected);
+    setProductId(initialState.productId);
+    setValidationError(initialState.validationError);
+    setValidatedData(initialState.validatedData);
+  };
+
+  // Add to Cart Handler
+  const handleAddToCart = async () => {
+    const validation = canAddToCart(
+      findProduct,
+      qty,
+      availableTypes,
+      productType,
+      validationError,
+      validatedData
+    );
+
+    if (!validation.canAdd) {
+      showToast(validation.message || 'Cannot add product to cart', 'warning');
+      return;
+    }
+
+    const newCartItem = createCartItem(
+      findProduct,
+      qty,
+      productType,
+      availableTypes,
+      discount,
+      validatedData,
+      SALES_PAGE_CONSTANTS.DEFAULT_PRODUCT_STRUCTURE.expiry
+    );
+
+    // Dispatch to Redux instead of local state
+    dispatch(addToCart(newCartItem));
+    handleClearProduct();
+    showToast('Product added to cart successfully!', 'success');
+    
+  };
+
+  // Edit/Delete Handlers
+  const handleEditClick = (productId: string) => {
+    setEditingRowId(productId);
+  };
+
+  const handleSaveClick = () => {
+    setEditingRowId(null);
+  };
+
+  const handleCancelClick = () => {
+    setEditingRowId(null);
+  };
+
+  const handleDeleteClick = (productId?: string) => {
+    if (productId) {
+      setItemsToDelete([productId]);
+    } else {
+      setItemsToDelete(selectedItems);
+    }
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    const itemCount = itemsToDelete.length;
+    // Dispatch to Redux instead of local state
+    dispatch(bulkDeleteItems(itemsToDelete));
+    setSelectedItems(prev => prev.filter(id => !itemsToDelete.includes(id)));
+    setDeleteDialogOpen(false);
+    setItemsToDelete([]);
+    showToast(`${itemCount} item${itemCount > 1 ? 's' : ''} removed from cart`, 'success');
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setItemsToDelete([]);
+  };
+
+  const handleNext = () => {
+    if (cartItems.length === 0) {
+      showToast('Please add items to cart before proceeding', 'warning');
+      return;
+    }
+    
+    const totalAmount = cartTotal; // Use Redux selector
+    
+    navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, { 
+      state: { 
+        cartItems: cartItems,
+        totalAmount: totalAmount 
+      } 
+    });
+  };
 
   // Sorting handler
   const handleSortRequest = (key: string) => {
@@ -75,22 +388,20 @@ export default function SalePage() {
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
-      // Revert to default sorting instead of clearing
-      setSortConfig({ key: 'name', direction: 'asc' });
+      setSortConfig({ key: SALES_PAGE_CONSTANTS.DEFAULT_SORT_KEY, direction: SALES_PAGE_CONSTANTS.SORT_DIRECTION_ASC });
       return;
     }
     setSortConfig({ key, direction });
   };
 
-  // Apply sorting to products
+  // Apply sorting to cart items
   const sortedProducts = useMemo(() => {
-    // Always apply sorting - if no specific sort, use default
-    const currentSort = sortConfig.key || 'name';
-    const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
+    const currentSort = sortConfig.key || SALES_PAGE_CONSTANTS.DEFAULT_SORT_KEY;
+    const currentDirection = sortConfig.key ? sortConfig.direction : SALES_PAGE_CONSTANTS.SORT_DIRECTION_ASC;
     
-    return [...products].sort((a, b) => {
-      const aValue = a[currentSort as keyof Product];
-      const bValue = b[currentSort as keyof Product];
+    return [...cartItems].sort((a, b) => {
+      const aValue = a[currentSort as keyof CartItem];
+      const bValue = b[currentSort as keyof CartItem];
 
       if (typeof aValue === "string" && typeof bValue === "string") {
         return currentDirection === "asc"
@@ -103,237 +414,76 @@ export default function SalePage() {
       }
       return 0;
     });
-  }, [products, sortConfig]);
+  }, [cartItems, sortConfig]);
 
-  // Note: Checkbox handling is now managed by the ReusableTable component
-  // The table will automatically handle select all and individual row selection
+  // Get table columns
+  const columns = getTableColumns({
+    editingRowId,
+    selectedItems,
+    dispatch,
+    handleEditClick,
+    handleSaveClick,
+    handleCancelClick,
+    handleDeleteClick,
+  });
 
-  // 🚨 IMPORTANT FIX for Checkbox Header Icon:
-  // The sorting icon (near the checkbox in the image) is likely rendered by PharmaTable
-  // because it assumes any column can be sorted. By setting the `header` to null/undefined
-  // and ONLY using `headerRender`, we hint to the table to just render the custom component.
-  const columns: TableColumn<Product>[] = [
-    {
-      key: "checkbox",
-      header: "", 
-      sortable: false, // Disable sorting for checkbox column
-    },
-    { key: "name", header: "Product Name", render: (item) => item.name },
-    { key: "batch", header: "Batch No", render: (item) => item.batch },
-    { key: "avlQty", header: "Available Qty", render: (item) => item.avlQty },
-    { key: "mrp", header: "MRP", render: (item) => item.mrp },
-    { key: "sp", header: "SP", render: (item) => item.sp },
-    { key: "expiry", header: "Expiry Date", render: (item) => item.expiry },
-  ];
-
-  const totalAmount = products.reduce((acc, item) => acc + item.sp, 0);
-
-  // 🆕 Helper for the SP/MRP toggle styling (mimicking Figma)
-  const renderPriceToggle = () => (
-    <Box sx={{ display: 'flex', borderRadius: 1, overflow: 'hidden' }}>
-      <Button
-        variant={priceType === 'SP' ? 'contained' : 'outlined'}
-        size="small"
-        onClick={() => setPriceType('SP')}
-        sx={{
-          // Custom styling to match Figma's look
-          bgcolor: priceType === 'SP' ? 'white' : 'transparent',
-          color: 'black', // Black text
-          border: '1px solid',
-          borderRadius:'10px',
-          borderColor: priceType === 'SP' ? 'grey.400' : 'grey.400', // Default gray border
-          '&:hover': {
-            bgcolor: priceType === 'SP' ? 'white' : 'grey.100',
-            color: 'black',
-            borderColor: 'grey.400', // Keep gray on hover
-          },
-          '&:focus': {
-            borderColor: '#5C17E5', // Purple border when focused
-            color: 'black',
-          }
-        }}
-      >
-        SP
-      </Button>
-      <Button
-        variant={priceType === 'MRP' ? 'contained' : 'outlined'}
-        size="small"
-        onClick={() => setPriceType('MRP')}
-        sx={{
-          bgcolor: priceType === 'MRP' ? 'white' : 'transparent',
-          color: 'black', // Black text
-          border: '1px solid',
-          borderRadius:'10px',
-          borderColor: priceType === 'MRP' ? 'grey.400' : 'grey.400', // Default gray border
-          // Offset the previous button's border
-          marginLeft: '-1px', 
-          '&:hover': {
-            bgcolor: priceType === 'MRP' ? 'white' : 'grey.100',
-            color: 'black',
-            borderColor: 'grey.400', // Keep gray on hover
-          },
-          '&:focus': {
-            borderColor: '#5C17E5', // Purple border when focused
-            color: 'black',
-          }
-        }}
-      >
-        MRP
-      </Button>
-    </Box>
-  );
+  const totalAmount = cartTotal; // Use Redux selector instead of calculation
 
   return (
     <Box sx={{ p: 0 }}>
       <Typography variant="h4" fontWeight={700} mb={3}>
-        Select Product
+        {SALES_PAGE_LABELS.PAGE_TITLE}
       </Typography>
 
-      {/* Top Section - Styled to approximate the Figma bar */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8, // Increased gap from 3 to 4 for more spacing
-          mb: 4, // Increased margin bottom for table separation
-          background: "#f7f9fc", // Light background from Figma
-          p: 2,
-          borderRadius: 2,
-          
-        }}
-      >
-        {/* Find Product */}
-        <TextField
-          label="Find Product"
-          value={findProduct}
-          onChange={(e) => setFindProduct(e.target.value)}
-          size="medium" // Set to medium for better visual bulk
-          sx={{ 
-            minWidth: 200,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '8px',
-              '&:hover fieldset': {
-                borderColor: '#5C17E5',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#5C17E5',
-              },
-            },
-            '& .MuiInputLabel-root.Mui-focused': {
-              color: '#5C17E5',
-            },
-          }}
+      {/* Product Selection Form */}
+      <Box sx={{ position: 'relative' }}>
+        <ProductSelectionForm
+          findProduct={findProduct}
+          isProductSelected={isProductSelected}
+          isProductsLoading={isProductsLoading}
+          productOptions={productOptions}
+          onProductInputChange={handleProductInputChange}
+          onProductChange={handleProductChange}
+          onClearProduct={handleClearProduct}
+          qty={qty}
+          onQtyChange={setQty}
+          showTypeDropdown={showTypeDropdown}
+          availableTypes={availableTypes}
+          productType={productType}
+          onTypeChange={setProductType}
+          discount={discount}
+          onDiscountChange={setDiscount}
+          onAddToCart={handleAddToCart}
+          isValidating={isValidating}
+          validationError={validationError}
+          validatedData={validatedData}
         />
-        {/* Qty */}
-        <TextField
-          label="Qty"
-          type="number"
-          value={qty}
-          onChange={(e) => setQty(Number(e.target.value))}
-          size="medium"
-          sx={{ 
-            width: 80,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '8px',
-              '&:hover fieldset': {
-                borderColor: '#5C17E5',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#5C17E5',
-              },
-            },
-            '& .MuiInputLabel-root.Mui-focused': {
-              color: '#5C17E5',
-            },
-          }}
-        />
-        {/* Product Type */}
-        <FormControl size="medium" sx={{ minWidth: 120 }}>
-          <InputLabel>Product Type</InputLabel>
-          <Select
-            value={productType}
-            label="Product Type"
-            onChange={(e) => setProductType(e.target.value)}
-            sx={{
-              borderRadius: '8px',
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#5C17E5',
-                borderRadius:'8px',
-              },
-            }}
-          >
-            {productTypes.map((type) => (
-              <MenuItem key={type} value={type}>
-                {type}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {/* Brand */}
-        <FormControl size="medium" sx={{ minWidth: 120 }}>
-          <InputLabel>Brand</InputLabel>
-          <Select
-            value={brand}
-            label="Brand"
-            onChange={(e) => setBrand(e.target.value)}
-            sx={{
-              borderRadius: '8px',
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#5C17E5',
-                
-              },
-            }}
-          >
-            {brands.map((b) => (
-              <MenuItem key={b} value={b}>
-                {b}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
         
-        {/* SP/MRP Toggle */}
-        {renderPriceToggle()}
-
-        {/* Apply Button */}
-        <Button 
-            variant="outlined" 
-            size="large"
-            sx={{ 
-                height: 56, // Match medium TextField height
-                fontWeight: 600,
-                color: 'black', // Black text color
-                borderRadius:'15px',
-                borderColor: 'grey.400', // Default gray border
-                '&:hover': {
-                    color: 'black',
-                    borderColor: 'grey.400', // Keep gray on hover
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)', // Light background on hover
-                },
-                '&:focus': {
-                    borderColor: '#5C17E5', // Purple border when focused
-                    color: 'black',
-                },
-            }}
-        >
-            Apply
-        </Button>
+        {/* Validation Error Alert */}
+        <ValidationErrorAlert error={validationError} />
       </Box>
+
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar 
+        selectedCount={selectedItems.length} 
+        onDelete={() => handleDeleteClick()}
+      />
 
       {/* Table */}
       <ReusableTable
-        data={sortedProducts}
+        data={sortedProducts as unknown as Product[]}
         columns={columns}
-        selectedRows={selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))} // Convert string IDs to indices
+        selectedRows={selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))}
         setSelectedRows={(newSelected: number[] | ((prevState: number[]) => number[])) => {
-          // Convert indices back to string IDs
-          const indices = typeof newSelected === 'function' ? newSelected(selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))) : newSelected;
+          const indices = typeof newSelected === 'function' 
+            ? newSelected(selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))) 
+            : newSelected;
           const newSelectedIds = indices.map((index: number) => sortedProducts[index].id);
           setSelectedItems(newSelectedIds);
         }}
         totalRows={sortedProducts.length}
-        rowsPerPage={5}
-        currentPage={1}
+        rowsPerPage={SALES_PAGE_CONSTANTS.DEFAULT_ROWS_PER_PAGE}
+        currentPage={SALES_PAGE_CONSTANTS.DEFAULT_CURRENT_PAGE}
         onPageChange={() => {}}
         onSortRequest={handleSortRequest}
         sortConfig={sortConfig}
@@ -345,36 +495,52 @@ export default function SalePage() {
         currentFilterKey=""
         onFilterSelect={() => {}}
       />
-
-      {/* Total + Add to Cart */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", mt: 3 }}>
-        <Typography sx={{ mr: 3 }} fontWeight={700}>
-          Total: ₹ {totalAmount.toFixed(2)}
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddShoppingCartIcon />}
-          sx={{
-            backgroundColor: '#5C17E5', // Custom purple color
-            color: 'white',
-            borderRadius: '8px', // Rounded corners
-            padding: '12px 24px', // Adequate padding
-            fontSize: '16px', // Proper font size
-            fontWeight: 600, // Bold text
-            textTransform: 'none', // Keep original text case
-            boxShadow: 'none', // Remove default shadow
-            '&:hover': {
-              backgroundColor: '#4A12C7', // Darker purple on hover
-              boxShadow: 'none', // No shadow on hover
-            },
-            '& .MuiButton-startIcon': {
-              marginRight: '8px', // Space between icon and text
-            },
+      
+      {/* Total and Next Button */}
+      <Box sx={{ mt: 4, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+        <Typography 
+          sx={{ 
+            fontWeight: 700, 
+            fontStyle: 'italic',
+            color: 'black',
+            mb: 2
           }}
         >
-          Add To Cart
-        </Button>
+          {SALES_PAGE_LABELS.TOTAL_CART_VALUE.replace('{amount}', totalAmount.toFixed(0))}
+        </Typography>
+        <StandardButton
+          onClick={handleNext}
+          variant="primary"
+          size="large"
+        >
+          {SALES_PAGE_LABELS.NEXT_BUTTON}
+        </StandardButton>
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        title={SALES_PAGE_LABELS.DELETE_ITEMS_TITLE}
+        message={SALES_PAGE_LABELS.DELETE_CONFIRMATION_MESSAGE.replace('{count}', itemsToDelete.length.toString())}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
+
+      {/* Toast Notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity} 
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

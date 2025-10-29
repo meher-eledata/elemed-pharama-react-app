@@ -56,7 +56,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Box display="flex" alignItems="center">
-            {(value || content) && (
+            {(value !== undefined || content) && (
               <Typography
                 variant="h4"
                 sx={{
@@ -100,7 +100,9 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
                 </Typography>
               </Box>
             )}
+          </Box>
 
+          <Box display="flex" alignItems="center">
             {/* Action */}
             {actionText && (
               <Link
@@ -108,8 +110,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
                 underline="hover"
                 onClick={!disabled ? onActionClick : undefined}
                 sx={{
-                  mt: 1,
-                  ml: 2,
                   display: "inline-block",
                   fontFamily: SUMMARY_CARD_CONSTANTS.ACTION.FONT_FAMILY,
                   color: disabled
@@ -122,9 +122,8 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
                 {actionText}
               </Link>
             )}
+            {icon && <Box sx={{ height: "32px", width: "32px", ml: 1 }}>{icon}</Box>}
           </Box>
-
-          {icon && <Box sx={{ height: "32px", width: "32px" }}>{icon}</Box>}
         </Box>
       </CardContent>
     </Card>

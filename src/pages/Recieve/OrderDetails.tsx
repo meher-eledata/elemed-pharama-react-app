@@ -12,10 +12,9 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  Tooltip,
 } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -26,6 +25,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 
 import { orderLabels } from "../../config/label/OrderDetail.labels";
 import {
@@ -40,7 +40,6 @@ import PlusIcon from "../../assets/PlusIcon.svg";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
-import DropDownIcon from "../../assets/DropDown.svg"; 
 import { masterProducts, ProductMaster } from "../../data/masterData";
 
 interface OrderDetailsProps {
@@ -68,27 +67,6 @@ export interface PharmaTableRow {
   invoice_date?: string;
 }
 
-const CustomDropdownIcon = (props: any) => (
-  <svg
-    {...(props as any)}
-    width="12"
-    height="12"
-    viewBox="0 0 12 12"
-    fill="none"
-    style={{
-      pointerEvents: "none",
-      color: "#6B7280",
-    }}
-  >
-    <path
-      d="M3 4.5L6 7.5L9 4.5"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 
 const TickMarkIcon = (props: any) => (
   <svg
@@ -165,6 +143,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   // Track original receipt lines for change detection
   const [originalReceiptLines, setOriginalReceiptLines] = useState<PharmaTableRow[]>([]);
   
+  // Track original form values for change detection
+  const [originalFormValues, setOriginalFormValues] = useState({
+    supplierName: '',
+    poNumber: '',
+    invoiceDate: '',
+    transactionNumber: '',
+    paymentVendor: '',
+    paymentMethod: 'Cash',
+  });
+  
   // Delete functionality states
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -201,7 +189,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         borderColor: '#9CA3AF',
       },
       '&.Mui-focused fieldset': {
-        borderColor: '#3B82F6',
+        borderColor: '#9AA8BC',
         borderWidth: '1px',
       },
     },
@@ -246,7 +234,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setIsSuppliersLoading(true);
       setSuppliersError(null);
       
-      const response = await fetch('http://localhost:3000/api/receive/unique-supplier-names', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/unique-supplier-names`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -262,7 +250,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       const data = await response.json();
       setSupplierOptions(data);
     } catch (error) {
-      console.error('Error fetching supplier names:', error);
       setSuppliersError(error instanceof Error ? error.message : 'Failed to fetch suppliers');
     } finally {
       setIsSuppliersLoading(false);
@@ -275,7 +262,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setIsProductsLoading(true);
       setProductsError(null);
       
-      const response = await fetch('http://localhost:3000/api/receive/get-products', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-products`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -287,7 +274,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const products = await response.json();
-      console.log('All products API response data:', products);
       
       // Extract product names from the response - API returns array of [name, id] arrays
       const productNames = products
@@ -295,10 +281,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         .map((product: any) => product[0]) // First element is the product name
         .filter((name: string) => name && name.trim() !== '');
       
-      console.log('Extracted all product names:', productNames);
       setProductOptions(productNames);
     } catch (error) {
-      console.error('Error fetching all products:', error);
       setProductsError(error instanceof Error ? error.message : 'Failed to fetch products');
       setProductOptions([]);
     } finally {
@@ -317,34 +301,64 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
 
+    console.log('🔍 Supplier data:', { selectedSupplierData, isExistingSupplier, supplierName });
+
     // Transform table data to lines format
-    const lines = pharmaTableData.map((row, index) => ({
-      product: row.productId,
-      product_id: null, // Let backend handle product ID assignment
-      received_qty: row.qtyReceived,
-      free_qty: row.qtyFree,
-      expiry_date: row.batch, // Using batch field for expiry date
-      unit_price: row.pp,
-      cgst: row.sp, // Using sp field for CGST
-      sgst: row.mrp, // Using mrp field for SGST
-      igst: row.cgst, // Using cgst field for IGST
-      discount: typeof row.sgst === 'number' ? row.sgst : 0 // Using sgst field for discount
-    }));
+    const lines = pharmaTableData.map((row, index) => {
+      // Handle expiry date formatting
+      let expiryDate: string = '';
+      if (row.batch && row.batch.trim() !== '') {
+        try {
+          // Try to parse the date in DD/MM/YYYY format
+          const parsedDate = dayjs(row.batch, 'DD/MM/YYYY');
+          if (parsedDate.isValid()) {
+            expiryDate = parsedDate.format('YYYY-MM-DD');
+          } else {
+            // Try other common date formats
+            const altParsedDate = dayjs(row.batch);
+            if (altParsedDate.isValid()) {
+              expiryDate = altParsedDate.format('YYYY-MM-DD');
+            } else {
+              console.warn(`⚠️ Invalid date format for row ${index + 1}:`, row.batch);
+              expiryDate = ''; // Send empty string instead of null
+            }
+          }
+        } catch (error) {
+          console.warn(`⚠️ Date parsing error for row ${index + 1}:`, error);
+          expiryDate = '';
+        }
+      }
+
+      const line = {
+        product: row.productId,
+        product_id: null as number | null, // Let backend handle product ID assignment
+        received_qty: Number(row.qtyReceived) || 0,
+        free_qty: Number(row.qtyFree) || 0,
+        expiry_date: expiryDate, // Properly formatted date or empty string
+        unit_price: Number(row.pp) || 0,
+        cgst: Number(row.sp) || 0, // Using sp field for CGST
+        sgst: Number(row.mrp) || 0, // Using mrp field for SGST
+        igst: Number(row.cgst) || 0, // Using cgst field for IGST
+        discount: Number(row.sgst) || 0 // Using sgst field for discount
+      };
+      console.log(`📦 Line ${index + 1}:`, line);
+      return line;
+    });
 
     const payload = {
-      supplier_name: supplierName,
+      supplier_name: supplierName.trim(),
       // Only include supplier_id if it's an existing supplier
       ...(isExistingSupplier && { supplier_id: selectedSupplierData.supplier_id }),
-      po_number: poNumber,
-      payment_method: paymentMethod,
-      payment_vendor: paymentVendor,
-      transaction_number: transactionNumber,
+      po_number: poNumber.trim(),
+      payment_method: paymentMethod || 'Cash',
+      payment_vendor: paymentVendor.trim(),
+      transaction_number: transactionNumber.trim(),
       notes: "", // Add notes field if needed
       created_by: "meher", // You might want to get this from user context
       lines: lines
     };
 
-    console.log('API Payload being sent:', payload);
+    console.log('📋 Final payload:', payload);
     return payload;
   };
 
@@ -452,10 +466,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       Edited: edited
     };
 
-    console.log('Edit API Payload being sent:', payload);
-    console.log('Changes detected:', { deleted: deleted.length, added: added.length, edited: edited.length });
-    console.log('Original receipt lines:', originalReceiptLines);
-    console.log('Current receipt lines:', pharmaTableData);
     return payload;
   };
 
@@ -480,7 +490,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setDeleteError(null);
       setDeleteSuccess(false);
 
-      const response = await fetch(`http://localhost:3000/api/receive/delete-receipt/${receiptId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/delete-receipt/${receiptId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -493,7 +503,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      console.log('Receipt deleted successfully');
       setDeleteSuccess(true);
       
       // Invalidate cache to refresh data
@@ -504,7 +513,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }, 2000);
 
     } catch (error) {
-      console.error('Error deleting receipt:', error);
       setDeleteError(error instanceof Error ? error.message : 'Failed to delete receipt');
     } finally {
       setIsDeleting(false);
@@ -538,7 +546,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       
       const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
       if (incompleteProducts.length > 0) {
-        setSaveError('Please complete all required fields for products (Product Name and Quantity Received)');
+        setSaveError('Please complete all required fields for products (Product Name, Quantity Received, and valid Expiry Date if provided)');
         setIsSaving(false);
         return;
       }
@@ -548,13 +556,52 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (isEditMode && receiptId) {
         // Use editReceipt API for existing receipts (Edit Receive Flow)
         const editPayload = transformFormDataToEditPayload();
+        console.log('📝 Edit payload:', editPayload);
         result = await editReceipt(editPayload).unwrap();
-        console.log('Receipt updated successfully:', result);
       } else {
         // Use submitReceipt API for new receipts (Add Receive Flow)
         const submitPayload = transformFormDataToApiPayload();
-        result = await submitReceipt(submitPayload).unwrap();
-        console.log('Receipt submitted successfully:', result);
+        console.log('📤 Submit payload:', submitPayload);
+        console.log('🌐 API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/');
+        
+        try {
+          result = await submitReceipt(submitPayload).unwrap();
+        } catch (rtkError) {
+          console.warn('⚠️ RTK Query failed, trying direct fetch:', rtkError);
+          
+          // Fallback to direct fetch if RTK Query fails
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
+          const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // Add authorization header if needed
+              // 'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(submitPayload)
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+
+          result = await response.json();
+          console.log('✅ Direct fetch successful:', result);
+        }
+      }
+      
+      console.log('✅ Receipt operation successful:', result);
+      
+      // Store PO number locally for display (temporary fix until backend returns receipt data)
+      if (!isEditMode) {
+        const receiptData = {
+          poNumber: poNumber,
+          supplierName: supplierName,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('lastReceiptData', JSON.stringify(receiptData));
+        console.log('💾 Stored receipt data locally:', receiptData);
       }
       
       setSaveSuccess(true);
@@ -572,11 +619,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setPaymentVendor("");
         setIsProductSelected(false);
         setSaveSuccess(false);
-                navigate('/receive/order-receive');
+        navigate('/receive/order-receive');
       }, 2000);
 
     } catch (error: any) {
-      console.error('Error submitting receipt:', error);
+      console.error('❌ Receipt submission error:', error);
+      console.error('❌ Error details:', {
+        status: error?.status,
+        data: error?.data,
+        message: error?.message,
+        originalStatus: error?.originalStatus,
+        error: error?.error
+      });
       
       // More detailed error handling
       let errorMessage = 'Failed to submit receipt';
@@ -588,9 +642,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           errorMessage = error.data.message;
         } else if (error.data.error) {
           errorMessage = error.data.error;
+        } else if (Array.isArray(error.data.errors) && error.data.errors.length > 0) {
+          errorMessage = error.data.errors[0];
         }
       } else if (error?.message) {
         errorMessage = error.message;
+      } else if (error?.status) {
+        errorMessage = `Server error (${error.status}): ${error.status === 404 ? 'Endpoint not found' : error.status === 500 ? 'Internal server error' : 'Unknown error'}`;
       }
       
       setSaveError(errorMessage);
@@ -598,6 +656,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setIsSaving(false);
     }
   };
+
 
   // Function to add new product to table
   const addProductToTable = (productName: string) => {
@@ -681,17 +740,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const validateRequiredFields = () => {
     // Check basic required fields
     if (!supplierName.trim()) {
-      console.log('Validation failed: Supplier name is empty');
       return false;
     }
     if (!poNumber.trim()) {
-      console.log('Validation failed: PO Number is empty');
       return false;
     }
     
     // Check if there's at least one product in the table
     if (pharmaTableData.length === 0) {
-      console.log('Validation failed: No products in table');
       return false;
     }
     
@@ -699,25 +755,58 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     const hasValidProducts = pharmaTableData.some(row => {
       const isValid = row.productId && row.productId.trim() !== '' && 
              row.qtyReceived && row.qtyReceived > 0;
-      console.log('Product validation:', {
-        productId: row.productId,
-        qtyReceived: row.qtyReceived,
-        batch: row.batch,
-        pp: row.pp,
-        isValid
-      });
       return isValid;
     });
     
-    console.log('Overall validation result:', hasValidProducts);
     return hasValidProducts;
   };
 
   // Function to check if a specific product row is complete
   const isProductRowComplete = (row: PharmaTableRow) => {
-    return row.productId && row.productId.trim() !== '' && 
-           row.qtyReceived && row.qtyReceived > 0;
+    const hasProductName = row.productId && row.productId.trim() !== '';
+    const hasValidQuantity = row.qtyReceived && row.qtyReceived > 0;
+    
+    // Check if expiry date is valid (if provided)
+    let hasValidExpiryDate = true;
+    if (row.batch && row.batch.trim() !== '') {
+      const parsedDate = dayjs(row.batch, 'DD/MM/YYYY');
+      hasValidExpiryDate = parsedDate.isValid();
+    }
+    
+    return hasProductName && hasValidQuantity && hasValidExpiryDate;
   };
+
+  // Function to check if any changes have been made (for edit mode)
+  const hasFormChanges = useMemo(() => {
+    if (!isEditMode) {
+      return true; // In add mode, always allow save if validation passes
+    }
+
+    // Check if form fields have changed
+    const formFieldsChanged = 
+      supplierName !== originalFormValues.supplierName ||
+      poNumber !== originalFormValues.poNumber ||
+      invoiceDate !== originalFormValues.invoiceDate ||
+      transactionNumber !== originalFormValues.transactionNumber ||
+      paymentVendor !== originalFormValues.paymentVendor ||
+      paymentMethod !== originalFormValues.paymentMethod;
+
+    // Check if table data has changed
+    const tableDataChanged = JSON.stringify(pharmaTableData) !== JSON.stringify(originalReceiptLines);
+
+    return formFieldsChanged || tableDataChanged;
+  }, [
+    isEditMode,
+    supplierName,
+    poNumber,
+    invoiceDate,
+    transactionNumber,
+    paymentVendor,
+    paymentMethod,
+    pharmaTableData,
+    originalFormValues,
+    originalReceiptLines
+  ]);
 
   // Fetch supplier names on component mount
   useEffect(() => {
@@ -729,6 +818,52 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     fetchAllProducts();
   }, []);
 
+  // Debug function to test API connectivity
+  const testApiConnection = async () => {
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
+      console.log('🧪 Testing API connection to:', apiBaseUrl);
+      
+      const response = await fetch(`${apiBaseUrl}receive/unique-supplier-names`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ API connection successful:', data);
+        return true;
+      } else {
+        console.error('❌ API connection failed:', response.status, response.statusText);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ API connection error:', error);
+      return false;
+    }
+  };
+
+  // Expose debug function to window for console testing
+  useEffect(() => {
+    (window as any).testReceiveApi = testApiConnection;
+    (window as any).debugReceivePayload = transformFormDataToApiPayload;
+    (window as any).debugCurrentForm = () => ({
+      supplierName,
+      poNumber,
+      pharmaTableData,
+      paymentMethod,
+      paymentVendor,
+      transactionNumber
+    });
+  }, [supplierName, poNumber, pharmaTableData, paymentMethod, paymentVendor, transactionNumber]);
+
+  // Debug PO number changes
+  useEffect(() => {
+    console.log('📋 PO Number updated:', poNumber);
+  }, [poNumber]);
+
   // Load existing receipt data when in edit mode
   useEffect(() => {
     if (isEditMode && receiptId) {
@@ -739,14 +874,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   // Function to fetch existing receipt lines
   const fetchReceiptLines = async () => {
     if (!receiptId) {
-      console.log('No receiptId provided for fetchReceiptLines');
       return;
     }
 
-    console.log('Fetching receipt lines for receiptId:', receiptId);
 
     try {
-      const response = await fetch('http://localhost:3000/api/receive/get-receipt-lines', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-receipt-lines`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -754,14 +887,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         body: JSON.stringify({ receipt_id: receiptId })
       });
 
-      console.log('Receipt lines API response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const receiptLines = await response.json();
-      console.log('Receipt lines API response data:', receiptLines);
       
       // Initialize transaction_number and payment_vendor from first receipt line if available
       if (receiptLines && receiptLines.length > 0) {
@@ -816,6 +947,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setPharmaTableData(transformedLines);
       // Store original data for change detection
       setOriginalReceiptLines(transformedLines);
+      
+      // Store original form values for change detection
+      setOriginalFormValues({
+        supplierName: supplierName,
+        poNumber: poNumber,
+        invoiceDate: navigationInvoiceDate || '',
+        transactionNumber: receiptLines && receiptLines.length > 0 ? (receiptLines[0].transaction_number || navigationTransactionNumber || '') : navigationTransactionNumber || '',
+        paymentVendor: receiptLines && receiptLines.length > 0 ? (receiptLines[0].payment_vendor || navigationPaymentVendor || '') : navigationPaymentVendor || '',
+        paymentMethod: paymentMethod,
+      });
     } catch (error) {
       console.error('Error fetching receipt lines:', error);
       // Set empty array on error
@@ -832,6 +973,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const pharmaTableColumns: TableColumn<PharmaTableRow>[] = [
     {
+      key: "poNumber",
+      header: "PO Number",
+      sortable: false,
+      render: (row) => (
+        <span style={{ 
+          fontWeight: 'bold',
+          color: '#5C17E5',
+          fontSize: '13px'
+        }}>
+          {poNumber || 'N/A'}
+        </span>
+      ),
+    },
+    {
       key: "productId",
       header: orderLabels.productName,
       sortable: false,
@@ -846,7 +1001,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             sx={inputFieldStyles}
           />
         ) : (
-          <span>{row.productId}</span>
+          <Tooltip title={row.productId} arrow placement="top">
+            <span style={{ 
+              display: 'inline-block',
+              maxWidth: '100px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: 'help'
+            }}>
+              {row.productId}
+            </span>
+          </Tooltip>
         )
       ),
     },
@@ -894,187 +1060,30 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       key: "batch",
       header: orderLabels.expiryDate,
       sortable: false,
-      render: (row) => (
-        editingRowId === row.id ? (
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <DatePicker
-              value={editingData.batch ? dayjs(editingData.batch, 'DD/MM/YYYY') : null}
-              onChange={(newValue: Dayjs | null) => {
-                const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
-                updateEditingData("batch", formattedDate);
-              }}
-              minDate={dayjs()} // Disable past dates
-              openTo="day"
-              slotProps={{
-                textField: {
-                  size: 'small',
-                  fullWidth: true,
-                  placeholder: 'DD/MM/YYYY',
-                  sx: {
-                    '& .MuiOutlinedInput-root': {
-                      height: '32px',
-                      borderRadius: '6px',
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #9AA8BC',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
-                        borderRadius: '6px',
-                      },
-                      '&:hover': {
-                        border: '2px solid #9AA8BC',
-                        borderRadius: '6px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: 'none',
-                          borderRadius: '6px',
-                        },
-                      },
-                      '&.Mui-focused': {
-                        border: '2px solid #9AA8BC',
-                        borderRadius: '6px',
-                        outline: 'none',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: 'none',
-                          borderRadius: '6px',
-                        },
-                      },
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: '#728197',
-                      '&.Mui-focused': {
-                        color: '#728197',
-                      },
-                    },
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#728197',
-                      opacity: 1,
-                    },
-                    '& .MuiOutlinedInput-input': {
-                      color: '#728197',
-                      padding: '6px 8px',
-                      fontSize: '13px',
-                      lineHeight: '18px',
-                      '&::placeholder': {
-                        color: '#728197',
-                        opacity: 1,
-                      },
-                    },
-                    '& input::placeholder': {
-                      color: '#728197',
-                      opacity: 1,
-                    },
-                    '& input': {
-                      color: '#728197',
-                    },
-                  },
-                },
-                popper: {
-                  placement: 'bottom-start',
-                  modifiers: [
-                    {
-                      name: 'flip',
-                      enabled: false, // Disable automatic flipping to prevent opening upward
-                    },
-                    {
-                      name: 'preventOverflow',
-                      options: {
-                        boundary: 'viewport',
-                        altBoundary: true,
-                      },
-                    },
-                  ],
-                  sx: {
-                    '& .MuiPaper-root': {
-                      borderRadius: '12px',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                      border: '1px solid #E6ECF5',
-                    },
-                    '& .MuiDayCalendar-root': {
-                      width: '280px',
-                      padding: '16px',
-                    },
-                    '& .MuiDayCalendar-header': {
-                      color: '#5C17E5',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      marginBottom: '8px',
-                    },
-                    '& .MuiDayCalendar-weekDayLabel': {
-                      color: '#5C17E5',
-                      fontWeight: '600',
-                      fontSize: '12px',
-                      width: '32px',
-                      height: '32px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    },
-                    '& .MuiDayCalendar-weekContainer': {
-                      marginBottom: '4px',
-                    },
-                    '& .MuiPickersDay-root': {
-                      width: '32px',
-                      height: '32px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#1A212B',
-                      borderRadius: '50%',
-                      margin: '2px',
-                      backgroundColor: 'transparent',
-                      '&:hover': {
-                        backgroundColor: '#F3E8FF !important',
-                        color: '#5C17E5 !important',
-                      },
-                      '&.Mui-selected': {
-                        backgroundColor: '#5C17E5 !important',
-                        color: '#ffffff !important',
-                        '&:hover': {
-                          backgroundColor: '#4A14C7 !important',
-                          color: '#ffffff !important',
-                        },
-                      },
-                      '&.MuiPickersDay-today': {
-                        border: '1px solid #D1D5DB',
-                        color: '#5C17E5',
-                        backgroundColor: 'transparent',
-                        '&:hover': {
-                          backgroundColor: '#F3E8FF !important',
-                          color: '#5C17E5 !important',
-                        },
-                        '&.Mui-selected': {
-                          backgroundColor: '#5C17E5 !important',
-                          color: '#ffffff !important',
-                          '&:hover': {
-                            backgroundColor: '#4A14C7 !important',
-                            color: '#ffffff !important',
-                          },
-                        },
-                      },
-                    },
-                    '& .MuiPickersCalendarHeader-root': {
-                      padding: '0 8px 16px 8px',
-                      '& .MuiPickersCalendarHeader-labelContainer': {
-                        '& .MuiPickersCalendarHeader-label': {
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          color: '#1A212B',
-                        },
-                      },
-                      '& .MuiIconButton-root': {
-                        color: '#5C17E5',
-                        '&:hover': {
-                          backgroundColor: '#F3E8FF',
-                        },
-                      },
-                    },
-                  },
-                },
-              }}
-            />
-          </LocalizationProvider>
+      render: (row) => {
+        const isDateValid = !row.batch || row.batch.trim() === '' || dayjs(row.batch, 'DD/MM/YYYY').isValid();
+        const hasInvalidDate = row.batch && row.batch.trim() !== '' && !dayjs(row.batch, 'DD/MM/YYYY').isValid();
+        
+        return editingRowId === row.id ? (
+          <PharmaDatePicker
+            value={editingData.batch ? dayjs(editingData.batch, 'DD/MM/YYYY') : null}
+            onChange={(newValue: Dayjs | null) => {
+              const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
+              updateEditingData("batch", formattedDate);
+            }}
+            minDate={dayjs()}
+            width={180}
+          />
         ) : (
-          <span>{row.batch}</span>
-        )
-      ),
+          <span style={{ 
+            color: hasInvalidDate ? '#EF4444' : 'inherit',
+            fontWeight: hasInvalidDate ? 'bold' : 'normal'
+          }}>
+            {row.batch || '-'}
+            {hasInvalidDate && <span style={{ fontSize: '10px', marginLeft: '4px' }}>⚠️</span>}
+          </span>
+        );
+      },
     },
     {
       key: "pp",
@@ -1274,7 +1283,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       sortableItems = sortableItems.filter(
         (item) =>
           item.productId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.batch.toLowerCase().includes(searchTerm.toLowerCase())
+          (item.batch || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -1317,21 +1326,40 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           padding: "0px",
         }}
       >
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: "bold",
-            color: themeColors.textPrimary,
-            fontSize: typography.headerSize,
-          }}
-        >
-          {isEditMode ? `${labels.orderDetails} (Editing ${receiptNumber})` : labels.orderDetails}
-        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: "bold",
+              color: themeColors.textPrimary,
+              fontSize: typography.headerSize,
+            }}
+          >
+            {isEditMode ? `${labels.orderDetails} (Editing ${receiptNumber})` : labels.orderDetails}
+          </Typography>
+          {poNumber && (
+            <Typography
+              variant="body2"
+              sx={{
+                color: '#5C17E5',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                backgroundColor: '#F3E8FF',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                display: 'inline-block',
+                width: 'fit-content'
+              }}
+            >
+              📋 PO Number: {poNumber}
+            </Typography>
+          )}
+        </Box>
       </Box>
       <Divider sx={{ marginTop: "16px", border: "0.5px solid #CBD4E1" }} />
 
       <Box sx={{ display: "flex", gap: "32px", marginTop: "10px" }}>
-        {/* supplier field (UPDATED: Autocomplete to control clear icon visibility) */}
+        {/* supplier field (UPDATED: Using standard MUI dropdown arrow) */}
         <Box
           sx={{
             display: "flex",
@@ -1354,6 +1382,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           </Typography>
           <Autocomplete
             freeSolo
+            forcePopupIcon
             options={isSuppliersLoading ? ["Loading suppliers..."] : transformedSupplierOptions}
             value={supplierName}
             onInputChange={(_, v) => setSupplierName(v)}
@@ -1376,7 +1405,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             disabled={isSuppliersLoading}
             isOptionEqualToValue={(option, value) => option === value}
             getOptionLabel={(option) => String(option)}
-            disableClearable
+            // Only show clear button when value is present
+            disableClearable={!supplierName}
+            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '20px' }} />}
             renderOption={(props, option) => {
               const isLoading = String(option) === "Loading suppliers...";
               return (
@@ -1462,47 +1493,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     lineHeight: "24px",
                     color: "#728197",
                   },
-                }}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {/* Loading spinner - show when loading */}
-                      {isSuppliersLoading && (
-                        <InputAdornment position="end">
-                          <CircularProgress size={20} />
-                        </InputAdornment>
-                      )}
-                      
-                      {/* Manually render the CloseIcon only if text is present and not loading */}
-                      {supplierName && !isSuppliersLoading && (
-                        <InputAdornment position="end">
-                          <IconButton 
-                            size="small" 
-                            onClick={(e) => { e.stopPropagation(); setSupplierName(""); }}
-                            sx={{ padding: 0, marginRight: '4px' }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </InputAdornment>
-                      )}
-                      
-                      {/* Custom Dropdown Icon - show when not loading */}
-                      {!isSuppliersLoading && (
-                        <InputAdornment 
-                          position="end" 
-                          sx={{
-                            marginRight: '8px', 
-                            transform: 'translateY(0)' 
-                          }}
-                        >
-                          <CustomDropdownIcon />
-                        </InputAdornment>
-                      )}
-                      {/* Autocomplete's default toggle button (chevron) is rendered here if not handled by renderInput */}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
+                  // Force dropdown arrow to be visible (standard MUI pattern)
+                  "& .MuiAutocomplete-endAdornment": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
+                  "& .MuiAutocomplete-popupIndicator": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
                 }}
               />
             )}
@@ -1587,113 +1586,24 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             {orderLabels.invoiceDate}
           </Typography>
 
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <DatePicker
-              value={invoiceDate ? dayjs(invoiceDate, 'DD/MM/YYYY') : null}
-              onChange={(newValue: Dayjs | null) => {
-                const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
-                setInvoiceDate(formattedDate);
-              }}
-              slotProps={{
-                textField: {
-                  size: 'small',
-                  fullWidth: true,
-                  placeholder: orderLabels.dateFormat,
-                },
-                popper: {
-                  placement: 'bottom-start',
-                  sx: {
-                    '& .MuiPaper-root': {
-                      borderRadius: '12px',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                      border: '1px solid #E6ECF5',
-                    },
-                    '& .MuiDayCalendar-root': {
-                      width: '280px',
-                      padding: '16px',
-                    },
-                    '& .MuiDayCalendar-header': {
-                      color: '#5C17E5',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      marginBottom: '8px',
-                    },
-                    '& .MuiDayCalendar-weekDayLabel': {
-                      color: '#5C17E5',
-                      fontWeight: '600',
-                      fontSize: '12px',
-                      width: '32px',
-                      height: '32px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    },
-                    '& .MuiDayCalendar-weekContainer': {
-                      marginBottom: '4px',
-                    },
-                    '& .MuiPickersDay-root': {
-                      width: '32px',
-                      height: '32px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#1A212B',
-                      borderRadius: '50%',
-                      margin: '2px',
-                      backgroundColor: 'transparent',
-                      '&:hover': {
-                        backgroundColor: '#F3E8FF !important',
-                        color: '#5C17E5 !important',
-                      },
-                      '&.Mui-selected': {
-                        backgroundColor: '#5C17E5 !important',
-                        color: '#ffffff !important',
-                        '&:hover': {
-                          backgroundColor: '#4A14C7 !important',
-                          color: '#ffffff !important',
-                        },
-                      },
-                      '&.MuiPickersDay-today': {
-                        border: '1px solid #D1D5DB',
-                        color: '#5C17E5',
-                        backgroundColor: 'transparent',
-                        '&:hover': {
-                          backgroundColor: '#F3E8FF !important',
-                          color: '#5C17E5 !important',
-                        },
-                        '&.Mui-selected': {
-                          backgroundColor: '#5C17E5 !important',
-                          color: '#ffffff !important',
-                          '&:hover': {
-                            backgroundColor: '#4A14C7 !important',
-                            color: '#ffffff !important',
-                          },
-                        },
-                      },
-                    },
-                    '& .MuiPickersCalendarHeader-root': {
-                      padding: '0 8px 16px 8px',
-                      '& .MuiPickersCalendarHeader-labelContainer': {
-                        '& .MuiPickersCalendarHeader-label': {
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          color: '#1A212B',
-                        },
-                      },
-                      '& .MuiIconButton-root': {
-                        color: '#5C17E5',
-                        '&:hover': {
-                          backgroundColor: '#F3E8FF',
-                        },
-                      },
-                    },
-                  },
-                },
-              }}
-            />
-          </LocalizationProvider>
+          <PharmaDatePicker
+            value={
+              invoiceDate 
+                ? (() => {
+                    const parsed = dayjs(invoiceDate, 'DD/MM/YYYY');
+                    return parsed.isValid() ? parsed : null;
+                  })()
+                : null
+            }
+            onChange={(newValue: Dayjs | null) => {
+              const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
+              setInvoiceDate(formattedDate);
+            }}
+            width={274}
+          />
         </Box>
         
-        {/* Payment method (UPDATED: Autocomplete for searchable dropdown) */}
+        {/* Payment method (UPDATED: Using standard MUI dropdown arrow) */}
         <Box
           sx={{
             display: "flex",
@@ -1715,11 +1625,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           </Typography>
 
           <Autocomplete
-            freeSolo
-            options={paymentMethods.filter((method) => method.toLowerCase().includes(paymentMethod.toLowerCase()))}
+            options={paymentMethods}
             value={paymentMethod}
-            onInputChange={(_, v) => setPaymentMethod(v)}
-            onChange={(_, v) => setPaymentMethod(v || "")}
+            onChange={(_, newValue) => {
+              if (newValue) {
+                setPaymentMethod(newValue);
+              }
+            }}
             disableClearable
             renderInput={(params) => (
               <TextField
@@ -1753,32 +1665,26 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     lineHeight: "24px",
                     color: "#728197",
                   },
+                  // Force dropdown arrow to be visible (standard MUI pattern)
+                  "& .MuiAutocomplete-endAdornment": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
+                  "& .MuiAutocomplete-popupIndicator": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
                 }}
                 InputProps={{
                   ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {/* Custom Dropdown Icon positioned at the very end */}
-                      <InputAdornment 
-                        position="end" 
-                        sx={{ 
-                          marginRight: '8px', 
-                          transform: 'translateY(0)' 
-                        }}
-                      >
-                        <CustomDropdownIcon />
-                      </InputAdornment>
-                      {/* Autocomplete's default toggle button (chevron) is rendered here if not handled by renderInput */}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
+                  endAdornment: params.InputProps.endAdornment, // Standard Material-UI dropdown arrow
                 }}
               />
             )}
           />
         </Box>
 
-        {/* Payment vendor field (UPDATED: Autocomplete to control clear icon visibility) */}
+        {/* Payment vendor field (UPDATED: Using standard MUI dropdown arrow) */}
         <Box
           sx={{
             display: "flex",
@@ -1800,14 +1706,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           </Typography>
 
           <Autocomplete
-            freeSolo
-            options={paymentVendors.filter((b) => b.toLowerCase().startsWith(paymentVendor.toLowerCase()))}
+            options={paymentVendors}
             value={paymentVendor}
-            onInputChange={(_, v) => setPaymentVendor(v)}
-            onChange={(_, v) => setPaymentVendor(v || "")}
+            onChange={(_, newValue) => {
+              if (newValue) {
+                setPaymentVendor(newValue);
+              }
+            }}
             onFocus={() => setIsVendorFocused(true)}
             onBlur={() => setIsVendorFocused(false)}
-            // UPDATED: Disable the default clear button rendering (clearIcon)
             disableClearable
             renderInput={(params) => (
               <TextField
@@ -1841,10 +1748,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     lineHeight: "24px",
                     color: "#728197",
                   },
+                  // Force dropdown arrow to be visible (standard MUI pattern)
+                  "& .MuiAutocomplete-endAdornment": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
+                  "& .MuiAutocomplete-popupIndicator": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
                 }}
                 InputProps={{
                   ...params.InputProps,
-                  // Manually placing the icons for better control of spacing
                   endAdornment: (
                     <>
                       {/* Manually render the CloseIcon only if text is present */}
@@ -1859,18 +1774,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                           </IconButton>
                         </InputAdornment>
                       )}
-
-                      {/* Custom Dropdown Icon positioned at the very end */}
-                      <InputAdornment 
-                        position="end" 
-                        sx={{ 
-                          marginRight: '8px', 
-                          transform: 'translateY(0)' 
-                        }}
-                      >
-                        <CustomDropdownIcon />
-                      </InputAdornment>
-                      {/* Autocomplete's default toggle button (chevron) is rendered here if not handled by renderInput */}
+                      {/* Standard Material-UI dropdown arrow */}
                       {params.InputProps.endAdornment}
                     </>
                   ),
@@ -1972,38 +1876,59 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           >
             {orderLabels.findProduct}
           </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "32px",
+            }}
+          >
           <Autocomplete
             key={isProductSelected ? 'selected' : 'not-selected'}
             freeSolo
+            forcePopupIcon
             options={[
               ...(isProductsLoading ? ["Loading products..."] : productOptions.filter(option => option && typeof option === 'string')),
               orderLabels.addProducts,
             ]}
             value={findProductTerm}
             onInputChange={(_, v) => {
-              console.log('Input changed:', v);
               setFindProductTerm(v);
-              // Reset selected state when user starts typing
-              if (v !== findProductTerm) {
-                setIsProductSelected(false);
-              }
+              // Don't automatically reset isProductSelected here
+              // It will be managed by onChange
             }}
             onChange={(_, v) => {
               if (v === orderLabels.addProducts) {
                 setIsNewProductModalOpen(true);
                 setFindProductTerm(""); // Clear field when opening modal
+                setIsProductSelected(false);
                 return;
               }
               const value = (v as string) || "";
               if (value && value !== orderLabels.addProducts && value !== "Loading products...") {
-                // Add product to table and immediately clear the input field
-                addProductToTable(value);
-                // Use setTimeout to ensure the clear happens after the selection
-                setTimeout(() => {
-                  setFindProductTerm("");
-                }, 0);
+                // Check if this is a selection from dropdown or manual typing
+                const isFromDropdown = productOptions.includes(value);
+                console.log('onChange - value:', value);
+                console.log('onChange - productOptions:', productOptions);
+                console.log('onChange - isFromDropdown:', isFromDropdown);
+                
+                if (isFromDropdown) {
+                  // Product selected from dropdown
+                  console.log('Setting isProductSelected to TRUE');
+                  setFindProductTerm(value);
+                  setIsProductSelected(true);
+                  addProductToTable(value);
+                } else {
+                  // Manual typing - don't set as selected yet
+                  console.log('Setting isProductSelected to FALSE (manual typing)');
+                  setFindProductTerm(value);
+                  setIsProductSelected(false);
+                }
               } else {
+                console.log('Setting isProductSelected to FALSE (empty or special value)');
                 setFindProductTerm(value);
+                setIsProductSelected(false);
               }
             }}
             onKeyDown={(e) => {
@@ -2011,16 +1936,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               if (e.key === 'Enter' && findProductTerm && findProductTerm !== orderLabels.addProducts) {
                 e.preventDefault();
                 addProductToTable(findProductTerm);
-                // Use setTimeout to ensure the clear happens after adding
-                setTimeout(() => {
-                  setFindProductTerm("");
-                }, 0);
+                // Clear the input field after adding to table
+                setFindProductTerm("");
+                setIsProductSelected(false);
               }
             }}
             onFocus={() => setIsFindProductFocused(true)}
             onBlur={() => setIsFindProductFocused(false)}
-            // Disable the default clear button - we'll handle it manually
-            disableClearable
+            // Only show clear button when value is present
+            disableClearable={!findProductTerm}
+            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '20px' }} />}
             ListboxProps={{
               style: {
                 maxHeight: '200px',
@@ -2082,7 +2007,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 }
                 variant="outlined"
                 sx={{
-                  width: "344px",
+                  width: "500px",
                   "& .MuiOutlinedInput-root": {
                     height: "40px",
                     borderRadius: "8px",
@@ -2119,6 +2044,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                       opacity: 1,
                     },
                   },
+                  // Force dropdown arrow to be visible (standard MUI pattern)
+                  "& .MuiAutocomplete-endAdornment": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
+                  "& .MuiAutocomplete-popupIndicator": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                  },
                 }}
                 InputProps={{
                   ...params.InputProps,
@@ -2127,64 +2061,23 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                       <SearchIcon sx={{ color: "#9CA3AF", width: "16px", height: "16px" }} />
                     </InputAdornment>
                   ),
-                  endAdornment: (
-                    <>
-                      {/* Manually render the CloseIcon only when a product was selected from dropdown */}
-                      {isProductSelected && (
-                        <InputAdornment position="end">
-                          <IconButton 
-                            size="small" 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setFindProductTerm(""); 
-                              setIsProductSelected(false);
-                            }}
-                            sx={{ padding: 0, marginRight: '4px' }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </InputAdornment>
-                      )}
-
-                      {/* Custom Dropdown Icon positioned at the very end */}
-                      <InputAdornment 
-                        position="end" 
-                        sx={{ 
-                          marginRight: '8px', 
-                          transform: 'translateY(0)' 
-                        }}
-                      >
-                        <CustomDropdownIcon />
-                      </InputAdornment>
-                      {/* Autocomplete's default toggle button (chevron) is rendered here if not handled by renderInput */}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
                 }}
               />
             )}
           />
-        </Box>
-
-        {/* Extra search bar for edit mode - positioned under Find Product */}
-        {isEditMode && (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-            }}
-          >
+          
+          {/* Search bar moved from below */}
+          {isEditMode && (
             <TextField
               placeholder="Search for items in the table below..."
               value={searchTerm}
               onChange={handleSearchChange}
               variant="outlined"
               sx={{
-                width: "344px",
+                width: "500px",
                 "& .MuiOutlinedInput-root": {
                   height: "40px",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                   backgroundColor: "#FFFFFF",
                   border: "1px solid #D1D5DB",
                   "& fieldset": { 
@@ -2196,14 +2089,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   },
                   "&.Mui-focused fieldset": { 
                     borderColor: "#5C17E5",
-                    outline: "none",
-                  },
-                  "&.Mui-focused": {
-                    outline: "none",
-                    border: "3px solid #5C17E5",
-                  },
-                  "&:hover": {
-                    border: "2px solid #5C17E5",
                   },
                 },
                 "& .MuiInputBase-input": {
@@ -2227,9 +2112,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 ),
               }}
             />
+          )}
           </Box>
-        )}
-      </Box>
+        </Box>
+
+        </Box>
 
       {/* Pharma Table */}
       <Box sx={{ 
@@ -2345,7 +2232,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             variant="contained"
             disableRipple
             disableElevation
-            disabled={isSaving || !validateRequiredFields()}
+            disabled={isSaving || !validateRequiredFields() || !hasFormChanges}
             onClick={handleSubmitReceipt}
             sx={{
               backgroundColor: saveSuccess ? "#10B981" : isSaving ? "#6B7280" : "#5C17E5",

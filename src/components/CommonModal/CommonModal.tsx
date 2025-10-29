@@ -4,10 +4,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button,
   Typography,
 } from "@mui/material";
-import { ADD_BUTTON_COLOR, ADD_BUTTON_HOVER_COLOR } from "../../config/constants/OrderReceive.constants";
+import { StandardButton } from '../Common';
 
 interface CommonModalProps {
   open: boolean;
@@ -23,44 +22,33 @@ const CommonModal: React.FC<CommonModalProps> = ({
   onClose,
 }) => {
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      sx={{
+        '& .MuiDialog-paper': {
+          maxHeight: '85vh',
+          height: 'auto',
+          width: '80%',
+        },
+        '& .MuiDialogContent-root': {
+          overflowY: 'auto',
+          maxHeight: '70vh',
+        }
+      }}
+    >
       <DialogTitle>{title}</DialogTitle>
-      <DialogContent dividers>{content}</DialogContent>
+      <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto' }}>{content}</DialogContent>
       <DialogActions>
-        <Button
+        <StandardButton
           onClick={onClose}
-          variant="contained"
-          disableElevation
-          disableRipple
-          sx={{
-            backgroundColor: ADD_BUTTON_COLOR, // Base purple
-            color: "#FFFFFF",
-            textTransform: "none",
-            borderRadius: "10px",
-            px: 2.5,
-            boxShadow: "none",
-            "&:hover": {
-              backgroundColor: ADD_BUTTON_COLOR, // 👈 Same as base color
-              boxShadow: "none",
-            },
-            "&:focus": {
-              backgroundColor: ADD_BUTTON_COLOR,
-              boxShadow: "none",
-            },
-            "&:active": {
-              backgroundColor: ADD_BUTTON_COLOR,
-              boxShadow: "none",
-            },
-            "&.Mui-focusVisible": {
-              backgroundColor: ADD_BUTTON_COLOR,
-              boxShadow: "none",
-            },
-          }}
+          variant="primary"
+          size="medium"
         >
           Close
-        </Button>
-
-
+        </StandardButton>
       </DialogActions>
     </Dialog>
   );

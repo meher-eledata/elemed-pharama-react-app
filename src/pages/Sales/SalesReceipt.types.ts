@@ -1,0 +1,52 @@
+// Sales Receipt Types and Interfaces
+
+export interface SalesReceiptItem {
+  id: string;
+  productName: string;
+  manufacturer: string;
+  batch: string;
+  expiryDate: string;
+  quantity: string;
+  type: string;
+  unitPrice: string;
+  mrp: string;
+  discount: string;
+  discountPercent: string;
+  cgst: string;
+  cgstPercent: string;
+  sgst: string;
+  sgstPercent: string;
+  igst: string;
+  igstPercent: string;
+  amount: string;
+}
+
+export interface FormData {
+  customerName: string;
+  customerMobile: string;
+  customerCity: string;
+  doctorName: string;
+  doctorMobile: string;
+  doctorEmail: string;
+  paymentMode: string;
+  insuranceCompany: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+}
+
+export interface FinancialSummary {
+  totalValue: string;
+  totalDiscount: string;
+  taxAmount: string;
+  totalPayableAmount: string;
+}
+
+export interface SalesReceiptState {
+  salesItems: SalesReceiptItem[];
+  formData: FormData;
+  financialSummary: FinancialSummary;
+  editingRowId: string | null;
+  selectedRows: number[];
+  applyGstToAll: boolean;
+}
+

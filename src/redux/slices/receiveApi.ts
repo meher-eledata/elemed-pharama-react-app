@@ -18,6 +18,7 @@ export interface ReceiptLineItem {
 export interface Receipt {
   id: number;
   po_id: number;
+  po_number?: string; // Add po_number field
   supplier_name: string;
   received_on: string;
   received_by: string;
@@ -25,7 +26,7 @@ export interface Receipt {
   total_amount: number;
   transaction_number?: string;
   payment_vendor?: string;
-  invoice_date?: string;
+  invoice_date?: string; // Invoice date from form
 }
 
 export interface EditReceiptRequest {
@@ -87,15 +88,28 @@ export interface EditReceiptResponse {
 
 // New types for receipt lines
 export interface ReceiptLine {
-  id: number;
-  name: string;
-  type: string;
+  batch_id: number;
+  cgst: string;
+  discount: string;
+  free_qty: number;
+  igst: string;
+  notes: string;
+  payment_method: string;
+  payment_vendor: string;
+  po_id: number;
+  po_line_id: number;
+  po_number: string;
+  product_id: number;
+  product_name: string;
+  receipt_line_id: number;
   received_qty: number;
-  hsn_id: string;
-  total_amount: number;
-  transaction_number?: string;
-  payment_vendor?: string;
-  invoice_date?: string;
+  sgst: string;
+  supplier_id: number;
+  supplier_name: string;
+  transaction_number: string;
+  unit_price: string;
+  hsn_id?: string; // HSN ID field from backend
+  hsn_code?: string; // HSN code field from backend (if exists)
 }
 
 export interface GetReceiptLinesRequest {
@@ -137,17 +151,12 @@ export interface DeleteReceiptLineResponse {
   message: string;
 }
 
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "../baseQuery";
+
 export const receiveApi = createApi({
   reducerPath: "receiveApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:3000/api",
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as any)?.auth?.token;
-      if (token) headers.set("authorization", `Bearer ${token}`);
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Receive", "ReceiptLines"] as const,
   endpoints: (builder) => ({
     getCurrentPurchaseOrders: builder.query<PurchaseOrder[], void>({
@@ -274,12 +283,35 @@ export const receiveApi = createApi({
         }>;
       }
     >({
-      query: (body) => ({
-        url: "receive/submit-receipt",
-        method: "POST",
-        body,
-      }),
+      query: (body) => {
+        console.log('🚀 Submitting receipt to API:', body);
+        console.log('🌐 API URL:', "receive/submit-receipt");
+        return {
+          url: "receive/submit-receipt",
+          method: "POST",
+          body,
+        };
+      },
       invalidatesTags: ["Receive"],
+    }),
+
+    // Get all products endpoint (shared across modules)
+    getProducts: builder.query<{name: string, id: number}[], void>({
+      query: () => "receive/get-products",
+      providesTags: ["Receive"],
+      transformResponse: (response: any[]) => {
+        // Extract product names and IDs from the response - API returns array of [name, id] arrays
+        const products = response
+          .filter((product: any) => product && Array.isArray(product) && product.length >= 2)
+          .map((product: any) => ({
+            name: product[0], // First element is the product name
+            id: product[1]    // Second element is the product ID
+          }))
+          .filter((product: any) => product.name && product.name.trim() !== '' && product.id);
+        
+        console.log('Extracted all products:', products);
+        return products;
+      },
     }),
   }),
 });
@@ -297,4 +329,5 @@ export const {
   useEditReceiptLineQuantityMutation,
   useDeleteReceiptLineMutation,
   useSubmitReceiptMutation,
+  useGetProductsQuery,
 } = receiveApi;

@@ -1,11 +1,20 @@
 import React from 'react';
-import { BrowserRouter, Route } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { Pages } from './pages';
+import { useTokenExpiration } from './hooks/useTokenExpiration';
+
+const AppContent = () => {
+  useTokenExpiration();
+
+  return <Pages />;
+};
 
 function App() {
-  return <BrowserRouter>
-    <Pages />
-  </BrowserRouter>;
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  );
 }
 
 export default App;

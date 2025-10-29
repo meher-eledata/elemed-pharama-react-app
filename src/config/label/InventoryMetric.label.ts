@@ -38,6 +38,7 @@ export const INVENTORY_METRICS_LABELS = {
         MAX_QTY: "Max Qty",
         EXPIRY: "Expiry",
         ACTIVITY_DATE: "Activity Date",
+        DAYS_PAST: "No Days Past",
       },
       DATE_DEFAULT: "N/A",
     },

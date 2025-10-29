@@ -1,7 +1,7 @@
 export const INVENTORY_METRICS_CONSTANTS = {
     SKELETON_HEIGHT: 150,
     DEFAULT_SORT: {
-      key: "productName",
+      key: "name",
       direction: "asc" as "asc" | "desc",
     },
     TABLE: {

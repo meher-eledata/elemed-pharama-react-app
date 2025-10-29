@@ -92,20 +92,34 @@ import {
   Divider,
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import dropdownIcon from "../../assets/DropDown.svg";
+// import dropdownIcon from "../../assets/DropDown.svg"; // Removed for standardization
 import Notification from "../../assets/Notification.svg";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../../redux/slices/authSlice";
+import { RootState } from "../../redux/store";
+import { useNavigate } from "react-router-dom";
 
 import "./TopBar.scss";
 
 interface TopBarProps {
-  name: string;
+  name?: string;
   initials?: string;
   onToggleSidebar?: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ name, initials, onToggleSidebar }) => {
+export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onToggleSidebar }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  
+  // Get user info from Redux store
+  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  
+  // Use Redux user name if available, otherwise use prop
+  const displayName = isAuthenticated && user 
+    ? `${user.first_name} ${user.last_name}` 
+    : (propName || 'Guest');
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -113,6 +127,14 @@ export const TopBar: React.FC<TopBarProps> = ({ name, initials, onToggleSidebar 
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    handleClose();
+    // Clear auth state from Redux and localStorage
+    dispatch(logout());
+    // Redirect to login page
+    navigate('/');
   };
 
   // Generate initials from the name
@@ -142,7 +164,7 @@ export const TopBar: React.FC<TopBarProps> = ({ name, initials, onToggleSidebar 
 
         <Box className="user-profile">
           <Avatar 
-            alt={name} 
+            alt={displayName} 
             className="user-avatar"
             sx={{ 
               backgroundColor: '#5C17E5', 
@@ -154,10 +176,10 @@ export const TopBar: React.FC<TopBarProps> = ({ name, initials, onToggleSidebar 
               height: 40
             }}
           >
-            {initials || getInitials(name)}
+            {initials || getInitials(displayName)}
           </Avatar>
           <Typography variant="body1" className="user-name">
-            {name}
+            {displayName}
           </Typography>
           <IconButton
             id="user-button"
@@ -168,11 +190,7 @@ export const TopBar: React.FC<TopBarProps> = ({ name, initials, onToggleSidebar 
             size="small"
             className="dropdown-arrow-button"
           >
-            <img
-              src={dropdownIcon}
-              alt="Dropdown"
-              className="dropdown-arrow-icon"
-            />
+            <KeyboardArrowDownIcon />
           </IconButton>
           <Menu
             id="user-menu"
@@ -185,7 +203,7 @@ export const TopBar: React.FC<TopBarProps> = ({ name, initials, onToggleSidebar 
           >
             <MenuItem onClick={handleClose}>Profile</MenuItem>
             <MenuItem onClick={handleClose}>My account</MenuItem>
-            <MenuItem onClick={handleClose}>Logout</MenuItem>
+            <MenuItem onClick={handleLogout}>Logout</MenuItem>
           </Menu>
         </Box>
       </Box>

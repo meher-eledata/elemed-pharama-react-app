@@ -13,8 +13,8 @@ export const ORDER_RECEIVE_TABLE_HEADERS = {
   SUPPLIER_NAME: "Supplier name",
   RECEIVED_ON: "Received on",
   RECEIVED_STATUS: "Received status",
-  CREATED_BY: "Created by",
-  TOTAL_AMOUNT: "Total amount",
+  CREATED_BY: "Created By",
+  TOTAL_AMOUNT: "Total amount (₹)",
   ACTIONS: "",
 } as const;
 
@@ -23,9 +23,9 @@ export const PURCHASE_ORDER_TABLE_HEADERS = {
   PO_NUMBER: "PO number",
   ORDERED_DATE: "Ordered date",
   SUPPLIER_NAME: "Supplier name",
-  TOTAL_AMOUNT: "Total amount",
+  TOTAL_AMOUNT: "Total amount (₹)",
   STATUS: "Status",
-  CREATED_BY: "Created by",
+  CREATED_BY: "Created By",
 } as const;
 
 export const ORDER_RECEIVE_MESSAGES = {

@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Alert, Snackbar } from '@mui/material';
+import { Box, TextField, Typography, Alert, Snackbar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { StandardButton } from '../../../components/Common';
 import { FORGOT_PASSWORD_LABELS } from '../../../config/label/forgotPassword.labels';
 import { FORGOT_PASSWORD_CONSTANTS } from '../../../config/constants/forgotPassword.constants';
 import { usePasswordRecoveryMutation } from '../../../redux/slices/authSlice';
@@ -155,7 +156,7 @@ const ForgotPassword: React.FC = () => {
               },
             },
             '& .MuiFormHelperText-root': {
-              color: emailError ? '#E36414' : 'transparent',
+              color: usernameError ? '#E36414' : 'transparent',
               fontSize: '12px',
               fontWeight: 400,
               marginLeft: '0px',
@@ -163,35 +164,15 @@ const ForgotPassword: React.FC = () => {
           }}
         />
 
-        <Button
+        <StandardButton
           type="submit"
-          variant="contained"
+          variant="primary"
+          size="large"
           fullWidth
           disabled={isLoading}
-          sx={{
-            backgroundColor: '#5C17E5',
-            borderRadius: FORGOT_PASSWORD_CONSTANTS.BUTTON_RADIUS,
-            height: FORGOT_PASSWORD_CONSTANTS.BUTTON_HEIGHT,
-            fontSize: '16px',
-            fontWeight: 500,
-            textTransform: 'none',
-            fontFamily: 'Lexend, sans-serif',
-            boxShadow: 'none',
-            color: '#FFFFFF',
-            lineHeight: '24px',
-            padding: '16px 24px',
-            '&:hover': {
-              backgroundColor: '#4a13b4',
-              boxShadow: 'none',
-            },
-            '&:disabled': {
-              backgroundColor: '#9AA8BC',
-              color: '#FFFFFF',
-            },
-          }}
         >
           {isLoading ? FORGOT_PASSWORD_LABELS.LOADING_MESSAGE : FORGOT_PASSWORD_LABELS.BUTTON_TEXT}
-        </Button>
+        </StandardButton>
       </Box>
 
       {/* Success Snackbar */}

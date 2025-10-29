@@ -11,6 +11,7 @@ import DashboardMain from "../pages/DashboardMain/DashboardMain"
 import Masterpage from "./Masters/MasterPage";
 import Sale from "./Sales/salepage";
 import SalesReceipt from "./Sales/SalesReceipt";
+import SaleHistory from "./Sales/SaleHistory";
 
 
 // Import your labels here, as you need to pass them to the component
@@ -26,29 +27,33 @@ export const Pages = () => {
         <Route path="create-password" element={<CreatePassword />} />
       </Route>
 
-      {/* Inventory Routes */}
+      {/* Dashboard Routes - NO PROTECTION */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<DashboardMain />} />
+      </Route>
+
+      {/* Inventory Routes - NO PROTECTION */}
       <Route path="/inventory" element={<DashboardLayout />}>
         <Route index element={<InventoryModule />} />
       </Route>
 
-      {/* Receive Routes */}
+      {/* Receive Routes - NO PROTECTION */}
       <Route path="/receive" element={<DashboardLayout />}>
         <Route path="order-receive" element={<OrderReceive />} />
         <Route path="order-details" element={<OrderDetails labels={orderLabels} />} />
       </Route>
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardMain />} />
+
+      {/* Master Routes - NO PROTECTION */}
+      <Route path="/master" element={<DashboardLayout />}> 
+        <Route index element={<Masterpage />} />
       </Route>
-      
-     <Route path="/master" element={<DashboardLayout/>}> 
-     <Route index element={<Masterpage/>}/>
-     </Route>
 
-     <Route path="/sales" element={<DashboardLayout/>}>
-  <Route index element={<Sale/>}/>
-  <Route path="receipt" element={<SalesReceipt/>}/>
-</Route>
-
+      {/* Sales Routes - NO PROTECTION */}
+      <Route path="/sales" element={<DashboardLayout />}>
+        <Route index element={<Sale />} />
+        <Route path="receipt" element={<SalesReceipt />} />
+        <Route path="sale-history" element={<SaleHistory />} />
+      </Route>
     </Routes>
   );
 };

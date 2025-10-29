@@ -1,13 +1,14 @@
 import React, { useState, ChangeEvent, useEffect, useMemo } from 'react';
 import {
   Box,
-  Button,
   Container,
   CircularProgress,
   Typography,
   Checkbox,
-  IconButton
+  IconButton,
+  Button
 } from '@mui/material';
+import { StandardButton } from '../../components/Common';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import PlusIcon from "../../assets/PlusIcon.svg";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
@@ -154,11 +155,6 @@ const InventoryModule: React.FC = () => {
     setSortConfig({ key: 'name', direction: 'asc' });
   }, [selectedStockType]);
 
-  const getButtonStyle = (tab: StockType) => ({
-    ...baseButtonStyle,
-    backgroundColor: selectedStockType === tab ? '#ffffff' : 'transparent',
-    borderRadius: selectedStockType === tab ? '0.5rem' : 0,
-  });
   const handleTabClick = (tab: StockType) => {
     setSelectedStockType(tab); 
     setSelectedRows([]); // Clear selected rows when tab changes
@@ -456,42 +452,19 @@ const InventoryModule: React.FC = () => {
         sx={{
           display:"flex",
           justifyContent:"space-between",
-       
+          alignItems: "center"
         }}> 
         <Typography variant="h4" sx={headerTitleStyle}>
-
-
           {INVENTORY_LABELS.pageTitle}
         </Typography>
-         <Button
-          sx={{
-            height: "40px",
-            borderRadius: "12px",
-            border: "none",
-            backgroundColor: "#5C17E5",
-            padding: "12px 16px",
-            gap: "10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            textTransform: "none",
-            fontFamily: "Lexend",
-            fontWeight: 500,
-            fontSize: "16px",
-            lineHeight: "24px",
-            color: "#f9fbfcff",
-            whiteSpace: "nowrap",
-            minWidth: "fit-content",
-            "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
-          }}
-          onClick={() => setIsNewProductModalOpen(true)}
-          
+        <StandardButton
           startIcon={<AddIcon />}
-          disableRipple
-          disableElevation
+          onClick={() => setIsNewProductModalOpen(true)}
+          variant="primary"
+          size="large"
         >
           Add Product
-        </Button>
+        </StandardButton>
       </Box>
         <NewProductModal
               open={isNewProductModalOpen}
@@ -505,23 +478,59 @@ const InventoryModule: React.FC = () => {
 
         <Box className="inventory-tabs">
           <Button
-            sx={getButtonStyle('low')}
-            variant={selectedStockType === 'low' ? 'contained' : 'outlined'}
             onClick={() => handleTabClick('low')}
+            sx={{
+              backgroundColor: selectedStockType === 'low' ? '#5C17E5' : 'transparent',
+              color: selectedStockType === 'low' ? '#FFFFFF' : '#1A212B',
+              border: selectedStockType === 'low' ? 'none' : '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '14px',
+              padding: '8px 16px',
+              minWidth: '120px',
+              '&:hover': {
+                backgroundColor: selectedStockType === 'low' ? '#4C14C7' : 'transparent',
+              },
+            }}
           >
             {INVENTORY_LABELS.lowStockTab}
           </Button>
           <Button
-            sx={getButtonStyle('excess')}
-            variant={selectedStockType === 'excess' ? 'contained' : 'outlined'}
             onClick={() => handleTabClick('excess')}
+            sx={{
+              backgroundColor: selectedStockType === 'excess' ? '#5C17E5' : 'transparent',
+              color: selectedStockType === 'excess' ? '#FFFFFF' : '#1A212B',
+              border: selectedStockType === 'excess' ? 'none' : '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '14px',
+              padding: '8px 16px',
+              minWidth: '120px',
+              '&:hover': {
+                backgroundColor: selectedStockType === 'excess' ? '#4C14C7' : 'transparent',
+              },
+            }}
           >
             {INVENTORY_LABELS.excessStockTab}
           </Button>
           <Button
-            sx={getButtonStyle('expired')}
-            variant={selectedStockType === 'expired' ? 'contained' : 'outlined'}
             onClick={() => handleTabClick('expired')}
+            sx={{
+              backgroundColor: selectedStockType === 'expired' ? '#5C17E5' : 'transparent',
+              color: selectedStockType === 'expired' ? '#FFFFFF' : '#1A212B',
+              border: selectedStockType === 'expired' ? 'none' : '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '14px',
+              padding: '8px 16px',
+              minWidth: '120px',
+              '&:hover': {
+                backgroundColor: selectedStockType === 'expired' ? '#4C14C7' : 'transparent',
+              },
+            }}
           >
             {INVENTORY_LABELS.expiredStockTab}
           </Button>

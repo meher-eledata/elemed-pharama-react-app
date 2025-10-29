@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { Box, Button, Tabs, Tab, Typography } from "@mui/material";
+import { Box, Tabs, Tab, Typography } from "@mui/material";
+import { StandardButton } from "../../components/Common";
 import AddIcon from "@mui/icons-material/Add";
 import {
   ADD_BUTTON_COLOR,
@@ -116,24 +117,14 @@ const Masterpage: React.FC = () => {
           Products
         </Typography>
 
-        <Button
-          variant="contained"
-          color="primary"
+        <StandardButton
           startIcon={<AddIcon />}
-          className="add-btn"
-          sx={{
-            backgroundColor: ADD_BUTTON_COLOR,
-            fontFamily: "lexend",
-            textTransform:'none',
-            borderRadius:'12px',
-            width: "168px",
-            height: "48px",
-            "&:hover": { backgroundColor: ADD_BUTTON_HOVER_COLOR },
-          }}
           onClick={() => setOpen(true)}
+          variant="primary"
+          size="large"
         >
           Add Product
-        </Button>
+        </StandardButton>
       </Box>
       <Box className="tab-content" sx={{
           fontFamily: "Lexend",

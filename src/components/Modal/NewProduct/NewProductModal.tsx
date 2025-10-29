@@ -158,10 +158,8 @@
 
 
 import React, { useState } from 'react';
-import { Modal, Box, Typography, TextField, Button, Grid, IconButton, Alert, CircularProgress } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { Modal, Box, Typography, TextField, Grid, IconButton, Alert, CircularProgress } from '@mui/material';
+import { StandardButton, PharmaDatePicker } from '../../Common';
 import dayjs, { Dayjs } from 'dayjs';
 import CloseIcon from '@mui/icons-material/Close';
 import styled from '@mui/system/styled';
@@ -533,7 +531,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
 
         {/* Enhanced Form Grid */}
         <Box sx={{ flex: 1 }}>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
+          
             <Grid 
               container 
               spacing={NEW_PRODUCT_MODAL_CONSTANTS.GRID.SPACING} 
@@ -556,7 +554,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                       >
                         {field.label}
                       </Typography>
-                      <DatePicker
+                      <PharmaDatePicker
                         value={expiryDate}
                         onChange={(newValue) => {
                           setExpiryDate(newValue);
@@ -564,207 +562,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                             setFormErrors(prev => ({ ...prev, expiry: '' }));
                           }
                         }}
-                        openTo="day"
-                        slotProps={{
-                          textField: {
-                            fullWidth: true,
-                            variant: 'outlined',
-                            error: !!formErrors.expiry,
-                            helperText: formErrors.expiry,
-                            placeholder: 'Enter expiry date',
-                            sx: {
-                              '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                borderWidth: '2px',
-                              },
-                              '& .MuiOutlinedInput-root:hover fieldset': {
-                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                borderWidth: '2px',
-                              },
-                              '& .MuiOutlinedInput-root': {
-                                height: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
-                                borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
-                                backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
-                                fontSize: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
-                                '& fieldset': {
-                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
-                                  borderWidth: '2px',
-                                },
-                                '&:hover fieldset': {
-                                  borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                  borderWidth: '2px',
-                                },
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                  borderWidth: '2px',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
-                                  borderWidth: '2px',
-                                  boxShadow: `0 0 0 3px ${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR}20`,
-                                },
-                                '&.Mui-focused': {
-                                  borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
-                                },
-                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                  borderWidth: '2px',
-                                },
-                              },
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
-                                borderWidth: '2px',
-                              },
-                              '&:focus-within .MuiOutlinedInput-notchedOutline': {
-                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                borderWidth: '2px',
-                              },
-                              '&:focus-within fieldset': {
-                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                borderWidth: '2px',
-                              },
-                              '&:hover': {
-                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                              },
-                              '&:hover .MuiOutlinedInput-root': {
-                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                              },
-                              '&:hover .MuiOutlinedInput-root fieldset': {
-                                borderColor: `${NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR} !important`,
-                                borderWidth: '2px',
-                              },
-                              '& .MuiInputLabel-root': {
-                                color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                                '&.Mui-focused': {
-                                  color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
-                                },
-                              },
-                              '& .MuiOutlinedInput-input::placeholder': {
-                                color: '#728197',
-                                opacity: 1,
-                              },
-                              '& .MuiOutlinedInput-input': {
-                                color: '#728197',
-                                fontWeight: '400',
-                                '&::placeholder': {
-                                  color: '#728197',
-                                  opacity: 1,
-                                  fontWeight: '400',
-                                },
-                              },
-                              '& input::placeholder': {
-                                color: '#728197',
-                                opacity: 1,
-                                fontWeight: '400',
-                              },
-                              '& input': {
-                                color: '#728197',
-                                fontWeight: '400',
-                              },
-                            }
-                          },
-                          popper: {
-                            placement: 'top-start',
-                            modifiers: [
-                              {
-                                name: 'flip',
-                                enabled: false, // Disable automatic flipping to prevent opening downward
-                              },
-                              {
-                                name: 'preventOverflow',
-                                options: {
-                                  boundary: 'viewport',
-                                  altBoundary: true,
-                                },
-                              },
-                            ],
-                            sx: {
-                              '& .MuiPaper-root': {
-                                borderRadius: '12px',
-                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                                border: '1px solid #E6ECF5',
-                              },
-                              '& .MuiDayCalendar-root': {
-                                width: '280px',
-                                padding: '16px',
-                              },
-                              '& .MuiDayCalendar-header': {
-                                color: '#5C17E5',
-                                fontWeight: '600',
-                                fontSize: '14px',
-                                marginBottom: '8px',
-                              },
-                              '& .MuiDayCalendar-weekDayLabel': {
-                                color: '#5C17E5',
-                                fontWeight: '600',
-                                fontSize: '12px',
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              },
-                              '& .MuiDayCalendar-weekContainer': {
-                                marginBottom: '4px',
-                              },
-                              '& .MuiPickersDay-root': {
-                                width: '32px',
-                                height: '32px',
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: '#1A212B',
-                                borderRadius: '50%',
-                                margin: '2px',
-                                backgroundColor: 'transparent',
-                                '&:hover': {
-                                  backgroundColor: '#F3E8FF !important',
-                                  color: '#5C17E5 !important',
-                                },
-                                '&.Mui-selected': {
-                                  backgroundColor: '#5C17E5 !important',
-                                  color: '#ffffff !important',
-                                  '&:hover': {
-                                    backgroundColor: '#4A14C7 !important',
-                                    color: '#ffffff !important',
-                                  },
-                                },
-                                '&.MuiPickersDay-today': {
-                                  border: '1px solid #D1D5DB',
-                                  color: '#5C17E5',
-                                  backgroundColor: 'transparent',
-                                  '&:hover': {
-                                    backgroundColor: '#F3E8FF !important',
-                                    color: '#5C17E5 !important',
-                                  },
-                                  '&.Mui-selected': {
-                                    backgroundColor: '#5C17E5 !important',
-                                    color: '#ffffff !important',
-                                    '&:hover': {
-                                      backgroundColor: '#4A14C7 !important',
-                                      color: '#ffffff !important',
-                                    },
-                                  },
-                                },
-                              },
-                              '& .MuiPickersCalendarHeader-root': {
-                                padding: '0 8px 16px 8px',
-                                '& .MuiPickersCalendarHeader-labelContainer': {
-                                  '& .MuiPickersCalendarHeader-label': {
-                                    fontSize: '16px',
-                                    fontWeight: '600',
-                                    color: '#1A212B',
-                                  },
-                                },
-                                '& .MuiIconButton-root': {
-                                  color: '#5C17E5',
-                                  '&:hover': {
-                                    backgroundColor: '#F3E8FF',
-                                  },
-                                },
-                              },
-                            },
-                          },
-                        }}
+                        width={250}
                       />
                     </Box>
                   ) : (
@@ -810,7 +608,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                 </Grid>
               ))}
             </Grid>
-          </LocalizationProvider>
+          
         </Box>
 
         {/* Enhanced Action Buttons */}
@@ -822,72 +620,23 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
           borderTop: '1px solid #e2e8f0',
           mt: 'auto'
         }}>
-          <Button
-            variant="outlined"
+          <StandardButton
+            variant="secondary"
+            size="medium"
             onClick={handleClose}
             disabled={isLoading}
-            sx={{
-              color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.COLOR,
-              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_COLOR,
-              borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.BORDER_RADIUS,
-              padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.PADDING,
-              height: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.HEIGHT,
-              fontSize: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.FONT_SIZE,
-              fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.OUTLINED.FONT_WEIGHT,
-              textTransform: 'none',
-              borderWidth: '2px',
-              backgroundColor: '#ffffff',
-              '&:hover': {
-                backgroundColor: '#f7fafc',
-                borderColor: '#cbd5e0',
-                borderWidth: '2px',
-              },
-              '&:disabled': {
-                backgroundColor: '#f7fafc',
-                borderColor: '#e2e8f0',
-                color: '#a0aec0',
-              }
-            }}
           >
             {NEW_PRODUCT_MODAL_LABELS.BUTTON_CANCEL}
-          </Button>
-          <Button
-            variant="contained"
+          </StandardButton>
+          <StandardButton
+            variant="primary"
+            size="medium"
             onClick={handleSubmit}
             disabled={isLoading}
-            sx={{
-              bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BG,
-              color: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.COLOR,
-              borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BORDER_RADIUS,
-              padding: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.PADDING,
-              height: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.HEIGHT,
-              fontSize: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.FONT_SIZE,
-              fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.FONT_WEIGHT,
-              textTransform: 'none',
-              boxShadow: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.BOX_SHADOW,
-              '&:hover': {
-                bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.BUTTONS.CONTAINED.HOVER_BG,
-                boxShadow: '0 6px 16px rgba(92, 23, 229, 0.4)',
-                transform: 'translateY(-1px)',
-              },
-              '&:disabled': {
-                bgcolor: '#cbd5e0',
-                color: '#a0aec0',
-                boxShadow: 'none',
-                transform: 'none',
-              },
-              transition: 'all 0.2s ease-in-out',
-            }}
+            startIcon={isLoading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : undefined}
           >
-            {isLoading ? (
-              <>
-                <CircularProgress size={20} sx={{ mr: 1.5, color: 'white' }} />
-                Adding Product...
-              </>
-            ) : (
-              NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD
-            )}
-          </Button>
+            {isLoading ? 'Adding Product...' : NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD}
+          </StandardButton>
         </Box>
       </Box>
     </Modal>

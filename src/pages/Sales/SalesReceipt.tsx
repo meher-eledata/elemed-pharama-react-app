@@ -1,583 +1,290 @@
-import React, { useState, ChangeEvent } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Divider,
-  TextField,
-  styled,
-  IconButton
-} from '@mui/material';
-import TickMarkIcon from '../../assets/TickMark.svg';
-import PlusSymbol from '../../assets/PlusSymbol.svg';
-import DownArrow from '../../assets/DownArrow.svg';
-import DropDown from '../../assets/DropDown.svg';
-import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
-import DeleteNewIcon from '../../assets/DeleteNew.svg';
-import NewBoxIcon from '../../assets/NewBox.svg';
+import React, { useState, ChangeEvent, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Box, Tooltip, Checkbox, FormControlLabel, Typography, Snackbar, Alert } from '@mui/material';
+import { StandardButton } from '../../components/Common';
+import { useDispatch, useSelector } from 'react-redux';
+import EditIcon from '@mui/icons-material/Edit';
+import { ReusableTable, SearchAndFilterConfig } from '../../components/PharmaTable';
 import CustomerModal from '../../components/Modal/NewCustomer/CustomerModal';
+import CommonModal from '../../components/CommonModal/CommonModal';
+import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
+import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
+import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
+import { 
+  useSearchCustomersMutation,
+  useGetDoctorsQuery,
+  // TODO: Uncomment when API is ready
+  // useCreateSalesMutation,
+  Customer,
+  Doctor
+} from '../../redux/slices/salesApi';
+import { 
+  selectCartItems,
+  selectCartTotal,
+  selectFormData,
+  clearCart,
+  saveFormData,
+  clearFormData,
+  setCartItems
+} from '../../redux/slices/cartSlice';
+import { RootState } from '../../redux/store';
+import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
+import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
+import { clearCartFromStorage, clearFormDataFromStorage, saveSalesHistoryToStorage } from '../../utils/cartStorage';
 
-// Styled components
-const SalesReceiptContainer = styled(Box)({
-  padding: '20px',
-  backgroundColor: '#FFFFFF',
-  minHeight: '100vh',
-});
+// Import Components
+import CustomerDetailsSection from './components/CustomerDetailsSection';
+import DoctorDetailsSection from './components/DoctorDetailsSection';
+import PaymentDetailsSection from './components/PaymentDetailsSection';
+import FinancialSummary from './components/FinancialSummary';
 
-const SalesReceiptHeader = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: '32px',
-  width: '100%',
-  '@media (max-width: 768px)': {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: '16px',
-  },
-});
+// Import Types
+import { SalesReceiptItem } from './SalesReceipt.types';
 
-const LeftSection = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  flexShrink: 0,
-});
+// Import Utilities
+import { transformCartItems, calculateFinancialSummary, getTodayDate, generatePrintHTML } from './SalesReceipt.utils';
 
-const RightSection = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  flexShrink: 0,
-});
+// Import Table Columns Configuration
+import { getTableColumns } from './SalesReceipt.columns';
 
-const SalesReceiptTitle = styled(Typography)({
-  fontFamily: "'Lexend', sans-serif",
-  fontWeight: 600,
-  fontSize: '36px',
-  lineHeight: '40px',
-  color: '#1A212B',
-  margin: 0,
-  flexShrink: 0,
-  display: 'flex',
-  alignItems: 'center',
-  marginTop: '-8px', // Move text up to align with other elements
-  '@media (max-width: 768px)': {
-    fontSize: '28px',
-    lineHeight: '32px',
-  },
-});
+// Import Styled Components
+import {
+  SalesReceiptContainer,
+  SalesReceiptHeader,
+  LeftSection,
+  SalesReceiptTitle,
+  HorizontalDivider,
+  CustomerDoctorSection,
+} from './SalesReceipt.styles';
 
-const PaymentToggleContainer = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  flexShrink: 0,
-});
-
-const PaymentLabel = styled(Typography)<{ active?: boolean }>(({ active }) => ({
-  fontFamily: "'Lexend', sans-serif",
-  fontWeight: active ? 700 : 400,
-  fontSize: '16px',
-  lineHeight: '24px',
-  color: '#1A212B', // Both labels are dark gray/black
-}));
-
-const HeaderDivider = styled(Divider)({
-  flexShrink: 0,
-  borderColor: '#E5E7EB',
-  borderStyle: 'dashed',
-  borderWidth: '1px',
-  height: '40px',
-  margin: '0 24px',
-  '@media (max-width: 768px)': {
-    display: 'none',
-  },
-});
-
-const HorizontalDivider = styled(Divider)({
-  width: '100%',
-  borderColor: '#D1D5DB',
-  borderStyle: 'dashed',
-  borderWidth: '1px',
-  margin: '20px 0',
-});
-
-// --- START: FIXED/NEW STYLED COMPONENTS FOR CUSTOMER/DOCTOR SECTION ---
-
-const CustomerDoctorSection = styled(Box)({
-  display: 'flex',
-  gap: '40px', // Gap between the two main columns (Customer/Doctor)
-  marginTop: '16px', // Reduced from 24px to move fields up
-  position: 'relative',
-  paddingBottom: '16px', // Add some padding for the bottom row spacing
-  // Allow sections to wrap if screen is too small
-  '@media (max-width: 1200px)': {
-    flexDirection: 'column',
-    gap: '24px',
-  },
-});
-
-const CustomerDoctorDivider = styled(Divider)({
-  position: 'absolute',
-  top: '0',
-  bottom: '0',
-  left: '47%',
-  transform: 'translateX(-50%)',
-  height: '100%',
-  borderColor: '#D1D5DB',
-  borderStyle: 'dashed',
-  borderWidth: '1px',
-  zIndex: 1,
-  '@media (max-width: 1200px)': {
-    display: 'none', // Hide vertical divider on smaller screens
-  },
-});
-
-const CustomerDetailsColumn = styled(Box)({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px', // Restored original gap
-  minWidth: '400px',
-  flex: '1', // Take up available space
-});
-
-const DoctorInvoiceColumn = styled(Box)({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px', // Restored original gap
-  minWidth: '400px',
-  flex: '1', // Take up available space
-});
-
-const SectionRow = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '20px',
-  flexWrap: 'wrap',
-  justifyContent: 'flex-start',
-});
-
-
-const StyledTextField = styled(TextField)({
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #D1D5DB',
-    '& fieldset': {
-      border: 'none',
-    },
-    '&:hover fieldset': {
-      border: 'none',
-    },
-    '&:hover': {
-      border: '1px solid #5C17E5',
-    },
-    '&.Mui-focused fieldset': {
-      border: 'none',
-    },
-    '&.Mui-focused': {
-      border: '2px solid #5C17E5',
-    },
-  },
-  '& .MuiInputLabel-root': {
-    fontFamily: "'Lexend', sans-serif",
-    fontSize: '16px',
-    color: '#1A212B !important', // Force the color to be applied
-    '&.Mui-focused': {
-      color: '#5C17E5 !important', // Purple color when focused
-    },
-  },
-  '& .MuiInputBase-input': {
-    fontFamily: "'Lexend', sans-serif",
-    fontSize: '16px',
-    color: '#1A212B',
-    padding: '12px 16px',
-  },
-});
-
-const CustomerNameField = styled(StyledTextField)({
-  width: '400px',
-  height: '48px',
-});
-
-const PhoneNoField = styled(StyledTextField)({
-  width: '180px', // Smaller width to match image
-  height: '48px',
-});
-
-const CityField = styled(StyledTextField)({
-  width: '200px', // Smaller width for City dropdown to match image
-  height: '48px',
-  '& .MuiInputLabel-root': {
-    fontFamily: "'Lexend', sans-serif",
-    fontSize: '16px',
-    color: '#728197 !important', // Different color for City fields
-    '&.Mui-focused': {
-      color: '#728197 !important', // Keep same color when focused
-    },
-  },
-});
-
-const DoctorNameField = styled(StyledTextField)({
-  width: '400px',
-  height: '48px',
-});
-
-const HospitalIdField = styled(StyledTextField)({
-  width: '180px', // Smaller width to match image
-  height: '48px',
-});
-
-const AddButton = styled(Button)({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  fontFamily: "'Lexend', sans-serif",
-  fontSize: '16px',
-  fontWeight: 500,
-  color: '#1A212B',
-  backgroundColor: 'transparent',
-  border: 'none',
-  padding: '12px 16px',
-  borderRadius: '12px',
-  textTransform: 'none',
-  minWidth: '150px', // Fixed width to match both buttons
-  justifyContent: 'flex-start',
-  '&:hover': {
-    backgroundColor: '#F3F4F6',
-  },
-});
-
-const AddLoyaltyButton = styled(AddButton)({
-  // marginLeft: '98px', // Move the Add Loyalty button more to the right
-})
-
-const PlusIcon = styled('img')({
-  width: '19.5px',
-  height: '19.5px',
-});
-
-const DropdownIcon = styled('img')({
-  width: '16.5px',
-  height: '9px',
-  position: 'absolute',
-  right: '16px',
-  top: '16px',
-  pointerEvents: 'none',
-});
-
-const InvoiceDetails = styled(Box)({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '4px',
-  marginLeft: 'auto', // Push to the right
-  minWidth: '150px',
-  alignItems: 'flex-start', 
-});
-
-const InvoiceText = styled(Typography)({
-  fontFamily: "'Lexend', sans-serif",
-  fontSize: '14px',
-  fontWeight: 400,
-  color: '#1A212B',
-  lineHeight: '20px',
-  '&:first-of-type': {
-      fontWeight: 500, // Make the label bolder
-  }
-});
-// --- END: FIXED/NEW STYLED COMPONENTS FOR CUSTOMER/DOCTOR SECTION ---
-
-// --- START: FINANCIAL SUMMARY SECTION STYLED COMPONENTS ---
-
-const FinancialSummaryContainer = styled(Box)({
-  width: '100%', // Full width to match table
-  height: 'auto', // Auto height to accommodate content
-  backgroundColor: '#E0EDFF',
-  borderRadius: '12px',
-  padding: '10px', // Reduced padding
-  marginTop: '24px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0px', // No gap to allow custom spacing
-});
-
-const SummaryRow = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  width: '100%',
-});
-
-const SummaryFieldsGroup = styled(Box)({
-  display: 'flex',
-  gap: '48px', // Much larger gap between different label-input pairs
-  alignItems: 'flex-start',
-});
-
-const SummaryFieldRight = styled(Box)({
-  display: 'flex',
-  alignItems: 'center', // Changed from flex-start to center for better alignment
-  gap: '4px', // Increased gap slightly for better spacing
-  minHeight: '36px', // Ensure consistent height
-});
-
-const SummaryField = styled(Box)({
-  display: 'flex',
-  alignItems: 'center', // Changed from flex-start to center for better alignment
-  gap: '4px', // Increased gap slightly for better spacing
-  minHeight: '36px', // Ensure consistent height
-});
-
-const SummaryLabel = styled(Typography)({
-  fontFamily: "'Lexend', sans-serif",
-  fontWeight: 500,
-  fontSize: '12px',
-  lineHeight: '18px',
-  color: '#728197',
-  textAlign: 'left',
-  width: '80px', // Fixed width for perfect alignment
-  whiteSpace: 'normal',
-  display: 'flex',
-  alignItems: 'center', // Center the text vertically within the label area
-  justifyContent: 'flex-start', // Align text to the left within the label area
-});
-
-const SummaryInput = styled('input')({
-  width: '72px',
-  height: '36px',
-  borderRadius: '12px',
-  border: '1px solid #9AA8BC',
-  backgroundColor: '#FFFFFF',
-  padding: '12px 16px',
-  fontFamily: "'Lexend', sans-serif",
-  fontWeight: 400,
-  fontSize: '16px',
-  lineHeight: '24px',
-  color: '#1A212B',
-  textAlign: 'left',
-  outline: 'none',
-  boxSizing: 'border-box',
-  '&:focus': {
-    borderColor: '#5C17E5',
-  },
-  '&:read-only': {
-    cursor: 'default',
-  },
-});
-
-const SummaryInputLarge = styled('input')({
-  width: '96px',
-  height: '36px',
-  borderRadius: '12px',
-  border: '1px solid #9AA8BC',
-  backgroundColor: '#FFFFFF',
-  padding: '12px 16px',
-  fontFamily: "'Lexend', sans-serif",
-  fontWeight: 400,
-  fontSize: '16px',
-  lineHeight: '24px',
-  color: '#1A212B',
-  textAlign: 'left',
-  outline: 'none',
-  boxSizing: 'border-box',
-  '&:focus': {
-    borderColor: '#5C17E5',
-  },
-  '&:read-only': {
-    cursor: 'default',
-  },
-});
-
-// --- END: FINANCIAL SUMMARY SECTION STYLED COMPONENTS ---
-
-const ActionButtons = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  flexShrink: 0,
-  '@media (max-width: 768px)': {
-    width: '100%',
-    justifyContent: 'flex-end',
-  },
-  '@media (max-width: 480px)': {
-    flexDirection: 'column',
-    width: '100%',
-    gap: '8px',
-  },
-});
-
-const StyledButton = styled(Button)({
-  fontFamily: "'Lexend', sans-serif",
-  fontWeight: 500,
-  fontSize: '16px',
-  lineHeight: '24px',
-  borderRadius: '12px',
-  padding: '12px 16px',
-  height: '48px',
-  textTransform: 'none',
-  transition: 'all 0.2s ease-in-out',
-  '@media (max-width: 480px)': {
-    width: '100%',
-    minWidth: 'unset',
-  },
-});
-
-const SaveButton = styled(StyledButton)({
-  minWidth: '71px',
-  border: '2px solid #D1D5DB',
-  color: '#374151',
-  backgroundColor: '#FFFFFF',
-  '&:hover': {
-    borderColor: '#9CA3AF',
-    backgroundColor: '#F9FAFB',
-  },
-});
-
-const CancelButton = styled(StyledButton)({
-  minWidth: '86px',
-  border: '2px solid #D1D5DB',
-  color: '#374151',
-  backgroundColor: '#FFFFFF',
-  '&:hover': {
-    borderColor: '#9CA3AF',
-    backgroundColor: '#F9FAFB',
-  },
-});
-
-const PrintButton = styled(StyledButton)({
-  minWidth: '106px',
-  backgroundColor: '#5C17E5',
-  color: '#FFFFFF',
-  border: 'none',
-  '&:hover': {
-    backgroundColor: '#4C14C7',
-  },
-  '& .MuiButton-startIcon': {
-    marginRight: '8px',
-    '& .MuiSvgIcon-root': {
-      fontSize: '20px',
-    },
-  },
-});
-
-// Custom Toggle Component
-const CustomToggle = styled(Box)<{ active: boolean }>(({ active }) => ({
-  position: 'relative',
-  width: '36px',
-  height: '20px',
-  backgroundColor: '#5C17E5', // Always purple background
-  borderRadius: '10px',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  padding: '2px',
-  transition: 'all 0.2s ease-in-out',
-}));
-
-const ToggleThumb = styled(Box)<{ active: boolean }>(({ active }) => ({
-  position: 'absolute',
-  width: '16px',
-  height: '16px',
-  backgroundColor: '#FFFFFF',
-  borderRadius: '50%',
-  transition: 'all 0.2s ease-in-out',
-  left: active ? 'calc(100% - 18px)' : '2px', // Always on right for Cash
-  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-}));
-
-// Sales Receipt Item interface
-interface SalesReceiptItem {
-  id: string;
-  productName: string;
-  manufacturer: string;
-  batch: string;
-  expiryDate: string;
-  quantity: string;
-  unitPrice: string;
-  mrp: string;
-  discount: string;
-  discountPercent: string;
-  cgst: string;
-  cgstPercent: string;
-  sgst: string;
-  sgstPercent: string;
-  igst: string;
-  igstPercent: string;
-  amount: string;
-}
+import { printStyles, fieldStyles } from './SalesReceipt.printStyles';
 
 const SalesReceipt: React.FC = () => {
-  const [paymentMethod, setPaymentMethod] = useState<'credit' | 'cash'>('cash');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  
+  // Redux selectors
+  const cartItems = useSelector(selectCartItems);
+  const cartTotal = useSelector(selectCartTotal);
+  const formData = useSelector(selectFormData);
+  const user = useSelector((state: RootState) => state.auth.user);
+  
+  // RTK Query hooks
+  const [searchCustomers, { data: customerSearchResults }] = useSearchCustomersMutation();
+  // TODO: Uncomment when API is ready
+  // const [createSales, { isLoading: isCreatingSales }] = useCreateSalesMutation();
+  const { data: doctorsData = [] } = useGetDoctorsQuery();
+  
+  // Table State
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
-    key: '',
-    direction: 'asc'
+    key: SALES_RECEIPT_CONSTANTS.DEFAULT_SORT_KEY,
+    direction: SALES_RECEIPT_CONSTANTS.SORT_DIRECTION_ASC
   });
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [currentFilterKey, setCurrentFilterKey] = useState<string>('');
   const [currentFilter, setCurrentFilter] = useState<{ [key: string]: string | null }>({});
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_CURRENT_PAGE);
+  const [rowsPerPage] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_ROWS_PER_PAGE);
+  
+  // Modal State
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
+  
+  // Editing State
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [applyGstToAll, setApplyGstToAll] = useState(false);
+  
+  // Form Data State - Customer
+  const [customerName, setCustomerName] = useState('');
+  const [customerMobile, setCustomerMobile] = useState('');
+  const [customerCity, setCustomerCity] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  
+  // Form Data State - Doctor
+  const [doctorName, setDoctorName] = useState('');
+  const [doctorMobile, setDoctorMobile] = useState('');
+  const [doctorEmail, setDoctorEmail] = useState('');
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  
+  // Form Data State - Payment & Invoice
+  const [paymentMode, setPaymentMode] = useState('');
+  const [insuranceCompany, setInsuranceCompany] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_INVOICE_NUMBER);
+  const [invoiceDate, setInvoiceDate] = useState(() => getTodayDate());
+  
+  // Financial Summary State
+  const [totalValue, setTotalValue] = useState('');
+  const [totalDiscount, setTotalDiscount] = useState('');
+  const [taxAmount, setTaxAmount] = useState('');
+  const [totalPayableAmount, setTotalPayableAmount] = useState('');
 
-  // Sample data for the sales receipt table
-  const [salesItems, setSalesItems] = useState<SalesReceiptItem[]>([
-    {
-      id: '1',
-      productName: '2-0 Mersilk Syringe',
-      manufacturer: 'CENTAUR PHARMACEU...',
-      batch: '2897655790...',
-      expiryDate: '09/25',
-      quantity: '28 Caps...',
-      unitPrice: '29.03',
-      mrp: '29.03',
-      discount: '00.00',
-      discountPercent: '0.00',
-      cgst: '50.00',
-      cgstPercent: '9.00',
-      sgst: '50.00',
-      sgstPercent: '9.00',
-      igst: '50.00',
-      igstPercent: '0.00',
-      amount: '50.00'
-    },
-    {
-      id: '2',
-      productName: '3-0 Mersilk 90cm NW 5003 SUTURE',
-      manufacturer: 'CENTAUR PHARMACEU...',
-      batch: '3289765764...',
-      expiryDate: '09/25',
-      quantity: '3 Caps...',
-      unitPrice: '19.00',
-      mrp: '29.03',
-      discount: '2.00',
-      discountPercent: '0.00',
-      cgst: '5.00',
-      cgstPercent: '9.00',
-      sgst: '5.00',
-      sgstPercent: '9.00',
-      igst: '5.00',
-      igstPercent: '0.00',
-      amount: '5.00'
+  // Sales Items State
+  const [salesItems, setSalesItems] = useState<SalesReceiptItem[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  
+  // Toast State
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
+  
+  // Load cart items from Redux state
+  useEffect(() => {
+    if (cartItems && cartItems.length > 0) {
+      console.log('🛒 Loading cart items from Redux:', cartItems);
+      
+      // Transform and set sales items
+      const transformedItems = transformCartItems(cartItems);
+      setSalesItems(transformedItems);
+      console.log('✅ Cart items loaded into receipt table:', transformedItems);
+      
+      // Calculate and set financial summary
+      const summary = calculateFinancialSummary(transformedItems);
+      setTotalValue(summary.totalValue);
+      setTotalDiscount(summary.totalDiscount);
+      setTaxAmount(summary.taxAmount);
+      setTotalPayableAmount(summary.totalPayableAmount);
+      
+      console.log('💰 Financial summary calculated:', summary);
+    } else {
+      console.log('⚠️ No cart items found in Redux state');
     }
-  ]);
+  }, [cartItems]);
+  
+  // Load form data from Redux state
+  useEffect(() => {
+    if (formData) {
+      console.log('📋 Loading form data from Redux:', formData);
+      setCustomerName(formData.customerName);
+      setCustomerMobile(formData.customerMobile);
+      setCustomerCity(formData.customerCity);
+      setDoctorName(formData.doctorName);
+      setDoctorMobile(formData.doctorMobile);
+      setDoctorEmail(formData.doctorEmail);
+      setPaymentMode(formData.paymentMode);
+      setInsuranceCompany(formData.insuranceCompany);
+      if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
+      if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
+      console.log('✅ Form data restored from Redux');
+    }
+    setIsDataLoaded(true);
+  }, [formData]);
+  
+  // Save form data to Redux whenever it changes
+  useEffect(() => {
+    if (isDataLoaded) {
+      const formDataToSave = {
+        customerName,
+        customerMobile,
+        customerCity,
+        doctorName,
+        doctorMobile,
+        doctorEmail,
+        paymentMode,
+        insuranceCompany,
+        invoiceNumber,
+        invoiceDate,
+      };
+      
+      dispatch(saveFormData(formDataToSave));
+      console.log('💾 Form data saved to Redux:', formDataToSave);
+    }
+  }, [isDataLoaded, customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, dispatch]);
+  
+  // Mock data
+  const mockCustomers: Customer[] = SALES_RECEIPT_CONSTANTS.MOCK_CUSTOMERS;
+  const mockDoctors: Doctor[] = SALES_RECEIPT_CONSTANTS.MOCK_DOCTORS;
 
-  const handlePaymentToggle = () => {
-    setPaymentMethod(paymentMethod === 'cash' ? 'credit' : 'cash');
+  // Helper function to show toast messages
+  const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
   };
 
-  const handleDeleteItem = (itemId: string) => {
-    setSalesItems(items => items.filter(item => item.id !== itemId));
+  // Customer Handlers
+  const handleCustomerSelect = (customer: Customer | null) => {
+    if (customer) {
+      setSelectedCustomer(customer);
+      setCustomerName(customer.name);
+      setCustomerMobile(customer.mobile);
+      setCustomerCity(customer.city || '');
+    } else {
+      setSelectedCustomer(null);
+      setCustomerName('');
+      setCustomerMobile('');
+      setCustomerCity('');
+    }
   };
 
-  const handleEditItem = (itemId: string) => {
-    console.log('Edit item:', itemId);
+  // Doctor Handlers
+  const handleDoctorSelect = (doctor: Doctor | null) => {
+    if (doctor) {
+      setSelectedDoctor(doctor);
+      setDoctorName(doctor.name);
+      setDoctorMobile(doctor.mobile);
+      setDoctorEmail(doctor.email || '');
+    } else {
+      setSelectedDoctor(null);
+      setDoctorName('');
+      setDoctorMobile('');
+      setDoctorEmail('');
+    }
   };
 
+  // Edit Handlers
+  const handleEditClick = (itemId: string) => {
+    setEditingRowId(itemId);
+    setApplyGstToAll(false);
+  };
+
+  const handleSaveClick = () => {
+    console.log('Saving changes for item:', editingRowId);
+    setEditingRowId(null);
+    setApplyGstToAll(false);
+  };
+
+  const handleCancelClick = () => {
+    console.log('Cancelling edit for item:', editingRowId);
+    setEditingRowId(null);
+    setApplyGstToAll(false);
+  };
+
+  // Delete Handlers
+  const handleDeleteClick = (itemId?: string) => {
+    if (itemId) {
+      setItemsToDelete([itemId]);
+    } else {
+      const selectedIds = selectedRows.map(index => salesItems[index].id);
+      setItemsToDelete(selectedIds);
+    }
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    const itemCount = itemsToDelete.length;
+    setSalesItems(prev => prev.filter(item => !itemsToDelete.includes(item.id)));
+    setSelectedRows(prev => prev.filter(index => {
+      const item = salesItems[index];
+      return item && !itemsToDelete.includes(item.id);
+    }));
+    setDeleteDialogOpen(false);
+    setItemsToDelete([]);
+    showToast(`${itemCount} item${itemCount > 1 ? 's' : ''} deleted successfully`, 'success');
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setItemsToDelete([]);
+  };
+
+  // Table Handlers
   const handleSort = (column: string) => {
     setSortConfig(prevConfig => ({
       key: column,
@@ -598,6 +305,7 @@ const SalesReceipt: React.FC = () => {
     setCurrentFilter(prev => ({ ...prev, [key]: value }));
   };
 
+  // Modal Handlers
   const handleOpenCustomerModal = () => {
     setIsCustomerModalOpen(true);
   };
@@ -608,435 +316,603 @@ const SalesReceipt: React.FC = () => {
 
   const handleCustomerSubmit = (customerData: any) => {
     console.log('Customer data submitted:', customerData);
-    // Here you can add logic to save the customer data
-    // For now, just logging the data
+    // TODO: Add actual API call to save customer
+    showToast('Customer added successfully!', 'success');
   };
 
-  // Table columns configuration
-  const columns: TableColumn<SalesReceiptItem>[] = [
-    {
-      key: 'productName',
-      header: 'Product Name',
-      sortable: true,
-      render: (item) => (
-        <Box>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            {item.productName}
-          </Typography>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
-            Mfg: {item.manufacturer}
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'batch',
-      header: 'Batch',
-      render: (item) => (
-        <Box>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            {item.batch}
-          </Typography>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
-            Exp: {item.expiryDate}
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'quantity',
-      header: 'Qty',
-      render: (item) => (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.quantity}
-        </Typography>
-      )
-    },
-    {
-      key: 'unitPrice',
-      header: 'Unit/Price',
-      render: (item) => (
-        <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            Rs. {item.unitPrice}
-          </Typography>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
-            MRP: {item.mrp}
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'discount',
-      header: 'Dis',
-      render: (item) => (
-        <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            Rs. {item.discount}
-          </Typography>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
-            {item.discountPercent}%
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'cgst',
-      header: 'CGST',
-      render: (item) => (
-        <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            {item.cgst}
-          </Typography>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
-            {item.cgstPercent}%
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'sgst',
-      header: 'SGST',
-      render: (item) => (
-        <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            {item.sgst}
-          </Typography>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
-            {item.sgstPercent}%
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'igst',
-      header: 'IGST',
-      render: (item) => (
-        <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            {item.igst}
-          </Typography>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#728197' }}>
-            {item.igstPercent}%
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'amount',
-      header: 'Amount',
-      render: (item) => (
-        <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-            {item.amount}
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      sortable: false,
-      render: (item) => (
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-          <IconButton onClick={() => handleDeleteItem(item.id)} sx={{ padding: '4px' }}>
-            <img src={DeleteNewIcon} alt="Delete" style={{ width: '16px', height: '16px' }} />
-          </IconButton>
-          <IconButton onClick={() => handleEditItem(item.id)} sx={{ padding: '4px' }}>
-            <img src={NewBoxIcon} alt="Edit" style={{ width: '16px', height: '16px' }} />
-          </IconButton>
-        </Box>
-      )
+  const handleEditCart = () => {
+    // Save the current salesItems (with GST modifications) back to Redux
+    // Transform receipt items back to cart format before saving
+    const cartItemsWithGst = salesItems.map(item => ({
+      id: item.id,
+      name: item.productName,
+      batch: item.batch,
+      avlQty: item.quantity,
+      mrp: parseFloat(item.mrp),
+      sp: parseFloat(item.unitPrice),
+      expiry: item.expiryDate,
+      quantity: parseInt(item.quantity),
+      type: item.type,
+      discount: parseFloat(item.discountPercent),
+      totalPrice: parseFloat(item.amount),
+      // Preserve GST data
+      cgst: item.cgst,
+      cgstPercent: item.cgstPercent,
+      sgst: item.sgst,
+      sgstPercent: item.sgstPercent,
+      igst: item.igst,
+      igstPercent: item.igstPercent,
+      amount: item.amount,
+    }));
+    
+    const totalAmount = salesItems.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    
+    // Update Redux with modified cart (including GST changes)
+    dispatch(setCartItems(cartItemsWithGst));
+    console.log('🛒 Updated cart saved to Redux with GST modifications:', cartItemsWithGst);
+    
+    navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
+  };
+
+  const handlePrint = () => {
+    setPendingAction('print');
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleClosePrintModal = () => {
+    setIsPrintModalOpen(false);
+  };
+
+  const handlePrintToPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      const htmlContent = generatePrintHTML({
+        customerName,
+        customerMobile,
+        customerCity,
+        doctorName,
+        doctorMobile,
+        doctorEmail,
+        paymentMode,
+        insuranceCompany,
+        invoiceNumber,
+        invoiceDate,
+        salesItems,
+        totalValue,
+        totalDiscount,
+        taxAmount,
+        totalPayableAmount,
+        labels: SALES_RECEIPT_LABELS,
+      });
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.print();
+      printWindow.onafterprint = () => {
+        printWindow.close();
+      };
+      showToast('Receipt printed successfully!', 'success');
+    } else {
+      showToast('Failed to open print window', 'error');
     }
-  ];
+    clearCartFromStorage();
+    clearFormDataFromStorage();
+    console.log('🗑️ Cart and form data cleared from storage after printing receipt');
+    
+    setIsPrintModalOpen(false);
+  };
+
+  const handleAfterSave = () => {
+    clearCartFromStorage();
+    clearFormDataFromStorage();
+    console.log('🗑️ Cart and form data cleared from storage after saving receipt');
+    setIsPrintModalOpen(false);
+  };
+
+  const handleCancelPrint = () => {
+    setIsPrintModalOpen(false);
+  };
+
+  const handleSaveFromModal = () => {
+    setPendingAction('save');
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handlePrintFromModal = () => {
+    setPendingAction('print');
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleConfirmDialogClose = () => {
+    setIsConfirmDialogOpen(false);
+    setPendingAction(null);
+  };
+
+  const handleConfirmDialogConfirm = () => {
+    setIsConfirmDialogOpen(false);
+    
+    if (pendingAction === 'save') {
+      console.log('Saving invoice...');
+      executeSave();
+    } else if (pendingAction === 'print') {
+      console.log('Opening print preview...');
+      setIsPrintModalOpen(true);
+    }
+    
+    setPendingAction(null);
+  };
+
+  // Reset Form
+  const resetForm = () => {
+    setSalesItems([]);
+    setCustomerName('');
+    setCustomerMobile('');
+    setCustomerCity('');
+    setSelectedCustomer(null);
+    setDoctorName('');
+    setDoctorMobile('');
+    setDoctorEmail('');
+    setSelectedDoctor(null);
+    setPaymentMode('');
+    setInsuranceCompany('');
+    setTotalValue('');
+    setTotalDiscount('');
+    setTaxAmount('');
+    setTotalPayableAmount('');
+    setSelectedRows([]);
+    setEditingRowId(null);
+    setIsDataLoaded(true);
+    
+    // Clear Redux state
+    dispatch(clearCart());
+    dispatch(clearFormData());
+    console.log('✅ Form reset complete - all fields and Redux state cleared');
+  };
+
+  // Save Handler - Shows confirmation dialog
+  const handleSave = () => {
+    // Validate before showing confirmation
+    if (salesItems.length === 0) {
+      console.warn('⚠️ Cannot save: No items in the receipt');
+      showToast('Cannot save: No items in the receipt', 'warning');
+      return;
+    }
+
+    // Validate required fields
+    if (!customerName || !customerMobile) {
+      showToast('Please fill in customer name and mobile number', 'warning');
+      return;
+    }
+
+    setPendingAction('save');
+    setIsConfirmDialogOpen(true);
+  };
+
+  // Actual save execution after confirmation
+  const executeSave = async () => {
+    try {
+      console.log('💾 Saving receipt data...');
+      
+      const salesData = {
+        customerName,
+        customerMobile,
+        customerCity: customerCity || '',
+        doctorName: doctorName || '',
+        doctorMobile: doctorMobile || '',
+        doctorEmail: doctorEmail || '',
+        paymentMode: paymentMode || '',
+        insuranceCompany: insuranceCompany || '',
+        invoiceNumber,
+        invoiceDate,
+        items: salesItems,
+        totalValue,
+        totalDiscount,
+        taxAmount,
+        totalPayableAmount,
+      };
+      
+      console.log('📤 Sending to API:', salesData);
+      
+      // TODO: Uncomment when API is ready
+      // const result = await createSales(salesData).unwrap();
+      // console.log('✅ API Response:', result);
+      
+      // For now, just simulate saving (API endpoint not ready yet)
+      console.log('💾 Simulating save (API endpoint not ready yet)');
+      
+      // Save to localStorage for display in history
+      const historyItem = {
+        invoiceNumber,
+        invoiceDate,
+        customerName,
+        customerMobile,
+        customerCity: customerCity || '',
+        doctorName: doctorName || '',
+        doctorMobile: doctorMobile || '',
+        doctorEmail: doctorEmail || '',
+        username: user?.username || 'Guest',
+        totalAmount: parseFloat(totalPayableAmount) || 0,
+        items: salesItems,
+        paymentMode,
+        insuranceCompany,
+        totalValue,
+        totalDiscount,
+        taxAmount,
+        totalPayableAmount,
+      };
+      saveSalesHistoryToStorage(historyItem);
+      console.log('💾 Saved to sales history:', historyItem);
+      
+      showToast('Receipt saved successfully!', 'success');
+      resetForm();
+      
+      // Clear cart from Redux after successful save
+      dispatch(clearCart());
+      console.log('🛒 Cart cleared from Redux after successful save');
+      
+      console.log('✅ Receipt saved successfully! Redirecting to Sales History...');
+      
+      // Navigate after a short delay to allow user to see the success message
+      setTimeout(() => {
+        navigate('/sales/sale-history');
+      }, 1500);
+    } catch (error: any) {
+      console.error('❌ Error saving receipt:', error);
+      const errorMessage = error?.data?.message || error?.message || 'Failed to save receipt. Please try again.';
+      showToast(errorMessage, 'error');
+    }
+  };
+
+  // Cancel Handler
+  const handleCancel = () => {
+    if (salesItems.length > 0) {
+      const confirmDiscard = window.confirm(
+        'You have unsaved changes. Are you sure you want to cancel and go back?'
+      );
+      if (!confirmDiscard) {
+        return;
+      }
+    }
+    
+    resetForm();
+    
+    // Clear cart from Redux when cancelling
+    dispatch(clearCart());
+    console.log('🛒 Cart cleared from Redux after cancellation');
+    
+    console.log('❌ Receipt cancelled - navigating back to Sales page');
+    navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
+  };
+
+  // Get Table Columns Configuration
+  const columns = getTableColumns({
+    editingRowId,
+    applyGstToAll,
+    setSalesItems,
+    handleEditClick,
+    handleSaveClick,
+    handleCancelClick,
+    handleDeleteClick,
+  });
 
   const searchAndFilterConfig: SearchAndFilterConfig = {
     filterOptions: []
   };
 
+  // Table configuration
+  const tableConfig = {
+    columns,
+    data: salesItems,
+    selectedRows,
+    setSelectedRows,
+    emptyMessage: SALES_RECEIPT_LABELS.NO_SALES_ITEMS,
+    searchAndFilterConfig,
+    currentSearchTerm,
+    onSearchChange: handleSearchChange,
+    showFilters,
+    onShowFiltersToggle: handleShowFiltersToggle,
+    currentFilterKey,
+    onFilterSelect: handleFilterSelect,
+    totalRows: salesItems.length,
+    rowsPerPage,
+    currentPage,
+    onPageChange: setCurrentPage,
+    onSortRequest: handleSort,
+    sortConfig,
+    currentFilter,
+  };
+
   return (
-    <SalesReceiptContainer>
-      <SalesReceiptHeader>
-        {/* Left Section - Title, Divider, and Toggle */}
-        <LeftSection>
-          <SalesReceiptTitle variant="h1">
-            Sale Receipt
-          </SalesReceiptTitle>
-          
-          <HeaderDivider orientation="vertical" flexItem />
+    <>
+      <style>{printStyles}</style>
+      <style>{fieldStyles}</style>
+      <SalesReceiptContainer id="sales-receipt-content">
+        {/* Header */}
+        <SalesReceiptHeader>
+          <LeftSection>
+            <SalesReceiptTitle variant="h1">
+              {SALES_RECEIPT_LABELS.PAGE_TITLE}
+            </SalesReceiptTitle>
+          </LeftSection>
+        </SalesReceiptHeader>
 
-          <PaymentToggleContainer>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <PaymentLabel 
-                variant="body1" 
-                active={paymentMethod === 'credit'}
-              >
-                Credit
-              </PaymentLabel>
-              <CustomToggle 
-                active={paymentMethod === 'cash'} 
-                onClick={handlePaymentToggle}
-              >
-                <ToggleThumb active={paymentMethod === 'cash'} />
-              </CustomToggle>
-              <PaymentLabel 
-                variant="body1" 
-                active={paymentMethod === 'cash'}
-              >
-                Cash
-              </PaymentLabel>
-            </Box>
-          </PaymentToggleContainer>
-        </LeftSection>
+        {/* Divider */}
+        <HorizontalDivider />
 
-        {/* Right Section - Action Buttons */}
-        <RightSection>
-          <SaveButton variant="outlined">
-            Save
-          </SaveButton>
-
-          <CancelButton variant="outlined">
-            Cancel
-          </CancelButton>
-
-          <PrintButton 
-            variant="contained"
-            startIcon={<img src={TickMarkIcon} alt="Tick Mark" style={{ width: '20px', height: '20px' }} />}
-          >
-            Print
-          </PrintButton>
-        </RightSection>
-      </SalesReceiptHeader>
-
-      {/* Horizontal Dashed Divider */}
-      <HorizontalDivider />
-
-      {/* Customer and Doctor Details Section */}
-      <CustomerDoctorSection>
-        {/* Vertical divider separating the two main columns */}
-        <CustomerDoctorDivider orientation="vertical" />
-
-        {/* Customer Details Column */}
-        <CustomerDetailsColumn>
-          {/* Customer Row 1 */}
-          <SectionRow>
-            <CustomerNameField
-              label="Customer Name"
-              variant="outlined"
-              placeholder="Customer Name"
-            />
-            <AddButton onClick={handleOpenCustomerModal}>
-              <PlusIcon src={PlusSymbol} alt="Plus" />
-              Add Customer
-            </AddButton>
-          </SectionRow>
-
-          {/* Customer Row 2 */}
-          <SectionRow>
-            <PhoneNoField
-              label="Phone No"
-              variant="outlined"
-              placeholder="Phone No"
-            />
-            <Box sx={{ position: 'relative' }}>
-              <CityField
-                label="City"
-                variant="outlined"
-                placeholder="City"
-              />
-              <DropdownIcon src={DownArrow} alt="Dropdown" />
-            </Box>
-            <AddLoyaltyButton>
-              <PlusIcon src={PlusSymbol} alt="Plus" />
-              Add Loyalty
-            </AddLoyaltyButton>
-          </SectionRow>
-        </CustomerDetailsColumn>
-
-        {/* Doctor and Invoice Column */}
-        {/* <CustomerDoctorDivider orientation="vertical" /> */}
-        <DoctorInvoiceColumn>
-          {/* Doctor/Invoice Row 1 */}
-          {/* <CustomerDoctorDivider orientation="vertical" /> */}
-          <SectionRow>
-            <DoctorNameField
-              label="Doctor Name"
-              variant="outlined"
-              placeholder="Doctor Name"
-            />
-            {/* <CustomerDoctorDivider orientation="vertical" /> */}
-            <InvoiceDetails>
-              <InvoiceText>Invoice No :</InvoiceText>
-              <InvoiceText>786889090556</InvoiceText>
-            </InvoiceDetails>
-          </SectionRow>
-
-          {/* Doctor/Invoice Row 2 */}
-          <SectionRow>
-            <HospitalIdField
-              label="Hospital ID"
-              variant="outlined"
-              placeholder="Hospital ID"
-            />
-            <Box sx={{ position: 'relative' }}>
-              <CityField
-                label="City"
-                variant="outlined"
-                placeholder="City"
-              />
-              <DropdownIcon src={DownArrow} alt="Dropdown" />
-            </Box>
-            <CustomerDoctorDivider orientation="vertical" />
-            <InvoiceDetails>
-              <InvoiceText>Invoice Date :</InvoiceText>
-              <InvoiceText>15 Aug 2025</InvoiceText>
-            </InvoiceDetails>
-          </SectionRow>
-        </DoctorInvoiceColumn>
-      </CustomerDoctorSection>
-
-      {/* Sales Receipt Table */}
-      <Box sx={{ marginTop: '32px' }}>
-        <ReusableTable
-          columns={columns}
-          data={salesItems}
-          selectedRows={selectedRows}
-          setSelectedRows={setSelectedRows}
-          emptyMessage="No sales items found"
-          searchAndFilterConfig={searchAndFilterConfig}
-          currentSearchTerm={currentSearchTerm}
-          onSearchChange={handleSearchChange}
-          showFilters={showFilters}
-          onShowFiltersToggle={handleShowFiltersToggle}
-          currentFilterKey={currentFilterKey}
-          onFilterSelect={handleFilterSelect}
-          totalRows={salesItems.length}
-          rowsPerPage={rowsPerPage}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-          onSortRequest={handleSort}
-          sortConfig={sortConfig}
-          currentFilter={currentFilter}
-        />
-      </Box>
-
-      {/* No. Of. Copies Dropdown */}
-      <Box sx={{ marginTop: '24px', marginBottom: '24px' }}>
-        <Box sx={{ position: 'relative', display: 'inline-block' }}>
-          <StyledTextField
-            label="No. Of. Copies"
-            variant="outlined"
-            placeholder=""
-            sx={{ 
-              width: '206px', 
-              height: '40px',
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '12px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #9AA8BC',
-                padding: '12px 40px 12px 16px',
-                '& fieldset': {
-                  border: 'none',
-                },
-                '&:hover fieldset': {
-                  border: 'none',
-                },
-                '&.Mui-focused fieldset': {
-                  border: '1px solid #9AA8BC',
-                },
-              },
-              '& .MuiInputLabel-root': {
-                fontFamily: "'Lexend', sans-serif",
-                fontSize: '14px',
-                color: '#728197',
-                '&.Mui-focused': {
-                  color: '#728197',
-                },
-              },
-              '& .MuiInputBase-input': {
-                fontFamily: "'Lexend', sans-serif",
-                fontSize: '14px',
-                color: '#1A212B',
-                padding: '0',
-              },
-            }}
+        {/* Customer, Doctor, and Payment Details Section */}
+        <CustomerDoctorSection>
+          <CustomerDetailsSection
+            customerName={customerName}
+            customerMobile={customerMobile}
+            customerCity={customerCity}
+            selectedCustomer={selectedCustomer}
+            mockCustomers={mockCustomers}
+            onCustomerNameChange={setCustomerName}
+            onCustomerSelect={handleCustomerSelect}
+            onCustomerMobileChange={setCustomerMobile}
+            onCustomerCityChange={setCustomerCity}
+            onAddNewCustomer={handleOpenCustomerModal}
           />
-          <DropdownIcon src={DropDown} alt="Dropdown" />
-        </Box>
-      </Box>
 
-      {/* Financial Summary Section */}
-      <FinancialSummaryContainer>
-        {/* First Row */}
-        <SummaryRow>
-          <SummaryFieldsGroup>
-            <SummaryField>
-              <SummaryLabel>Out Standing (Rs)</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-            <SummaryField>
-              <SummaryLabel>Avl. Loyal Points</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-            <SummaryField>
-              <SummaryLabel>Redeemable (Rs)</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-            <SummaryField>
-              <SummaryLabel>Disc (Rs)</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-          </SummaryFieldsGroup>
-          <SummaryFieldRight>
-            <SummaryLabel>Sub Total (Rs)</SummaryLabel>
-            <SummaryInputLarge value="0.0" readOnly />
-          </SummaryFieldRight>
-        </SummaryRow>
+          <DoctorDetailsSection
+            doctorName={doctorName}
+            doctorMobile={doctorMobile}
+            doctorEmail={doctorEmail}
+            selectedDoctor={selectedDoctor}
+            mockDoctors={mockDoctors}
+            onDoctorSelect={handleDoctorSelect}
+            onDoctorMobileChange={setDoctorMobile}
+            onDoctorEmailChange={setDoctorEmail}
+          />
 
-        {/* Horizontal Divider */}
+          <PaymentDetailsSection
+            paymentMode={paymentMode}
+            insuranceCompany={insuranceCompany}
+            invoiceNumber={invoiceNumber}
+            invoiceDate={invoiceDate}
+            onPaymentModeChange={setPaymentMode}
+            onInsuranceCompanyChange={setInsuranceCompany}
+          />
+        </CustomerDoctorSection>
+
+        {/* Sales Receipt Table */}
         <Box sx={{ 
-          width: '100%', 
-          height: '1px', 
-          backgroundColor: '#7281974D', 
-          margin: '16px 0',
-          opacity: 0.8
-        }} />
+          marginTop: '8px',
+          width: '100%',
+          overflow: 'hidden'
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '16px' 
+          }}>
+            {/* GST Apply to All Checkbox */}
+            {editingRowId && (
+              <Tooltip title={SALES_RECEIPT_LABELS.APPLY_GST_TO_ALL_TOOLTIP} placement="top">
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={applyGstToAll}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setApplyGstToAll(isChecked);
+                        
+                        if (isChecked && salesItems.length > 0) {
+                          const firstRowItem = salesItems[0];
+                          setSalesItems(prev => prev.map(product => ({
+                            ...product,
+                            cgstPercent: firstRowItem.cgstPercent,
+                            sgstPercent: firstRowItem.sgstPercent,
+                            igstPercent: firstRowItem.igstPercent,
+                            cgst: (parseFloat(product.amount) * parseFloat(firstRowItem.cgstPercent || '0') / 100).toFixed(2),
+                            sgst: (parseFloat(product.amount) * parseFloat(firstRowItem.sgstPercent || '0') / 100).toFixed(2),
+                            igst: (parseFloat(product.amount) * parseFloat(firstRowItem.igstPercent || '0') / 100).toFixed(2),
+                          })));
+                          console.log('✅ Applied GST from FIRST row to all products');
+                        }
+                      }}
+                      sx={{
+                        color: '#5C17E5',
+                        '&.Mui-checked': {
+                          color: '#5C17E5',
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ 
+                      fontFamily: "'Lexend', sans-serif",
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#1A212B',
+                    }}>
+                      {SALES_RECEIPT_LABELS.APPLY_GST_TO_ALL_LABEL}
+                    </Typography>
+                  }
+                  sx={{ marginLeft: 0 }}
+                />
+              </Tooltip>
+            )}
+            {!editingRowId && <Box />}
+            
+            {/* Edit Cart Button */}
+            <StandardButton 
+              onClick={handleEditCart}
+              variant="text"
+              size="small"
+              startIcon={<EditIcon sx={{ fontSize: '16px' }} />}
+              sx={{ 
+                color: '#5C17E5',
+                backgroundColor: 'transparent',
+                '&:hover': {
+                  backgroundColor: 'transparent',
+                }
+              }}
+            >
+              {SALES_RECEIPT_LABELS.EDIT_CART_BUTTON}
+            </StandardButton>
+          </Box>
+          
+          <Box sx={{ 
+            width: '100%',
+            overflowX: 'auto',
+            '&::-webkit-scrollbar': {
+              height: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: '#f1f1f1',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: '#c1c1c1',
+              borderRadius: '4px',
+              '&:hover': {
+                backgroundColor: '#a8a8a8',
+              },
+            },
+          }} className="print-table-container print-receipt-table">
+            <ReusableTable {...tableConfig} />
+          </Box>
+        </Box>
 
-        {/* Second Row */}
-        <SummaryRow>
-          <SummaryFieldsGroup>
-            <SummaryField>
-              <SummaryLabel>Tax (Rs)</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-            <SummaryField>
-              <SummaryLabel>Loyalty Applied (Rs)</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-            <SummaryField>
-              <SummaryLabel>Round Off (Rs)</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-            <SummaryField>
-              <SummaryLabel>Disc (%)</SummaryLabel>
-              <SummaryInput value="0.0" readOnly />
-            </SummaryField>
-          </SummaryFieldsGroup>
-          <SummaryFieldRight>
-            <SummaryLabel>Net Amount (Rs)</SummaryLabel>
-            <SummaryInputLarge value="0.0" readOnly />
-          </SummaryFieldRight>
-        </SummaryRow>
-      </FinancialSummaryContainer>
+        {/* Financial Summary */}
+        <FinancialSummary
+          totalValue={totalValue}
+          totalDiscount={totalDiscount}
+          taxAmount={taxAmount}
+          totalPayableAmount={totalPayableAmount}
+          onTotalValueChange={setTotalValue}
+          onTotalDiscountChange={setTotalDiscount}
+          onTaxAmountChange={setTaxAmount}
+          onTotalPayableAmountChange={setTotalPayableAmount}
+        />
 
-      {/* Customer Modal */}
-      <CustomerModal
-        isOpen={isCustomerModalOpen}
-        onClose={handleCloseCustomerModal}
-        onSubmit={handleCustomerSubmit}
-      />
-    </SalesReceiptContainer>
+        {/* Action Buttons */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+          <StandardButton 
+            variant="secondary" 
+            onClick={handleCancel} 
+            size="large"
+            sx={{
+              minWidth: '130px',
+              borderRadius: '10px',
+              backgroundColor: '#F5F5F5',
+              border: '1px solid #E0E0E0',
+              color: '#616161',
+              fontWeight: 600,
+              fontSize: '14px',
+              textTransform: 'none',
+            }}
+          >
+            {SALES_RECEIPT_LABELS.CANCEL_BUTTON}
+          </StandardButton>
+          <StandardButton 
+            variant="primary" 
+            onClick={handleSave} 
+            size="large"
+            sx={{
+              minWidth: '130px',
+              borderRadius: '10px',
+              backgroundColor: '#5C17E5',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '14px',
+              textTransform: 'none',
+              boxShadow: 'none',
+            }}
+          >
+            {SALES_RECEIPT_LABELS.SAVE_BUTTON}
+          </StandardButton>
+          <StandardButton 
+            variant="primary" 
+            onClick={handlePrint} 
+            size="large"
+            sx={{
+              minWidth: '130px',
+              borderRadius: '10px',
+              backgroundColor: '#5C17E5',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '14px',
+              textTransform: 'none',
+              boxShadow: 'none',
+            }}
+          >
+            {SALES_RECEIPT_LABELS.PRINT_BUTTON}
+          </StandardButton>
+        </Box>
+
+        {/* Customer Modal */}
+        <CustomerModal
+          isOpen={isCustomerModalOpen}
+          onClose={handleCloseCustomerModal}
+          onSubmit={handleCustomerSubmit}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          open={deleteDialogOpen}
+          title="Delete Items"
+          message={`Are you sure you want to delete ${itemsToDelete.length} item(s)?`}
+          onClose={handleCancelDelete}
+          onConfirm={handleConfirmDelete}
+        />
+
+        {/* Print Preview Modal */}
+        <CommonModal
+          open={isPrintModalOpen}
+          title={SALES_RECEIPT_LABELS.PRINT_PREVIEW_TITLE}
+          content={
+            <PrintPreviewModal
+              salesItems={salesItems}
+              customerName={customerName}
+              customerMobile={customerMobile}
+              customerCity={customerCity}
+              doctorName={doctorName}
+              doctorMobile={doctorMobile}
+              doctorEmail={doctorEmail}
+              paymentMode={paymentMode}
+              insuranceCompany={insuranceCompany}
+              invoiceNumber={invoiceNumber}
+              invoiceDate={invoiceDate}
+              totalValue={totalValue}
+              totalDiscount={totalDiscount}
+              taxAmount={taxAmount}
+              totalPayableAmount={totalPayableAmount}
+              onCancel={handleCancelPrint}
+              onPrint={handlePrintFromModal}
+              onSaveClick={handleSaveFromModal}
+              hideActionButtons={false}
+            />
+          }
+          onClose={handleClosePrintModal}
+        />
+
+        {/* Toast Notifications */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={4000}
+          onClose={() => setSnackbarOpen(false)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert 
+            onClose={() => setSnackbarOpen(false)} 
+            severity={snackbarSeverity} 
+            sx={{ width: '100%' }}
+          >
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
+
+        {/* Confirmation Dialog */}
+        <SaleConfirmationDialog
+          open={isConfirmDialogOpen}
+          onClose={handleConfirmDialogClose}
+          onConfirm={handleConfirmDialogConfirm}
+        />
+      </SalesReceiptContainer>
+    </>
   );
 };
-
 export default SalesReceipt;

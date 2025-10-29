@@ -247,7 +247,7 @@ const LoginForm: React.FC = () => {
           <Link to="/Forgot-Password" style={{ textDecoration: "none" }}>
             <Typography
               variant="caption"
-              sx={{ fontSize: "16px", cursor: "pointer" ,color:'#1A212B'}}
+              sx={{ fontSize: "16px", cursor: "pointer" ,color:'#5C17E5'}}
             >
               {LOGIN_LABELS.FORGOT_PASSWORD}
             </Typography>

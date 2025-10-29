@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect, ChangeEvent } from "react";
-import { Box, Button, Typography, Snackbar, Alert, TextField, InputAdornment, Select, MenuItem } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { Box, Typography, Snackbar, Alert, TextField, InputAdornment, Select, MenuItem, Autocomplete, IconButton } from "@mui/material";
+import { StandardButton, PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -14,6 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from "@mui/icons-material/Search";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import "./OrderReceive.scss";
 import { ReusableTable, TableColumn, FilterOption } from "../../components/PharmaTable";
 import ReceiveSupplierModal from "../../components/Modal/ReceiveSupplier/ReceiveSupplierModal";
@@ -66,8 +65,8 @@ const commonStyles = {
       '& fieldset': { borderColor: '#D1D5DB', borderWidth: '1px' },
       '&:hover fieldset': { borderColor: '#9CA3AF' },
       '&.Mui-focused fieldset': { borderColor: '#3B82F6', borderWidth: '1px' },
+      '& .MuiOutlinedInput-input': { padding: '6px 8px', fontSize: '13px', color: '#374151' },
     },
-    '& .MuiOutlinedInput-input': { padding: '6px 8px', fontSize: '13px', color: '#374151' },
   },
   numberInput: {
     '& input[type=number]': { MozAppearance: 'textfield', WebkitAppearance: 'none', appearance: 'textfield' },
@@ -79,7 +78,7 @@ const commonStyles = {
       boxShadow: 'inset 0 0 0 1px #BFD1E6', '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
       '&:hover': { boxShadow: 'inset 0 0 0 1px #AFC3DD' },
       '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #9EB6D6' },
-    }
+    },
   },
   filterButton: {
     minWidth: 160, height: 40, borderRadius: '12px', bgcolor: '#EEF2F7',
@@ -130,13 +129,20 @@ const OrderReceive: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(2);
   
+  // Helper function to capitalize first letter
+  const capitalizeFirstLetter = (str: string): string => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+  
   // Get logged-in user data from Redux store
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: "reNo", direction: 'desc' });
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filters, setFilters] = useState<{ [key: string]: string | null }>({});
+  const [filters, setFilters] = useState<{ [key: string]: string | undefined }>({});
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState<string>("");
   const [dateRange, setDateRange] = useState<{ startDate: Dayjs | null; endDate: Dayjs | null }>({
     startDate: null,
     endDate: null
@@ -178,24 +184,64 @@ const OrderReceive: React.FC = () => {
     { skip: selectedReceiptId === null }
   );
 
+
   const mappedReceipts: OrderReceiveRow[] = useMemo(() => {
+    // Get locally stored receipt data as fallback for the most recent receipt
+    const localReceiptData = localStorage.getItem('lastReceiptData');
+    const parsedLocalData = localReceiptData ? JSON.parse(localReceiptData) : null;
+    
     return (receipts || [])
       .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
-      .map((receipt, idx) => ({
-        receiptId: receipt.id,
-        reNo: `RA${receipt.id}`,
-        poNo: String(receipt.po_id),
-        supplier: receipt.supplier_name,
-        received: receipt.received_on,
-        status: receipt.receipt_status,
-        reBy: receipt.received_by,
-        amt: receipt.total_amount,
-        products: [],
-        transaction_number: receipt.transaction_number || '',
-        payment_vendor: receipt.payment_vendor || '',
-        invoice_date: receipt.invoice_date || receipt.received_on, // Use invoice_date if available, fallback to received_on
-      }));
+      .map((receipt, idx) => {
+        // API Response Structure (from /receive/get-receipts):
+        // { id, po_id, supplier_name, received_on, received_by, receipt_status, total_amount }
+        // Note: API does NOT return po_number, so we use po_id as fallback
+        
+        // Check if po_number exists in API response (in case backend is updated later)
+        // Otherwise, try local storage for the most recent receipt, then fallback to po_id
+        let poNumber = (receipt as any).po_number; // Check if backend adds this field
+        
+        // Use local storage PO number for the most recent receipt (temporary until backend returns it)
+        if (!poNumber && parsedLocalData && idx === 0) {
+          poNumber = parsedLocalData.poNumber;
+        }
+        
+        // Final fallback: use po_id (since API currently doesn't return po_number)
+        if (!poNumber) {
+          poNumber = String(receipt.po_id);
+        }
+        
+        return {
+          receiptId: receipt.id,
+          reNo: `RA${receipt.id}`,
+          poNo: poNumber, // Use po_number if available, otherwise po_id
+          supplier: receipt.supplier_name,
+          received: (receipt as any).invoice_date 
+            ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A') 
+            : dayjs(receipt.received_on).format('MMM DD, YYYY h:mm A'),
+          status: receipt.receipt_status,
+          reBy: receipt.received_by,
+          amt: receipt.total_amount,
+          products: [],
+          transaction_number: receipt.transaction_number || '',
+          payment_vendor: receipt.payment_vendor || '',
+          invoice_date: (receipt as any).invoice_date || receipt.received_on,
+        };
+      });
   }, [receipts]);
+
+  // Debug function to check receipt data
+  const debugReceiptData = () => {
+    console.log('🔍 Current receipts data:', receipts);
+    console.log('🔍 Mapped receipts:', mappedReceipts);
+    console.log('🔍 Table data:', tableData);
+    return { receipts, mappedReceipts, tableData };
+  };
+
+  // Expose debug function to window
+  useEffect(() => {
+    (window as any).debugReceiptData = debugReceiptData;
+  }, [receipts, mappedReceipts, tableData]);
 
   const mappedPurchaseOrders: PurchaseOrderRow[] = useMemo(() => {
     return (purchaseOrders || [])
@@ -207,7 +253,7 @@ const OrderReceive: React.FC = () => {
         supplier: po.supplier_name,
         totalAmount: po.total_amount,
         status: po.status,
-        createdBy: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : 'System'
+        createdBy: user ? capitalizeFirstLetter(`${user.first_name} ${user.last_name}`.trim() || user.username) : 'System'
       }));
   }, [purchaseOrders, user]);
 
@@ -249,13 +295,13 @@ const OrderReceive: React.FC = () => {
       receipt_id: originalReceipt.id,
       po_id: safePoId,
       supplier_name: originalReceipt.supplier_name,
-      supplier_id: 0, // Default value since not available in Receipt
+      supplier_id: 0, 
       po_number: draft.poNo,
-      payment_method: '', // Default value since not available in Receipt
-      payment_vendor: '', // Default value since not available in Receipt
-      transaction_number: '', // Default value since not available in Receipt
-      notes: '', // Default value since not available in Receipt
-      created_by: originalReceipt.received_by, // Use received_by as created_by
+      payment_method: '', 
+      payment_vendor: '', 
+      transaction_number: '', 
+      notes: '',
+      created_by: originalReceipt.received_by, 
       Deleted: [],
       Edited: [],
       Added: []
@@ -280,14 +326,12 @@ const OrderReceive: React.FC = () => {
     return 'Unexpected error occurred';
   };
 
-  // Function to validate inline editing fields
   const validateInlineEditing = () => {
     if (!editingDraft) {
       console.log('Validation failed: No editing draft');
       return false;
     }
     
-    // Only require PO Number and Total Amount as essential fields
     const isValid = editingDraft.poNo?.trim() && 
                    editingDraft.amt && editingDraft.amt > 0;
     
@@ -308,7 +352,6 @@ const OrderReceive: React.FC = () => {
       return;
     }
 
-    // Validate required fields for inline editing (only essential fields)
     if (!editingDraft.poNo?.trim()) {
       setSnackbarSeverity('error');
       setSnackbarMessage('Please fill in the PO Number');
@@ -415,11 +458,44 @@ const OrderReceive: React.FC = () => {
   }, [activeTab, currentReceiptsData, mappedPurchaseOrders]);
 
   const handleFilterChange = (key: string, value: string | null) => {
-    setFilters(prev => ({
+    console.log('Filter change:', key, value);
+    setFilters(prev => {
+      const newFilters = {
         ...prev,
-        [key]: value
-    }));
+        [key]: value || undefined
+      };
+      console.log('New filters:', newFilters);
+      return newFilters;
+    });
     setCurrentPage(1);
+  };
+
+  // Get unique suppliers for the dropdown
+  const uniqueSuppliers = useMemo(() => {
+    return Array.from(new Set(tableData.map(r => r.supplier))).sort();
+  }, [tableData]);
+
+  const handleSupplierChange = (event: any, newValue: string | null) => {
+    console.log('Supplier change:', newValue);
+    handleFilterChange('supplier', newValue);
+    setSupplierSearchTerm(newValue || '');
+  };
+
+  const handleSupplierInputChange = (event: any, newInputValue: string) => {
+    console.log('Supplier input change:', newInputValue);
+    setSupplierSearchTerm(newInputValue);
+    // If user types a value that matches a supplier, apply the filter
+    if (uniqueSuppliers.includes(newInputValue)) {
+      handleFilterChange('supplier', newInputValue);
+    } else if (newInputValue === '') {
+      handleFilterChange('supplier', null);
+    }
+  };
+
+  const handleClearSupplier = () => {
+    console.log('Clear supplier');
+    handleFilterChange('supplier', null);
+    setSupplierSearchTerm('');
   };
 
   const orderReceiveFilterOptions: FilterOption[] = useMemo(() => {
@@ -430,13 +506,10 @@ const OrderReceive: React.FC = () => {
       {
         key: 'supplier',
         label: 'Supplier',
-        // Update this to match your component's needs. Example below:
-        // options: suppliers.map(s => ({ key: s, label: s })) 
       },
       {
         key: 'received',
         label: 'Received On',
-        // options: receivedDates.map(d => ({ key: d, label: d }))
       }
     ];
   }, [tableData]);
@@ -446,13 +519,15 @@ const OrderReceive: React.FC = () => {
       let sortableItems = [...tableData];
 
       if (filters.supplier) {
+        console.log('Filtering by supplier:', filters.supplier);
+        console.log('Items before filter:', sortableItems.length);
         sortableItems = sortableItems.filter(item => item.supplier === filters.supplier);
+        console.log('Items after filter:', sortableItems.length);
       }
       
-      // Date range filtering for received on
       if (dateRange.startDate || dateRange.endDate) {
         sortableItems = sortableItems.filter(item => {
-          const receivedDate = dayjs(item.received);
+          const receivedDate = dayjs(item.received, 'MMM DD, YYYY h:mm A');
           const startDate = dateRange.startDate;
           const endDate = dateRange.endDate;
           
@@ -529,8 +604,15 @@ const OrderReceive: React.FC = () => {
       key: "reNo",
       header: ORDER_RECEIVE_TABLE_HEADERS.RECEIPT_NUMBER,
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '24px' }}>
-          <span style={{ minWidth: 'fit-content' }}>{row.reNo}</span>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'row', 
+          alignItems: 'center', 
+          gap: '2px', 
+          minHeight: '24px',
+          width: '100%',
+          position: 'relative'
+        }}>
           <VisibilityIcon
             sx={{ 
               fontSize: ORDER_RECEIVE_CONSTANTS.ICONS.RECEIPT_VIEW_SIZE, 
@@ -542,6 +624,7 @@ const OrderReceive: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              position: 'relative',
               '&:hover': {
                 backgroundColor: '#f5f5f5',
                 color: ORDER_RECEIVE_CONSTANTS.ICONS.MUTED_COLOR
@@ -549,6 +632,15 @@ const OrderReceive: React.FC = () => {
             }}
             onClick={() => handleViewDetailsClick(row)}
           />
+          <span style={{ 
+            flex: 1, 
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            {row.reNo}
+          </span>
         </Box>
       )
     },
@@ -620,7 +712,7 @@ const OrderReceive: React.FC = () => {
             style={{ width: '100%', boxSizing: 'border-box' }}
           />
         ) : (
-          <span>{row.reBy}</span>
+          <span>{capitalizeFirstLetter(row.reBy)}</span>
         )
       )
     },
@@ -731,7 +823,7 @@ const OrderReceive: React.FC = () => {
     {
       key: "createdBy",
       header: PURCHASE_ORDER_TABLE_HEADERS.CREATED_BY,
-      render: (row) => <span>{row.createdBy || 'System'}</span>
+      render: (row) => <span>{capitalizeFirstLetter(row.createdBy || 'System')}</span>
     }
   ];
 
@@ -764,6 +856,11 @@ const OrderReceive: React.FC = () => {
     setShowFilters(prev => !prev);
   };
 
+  // Convert filters from undefined to null for PharmaTable compatibility
+  const currentFilterForTable = useMemo(() => {
+    return Object.fromEntries(Object.entries(filters).map(([key, value]) => [key, value || null]));
+  }, [filters]);
+
   return (
     <Box className="order-receive">
       <Box className="header">
@@ -771,29 +868,14 @@ const OrderReceive: React.FC = () => {
           {ORDER_RECEIVE_TITLE}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            
+          <StandardButton
             startIcon={<AddIcon />}
-            className="add-btn"
-            disableRipple
-            sx={{
-              backgroundColor: ADD_BUTTON_COLOR,
-              boxShadow: "none",
-              "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
-              "&:focus": { backgroundColor: "#5C17E5" },
-              "&:active": { backgroundColor: "#5C17E5" },
-              "& .MuiButton-startIcon": {
-                "& > *:nth-of-type(1)": {
-                  fontSize: "24px",
-                },
-              },
-            }}
             onClick={() => navigate('/receive/order-details')}
+            variant="primary"
+            size="large"
           >
             {ADD_RECEIVE_BUTTON}
-          </Button>
+          </StandardButton>
         </Box>
       </Box>
 
@@ -832,12 +914,12 @@ const OrderReceive: React.FC = () => {
         ) : receiptsError && activeTab === 2 ? (
           <Box>
             <Typography variant="body2" color="error">{ORDER_RECEIVE_MESSAGES.LOAD_RECEIPTS_FAILED}</Typography>
-            <Button size="small" onClick={() => refetchReceipts()}>Retry</Button>
+            <StandardButton size="small" onClick={() => refetchReceipts()} variant="outline">Retry</StandardButton>
           </Box>
         ) : purchaseOrdersError && activeTab === 1 ? (
           <Box>
             <Typography variant="body2" color="error">{ORDER_RECEIVE_MESSAGES.LOAD_ORDERS_FAILED}</Typography>
-            <Button size="small" onClick={() => refetchPurchaseOrders()}>Retry</Button>
+            <StandardButton size="small" onClick={() => refetchPurchaseOrders()} variant="outline">Retry</StandardButton>
           </Box>
         ) : (
           <>
@@ -850,42 +932,45 @@ const OrderReceive: React.FC = () => {
                   }}
                 >
                   <TextField
-                    placeholder="Search by receipt number, supplier, or received by..."
+                    placeholder="Search by Receipt Number, Supplier, or Received By"
                     value={searchTerm}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => handleSearchChange(e)}
                     InputProps={{
                       startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ color: '#8A99AF', fontSize: '18px' }} />
+                        <InputAdornment position="start" sx={{ transform: 'translateY(-2px)' }}>
+                          <SearchIcon sx={{ color: '#8A99AF', fontSize: '22px' }} />
                         </InputAdornment>
                       ),
-                      sx: {
-                        height: '40px',
-                        borderRadius: '12px',
-                        backgroundColor: '#fff',
-                        boxShadow: 'inset 0 0 0 1px #BFD1E6',
-                        '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-                        '&:hover': { boxShadow: 'inset 0 0 0 1px #5C17E5' },
-                        '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #5C17E5' },
+                    }}
+                    sx={{
+                      height: '40px',
+                      borderRadius: '12px',
+                      backgroundColor: '#fff',
+                      boxShadow: 'inset 0 0 0 1px #BFD1E6',
+                      flex: 1,
+                      '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                      '&:hover': { boxShadow: 'inset 0 0 0 1px #5C17E5' },
+                      '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #5C17E5' },
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        textAlign: 'left',
+                        transform: 'translateX(2px) translateY(-5px)',
+                        fontSize: '16px',
                       },
                     }}
-                    sx={{ flex: 1, borderRadius: '12px' }}
                   />
-                  <Button
-                    variant="contained"
+                  <StandardButton
                     startIcon={
                       showFilters 
                         ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
                         : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
                     }
                     onClick={handleShowFiltersToggle}
+                    variant="secondary"
+                    size="medium"
                     sx={{
                       minWidth: 160,
-                      height: 40,
-                      borderRadius: '12px',
                       bgcolor: '#EEF2F7',
                       color: '#1A212B',
-                      textTransform: 'none',
                       px: 2,
                       border: '1px solid #D7DFEA',
                       boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
@@ -894,388 +979,146 @@ const OrderReceive: React.FC = () => {
                     }}
                   >
                     {showFilters ? 'Hide filters' : 'Show filters'}
-                  </Button>
+                  </StandardButton>
                 </Box>
                 {showFilters && (
-                  <Box sx={{ display: 'flex', gap: 4, mb: 2, alignItems: 'flex-start' }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Typography sx={{ fontSize: '12px', color: '#728197' }}>Supplier Name</Typography>
-                      <Select
-                        value={filters.supplier || ''}
-                        onChange={(e) => handleFilterChange('supplier', e.target.value || null)}
-                        displayEmpty
-                        sx={{
-                          width: 240,
-                          height: '40px',
-                          borderRadius: '12px',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #D1D5DB',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none',
-                          },
-                          '&:hover': {
-                            border: '2px solid #D1D5DB',
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              border: 'none',
-                            },
-                          },
-                          '&.Mui-focused': {
-                            border: '2px solid #D1D5DB',
-                            outline: 'none',
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              border: 'none',
-                            },
-                          },
-                          '& .MuiSelect-select': {
-                            color: '#1A212B',
-                            fontWeight: 500,
-                          },
-                          '& .MuiSelect-icon': {
-                            color: '#000000',
-                          },
-                        }}
-                        MenuProps={{
-                          PaperProps: {
+                  <Box sx={{ display: 'flex', gap: 4, mb: 2, alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Typography sx={{ fontSize: '12px', color: '#728197' }}>Supplier Name</Typography>
+                        <Autocomplete
+                          value={filters.supplier}
+                          onChange={handleSupplierChange}
+                          onInputChange={handleSupplierInputChange}
+                          inputValue={supplierSearchTerm}
+                          options={uniqueSuppliers}
+                          freeSolo
+                          forcePopupIcon
+                          disableClearable={!filters.supplier}
+                          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '20px' }} />}
+                          componentsProps={{
+                            popper: {
+                              sx: {
+                                '& .MuiAutocomplete-listbox': {
+                                  '& .MuiAutocomplete-option': {
+                                    '&:hover': {
+                                      backgroundColor: '#5C17E5',
+                                      color: '#ffffff',
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              placeholder="Search supplier..."
+                              sx={{
+                                width: 240,
+                                height: '40px',
+                                borderRadius: '12px',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #D1D5DB',
+                                '& .MuiOutlinedInput-root': {
+                                  height: '40px',
+                                  borderRadius: '12px',
+                                  '& .MuiOutlinedInput-notchedOutline': {
+                                    border: 'none',
+                                  },
+                                  '&:hover': {
+                                    border: '2px solid #D1D5DB',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      border: 'none',
+                                    },
+                                  },
+                                  '&.Mui-focused': {
+                                    border: '2px solid #D1D5DB',
+                                    outline: 'none',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      border: 'none',
+                                    },
+                                  },
+                                },
+                                '& .MuiInputBase-input': {
+                                  color: '#1A212B',
+                                  fontWeight: 500,
+                                  cursor: 'text',
+                                },
+                                '& .MuiAutocomplete-endAdornment': {
+                                  right: '8px',
+                                },
+                              }}
+                              InputProps={{
+                                ...params.InputProps,
+                              }}
+                            />
+                          )}
+                          renderOption={(props, option) => (
+                            <Box component="li" {...props}>
+                              {option}
+                            </Box>
+                          )}
+                          ListboxProps={{
                             sx: {
                               borderRadius: '12px',
                               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
                               border: '1px solid #E6ECF5',
-                              '& .MuiMenuItem-root': {
+                              '& .MuiAutocomplete-option': {
                                 '&:hover': {
-                                  backgroundColor: '#F3E8FF',
-                                  color: '#5C17E5',
-                                },
-                                '&.Mui-selected': {
                                   backgroundColor: '#5C17E5',
                                   color: '#ffffff',
                                   '&:hover': {
                                     backgroundColor: '#4A14C7',
-                                  },
-                                },
-                              },
-                            },
-                          },
-                        }}
-                      >
-                        <MenuItem value="">All</MenuItem>
-                        {[...new Set(tableData.map(r => r.supplier))].map((s) => (
-                          <MenuItem key={s} value={s}>{s}</MenuItem>
-                        ))}
-                      </Select>
-                    </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Typography sx={{ fontSize: '12px', color: '#728197' }}>Received On</Typography>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <LocalizationProvider dateAdapter={AdapterDayjs}>
-                          <DatePicker
-                            label="From"
+                                  }
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Typography sx={{ fontSize: '12px', color: '#728197' }}>Received On</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <PharmaDatePicker
                             value={dateRange.startDate}
-                            onChange={(newValue: Dayjs | null) => setDateRange(prev => ({ ...prev, startDate: newValue }))}
-                            slotProps={{
-                              textField: {
-                                size: 'small',
-                                sx: {
-                                  width: 150,
-                                  '& .MuiOutlinedInput-root': {
-                                    height: '40px',
-                                    borderRadius: '16px',
-                                    backgroundColor: '#ffffff',
-                                    border: '1px solid #D1D5DB',
-                                    '& .MuiOutlinedInput-notchedOutline': {
-                                      border: 'none',
-                                      borderRadius: '16px',
-                                    },
-                                    '&:hover': {
-                                      border: '2px solid #D1D5DB',
-                                      borderRadius: '16px',
-                                      '& .MuiOutlinedInput-notchedOutline': {
-                                        border: 'none',
-                                        borderRadius: '16px',
-                                      },
-                                    },
-                                    '&.Mui-focused': {
-                                      border: '2px solid #D1D5DB',
-                                      borderRadius: '16px',
-                                      outline: 'none',
-                                      '& .MuiOutlinedInput-notchedOutline': {
-                                        border: 'none',
-                                        borderRadius: '16px',
-                                      },
-                                    },
-                                  },
-                                  '& .MuiInputLabel-root': {
-                                    color: '#728197',
-                                    '&.Mui-focused': {
-                                      color: '#728197',
-                                    },
-                                  },
-                                  '& .MuiOutlinedInput-input::placeholder': {
-                                    color: '#728197',
-                                    opacity: 1,
-                                  },
-                                  '& .MuiOutlinedInput-input': {
-                                    color: '#728197',
-                                    '&::placeholder': {
-                                      color: '#728197',
-                                      opacity: 1,
-                                    },
-                                  },
-                                  '& input::placeholder': {
-                                    color: '#728197',
-                                    opacity: 1,
-                                  },
-                                  '& input': {
-                                    color: '#728197',
-                                  },
-                                },
-                              },
-                              popper: {
-                                sx: {
-                                  '& .MuiPaper-root': {
-                                    borderRadius: '12px',
-                                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                                    border: '1px solid #E6ECF5',
-                                  },
-                                  '& .MuiDayCalendar-root': {
-                                    width: '280px',
-                                    padding: '16px',
-                                  },
-                                  '& .MuiDayCalendar-header': {
-                                    color: '#5C17E5',
-                                    fontWeight: '600',
-                                    fontSize: '14px',
-                                    marginBottom: '8px',
-                                  },
-                                  '& .MuiDayCalendar-weekDayLabel': {
-                                    color: '#5C17E5',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    width: '32px',
-                                    height: '32px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                  },
-                                  '& .MuiDayCalendar-weekContainer': {
-                                    marginBottom: '4px',
-                                  },
-                                  '& .MuiPickersDay-root': {
-                                    width: '32px',
-                                    height: '32px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    color: '#1A212B',
-                                    borderRadius: '50%',
-                                    margin: '2px',
-                                    backgroundColor: 'transparent',
-                                    '&:hover': {
-                                      backgroundColor: '#F3E8FF !important',
-                                      color: '#5C17E5 !important',
-                                    },
-                                    '&.Mui-selected': {
-                                      backgroundColor: '#5C17E5 !important',
-                                      color: '#ffffff !important',
-                                      '&:hover': {
-                                        backgroundColor: '#4A14C7 !important',
-                                        color: '#ffffff !important',
-                                      },
-                                    },
-                                    '&.MuiPickersDay-today': {
-                                      border: '1px solid #D1D5DB',
-                                      color: '#5C17E5',
-                                      backgroundColor: 'transparent',
-                                      '&:hover': {
-                                        backgroundColor: '#F3E8FF !important',
-                                        color: '#5C17E5 !important',
-                                      },
-                                      '&.Mui-selected': {
-                                        backgroundColor: '#5C17E5 !important',
-                                        color: '#ffffff !important',
-                                        '&:hover': {
-                                          backgroundColor: '#4A14C7 !important',
-                                          color: '#ffffff !important',
-                                        },
-                                      },
-                                    },
-                                  },
-                                  '& .MuiPickersCalendarHeader-root': {
-                                    padding: '0 8px 16px 8px',
-                                    '& .MuiPickersCalendarHeader-labelContainer': {
-                                      '& .MuiPickersCalendarHeader-label': {
-                                        fontSize: '16px',
-                                        fontWeight: '600',
-                                        color: '#1A212B',
-                                      },
-                                    },
-                                    '& .MuiIconButton-root': {
-                                      color: '#5C17E5',
-                                      '&:hover': {
-                                        backgroundColor: '#F3E8FF',
-                                      },
-                                    },
-                                  },
-                                },
-                              },
-                            }}
+                            onChange={(newValue) => setDateRange({ ...dateRange, startDate: newValue })}
+                            width={150}
                           />
-                          <DatePicker
-                            label="To"
+                          <PharmaDatePicker
                             value={dateRange.endDate}
-                            onChange={(newValue: Dayjs | null) => setDateRange(prev => ({ ...prev, endDate: newValue }))}
-                            slotProps={{
-                              textField: {
-                                size: 'small',
-                                sx: {
-                                  width: 150,
-                                  '& .MuiOutlinedInput-root': {
-                                    height: '40px',
-                                    borderRadius: '16px',
-                                    backgroundColor: '#ffffff',
-                                    border: '1px solid #D1D5DB',
-                                    '& .MuiOutlinedInput-notchedOutline': {
-                                      border: 'none',
-                                      borderRadius: '16px',
-                                    },
-                                    '&:hover': {
-                                      border: '2px solid #D1D5DB',
-                                      borderRadius: '16px',
-                                      '& .MuiOutlinedInput-notchedOutline': {
-                                        border: 'none',
-                                        borderRadius: '16px',
-                                      },
-                                    },
-                                    '&.Mui-focused': {
-                                      border: '2px solid #D1D5DB',
-                                      borderRadius: '16px',
-                                      outline: 'none',
-                                      '& .MuiOutlinedInput-notchedOutline': {
-                                        border: 'none',
-                                        borderRadius: '16px',
-                                      },
-                                    },
-                                  },
-                                  '& .MuiInputLabel-root': {
-                                    color: '#728197',
-                                    '&.Mui-focused': {
-                                      color: '#728197',
-                                    },
-                                  },
-                                  '& .MuiOutlinedInput-input::placeholder': {
-                                    color: '#728197',
-                                    opacity: 1,
-                                  },
-                                  '& .MuiOutlinedInput-input': {
-                                    color: '#728197',
-                                    '&::placeholder': {
-                                      color: '#728197',
-                                      opacity: 1,
-                                    },
-                                  },
-                                  '& input::placeholder': {
-                                    color: '#728197',
-                                    opacity: 1,
-                                  },
-                                  '& input': {
-                                    color: '#728197',
-                                  },
-                                },
-                              },
-                              popper: {
-                                sx: {
-                                  '& .MuiPaper-root': {
-                                    borderRadius: '12px',
-                                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                                    border: '1px solid #E6ECF5',
-                                  },
-                                  '& .MuiDayCalendar-root': {
-                                    width: '280px',
-                                    padding: '16px',
-                                  },
-                                  '& .MuiDayCalendar-header': {
-                                    color: '#5C17E5',
-                                    fontWeight: '600',
-                                    fontSize: '14px',
-                                    marginBottom: '8px',
-                                  },
-                                  '& .MuiDayCalendar-weekDayLabel': {
-                                    color: '#5C17E5',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    width: '32px',
-                                    height: '32px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                  },
-                                  '& .MuiDayCalendar-weekContainer': {
-                                    marginBottom: '4px',
-                                  },
-                                  '& .MuiPickersDay-root': {
-                                    width: '32px',
-                                    height: '32px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    color: '#1A212B',
-                                    borderRadius: '50%',
-                                    margin: '2px',
-                                    backgroundColor: 'transparent',
-                                    '&:hover': {
-                                      backgroundColor: '#F3E8FF !important',
-                                      color: '#5C17E5 !important',
-                                    },
-                                    '&.Mui-selected': {
-                                      backgroundColor: '#5C17E5 !important',
-                                      color: '#ffffff !important',
-                                      '&:hover': {
-                                        backgroundColor: '#4A14C7 !important',
-                                        color: '#ffffff !important',
-                                      },
-                                    },
-                                    '&.MuiPickersDay-today': {
-                                      border: '1px solid #D1D5DB',
-                                      color: '#5C17E5',
-                                      backgroundColor: 'transparent',
-                                      '&:hover': {
-                                        backgroundColor: '#F3E8FF !important',
-                                        color: '#5C17E5 !important',
-                                      },
-                                      '&.Mui-selected': {
-                                        backgroundColor: '#5C17E5 !important',
-                                        color: '#ffffff !important',
-                                        '&:hover': {
-                                          backgroundColor: '#4A14C7 !important',
-                                          color: '#ffffff !important',
-                                        },
-                                      },
-                                    },
-                                  },
-                                  '& .MuiPickersCalendarHeader-root': {
-                                    padding: '0 8px 16px 8px',
-                                    '& .MuiPickersCalendarHeader-labelContainer': {
-                                      '& .MuiPickersCalendarHeader-label': {
-                                        fontSize: '16px',
-                                        fontWeight: '600',
-                                        color: '#1A212B',
-                                      },
-                                    },
-                                    '& .MuiIconButton-root': {
-                                      color: '#5C17E5',
-                                      '&:hover': {
-                                        backgroundColor: '#F3E8FF',
-                                      },
-                                    },
-                                  },
-                                },
-                              },
-                            }}
+                            onChange={(newValue) => setDateRange({ ...dateRange, endDate: newValue })}
+                            width={150}
                           />
-                        </LocalizationProvider>
+                        </Box>
                       </Box>
                     </Box>
-                    <Box sx={{ flexGrow: 1 }} />
-                    <Button variant="text" onClick={() => { setSearchTerm(''); setFilters({}); setDateRange({ startDate: null, endDate: null }); }} sx={{ textTransform: 'none', color: '#27313F', mt: '24px' }}>
-                      Reset filters
-                    </Button>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', pt: '28px' }}>
+                      <StandardButton
+                        onClick={() => { 
+                          setSearchTerm(''); 
+                          setFilters({}); 
+                          setSupplierSearchTerm('');
+                          setDateRange({ startDate: null, endDate: null }); 
+                        }}
+                        variant="secondary"
+                        size="medium"
+                        sx={{
+                          minWidth: 120,
+                          height: '40px',
+                          backgroundColor: '#F5F5F5',
+                          border: '1px solid #D1D5DB',
+                          color: '#1A212B',
+                          fontWeight: 500,
+                          '&:hover': {
+                            backgroundColor: '#E0E0E0',
+                            border: '1px solid #D1D5DB',
+                          }
+                        }}
+                      >
+                        Reset filters
+                      </StandardButton>
+                    </Box>
                   </Box>
                 )}
               </>
@@ -1320,7 +1163,7 @@ const OrderReceive: React.FC = () => {
                 sortConfig={sortConfig}
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
-                currentFilter={filters}
+                currentFilter={currentFilterForTable}
               />
             )}
           </>
@@ -1374,15 +1217,15 @@ const OrderReceive: React.FC = () => {
                 ? {
                   ...selectedProduct,
                   products: (receiptLines || []).map((line) => ({
-                    lineId: line.id,
-                    productName: line.name,
-                    type: line.type,
+                    lineId: line.receipt_line_id,
+                    productName: line.product_name,
+                    type: 'Medicine', 
                     quantity: line.received_qty,
-                    hsnCode: line.hsn_id,
-                    amount: line.total_amount,
+                    hsnCode: line.hsn_id || line.hsn_code || 'N/A',
+                    amount: parseFloat(line.unit_price) || 0,
                     transaction_number: line.transaction_number || '',
                     payment_vendor: line.payment_vendor || '',
-                    invoice_date: line.invoice_date || '',
+                    invoice_date: '', 
                   })) as ProductItem[],
                 }
                 : null

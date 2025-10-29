@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import dayjs, { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { StandardButton } from "../../components/Common";
 import InventoryMetrics from "../../components/mainDashboard/InventoryMetrics/InventoryMetricsCard";
 import DateRangeFilter from "../../components/mainDashboard/DateRangeFilter/DateRangeFilter";
 import ThreeChartsComponent from "../../components/mainDashboard/Charts/SimpleAreaCharts";
@@ -20,6 +22,7 @@ interface RootState {
 }
 
 const DashboardMain: React.FC = () => {
+  const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const displayName = user ? (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username) : "Guest";
   
@@ -79,45 +82,23 @@ const DashboardMain: React.FC = () => {
         </Typography>
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: DASHBOARD_MAIN_CONSTANTS.TOOLBAR.GAP }}>
-          <Button
-            variant="contained"
+          <StandardButton
+            variant="secondary"
+            size="large"
             startIcon={<AddIcon />}
-            disableRipple
-            disableElevation
-            sx={{
-              backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BACKGROUND,
-              textTransform: "none",
-              fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
-              borderRadius: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BORDER_RADIUS,
-              color: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.COLOR,
-              border: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BORDER,
-              boxShadow: "none",
-              mr: "8px",
-              padding: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.PADDING,
-              "&:hover": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BACKGROUND, boxShadow: "none" },
-              "&:focus": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_SECONDARY.BACKGROUND },
-            }}
+            onClick={() => navigate('/sales')}
           >
             {DASHBOARD_MAIN_LABELS.CREATE_INVOICE}
-          </Button>
+          </StandardButton>
 
-          <Button
-            variant="contained"
+          <StandardButton
+            variant="primary"
+            size="large"
             startIcon={<AddIcon />}
-            disableRipple
-            disableElevation
-            sx={{
-              backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BACKGROUND,
-              textTransform: "none",
-              fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
-              borderRadius: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BORDER_RADIUS,
-              boxShadow: "none",
-              "&:hover": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BACKGROUND, boxShadow: "none" },
-              "&:focus": { backgroundColor: DASHBOARD_MAIN_CONSTANTS.BUTTON_PRIMARY.BACKGROUND },
-            }}
+            onClick={() => navigate('/receive/order-details')}
           >
             {DASHBOARD_MAIN_LABELS.ADD_RECEIVE}
-          </Button>
+          </StandardButton>
 
         </Box>
       </Box>

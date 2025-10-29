@@ -1,7 +1,5 @@
-
-
-
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "../baseQuery";
 
 // Define interfaces for your API responses
 export interface InventoryItem {
@@ -64,14 +62,7 @@ export interface AddProductResponse {
 
 export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: "http://localhost:3000/api",
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as any)?.auth?.token;
-      if (token) headers.set("authorization", `Bearer ${token}`);
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Inventory"],
   endpoints: (builder) => ({
     getLowStock: builder.query<InventoryItem[], void>({
