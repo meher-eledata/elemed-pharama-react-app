@@ -610,7 +610,7 @@ const InventoryModule: React.FC = () => {
         </Box>
       ) : (
         <ReusableTable
-          data={paginatedData as InventoryItem[]}
+          data={filteredData as InventoryItem[]}
           columns={columns}
           selectedRows={selectedRows}
   setSelectedRows={setSelectedRows}

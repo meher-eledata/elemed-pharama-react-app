@@ -39,9 +39,22 @@ $background-secondary: #F6F8FB;
 
   svg {
     fill: white !important;
+    color: white !important;
     filter: invert(100%) brightness(100%);
     path, polygon, circle, rect {
       fill: white !important;
+      stroke: white !important;
+    }
+  }
+
+  // Ensure Material-UI icons are white (without filter that might interfere)
+  .MuiSvgIcon-root {
+    fill: white !important;
+    color: white !important;
+    filter: none !important;
+    path, polygon, circle, rect {
+      fill: white !important;
+      stroke: white !important;
     }
   }
 

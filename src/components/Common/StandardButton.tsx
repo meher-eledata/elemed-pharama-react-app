@@ -52,18 +52,26 @@ const STANDARD_BUTTON_VARIANTS = {
   secondary: {
     backgroundColor: '#FFFFFF',
     color: '#525E6F',
-    border: '2px solid #27313F',
+    border: '1px solid #D7DFEA',
+    boxShadow: 'none',
+    outline: 'none',
     '&:hover': {
       backgroundColor: '#FFFFFF',
-      borderColor: '#27313F',
+      borderColor: '#D7DFEA',
+      boxShadow: 'none',
+      outline: 'none',
     },
     '&:focus': {
       backgroundColor: '#FFFFFF',
-      borderColor: '#27313F',
+      borderColor: '#D7DFEA',
+      boxShadow: 'none',
+      outline: 'none',
     },
     '&:active': {
       backgroundColor: '#FFFFFF',
-      borderColor: '#27313F',
+      borderColor: '#D7DFEA',
+      boxShadow: 'none',
+      outline: 'none',
     },
     '&:disabled': {
       backgroundColor: '#F8F9FA',

@@ -94,5 +94,18 @@ export const SALES_RECEIPT_CONSTANTS = {
     year: 'numeric' as const 
   },
   DATE_LOCALE: 'en-GB',
+  
+  // Confirmation Dialog styling
+  DIALOG: {
+    BORDER_RADIUS: '16px',
+    MAX_WIDTH: '500px',
+    PADDING_TITLE: '28px 28px 20px',
+    PADDING_CONTENT: '0 28px 20px',
+    PADDING_ACTIONS: '20px 28px 28px',
+    PAPER_BORDER: '1px solid #E5E7EB',
+    PAPER_BG: '#FFFFFF',
+    MESSAGE_BOX_BG: '#F9FAFB',
+    MESSAGE_BOX_BORDER: '1px solid #E5E7EB',
+  },
 };
 

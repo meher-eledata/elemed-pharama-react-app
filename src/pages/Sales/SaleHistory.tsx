@@ -6,7 +6,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
@@ -16,6 +16,8 @@ import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
+import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
+import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
 import { SalesReceiptItem as SalesApiReceiptItem } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
@@ -257,7 +259,7 @@ export default function SaleHistory() {
   const columns: TableColumn<SalesHistoryItem>[] = [
     {
       key: 'invoiceNumber',
-      header: 'Invoice',
+      header: SALES_HISTORY_LABELS.TABLE.INVOICE,
         sortable: true,
       render: (item) => (
         <Box sx={{ 
@@ -271,8 +273,8 @@ export default function SaleHistory() {
         }}>
           <VisibilityIcon
             sx={{ 
-              fontSize: 18, 
-              color: '#666', 
+              fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE, 
+              color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR, 
               cursor: 'pointer',
               padding: '2px',
               borderRadius: '4px',
@@ -301,33 +303,33 @@ export default function SaleHistory() {
         ),
     },
     {
-        key: 'invoiceDate',
-        header: 'Invoice date',
+      key: 'invoiceDate',
+      header: SALES_HISTORY_LABELS.TABLE.INVOICE_DATE,
         sortable: true,
     },
     {
       key: 'customerName',
-      header: 'Customer name',
+      header: SALES_HISTORY_LABELS.TABLE.CUSTOMER_NAME,
       sortable: true,
     },
     {
       key: 'customerMobile',
-      header: 'Mobile number',
+      header: SALES_HISTORY_LABELS.TABLE.MOBILE_NUMBER,
       sortable: true,
     },
     {
       key: 'doctorName',
-      header: 'Doctor',
+      header: SALES_HISTORY_LABELS.TABLE.DOCTOR,
       sortable: true,
     },
     {
       key: 'username',
-      header: 'Username',
+      header: SALES_HISTORY_LABELS.TABLE.USERNAME,
       sortable: true,
     },
     {
-        key: 'totalAmount',
-        header: 'Total amount',
+      key: 'totalAmount',
+      header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
         sortable: true,
       render: (item) => (
         <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -485,7 +487,7 @@ export default function SaleHistory() {
       {/* Page Title and Action Button */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>
-          Sale history
+          {SALES_HISTORY_LABELS.PAGE_TITLE}
         </Typography>
         <StandardButton
           onClick={handleStartNewSale}
@@ -502,7 +504,7 @@ export default function SaleHistory() {
             boxShadow: 'none',
           }}
         >
-          + Start new sale
+          {SALES_HISTORY_LABELS.START_NEW_SALE}
         </StandardButton>
       </Box>
 
@@ -518,7 +520,7 @@ export default function SaleHistory() {
         p: '12px',
       }}>
         <TextField
-          placeholder="Search by Invoice Number, Customer Name, or Phone Number"
+          placeholder={SALES_HISTORY_LABELS.SEARCH_PLACEHOLDER}
           value={currentSearchTerm}
           onChange={handleSearchChange}
           InputProps={{
@@ -585,7 +587,7 @@ export default function SaleHistory() {
             fontWeight: 600,
           }}
         >
-          {showFilters ? 'Hide filters' : 'Show filters'}
+          {showFilters ? SALES_HISTORY_LABELS.HIDE_FILTERS : SALES_HISTORY_LABELS.SHOW_FILTERS}
         </StandardButton>
       </Box>
 
@@ -602,7 +604,7 @@ export default function SaleHistory() {
           <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             {/* Doctor Name Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>Doctor Name</Typography>
+            <Typography sx={{ fontSize: '12px', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_DOCTOR_NAME}</Typography>
               <Autocomplete
                 value={selectedDoctor}
                 onChange={(event, newValue) => setSelectedDoctor(newValue)}
@@ -612,11 +614,11 @@ export default function SaleHistory() {
                 clearOnEscape
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<KeyboardArrowDownIcon sx={{ color: '#6B7280', fontSize: 20 }} />}
+                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 20 }} />}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder="Search doctor..."
+                    placeholder={SALES_HISTORY_LABELS.SEARCH_DOCTOR_PLACEHOLDER}
                     sx={{
                       width: 200,
                       height: '40px',
@@ -676,7 +678,7 @@ export default function SaleHistory() {
 
             {/* Username Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>Username</Typography>
+            <Typography sx={{ fontSize: '12px', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_USERNAME}</Typography>
               <Autocomplete
                 value={selectedUsername}
                 onChange={(event, newValue) => setSelectedUsername(newValue)}
@@ -686,11 +688,11 @@ export default function SaleHistory() {
                 clearOnEscape
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<KeyboardArrowDownIcon sx={{ color: '#6B7280', fontSize: 20 }} />}
+                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 20 }} />}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder="Search username..."
+                    placeholder={SALES_HISTORY_LABELS.SEARCH_USERNAME_PLACEHOLDER}
                     sx={{
                       width: 200,
                       height: '40px',
@@ -750,7 +752,7 @@ export default function SaleHistory() {
 
             {/* Date Range Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>Date Range</Typography>
+            <Typography sx={{ fontSize: '12px', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_DATE_RANGE}</Typography>
               <PharmaDatePicker
                 value={startDate}
                 onChange={(newValue) => setStartDate(newValue)}
@@ -777,7 +779,7 @@ export default function SaleHistory() {
                 textTransform: 'none',
               }}
             >
-              Reset filters
+              {SALES_HISTORY_LABELS.FILTER_RESET}
             </StandardButton>
           </Box>
         </Box>
@@ -790,7 +792,7 @@ export default function SaleHistory() {
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
         totalRows={sortedData.length}
-        rowsPerPage={6}
+        rowsPerPage={SALES_HISTORY_CONSTANTS.TABLE.ROWS_PER_PAGE}
         currentPage={currentPage}
         onPageChange={handlePageChange}
         onSortRequest={handleSortRequest}
@@ -803,14 +805,14 @@ export default function SaleHistory() {
         currentFilterKey=""
         onFilterSelect={() => {}}
         currentFilter={{}}
-        emptyMessage="No sales history found"
+        emptyMessage={SALES_HISTORY_LABELS.EMPTY_MESSAGE}
       />
 
       {/* Invoice Preview Modal */}
       {isInvoiceModalOpen && invoiceDetails && (
         <CommonModal
           open={isInvoiceModalOpen}
-          title="Invoice Preview"
+          title={SALES_HISTORY_LABELS.MODAL_TITLE}
           content={
             <PrintPreviewModal
               salesItems={invoiceDetails.items || []}

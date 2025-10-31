@@ -853,8 +853,8 @@ const SalesReceipt: React.FC = () => {
         {/* Delete Confirmation Dialog */}
         <ConfirmationDialog
           open={deleteDialogOpen}
-          title="Delete Items"
-          message={`Are you sure you want to delete ${itemsToDelete.length} item(s)?`}
+          title={SALES_RECEIPT_LABELS.DELETE_ITEMS_TITLE}
+          message={SALES_RECEIPT_LABELS.DELETE_ITEMS_MESSAGE.replace('{count}', String(itemsToDelete.length))}
           onClose={handleCancelDelete}
           onConfirm={handleConfirmDelete}
         />

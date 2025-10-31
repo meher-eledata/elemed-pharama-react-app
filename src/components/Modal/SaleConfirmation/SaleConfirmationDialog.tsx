@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { StandardButton } from '../../Common';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
+import { SALES_RECEIPT_CONSTANTS } from '../../../config/constants/SalesReceipt.constants';
 
 interface SaleConfirmationDialogProps {
   open: boolean;
@@ -50,11 +51,11 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
       onClose={onClose}
       PaperProps={{
         sx: {
-          borderRadius: '16px',
-          border: '1px solid #E5E7EB',
-          backgroundColor: '#FFFFFF',
+          borderRadius: SALES_RECEIPT_CONSTANTS.DIALOG.BORDER_RADIUS,
+          border: SALES_RECEIPT_CONSTANTS.DIALOG.PAPER_BORDER,
+          backgroundColor: SALES_RECEIPT_CONSTANTS.DIALOG.PAPER_BG,
           padding: 0,
-          maxWidth: '500px',
+          maxWidth: SALES_RECEIPT_CONSTANTS.DIALOG.MAX_WIDTH,
           width: '90%',
           boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.15)',
         },
@@ -68,7 +69,7 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
           fontSize: '20px',
           fontWeight: 700,
           color: '#1A212B',
-          padding: '28px 28px 20px',
+          padding: SALES_RECEIPT_CONSTANTS.DIALOG.PADDING_TITLE,
           fontFamily: "'Lexend', sans-serif",
         }}
       >
@@ -76,11 +77,11 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
       </DialogTitle>
 
       {/* Content with Message Box */}
-      <DialogContent sx={{ padding: '0 28px 20px' }}>
+      <DialogContent sx={{ padding: SALES_RECEIPT_CONSTANTS.DIALOG.PADDING_CONTENT }}>
         <Box
           sx={{
-            backgroundColor: '#F9FAFB',
-            border: '1px solid #E5E7EB',
+            backgroundColor: SALES_RECEIPT_CONSTANTS.DIALOG.MESSAGE_BOX_BG,
+            border: SALES_RECEIPT_CONSTANTS.DIALOG.MESSAGE_BOX_BORDER,
             borderRadius: '12px',
             padding: '20px',
             boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)'
@@ -95,7 +96,7 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
               fontWeight: 500,
             }}
           >
-            You are about to confirm this sale.
+            {SALES_RECEIPT_LABELS.CONFIRM_SALE_MESSAGE_1}
           </Typography>
           <Typography
             sx={{
@@ -106,7 +107,7 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
               fontWeight: 500,
             }}
           >
-            Once confirmed, sale will be locked & Inventory will be updated
+            {SALES_RECEIPT_LABELS.CONFIRM_SALE_MESSAGE_2}
           </Typography>
           <Typography
             sx={{
@@ -126,7 +127,7 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
       {/* Action Buttons */}
       <DialogActions
         sx={{
-          padding: '20px 28px 28px',
+          padding: SALES_RECEIPT_CONSTANTS.DIALOG.PADDING_ACTIONS,
           display: 'flex',
           gap: '12px',
           justifyContent: 'flex-end',
@@ -172,7 +173,7 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
             },
           }}
         >
-          {isLoading ? 'Processing...' : SALES_RECEIPT_LABELS.CONFIRM_BUTTON}
+          {isLoading ? SALES_RECEIPT_LABELS.PROCESSING_TEXT : SALES_RECEIPT_LABELS.CONFIRM_BUTTON}
         </StandardButton>
       </DialogActions>
     </Dialog>

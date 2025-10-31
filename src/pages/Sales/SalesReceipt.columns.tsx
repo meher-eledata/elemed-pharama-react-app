@@ -6,6 +6,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { TableColumn } from '../../components/PharmaTable';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import DeleteNewIcon from '../../assets/DeleteNew.svg';
+import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 
 interface GetTableColumnsParams {
   editingRowId: string | null;
@@ -28,7 +29,7 @@ export const getTableColumns = ({
 }: GetTableColumnsParams): TableColumn<SalesReceiptItem>[] => [
   {
     key: 'productName',
-    header: 'Product',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_PRODUCT,
     sortable: true,
     render: (item) => (
       editingRowId === item.id ? (
@@ -63,7 +64,7 @@ export const getTableColumns = ({
   },
   {
     key: 'quantity',
-    header: 'Qty',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_QUANTITY,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -98,7 +99,7 @@ export const getTableColumns = ({
   },
   {
     key: 'type',
-    header: 'Type',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_TYPE,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -132,7 +133,7 @@ export const getTableColumns = ({
   },
   {
     key: 'batch',
-    header: 'Batch',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_BATCH,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -166,7 +167,7 @@ export const getTableColumns = ({
   },
   {
     key: 'unitPrice',
-    header: 'Price',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_UNIT_PRICE,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -201,7 +202,7 @@ export const getTableColumns = ({
   },
   {
     key: 'discount',
-    header: 'Disc',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_DISC,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -242,7 +243,7 @@ export const getTableColumns = ({
   },
   {
     key: 'cgst',
-    header: 'CGST (%)',
+    header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_CGST} (%)`,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -298,7 +299,7 @@ export const getTableColumns = ({
   },
   {
     key: 'sgst',
-    header: 'SGST (%)',
+    header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_SGST} (%)`,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -354,7 +355,7 @@ export const getTableColumns = ({
   },
   {
     key: 'igst',
-    header: 'IGST (%)',
+    header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_IGST} (%)`,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -410,7 +411,7 @@ export const getTableColumns = ({
   },
   {
     key: 'amount',
-    header: 'Amt (₹)',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_AMOUNT,
     render: (item) => (
       editingRowId === item.id ? (
         <TextField
@@ -445,7 +446,7 @@ export const getTableColumns = ({
   },
   {
     key: 'actions',
-    header: 'Actions',
+    header: SALES_RECEIPT_LABELS.TABLE_HEADER_ACTIONS,
     sortable: false,
     render: (item) => (
       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>

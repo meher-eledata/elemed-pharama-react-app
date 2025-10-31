@@ -33,6 +33,7 @@ export const SALES_RECEIPT_LABELS = {
   // Table Headers
   TABLE_HEADER_PRODUCT: "Product",
   TABLE_HEADER_QUANTITY: "Quantity",
+  TABLE_HEADER_TYPE: "Type",
   TABLE_HEADER_BATCH: "Batch",
   TABLE_HEADER_UNIT_PRICE: "Unit price",
   TABLE_HEADER_DISC: "Disc",
@@ -40,6 +41,7 @@ export const SALES_RECEIPT_LABELS = {
   TABLE_HEADER_SGST: "SGST",
   TABLE_HEADER_IGST: "IGST",
   TABLE_HEADER_AMOUNT: "Amount",
+  TABLE_HEADER_ACTIONS: "Actions",
   
   // Empty State
   NO_SALES_ITEMS: "No sales items found",
@@ -79,9 +81,15 @@ export const SALES_RECEIPT_LABELS = {
   
   // Confirmation Dialog
   CONFIRM_SALE_TITLE: "Confirm sale & update inventory",
-  CONFIRM_SALE_MESSAGE: "You are about to confirm this sale.\nOnce confirmed, sale will be locked & Inventory will be updated",
+  CONFIRM_SALE_MESSAGE_1: "You are about to confirm this sale.",
+  CONFIRM_SALE_MESSAGE_2: "Once confirmed, sale will be locked & Inventory will be updated",
   IRREVERSIBLE_WARNING: "*This action cannot be undone",
   CONFIRM_BUTTON: "Confirm",
   CANCEL_CONFIRM_BUTTON: "Cancel",
+  PROCESSING_TEXT: "Processing...",
+
+  // Delete Confirmation
+  DELETE_ITEMS_TITLE: "Delete Items",
+  DELETE_ITEMS_MESSAGE: "Are you sure you want to delete {count} item(s)?",
 };
 

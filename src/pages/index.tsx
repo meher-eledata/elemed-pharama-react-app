@@ -12,6 +12,12 @@ import Masterpage from "./Masters/MasterPage";
 import Sale from "./Sales/salepage";
 import SalesReceipt from "./Sales/SalesReceipt";
 import SaleHistory from "./Sales/SaleHistory";
+import AdminDashboard from "./Admin/AdminDashboard";
+import Users from "./Admin/Users";
+import Reports from "./Admin/Reports";
+import AdminSettings from "./Admin/Settings";
+import AuditLog from "./Admin/AuditLog";
+import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 
 
 // Import your labels here, as you need to pass them to the component
@@ -53,6 +59,15 @@ export const Pages = () => {
         <Route index element={<Sale />} />
         <Route path="receipt" element={<SalesReceipt />} />
         <Route path="sale-history" element={<SaleHistory />} />
+      </Route>
+
+      {/* Admin Routes - NO PROTECTION (will be conditionally shown in UI) */}
+      <Route path={ADMIN_CONSTANTS.ROUTE_BASE} element={<DashboardLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="users" element={<Users />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="audit" element={<AuditLog />} />
       </Route>
     </Routes>
   );

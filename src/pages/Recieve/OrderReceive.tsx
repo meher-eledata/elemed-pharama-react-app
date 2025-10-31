@@ -1126,7 +1126,7 @@ const OrderReceive: React.FC = () => {
             {activeTab === 1 ? (
               <ReusableTable<PurchaseOrderRow>
                 columns={purchaseOrderColumns}
-                data={paginatedData as PurchaseOrderRow[]}
+                data={sortedData as PurchaseOrderRow[]}
                 emptyMessage={ORDER_RECEIVE_MESSAGES.EMPTY_ORDERS}
                 searchAndFilterConfig={{ filterOptions: [] }}
                 currentSearchTerm={searchTerm}
@@ -1147,7 +1147,7 @@ const OrderReceive: React.FC = () => {
             ) : (
               <ReusableTable<OrderReceiveRow>
                 columns={orderReceiveColumns}
-                data={paginatedData as OrderReceiveRow[]}
+                data={sortedData as OrderReceiveRow[]}
                 emptyMessage={ORDER_RECEIVE_MESSAGES.EMPTY_RECEIPTS}
                 searchAndFilterConfig={{ filterOptions: [] }}
                 currentSearchTerm={searchTerm}

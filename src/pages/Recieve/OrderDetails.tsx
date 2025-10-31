@@ -110,6 +110,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [isSupplierFocused, setIsSupplierFocused] = useState(false);
   const [isVendorFocused, setIsVendorFocused] = useState(false);
   const [isFindProductFocused, setIsFindProductFocused] = useState(false);
+  const [isTransactionFocused, setIsTransactionFocused] = useState(false);
+  const [isTransactionHovered, setIsTransactionHovered] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
   const [paymentVendor, setPaymentVendor] = useState<string>("");
@@ -140,10 +142,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   
-  // Track original receipt lines for change detection
   const [originalReceiptLines, setOriginalReceiptLines] = useState<PharmaTableRow[]>([]);
   
-  // Track original form values for change detection
   const [originalFormValues, setOriginalFormValues] = useState({
     supplierName: '',
     poNumber: '',
@@ -1715,7 +1715,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             }}
             onFocus={() => setIsVendorFocused(true)}
             onBlur={() => setIsVendorFocused(false)}
-            disableClearable
+            disableClearable={!paymentVendor}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -1758,27 +1758,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     visibility: "visible !important",
                   },
                 }}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {/* Manually render the CloseIcon only if text is present */}
-                      {paymentVendor && (
-                        <InputAdornment position="end">
-                          <IconButton 
-                            size="small" 
-                            onClick={(e) => { e.stopPropagation(); setPaymentVendor(""); }}
-                            sx={{ padding: 0, marginRight: '4px' }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </InputAdornment>
-                      )}
-                      {/* Standard Material-UI dropdown arrow */}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
+                InputProps={params.InputProps}
               />
             )}
           />
@@ -1809,6 +1789,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             fullWidth
             value={transactionNumber}
             onChange={(e) => setTransactionNumber(e.target.value)}
+            onFocus={() => setIsTransactionFocused(true)}
+            onBlur={() => setIsTransactionFocused(false)}
+            onMouseEnter={() => setIsTransactionHovered(true)}
+            onMouseLeave={() => setIsTransactionHovered(false)}
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: "12px",
@@ -1833,7 +1817,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               },
             }}
             InputProps={{
-              endAdornment: transactionNumber ? (
+              endAdornment: transactionNumber && (isTransactionFocused || isTransactionHovered) ? (
                 <InputAdornment position="end">
                   <IconButton size="small" onClick={() => setTransactionNumber("")}>
                     <CloseIcon fontSize="small" />
@@ -2141,7 +2125,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           columns={pharmaTableColumns}
           selectedRows={[]}
           setSelectedRows={() => {}}
-          data={paginatedData}
+          data={sortedData}
           searchAndFilterConfig={{ filterOptions: [] }}
           currentSearchTerm={searchTerm}
           onSearchChange={handleSearchChange}
