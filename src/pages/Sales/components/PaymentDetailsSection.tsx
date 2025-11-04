@@ -7,7 +7,6 @@ import {
   PaymentDetailsContainer,
   SectionRow,
   PaymentField,
-  InsuranceField,
 } from '../SalesReceipt.styles';
 
 interface PaymentDetailsSectionProps {
@@ -29,26 +28,31 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
 }) => {
   return (
     <PaymentDetailsContainer>
-      <Typography sx={{ 
-        fontFamily: "'Lexend', sans-serif", 
-        fontWeight: 600, 
-        fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION, 
-        color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY,
-        marginBottom: '8px'
-      }}>
-        {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
-      </Typography>
+      <Box sx={{ marginBottom: '8px' }}>
+        <Typography sx={{ 
+          fontFamily: "'Lexend', sans-serif", 
+          fontWeight: 600, 
+          fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION, 
+          color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY,
+          marginBottom: '8px'
+        }}>
+          {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
+        </Typography>
+      </Box>
 
       <SectionRow>
         <Autocomplete
           options={paymentMethods}
-          value={paymentMode}
+          value={paymentMode || (paymentMethods.length > 0 ? paymentMethods[0] : '')}
           onChange={(_, newValue) => {
             if (newValue) {
               onPaymentModeChange(newValue);
+            } else {
+              onPaymentModeChange(paymentMethods.length > 0 ? paymentMethods[0] : '');
             }
           }}
           disableClearable
+          forcePopupIcon
           sx={{ width: '165px' }}
           renderInput={(params) => (
             <TextField
@@ -69,21 +73,27 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
                     borderColor: '#9AA8BC',
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: '#9AA8BC',
+                    borderColor: '#5C17E5',
                   },
                 },
                 '& .MuiOutlinedInput-input': {
                   padding: '12px 16px',
                   fontFamily: "'Lexend', sans-serif",
                   fontSize: '16px',
-                  lineHeight: '24px',
                   color: '#1A212B',
                   '&::placeholder': {
                     color: '#728197',
                     fontSize: '16px',
                     fontFamily: "'Lexend', sans-serif",
                     opacity: 1,
-                    fontWeight: 400,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: '16px',
+                  color: '#1A212B',
+                  '&.Mui-focused': {
+                    color: '#5C17E5',
                   },
                 },
               }}
@@ -111,15 +121,51 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
           </Typography>
         </Box>
       </SectionRow>
-      
-      <SectionRow sx={{ marginTop: '9px' }}>
-        <InsuranceField
+
+      <SectionRow>
+        <TextField
           label={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_LABEL}
           variant="outlined"
           placeholder={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_PLACEHOLDER}
           value={insuranceCompany}
           onChange={(e) => onInsuranceCompanyChange(e.target.value)}
-          InputProps={{}}
+          sx={{
+            width: '275px',
+            '& .MuiOutlinedInput-root': {
+              height: '48px',
+              borderRadius: '12px',
+              backgroundColor: '#FFFFFF',
+              '& fieldset': {
+                borderColor: '#9AA8BC',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9AA8BC',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#5C17E5',
+              },
+            },
+            '& .MuiOutlinedInput-input': {
+              padding: '12px 16px',
+              fontFamily: "'Lexend', sans-serif",
+              fontSize: '16px',
+              color: '#1A212B',
+              '&::placeholder': {
+                color: '#728197',
+                fontSize: '16px',
+                fontFamily: "'Lexend', sans-serif",
+                opacity: 1,
+              },
+            },
+            '& .MuiInputLabel-root': {
+              fontFamily: "'Lexend', sans-serif",
+              fontSize: '16px',
+              color: '#1A212B',
+              '&.Mui-focused': {
+                color: '#5C17E5',
+              },
+            },
+          }}
         />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <Typography sx={{ 

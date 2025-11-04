@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import {
   Modal,
   Box,
@@ -9,6 +9,8 @@ import {
   Grid,
   Button,
   Checkbox,
+  Radio,
+  RadioGroup,
   Stack,
   Divider,
 } from '@mui/material';
@@ -65,22 +67,29 @@ const inputStyle = {
 
     '& .MuiInputBase-input': {
       color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
+      fontSize: '14px',
+      fontWeight: 400,
+      fontFamily: 'Lexend',
     },
 
     '& .MuiOutlinedInput-notchedOutline': {
       borderColor: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.OUTLINE_COLOR,
+      borderWidth: '1px',
     },
     '&:hover .MuiOutlinedInput-notchedOutline': {
       borderColor: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.OUTLINE_COLOR,
+      borderWidth: '1px',
     },
 
     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
       borderColor: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.FOCUSED_COLOR,
+      borderWidth: '1px',
     },
   },
 
   '& .MuiInputLabel-root': {
     color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.LABEL_COLOR,
+    fontSize: '14px',
     '&.Mui-focused': {
       color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
     },
@@ -93,12 +102,20 @@ const inputStyle = {
 const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [customerData, setCustomerData] = useState<CustomerData>(initialCustomerState);
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setCustomerData(initialCustomerState);
+    }
+  }, [isOpen]);
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCustomerData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleGenderChange = (genderType: typeof CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES[keyof typeof CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES]) => {
+  const handleGenderChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const genderType = e.target.value;
     setCustomerData(prev => ({
       ...prev,
       gender: {
@@ -107,6 +124,13 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
         other: genderType === CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.OTHER,
       }
     }));
+  };
+
+  const getCurrentGenderValue = () => {
+    if (customerData.gender.male) return CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.MALE;
+    if (customerData.gender.female) return CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.FEMALE;
+    if (customerData.gender.other) return CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.OTHER;
+    return '';
   };
 
   const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -144,13 +168,13 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
 
         {/* Content Area - Scrollable */}
         <Box sx={{ flex: 1, overflow: 'auto', px: 1 }}>
-          <Grid container spacing={CUSTOMER_MODAL_CONSTANTS.GRID_SPACING}>
+          <Grid container spacing={5}>
           <Grid item xs={12} md={4}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+            <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 3 }}>
               {CUSTOMER_MODAL_LABELS.PERSONAL_DETAILS_HEADER}
             </Typography>
 
-            <Stack spacing={CUSTOMER_MODAL_CONSTANTS.STACK_SPACING}>
+            <Stack spacing={3}>
               <TextField
                 fullWidth
                 variant="outlined"
@@ -182,27 +206,40 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
               />
             </Stack>
 
-            <Box sx={{ mt: CUSTOMER_MODAL_CONSTANTS.GENDER_BOX_MARGIN_TOP }}>
-              <Box
-                sx={{
-                  padding: '8px 0px',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    borderColor: CUSTOMER_MODAL_CONSTANTS.BORDER_COLOR,
-                  },
-                }}
-              >
-                <Stack direction="row" spacing={CUSTOMER_MODAL_CONSTANTS.STACK_SPACING} justifyContent="flex-start" alignItems="center">
+            <Box sx={{ mt: 4 }}>
+              <Typography sx={{ 
+                fontSize: '14px', 
+                fontWeight: 500, 
+                mb: 2
+              }}>
+                Gender
+              </Typography>
+              <FormControl component="fieldset" sx={{ width: '100%' }}>
+                <RadioGroup
+                  row
+                  value={getCurrentGenderValue()}
+                  onChange={handleGenderChange}
+                  sx={{
+                    gap: 4,
+                    '& .MuiFormControlLabel-root': {
+                      marginRight: 0,
+                    }
+                  }}
+                >
                   <FormControlLabel
+                    value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.MALE}
                     control={
-                      <Checkbox
-                        checked={customerData.gender.male}
-                        onChange={() => handleGenderChange(CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.MALE)}
-                        icon={<CheckBoxOutlineBlankIcon sx={{ color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR }} />}
-                        checkedIcon={<CheckBoxIcon />}
+                      <Radio
+                        size="small"
                         sx={{
                           color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          '&.Mui-checked': { color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR },
+                          '&.Mui-checked': {
+                            color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
+                          },
+                          '&:hover': {
+                            backgroundColor: 'transparent',
+                          },
+                          padding: '4px 9px',
                         }}
                       />
                     }
@@ -210,25 +247,28 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                     sx={{
                       margin: 0,
                       '& .MuiFormControlLabel-label': {
-                        fontSize: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_LABEL_FONT_SIZE,
-                        fontWeight: 'medium',
-                        marginLeft: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_MARGIN_LEFT
+                        fontSize: '14px',
+                        fontWeight: 400,
+                        marginLeft: '8px',
+                        fontFamily: 'Lexend',
+                        color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                       },
-                      '&:hover': {
-                        backgroundColor: 'transparent'
-                      }
                     }}
                   />
                   <FormControlLabel
+                    value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.FEMALE}
                     control={
-                      <Checkbox
-                        checked={customerData.gender.female}
-                        onChange={() => handleGenderChange(CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.FEMALE)}
-                        icon={<CheckBoxOutlineBlankIcon sx={{ color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR }} />}
-                        checkedIcon={<CheckBoxIcon />}
+                      <Radio
+                        size="small"
                         sx={{
                           color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          '&.Mui-checked': { color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR },
+                          '&.Mui-checked': {
+                            color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
+                          },
+                          '&:hover': {
+                            backgroundColor: 'transparent',
+                          },
+                          padding: '4px 9px',
                         }}
                       />
                     }
@@ -236,25 +276,28 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                     sx={{
                       margin: 0,
                       '& .MuiFormControlLabel-label': {
-                        fontSize: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_LABEL_FONT_SIZE,
-                        fontWeight: 'medium',
-                        marginLeft: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_MARGIN_LEFT
+                        fontSize: '14px',
+                        fontWeight: 400,
+                        marginLeft: '8px',
+                        fontFamily: 'Lexend',
+                        color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                       },
-                      '&:hover': {
-                        backgroundColor: 'transparent'
-                      }
                     }}
                   />
                   <FormControlLabel
+                    value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.OTHER}
                     control={
-                      <Checkbox
-                        checked={customerData.gender.other}
-                        onChange={() => handleGenderChange(CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.OTHER)}
-                        icon={<CheckBoxOutlineBlankIcon sx={{ color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR }} />}
-                        checkedIcon={<CheckBoxIcon />}
+                      <Radio
+                        size="small"
                         sx={{
                           color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          '&.Mui-checked': { color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR },
+                          '&.Mui-checked': {
+                            color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
+                          },
+                          '&:hover': {
+                            backgroundColor: 'transparent',
+                          },
+                          padding: '4px 9px',
                         }}
                       />
                     }
@@ -262,26 +305,25 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                     sx={{
                       margin: 0,
                       '& .MuiFormControlLabel-label': {
-                        fontSize: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_LABEL_FONT_SIZE,
-                        fontWeight: 'medium',
-                        marginLeft: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_MARGIN_LEFT
+                        fontSize: '14px',
+                        fontWeight: 400,
+                        marginLeft: '8px',
+                        fontFamily: 'Lexend',
+                        color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                       },
-                      '&:hover': {
-                        backgroundColor: 'transparent'
-                      }
                     }}
                   />
-                </Stack>
-              </Box>
+                </RadioGroup>
+              </FormControl>
             </Box>
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+            <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 3 }}>
               {CUSTOMER_MODAL_LABELS.ADDRESS_DETAILS_HEADER}
             </Typography>
 
-            <Stack spacing={CUSTOMER_MODAL_CONSTANTS.STACK_SPACING}>
+            <Stack spacing={3}>
               <TextField
                 fullWidth
                 multiline
@@ -306,7 +348,10 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                 disabled={customerData.shippingAddressSameAsBilling}
                 sx={inputStyle}
               />
+            </Stack>
 
+            {/* Shipping address checkbox - moved outside Stack for better spacing control */}
+            <Box sx={{ mt: 4 }}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -325,21 +370,22 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                 sx={{
                   '& .MuiFormControlLabel-label': {
                     whiteSpace: 'nowrap',
-                    fontSize: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_LABEL_FONT_SIZE
+                    fontSize: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_LABEL_FONT_SIZE,
+                    fontFamily: 'Lexend',
+                    fontWeight: 400,
+                    color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                   }
                 }}
               />
-            </Stack>
+            </Box>
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-              <Typography component="span" sx={{ fontSize: CUSTOMER_MODAL_CONSTANTS.COMMERCIAL_HEADER_FONT_SIZE, fontWeight: 'normal' }}>
-                {CUSTOMER_MODAL_LABELS.COMMERCIAL_SALE_HEADER}
-              </Typography>
+            <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 3 }}>
+              {CUSTOMER_MODAL_LABELS.COMMERCIAL_SALE_HEADER}
             </Typography>
 
-            <Stack spacing={CUSTOMER_MODAL_CONSTANTS.STACK_SPACING}>
+            <Stack spacing={3}>
               <TextField
                 fullWidth
                 variant="outlined"

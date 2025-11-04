@@ -24,7 +24,6 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
   onConfirm,
   isLoading = false,
 }) => {
-  // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (open) {

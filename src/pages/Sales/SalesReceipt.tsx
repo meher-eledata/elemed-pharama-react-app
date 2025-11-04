@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Tooltip, Checkbox, FormControlLabel, Typography, Snackbar, Alert } from '@mui/material';
 import { StandardButton } from '../../components/Common';
@@ -11,13 +11,16 @@ import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDial
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import { 
-  useSearchCustomersMutation,
   useGetDoctorsQuery,
-  // TODO: Uncomment when API is ready
-  // useCreateSalesMutation,
+  useSubmitSaleMutation,
+  useAddCustomerMutation,
+  useGetAllCustomerNamesQuery,
+  useGetCustomerPhonesMutation,
+  useSearchCustomersMutation,
   Customer,
   Doctor
 } from '../../redux/slices/salesApi';
+import { useGetProductsQuery } from '../../redux/slices/receiveApi';
 import { 
   selectCartItems,
   selectCartTotal,
@@ -32,22 +35,13 @@ import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
 import { clearCartFromStorage, clearFormDataFromStorage, saveSalesHistoryToStorage } from '../../utils/cartStorage';
 
-// Import Components
 import CustomerDetailsSection from './components/CustomerDetailsSection';
 import DoctorDetailsSection from './components/DoctorDetailsSection';
 import PaymentDetailsSection from './components/PaymentDetailsSection';
 import FinancialSummary from './components/FinancialSummary';
-
-// Import Types
 import { SalesReceiptItem } from './SalesReceipt.types';
-
-// Import Utilities
 import { transformCartItems, calculateFinancialSummary, getTodayDate, generatePrintHTML } from './SalesReceipt.utils';
-
-// Import Table Columns Configuration
 import { getTableColumns } from './SalesReceipt.columns';
-
-// Import Styled Components
 import {
   SalesReceiptContainer,
   SalesReceiptHeader,
@@ -64,19 +58,24 @@ const SalesReceipt: React.FC = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   
-  // Redux selectors
   const cartItems = useSelector(selectCartItems);
   const cartTotal = useSelector(selectCartTotal);
   const formData = useSelector(selectFormData);
   const user = useSelector((state: RootState) => state.auth.user);
   
-  // RTK Query hooks
-  const [searchCustomers, { data: customerSearchResults }] = useSearchCustomersMutation();
-  // TODO: Uncomment when API is ready
-  // const [createSales, { isLoading: isCreatingSales }] = useCreateSalesMutation();
+  const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
+  const [addCustomer, { isLoading: isAddingCustomer }] = useAddCustomerMutation();
+  const [getCustomerPhones] = useGetCustomerPhonesMutation();
+  const [searchCustomers] = useSearchCustomersMutation();
   const { data: doctorsData = [] } = useGetDoctorsQuery();
+  const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
+  const { 
+    data: apiProducts = [], 
+    isLoading: isProductsLoading, 
+    isError: isProductsError,
+    error: productsError 
+  } = useGetProductsQuery();
   
-  // Table State
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: SALES_RECEIPT_CONSTANTS.DEFAULT_SORT_KEY,
     direction: SALES_RECEIPT_CONSTANTS.SORT_DIRECTION_ASC
@@ -89,7 +88,6 @@ const SalesReceipt: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_CURRENT_PAGE);
   const [rowsPerPage] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_ROWS_PER_PAGE);
   
-  // Modal State
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -97,54 +95,46 @@ const SalesReceipt: React.FC = () => {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
   
-  // Editing State
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [applyGstToAll, setApplyGstToAll] = useState(false);
   
-  // Form Data State - Customer
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [customerCity, setCustomerCity] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [availablePhones, setAvailablePhones] = useState<string[]>([]);
+  const shouldFetchImmediatelyRef = useRef(false);
   
-  // Form Data State - Doctor
   const [doctorName, setDoctorName] = useState('');
   const [doctorMobile, setDoctorMobile] = useState('');
   const [doctorEmail, setDoctorEmail] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   
-  // Form Data State - Payment & Invoice
   const [paymentMode, setPaymentMode] = useState('');
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_INVOICE_NUMBER);
   const [invoiceDate, setInvoiceDate] = useState(() => getTodayDate());
   
-  // Financial Summary State
   const [totalValue, setTotalValue] = useState('');
   const [totalDiscount, setTotalDiscount] = useState('');
   const [taxAmount, setTaxAmount] = useState('');
   const [totalPayableAmount, setTotalPayableAmount] = useState('');
 
-  // Sales Items State
   const [salesItems, setSalesItems] = useState<SalesReceiptItem[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   
-  // Toast State
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
   
-  // Load cart items from Redux state
   useEffect(() => {
     if (cartItems && cartItems.length > 0) {
       console.log('🛒 Loading cart items from Redux:', cartItems);
       
-      // Transform and set sales items
       const transformedItems = transformCartItems(cartItems);
       setSalesItems(transformedItems);
       console.log('✅ Cart items loaded into receipt table:', transformedItems);
       
-      // Calculate and set financial summary
       const summary = calculateFinancialSummary(transformedItems);
       setTotalValue(summary.totalValue);
       setTotalDiscount(summary.totalDiscount);
@@ -157,7 +147,84 @@ const SalesReceipt: React.FC = () => {
     }
   }, [cartItems]);
   
-  // Load form data from Redux state
+  const mockDoctors: Doctor[] = SALES_RECEIPT_CONSTANTS.MOCK_DOCTORS;
+  
+  useEffect(() => {
+    const fetchPhonesForCustomer = async () => {
+      if (customerName && customerName.trim()) {
+        try {
+          const result = await getCustomerPhones({ name: customerName.trim() }).unwrap();
+          const phones = result.phones || [];
+          setAvailablePhones(phones);
+          console.log('📱 Fetched phones for customer:', { 
+            customerName: customerName.trim(), 
+            phones, 
+            phonesCount: phones.length 
+          });
+          
+          
+          const normalizedCustomerName = customerName.trim().toLowerCase();
+          const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedCustomerName);
+          
+          console.log('🔍 Auto-fill check:', {
+            phonesLength: phones.length,
+            isExactMatch,
+            customerNamesLength: customerNames.length,
+            normalizedCustomerName,
+            currentCustomerMobile: customerMobile
+          });
+          
+          if (phones.length === 1) {
+            const singlePhone = phones[0];
+            
+            if (isExactMatch || !customerMobile || customerMobile.trim() === '') {
+              console.log('✅ Auto-filling phone number:', singlePhone, 'isExactMatch:', isExactMatch, 'currentMobile:', customerMobile);
+              setCustomerMobile(singlePhone);
+              
+              const autoFilledCustomer: Customer = {
+                id: 0,
+                name: customerName.trim(),
+                mobile: singlePhone,
+                city: customerCity || '',
+              };
+              setSelectedCustomer(autoFilledCustomer);
+              console.log('✅ Auto-filled customer:', autoFilledCustomer);
+            } else {
+              console.log('⚠️ Skipping auto-fill - not exact match and phone already set to:', customerMobile);
+            }
+          } else if (phones.length === 0) {
+            if (isExactMatch && customerMobile) {
+              console.log('🧹 Clearing phone - no phones found for exact match');
+              setCustomerMobile('');
+              setSelectedCustomer(null);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error fetching customer phones:', error);
+          setAvailablePhones([]);
+        }
+      } else {
+        setAvailablePhones([]);
+      }
+    };
+
+    const normalizedCustomerName = customerName.trim().toLowerCase();
+    const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedCustomerName);
+    const shouldFetchImmediately = shouldFetchImmediatelyRef.current || isExactMatch;
+
+    shouldFetchImmediatelyRef.current = false;
+
+    if (shouldFetchImmediately && customerName && customerName.trim()) {
+      fetchPhonesForCustomer();
+    } else {
+      const timeoutId = setTimeout(() => {
+        fetchPhonesForCustomer();
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [customerName, getCustomerPhones, customerNames, customerMobile, customerCity]);
+  
   useEffect(() => {
     if (formData) {
       console.log('📋 Loading form data from Redux:', formData);
@@ -171,12 +238,25 @@ const SalesReceipt: React.FC = () => {
       setInsuranceCompany(formData.insuranceCompany);
       if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
       if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
+      
+      if (formData.customerName && formData.customerMobile) {
+        const restoredCustomer: Customer = {
+          id: 0,
+          name: formData.customerName,
+          mobile: formData.customerMobile,
+          city: formData.customerCity || '',
+        };
+        setSelectedCustomer(restoredCustomer);
+        console.log('✅ Restored customer from form data:', restoredCustomer);
+      } else {
+        setSelectedCustomer(null);
+      }
+      
       console.log('✅ Form data restored from Redux');
     }
     setIsDataLoaded(true);
   }, [formData]);
   
-  // Save form data to Redux whenever it changes
   useEffect(() => {
     if (isDataLoaded) {
       const formDataToSave = {
@@ -196,26 +276,22 @@ const SalesReceipt: React.FC = () => {
       console.log('💾 Form data saved to Redux:', formDataToSave);
     }
   }, [isDataLoaded, customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, dispatch]);
-  
-  // Mock data
-  const mockCustomers: Customer[] = SALES_RECEIPT_CONSTANTS.MOCK_CUSTOMERS;
-  const mockDoctors: Doctor[] = SALES_RECEIPT_CONSTANTS.MOCK_DOCTORS;
 
-  // Helper function to show toast messages
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
 
-  // Customer Handlers
   const handleCustomerSelect = (customer: Customer | null) => {
     if (customer) {
+      console.log('✅ Customer selected:', customer);
       setSelectedCustomer(customer);
       setCustomerName(customer.name);
       setCustomerMobile(customer.mobile);
       setCustomerCity(customer.city || '');
     } else {
+      console.log('❌ Customer selection cleared');
       setSelectedCustomer(null);
       setCustomerName('');
       setCustomerMobile('');
@@ -223,7 +299,17 @@ const SalesReceipt: React.FC = () => {
     }
   };
 
-  // Doctor Handlers
+  const handleCustomerNameChange = (newName: string) => {
+    const normalizedNewName = newName.trim().toLowerCase();
+    const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
+    
+    if (isExactMatch && newName.trim()) {
+      shouldFetchImmediatelyRef.current = true;
+    }
+    
+    setCustomerName(newName);
+  };
+
   const handleDoctorSelect = (doctor: Doctor | null) => {
     if (doctor) {
       setSelectedDoctor(doctor);
@@ -238,7 +324,6 @@ const SalesReceipt: React.FC = () => {
     }
   };
 
-  // Edit Handlers
   const handleEditClick = (itemId: string) => {
     setEditingRowId(itemId);
     setApplyGstToAll(false);
@@ -256,7 +341,6 @@ const SalesReceipt: React.FC = () => {
     setApplyGstToAll(false);
   };
 
-  // Delete Handlers
   const handleDeleteClick = (itemId?: string) => {
     if (itemId) {
       setItemsToDelete([itemId]);
@@ -284,7 +368,6 @@ const SalesReceipt: React.FC = () => {
     setItemsToDelete([]);
   };
 
-  // Table Handlers
   const handleSort = (column: string) => {
     setSortConfig(prevConfig => ({
       key: column,
@@ -305,7 +388,6 @@ const SalesReceipt: React.FC = () => {
     setCurrentFilter(prev => ({ ...prev, [key]: value }));
   };
 
-  // Modal Handlers
   const handleOpenCustomerModal = () => {
     setIsCustomerModalOpen(true);
   };
@@ -314,15 +396,145 @@ const SalesReceipt: React.FC = () => {
     setIsCustomerModalOpen(false);
   };
 
-  const handleCustomerSubmit = (customerData: any) => {
-    console.log('Customer data submitted:', customerData);
-    // TODO: Add actual API call to save customer
-    showToast('Customer added successfully!', 'success');
+  const handleCustomerSubmit = async (customerData: any) => {
+    try {
+      console.log('📝 Customer data received from modal:', customerData);
+      
+      if (!customerData.customerName || !customerData.customerName.trim()) {
+        showToast('Customer name is required', 'error');
+        return;
+      }
+      if (!customerData.mobileNumber || !customerData.mobileNumber.trim()) {
+        showToast('Phone number is required', 'error');
+        return;
+      }
+      if (!customerData.billingAddress || !customerData.billingAddress.trim()) {
+        showToast('Billing address is required', 'error');
+        return;
+      }
+      
+      if (customerData.emailId && customerData.emailId.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(customerData.emailId.trim())) {
+          showToast('Invalid email format', 'error');
+          return;
+        }
+      }
+      
+      if (customerData.gstin && customerData.gstin.trim()) {
+        const gstinRegex = /^[0-9]{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+        const gstinValue = customerData.gstin.trim().toUpperCase().replace(/\s/g, '');
+        
+        if (!gstinRegex.test(gstinValue)) {
+          showToast('Invalid GSTIN format', 'error');
+          return;
+        }
+        
+        customerData.gstin = gstinValue;
+      }
+      
+      if (customerData.pancardNumber && customerData.pancardNumber.trim()) {
+        const panRegex = /^[A-Z]{5}\d{4}[A-Z]$/;
+        const panValue = customerData.pancardNumber.trim().toUpperCase();
+        
+        if (!panRegex.test(panValue)) {
+          showToast('Invalid PAN format (e.g., ABCDE1234F)', 'error');
+          return;
+        }
+        
+        customerData.pancardNumber = panValue;
+      }
+      
+      let genderValue = 3;
+      if (customerData.gender.male) {
+        genderValue = 1;
+      } else if (customerData.gender.female) {
+        genderValue = 2;
+      } else if (customerData.gender.other) {
+        genderValue = 3;
+      }
+      
+      const apiPayload = {
+        name: customerData.customerName.trim(),
+        email: customerData.emailId && customerData.emailId.trim() ? customerData.emailId.trim() : null,
+        phone: customerData.mobileNumber.trim(),
+        billing_address: customerData.billingAddress.trim(),
+        shipping_address: customerData.shippingAddressSameAsBilling 
+          ? customerData.billingAddress.trim()
+          : (customerData.shippingAddress && customerData.shippingAddress.trim() ? customerData.shippingAddress.trim() : null),
+        gstin: customerData.gstin || null,
+        pancard_num: customerData.pancardNumber || null,
+        drug_license: customerData.drugLicense && customerData.drugLicense.trim() ? customerData.drugLicense.trim().toUpperCase() : null,
+        gender: genderValue,
+      };
+      
+      console.log('📤 Sending customer data to API:', apiPayload);
+      
+      const response = await addCustomer(apiPayload).unwrap();
+      
+      console.log('✅ Customer created successfully:', response);
+      
+      const newCustomer: Customer = {
+        id: parseInt(response.id),
+        name: response.name,
+        mobile: customerData.mobileNumber,
+        email: customerData.emailId,
+        city: '',
+        address: customerData.billingAddress,
+      };
+      
+      setCustomerName(newCustomer.name);
+      setCustomerMobile(newCustomer.mobile);
+      
+      setSelectedCustomer(newCustomer);
+      
+      const refetchResult = await refetchCustomerNames();
+      console.log('✅ Refetched customer names list:', {
+        customerNames: refetchResult.data,
+        newCustomerName: newCustomer.name,
+        isInList: refetchResult.data?.includes(newCustomer.name)
+      });
+      
+      showToast(`Customer "${newCustomer.name}" added successfully!`, 'success');
+      
+      handleCloseCustomerModal();
+      
+    } catch (error: any) {
+      console.error('❌ Error adding customer:', error);
+      
+      
+      let errorMessage = 'Failed to add customer';
+      let errorDetails = '';
+      
+      if (error?.data) {
+        if (error.data.error) {
+          errorMessage = error.data.error;
+          
+          if (error.data.fields && Array.isArray(error.data.fields)) {
+            errorDetails = ` Fields: ${error.data.fields.join(', ')}`;
+          }
+          
+          if (error.data.details && Array.isArray(error.data.details)) {
+            const detailMessages = error.data.details.map((d: any) => `${d.field}: ${d.message}`).join(', ');
+            errorDetails = ` Details: ${detailMessages}`;
+          }
+        } else if (error.data.message) {
+          errorMessage = error.data.message;
+        } else if (typeof error.data === 'string') {
+          errorMessage = error.data;
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      showToast(errorMessage + errorDetails, 'error');
+    }
   };
 
   const handleEditCart = () => {
-    // Save the current salesItems (with GST modifications) back to Redux
-    // Transform receipt items back to cart format before saving
+   
     const cartItemsWithGst = salesItems.map(item => ({
       id: item.id,
       name: item.productName,
@@ -335,7 +547,6 @@ const SalesReceipt: React.FC = () => {
       type: item.type,
       discount: parseFloat(item.discountPercent),
       totalPrice: parseFloat(item.amount),
-      // Preserve GST data
       cgst: item.cgst,
       cgstPercent: item.cgstPercent,
       sgst: item.sgst,
@@ -347,7 +558,6 @@ const SalesReceipt: React.FC = () => {
     
     const totalAmount = salesItems.reduce((sum, item) => sum + parseFloat(item.amount), 0);
     
-    // Update Redux with modified cart (including GST changes)
     dispatch(setCartItems(cartItemsWithGst));
     console.log('🛒 Updated cart saved to Redux with GST modifications:', cartItemsWithGst);
     
@@ -442,7 +652,6 @@ const SalesReceipt: React.FC = () => {
     setPendingAction(null);
   };
 
-  // Reset Form
   const resetForm = () => {
     setSalesItems([]);
     setCustomerName('');
@@ -463,22 +672,18 @@ const SalesReceipt: React.FC = () => {
     setEditingRowId(null);
     setIsDataLoaded(true);
     
-    // Clear Redux state
     dispatch(clearCart());
     dispatch(clearFormData());
     console.log('✅ Form reset complete - all fields and Redux state cleared');
   };
 
-  // Save Handler - Shows confirmation dialog
   const handleSave = () => {
-    // Validate before showing confirmation
     if (salesItems.length === 0) {
       console.warn('⚠️ Cannot save: No items in the receipt');
       showToast('Cannot save: No items in the receipt', 'warning');
       return;
     }
 
-    // Validate required fields
     if (!customerName || !customerMobile) {
       showToast('Please fill in customer name and mobile number', 'warning');
       return;
@@ -488,39 +693,171 @@ const SalesReceipt: React.FC = () => {
     setIsConfirmDialogOpen(true);
   };
 
-  // Actual save execution after confirmation
+  const getProductIdFromName = (productName: string): number | null => {
+    if (!productName || !apiProducts || apiProducts.length === 0) {
+      console.warn('⚠️ Cannot find product ID:', { productName, apiProductsCount: apiProducts?.length || 0 });
+      return null;
+    }
+
+    const normalize = (str: string) => str.trim().toLowerCase();
+    const normalizedProductName = normalize(productName);
+
+    let product = apiProducts.find(p => normalize(p.name) === normalizedProductName);
+    
+    if (!product) {
+      product = apiProducts.find(p => normalize(p.name).includes(normalizedProductName) || normalizedProductName.includes(normalize(p.name)));
+    }
+
+    if (product) {
+      console.log('✅ Found product:', { 
+        searched: productName, 
+        found: product.name, 
+        id: product.id 
+      });
+      return product.id;
+    }
+
+    console.error('❌ Product not found:', {
+      searched: productName,
+      availableProducts: apiProducts.slice(0, 5).map(p => p.name),
+      totalProducts: apiProducts.length
+    });
+
+    return null;
+  };
+
   const executeSave = async () => {
     try {
       console.log('💾 Saving receipt data...');
+      console.log('📦 Products state:', {
+        isProductsLoading,
+        isProductsError,
+        apiProductsCount: apiProducts?.length || 0,
+        apiProducts: apiProducts?.slice(0, 3)
+      });
       
-      const salesData = {
+      console.log('🔍 Validating customer selection:', {
+        selectedCustomer,
         customerName,
         customerMobile,
-        customerCity: customerCity || '',
-        doctorName: doctorName || '',
-        doctorMobile: doctorMobile || '',
-        doctorEmail: doctorEmail || '',
-        paymentMode: paymentMode || '',
-        insuranceCompany: insuranceCompany || '',
-        invoiceNumber,
-        invoiceDate,
-        items: salesItems,
-        totalValue,
-        totalDiscount,
-        taxAmount,
-        totalPayableAmount,
+        hasSelectedCustomer: !!selectedCustomer,
+        hasCustomerId: !!(selectedCustomer && selectedCustomer.id),
+        hasCustomerName: !!customerName?.trim()
+      });
+      
+      if (!customerName || !customerName.trim()) {
+        showToast('Please enter or select a customer name', 'warning');
+        return;
+      }
+
+      let customerId: number;
+      
+      if (selectedCustomer && selectedCustomer.id && selectedCustomer.id > 0) {
+        customerId = selectedCustomer.id;
+      } else if (customerName && customerMobile) {
+        try {
+          const searchResults = await searchCustomers({ 
+            searchTerm: customerName.trim() 
+          }).unwrap();
+          
+          const matchingCustomer = searchResults.find(
+            c => c.name.toLowerCase().trim() === customerName.toLowerCase().trim() &&
+                 c.mobile === customerMobile.trim()
+          );
+          
+          if (matchingCustomer && matchingCustomer.id) {
+          customerId = matchingCustomer.id;
+            console.log('✅ Found customer ID from search:', matchingCustomer);
+        } else {
+          showToast(
+              `Customer "${customerName}" with phone "${customerMobile}" not found. Please select a customer from the dropdown or click "Add New Customer" to create this customer.`,
+            'warning'
+          );
+          return;
+        }
+        } catch (error) {
+          console.error('❌ Error searching for customer:', error);
+          showToast(
+            `Could not find customer "${customerName}". Please select a customer from the dropdown or click "Add New Customer" to create this customer.`,
+            'warning'
+          );
+          return;
+        }
+      } else {
+        showToast(
+          'Please select or enter a customer name and mobile number',
+          'warning'
+        );
+        return;
+      }
+
+      if (salesItems.length === 0) {
+        showToast('Cannot save: No items in the receipt', 'warning');
+        return;
+      }
+
+      if (isProductsLoading) {
+        showToast('Please wait, products are still loading...', 'warning');
+        return;
+      }
+
+      if (isProductsError) {
+        console.error('❌ Products API error:', productsError);
+        const errorMessage = productsError && typeof productsError === 'object' && 'data' in productsError
+          ? (productsError.data as any)?.message || 'Failed to load products'
+          : 'Failed to load products. The products API endpoint may not be available.';
+        showToast(errorMessage + ' Please refresh the page and try again.', 'error');
+        return;
+      }
+
+      if (!apiProducts || apiProducts.length === 0) {
+        console.error('❌ Products not available:', { 
+          apiProductsCount: apiProducts?.length || 0,
+          apiProducts 
+        });
+        showToast('Products are not available. Please ensure products are loaded before saving.', 'error');
+        return;
+      }
+
+      const totalQuantity = salesItems.reduce((sum, item) => sum + parseFloat(item.quantity || '0'), 0);
+      const totalDiscountPercent = salesItems.length > 0 
+        ? salesItems.reduce((sum, item) => sum + parseFloat(item.discountPercent || '0'), 0) / salesItems.length
+        : 0;
+      
+      const lines = salesItems.map(item => {
+        console.log('🔍 Looking up product ID for:', item.productName);
+        const productId = getProductIdFromName(item.productName);
+        
+        if (!productId) {
+          console.error('❌ Failed to find product ID for:', item.productName);
+          console.error('Available products:', apiProducts.map(p => p.name).slice(0, 10));
+          throw new Error(`Product ID not found for product: "${item.productName}". Please check if the product name matches exactly.`);
+        }
+
+        return {
+          product_id: productId,
+          quantity: parseFloat(item.quantity || '0'),
+          mrp: parseFloat(item.mrp || '0'),
+          sp: parseFloat(item.unitPrice || '0'),
+          discount: parseFloat(item.discountPercent || '0') / 100,
+        };
+      });
+
+      const submitSalePayload = {
+        quantity: totalQuantity,
+        disc: totalDiscountPercent / 100,
+        payment_method: paymentMode || 'Cash',
+        payment_amount: parseFloat(totalPayableAmount || '0'),
+        created_by: user?.username || 'Guest',
+        customer_id: customerId,
+        lines: lines,
       };
       
-      console.log('📤 Sending to API:', salesData);
+      console.log('📤 Submitting sale to API:', submitSalePayload);
       
-      // TODO: Uncomment when API is ready
-      // const result = await createSales(salesData).unwrap();
-      // console.log('✅ API Response:', result);
+      const result = await submitSale(submitSalePayload).unwrap();
+      console.log('✅ Sale submitted successfully:', result);
       
-      // For now, just simulate saving (API endpoint not ready yet)
-      console.log('💾 Simulating save (API endpoint not ready yet)');
-      
-      // Save to localStorage for display in history
       const historyItem = {
         invoiceNumber,
         invoiceDate,
@@ -543,16 +880,14 @@ const SalesReceipt: React.FC = () => {
       saveSalesHistoryToStorage(historyItem);
       console.log('💾 Saved to sales history:', historyItem);
       
-      showToast('Receipt saved successfully!', 'success');
+      showToast('Sale submitted successfully!', 'success');
       resetForm();
       
-      // Clear cart from Redux after successful save
       dispatch(clearCart());
       console.log('🛒 Cart cleared from Redux after successful save');
       
       console.log('✅ Receipt saved successfully! Redirecting to Sales History...');
       
-      // Navigate after a short delay to allow user to see the success message
       setTimeout(() => {
         navigate('/sales/sale-history');
       }, 1500);
@@ -563,7 +898,6 @@ const SalesReceipt: React.FC = () => {
     }
   };
 
-  // Cancel Handler
   const handleCancel = () => {
     if (salesItems.length > 0) {
       const confirmDiscard = window.confirm(
@@ -576,7 +910,6 @@ const SalesReceipt: React.FC = () => {
     
     resetForm();
     
-    // Clear cart from Redux when cancelling
     dispatch(clearCart());
     console.log('🛒 Cart cleared from Redux after cancellation');
     
@@ -584,7 +917,6 @@ const SalesReceipt: React.FC = () => {
     navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
   };
 
-  // Get Table Columns Configuration
   const columns = getTableColumns({
     editingRowId,
     applyGstToAll,
@@ -599,7 +931,6 @@ const SalesReceipt: React.FC = () => {
     filterOptions: []
   };
 
-  // Table configuration
   const tableConfig = {
     columns,
     data: salesItems,
@@ -627,7 +958,6 @@ const SalesReceipt: React.FC = () => {
       <style>{printStyles}</style>
       <style>{fieldStyles}</style>
       <SalesReceiptContainer id="sales-receipt-content">
-        {/* Header */}
         <SalesReceiptHeader>
           <LeftSection>
             <SalesReceiptTitle variant="h1">
@@ -636,18 +966,17 @@ const SalesReceipt: React.FC = () => {
           </LeftSection>
         </SalesReceiptHeader>
 
-        {/* Divider */}
         <HorizontalDivider />
 
-        {/* Customer, Doctor, and Payment Details Section */}
         <CustomerDoctorSection>
           <CustomerDetailsSection
             customerName={customerName}
             customerMobile={customerMobile}
             customerCity={customerCity}
             selectedCustomer={selectedCustomer}
-            mockCustomers={mockCustomers}
-            onCustomerNameChange={setCustomerName}
+            mockCustomers={customerNames.map(name => ({ id: 0, name, mobile: '', city: '' }))}
+            availablePhones={availablePhones}
+            onCustomerNameChange={handleCustomerNameChange}
             onCustomerSelect={handleCustomerSelect}
             onCustomerMobileChange={setCustomerMobile}
             onCustomerCityChange={setCustomerCity}
@@ -675,7 +1004,6 @@ const SalesReceipt: React.FC = () => {
           />
         </CustomerDoctorSection>
 
-        {/* Sales Receipt Table */}
         <Box sx={{ 
           marginTop: '8px',
           width: '100%',
@@ -687,7 +1015,6 @@ const SalesReceipt: React.FC = () => {
             alignItems: 'center',
             marginBottom: '16px' 
           }}>
-            {/* GST Apply to All Checkbox */}
             {editingRowId && (
               <Tooltip title={SALES_RECEIPT_LABELS.APPLY_GST_TO_ALL_TOOLTIP} placement="top">
                 <FormControlLabel
@@ -736,7 +1063,6 @@ const SalesReceipt: React.FC = () => {
             )}
             {!editingRowId && <Box />}
             
-            {/* Edit Cart Button */}
             <StandardButton 
               onClick={handleEditCart}
               variant="text"
@@ -776,7 +1102,6 @@ const SalesReceipt: React.FC = () => {
           </Box>
         </Box>
 
-        {/* Financial Summary */}
         <FinancialSummary
           totalValue={totalValue}
           totalDiscount={totalDiscount}
@@ -788,7 +1113,6 @@ const SalesReceipt: React.FC = () => {
           onTotalPayableAmountChange={setTotalPayableAmount}
         />
 
-        {/* Action Buttons */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
           <StandardButton 
             variant="secondary" 
@@ -843,14 +1167,12 @@ const SalesReceipt: React.FC = () => {
           </StandardButton>
         </Box>
 
-        {/* Customer Modal */}
         <CustomerModal
           isOpen={isCustomerModalOpen}
           onClose={handleCloseCustomerModal}
           onSubmit={handleCustomerSubmit}
         />
 
-        {/* Delete Confirmation Dialog */}
         <ConfirmationDialog
           open={deleteDialogOpen}
           title={SALES_RECEIPT_LABELS.DELETE_ITEMS_TITLE}
@@ -859,7 +1181,6 @@ const SalesReceipt: React.FC = () => {
           onConfirm={handleConfirmDelete}
         />
 
-        {/* Print Preview Modal */}
         <CommonModal
           open={isPrintModalOpen}
           title={SALES_RECEIPT_LABELS.PRINT_PREVIEW_TITLE}
@@ -889,7 +1210,6 @@ const SalesReceipt: React.FC = () => {
           onClose={handleClosePrintModal}
         />
 
-        {/* Toast Notifications */}
         <Snackbar
           open={snackbarOpen}
           autoHideDuration={4000}
@@ -905,11 +1225,11 @@ const SalesReceipt: React.FC = () => {
           </Alert>
         </Snackbar>
 
-        {/* Confirmation Dialog */}
         <SaleConfirmationDialog
           open={isConfirmDialogOpen}
           onClose={handleConfirmDialogClose}
           onConfirm={handleConfirmDialogConfirm}
+          isLoading={isSubmittingSale}
         />
       </SalesReceiptContainer>
     </>

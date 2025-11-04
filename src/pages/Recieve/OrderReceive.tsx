@@ -186,35 +186,15 @@ const OrderReceive: React.FC = () => {
 
 
   const mappedReceipts: OrderReceiveRow[] = useMemo(() => {
-    // Get locally stored receipt data as fallback for the most recent receipt
-    const localReceiptData = localStorage.getItem('lastReceiptData');
-    const parsedLocalData = localReceiptData ? JSON.parse(localReceiptData) : null;
-    
     return (receipts || [])
       .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
-      .map((receipt, idx) => {
+      .map((receipt) => {
         // API Response Structure (from /receive/get-receipts):
-        // { id, po_id, supplier_name, received_on, received_by, receipt_status, total_amount }
-        // Note: API does NOT return po_number, so we use po_id as fallback
-        
-        // Check if po_number exists in API response (in case backend is updated later)
-        // Otherwise, try local storage for the most recent receipt, then fallback to po_id
-        let poNumber = (receipt as any).po_number; // Check if backend adds this field
-        
-        // Use local storage PO number for the most recent receipt (temporary until backend returns it)
-        if (!poNumber && parsedLocalData && idx === 0) {
-          poNumber = parsedLocalData.poNumber;
-        }
-        
-        // Final fallback: use po_id (since API currently doesn't return po_number)
-        if (!poNumber) {
-          poNumber = String(receipt.po_id);
-        }
-        
+        // { id, po_id, po_number, supplier_name, received_on, received_by, receipt_status, total_amount }
         return {
           receiptId: receipt.id,
           reNo: `RA${receipt.id}`,
-          poNo: poNumber, // Use po_number if available, otherwise po_id
+          poNo: receipt.po_number || String(receipt.po_id), // Use po_number from API, fallback to po_id
           supplier: receipt.supplier_name,
           received: (receipt as any).invoice_date 
             ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A') 

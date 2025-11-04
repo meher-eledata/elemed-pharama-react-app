@@ -1,6 +1,6 @@
 import './Sidebar.scss';
 import { Box, IconButton, Typography, Divider } from '@mui/material';
-import React, { useMemo, useState, } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from 'react-redux';
 import { List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
@@ -70,13 +70,19 @@ const WhiteIcon: React.FC<{ children: React.ReactElement }> = ({ children }) => 
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const [activeItemId, setActiveItemId] = useState<string>('vector');
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const open = typeof isOpen === 'boolean' ? isOpen : uncontrolledOpen;
+  const [isHovered, setIsHovered] = useState(false);
+  const open = isHovered || (typeof isOpen === 'boolean' ? isOpen : uncontrolledOpen);
+
+  useEffect(() => {
+    if (onOpenChange) {
+      onOpenChange(open);
+    }
+  }, [open, onOpenChange]);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector((state: any) => state.auth.user);
   const isAdmin = useMemo(() => Boolean((user as any)?.role === 'admin' || (user as any)?.is_admin), [user]);
 
-  // Admin-specific sidebar items
   const adminItems: SidebarItem[] = [
     { id: 'admin-home', icon: <WhiteIcon><DashboardIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Dashboard', label: 'Dashboard', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin', isComponent: true },
     { id: 'admin-users', icon: <WhiteIcon><PeopleAltIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Management', label: 'User Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/users', isComponent: true },
@@ -86,9 +92,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   ];
 
   const sidebarItems = useMemo(() => {
-    // On any /admin route, always show ONLY the admin menu (regardless of role flag)
     if (location.pathname.startsWith('/admin')) return adminItems;
-    // Otherwise show normal app sidebar; if user is admin, include an entry to jump to Admin
+    // Otherwise show norma app sidebar if user is admin, include an entry to jump to Admin
     if (isAdmin) {
       return [
         ...baseItems,
@@ -101,9 +106,14 @@ return (
     <Box sx={{ display: 'flex', height: '100vh', }}>
       <Box
         className="sidebar"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         sx={{
           width: open ? 200 : 60,
+          minWidth: open ? 200 : 60,
+          maxWidth: open ? 200 : 60,
           overflow: 'hidden',
+          overflowX: 'hidden',
           flexShrink: 0,
           backgroundColor: '#5C17E5',
           paddingTop: '10px',
@@ -111,13 +121,17 @@ return (
           position: 'fixed',
           top: 0,
           left: 0,
+          height: '100vh',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-start',
           gap: 0,
           color: 'white',
           transition: "width 0.3s ease",
-
+          pointerEvents: 'auto',
+        }}
+        style={{
+          width: open ? '200px' : '60px',
         }}
       >
          <Box

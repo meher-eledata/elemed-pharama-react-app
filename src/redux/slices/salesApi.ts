@@ -117,6 +117,15 @@ export interface SearchCustomerRequest {
   searchTerm: string; // Can be name or mobile number
 }
 
+export interface GetCustomerPhonesRequest {
+  name: string;
+}
+
+export interface GetCustomerPhonesResponse {
+  name: string;
+  phones: string[];
+}
+
 // Doctor interfaces
 export interface Doctor {
   id: number;
@@ -156,6 +165,65 @@ export interface ValidateSaleError {
   message: string;
   availableQuantity?: number;
 }
+
+// Submit Sale interfaces
+export interface SubmitSaleLine {
+  product_id: number;
+  quantity: number;
+  mrp: number;
+  sp: number;
+  discount: number;
+}
+
+export interface SubmitSaleRequest {
+  quantity: number;
+  disc: number;
+  payment_method: string;
+  payment_amount: number;
+  created_by: string;
+  customer_id: number;
+  lines: SubmitSaleLine[];
+}
+
+export interface SubmitSaleLineResponse {
+  invoice_line_id: number;
+  invoice_id: number;
+  product_id: number;
+  quantity: string;
+  rate: string;
+  mrp: string;
+  discount: string;
+  selling_price: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubmitSaleResponse {
+  message: string;
+  invoice_id: number;
+  lines: SubmitSaleLineResponse[];
+}
+
+export interface AddCustomerRequest {
+  name: string;
+  email: string | null;
+  phone: string;
+  billing_address: string;
+  shipping_address: string | null;
+  gstin: string | null;
+  pancard_num: string | null;
+  drug_license: string | null;
+  gender: number | null;
+}
+
+export interface AddCustomerResponse {
+  message: string;
+  id: string;
+  name: string;
+}
+
+
+
 
 export const salesApi = createApi({
   reducerPath: "salesApi",
@@ -259,6 +327,42 @@ export const salesApi = createApi({
         return [];
       },
     }),
+
+    // Submit sale - final submission endpoint
+    submitSale: builder.mutation<SubmitSaleResponse, SubmitSaleRequest>({
+      query: (body) => ({
+        url: "sales/submit-sale",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Sales"],
+    }),
+
+    // Add new customer
+    addCustomer: builder.mutation<AddCustomerResponse, AddCustomerRequest>({
+      query: (body) => ({
+        url: "sales/add-customer",
+        method: "POST",
+        body,
+      }),
+      // Invalidate customer cache so dropdown refreshes
+      invalidatesTags: ["Sales"],
+    }),
+
+    // Get all customer names
+    getAllCustomerNames: builder.query<string[], void>({
+      query: () => "sales/get-all-customer-names",
+      providesTags: ["Sales"],
+    }),
+
+    // Get customer phones by name
+    getCustomerPhones: builder.mutation<GetCustomerPhonesResponse, GetCustomerPhonesRequest>({
+      query: (body) => ({
+        url: "sales/get-customer-phones/",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -278,4 +382,9 @@ export const {
   useLazyGetDoctorByIdQuery,
   useValidateSaleMutation,
   useGetSalesProductsQuery,
+  useSubmitSaleMutation,
+  useAddCustomerMutation,
+  useGetAllCustomerNamesQuery,
+  useLazyGetAllCustomerNamesQuery,
+  useGetCustomerPhonesMutation,
 } = salesApi;

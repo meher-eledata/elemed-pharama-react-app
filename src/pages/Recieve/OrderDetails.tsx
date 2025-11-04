@@ -973,20 +973,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const pharmaTableColumns: TableColumn<PharmaTableRow>[] = [
     {
-      key: "poNumber",
-      header: "PO Number",
-      sortable: false,
-      render: (row) => (
-        <span style={{ 
-          fontWeight: 'bold',
-          color: '#5C17E5',
-          fontSize: '13px'
-        }}>
-          {poNumber || 'N/A'}
-        </span>
-      ),
-    },
-    {
       key: "productId",
       header: orderLabels.productName,
       sortable: false,
@@ -1337,23 +1323,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           >
             {isEditMode ? `${labels.orderDetails} (Editing ${receiptNumber})` : labels.orderDetails}
           </Typography>
-          {poNumber && (
-            <Typography
-              variant="body2"
-              sx={{
-                color: '#5C17E5',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                backgroundColor: '#F3E8FF',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                display: 'inline-block',
-                width: 'fit-content'
-              }}
-            >
-              📋 PO Number: {poNumber}
-            </Typography>
-          )}
         </Box>
       </Box>
       <Divider sx={{ marginTop: "16px", border: "0.5px solid #CBD4E1" }} />
@@ -2219,25 +2188,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             disabled={isSaving || !validateRequiredFields() || !hasFormChanges}
             onClick={handleSubmitReceipt}
             sx={{
-              backgroundColor: saveSuccess ? "#10B981" : isSaving ? "#6B7280" : "#5C17E5",
+              backgroundColor: isSaving ? "#6B7280" : "#5C17E5",
               "&:hover": {
-                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 boxShadow: "none",
               },
               "&:focus": {
-                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 boxShadow: "none",
               },
               "&:active": {
-                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 boxShadow: "none",
               },
               "&:focus-visible": {
-                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 boxShadow: "none",
               },
               "&.Mui-focusVisible": {
-                backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 boxShadow: "none",
               },
               "& .MuiTouchRipple-root": {
@@ -2245,17 +2214,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               },
               "& .MuiButtonBase-root": {
                 "&:active": {
-                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 },
               },
               "& .MuiButton-contained": {
                 "&:active": {
-                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 },
               },
               "& .MuiButton-root": {
                 "&:active": {
-                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 },
               },
               "&::before": {
@@ -2274,15 +2243,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               overflow: "hidden",
               "& *": {
                 "&:active": {
-                  backgroundColor: saveSuccess ? "#059669" : isSaving ? "#6B7280" : "#4A14C7",
+                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
                 },
               },
             }}
           >
             {isSaving ? (
               <CircularProgress size={16} color="inherit" />
-            ) : saveSuccess ? (
-              "Saved!"
             ) : (
               orderLabels.saveButton
             )}

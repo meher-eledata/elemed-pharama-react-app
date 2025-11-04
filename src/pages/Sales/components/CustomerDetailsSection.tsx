@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography, Autocomplete, TextField } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { StandardButton } from '../../../components/Common';
 import { Customer } from '../../../redux/slices/salesApi';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
@@ -11,7 +12,6 @@ import {
   PhoneNoField,
   CityField,
 } from '../SalesReceipt.styles';
-import PlusSymbol from '../../../assets/PlusSymbol.svg';
 
 // City options for dropdown
 const cityOptions = [
@@ -29,6 +29,7 @@ interface CustomerDetailsSectionProps {
   customerCity: string;
   selectedCustomer: Customer | null;
   mockCustomers: Customer[];
+  availablePhones?: string[];
   onCustomerNameChange: (value: string) => void;
   onCustomerSelect: (customer: Customer | null) => void;
   onCustomerMobileChange: (value: string) => void;
@@ -42,6 +43,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   customerCity,
   selectedCustomer,
   mockCustomers,
+  availablePhones = [],
   onCustomerNameChange,
   onCustomerSelect,
   onCustomerMobileChange,
@@ -55,7 +57,8 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           fontFamily: "'Lexend', sans-serif", 
           fontWeight: 600, 
           fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION, 
-          color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY
+          color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY,
+          marginBottom: '8px'
         }}>
           {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
         </Typography>
@@ -63,7 +66,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           onClick={onAddNewCustomer}
           variant="primary"
           size="small"
-          startIcon={<img src={PlusSymbol} alt="Plus" style={{ width: '19.5px', height: '19.5px' }} />}
+          startIcon={<AddIcon sx={{ color: '#FFFFFF', fontSize: '19.5px' }} />}
           sx={{
             position: 'absolute',
             top: '0px',
@@ -79,24 +82,41 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
       </Box>
 
       <SectionRow>
-        <Autocomplete<Customer, false, boolean, true>
+        <Autocomplete<string, false, boolean, true>
           freeSolo
-          options={mockCustomers}
-          getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
-          value={selectedCustomer}
+          options={[...new Set(mockCustomers.map(c => c.name))]} // Remove duplicates using Set
+          getOptionLabel={(option) => option}
+          value={customerName || null}
+          isOptionEqualToValue={(option, value) => option === value}
           onChange={(_, newValue) => {
-            if (newValue && typeof newValue !== 'string') {
-              onCustomerSelect(newValue);
+            // Handle string (customer name) - this fires when selecting from dropdown
+            const nameValue = typeof newValue === 'string' ? newValue : '';
+            if (nameValue) {
+              onCustomerNameChange(nameValue);
+              // Don't clear selection immediately - let auto-fill handle it
+              // Only clear mobile to trigger phone fetch
+              onCustomerMobileChange(''); // Clear mobile when name changes to trigger phone fetch
             } else {
+              // User cleared the field
+              onCustomerNameChange('');
               onCustomerSelect(null);
+              onCustomerMobileChange('');
             }
           }}
-          inputValue={customerName}
-          onInputChange={(_, newInputValue) => {
-            onCustomerNameChange(newInputValue);
+          onInputChange={(_, newInputValue, reason) => {
+            // Only update when user is typing (not when selecting from dropdown)
+            // reason: 'input' = typing, 'reset' = cleared, 'clear' = clear button
+            if (reason === 'input') {
+              onCustomerNameChange(newInputValue);
+              // If user types something different, clear selection
+              if (selectedCustomer && newInputValue !== selectedCustomer.name) {
+                onCustomerSelect(null);
+                onCustomerMobileChange('');
+              }
+            }
           }}
-          // Only show clear button when value is selected
-          {...(!selectedCustomer ? { disableClearable: true } : {})}
+          // Only show clear button when value is present
+          disableClearable={!customerName}
           forcePopupIcon
           sx={{ width: `${SALES_RECEIPT_CONSTANTS.CUSTOMER_NAME_WIDTH}px` }}
           renderInput={(params) => (
@@ -123,21 +143,20 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                 },
                 '& .MuiOutlinedInput-input': {
                   padding: '12px 16px',
-                  fontFamily: 'Lexend',
+                  fontFamily: "'Lexend', sans-serif",
                   fontSize: '16px',
-                  lineHeight: '24px',
-                  color: '#728197',
+                  color: '#1A212B',
                   '&::placeholder': {
                     color: '#728197',
                     fontSize: '16px',
-                    fontFamily: 'Lexend',
+                    fontFamily: "'Lexend', sans-serif",
                     opacity: 1,
                   },
                 },
                 '& .MuiInputLabel-root': {
-                  color: '#728197',
-                  fontFamily: 'Lexend',
-                  fontSize: '14px',
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: '16px',
+                  color: '#1A212B',
                   '&.Mui-focused': {
                     color: '#5C17E5',
                   },
@@ -145,42 +164,124 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
               }}
             />
           )}
-          renderOption={(props, option) => (
-            <li {...props}>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {typeof option === 'string' ? option : option.name}
-                </Typography>
-                {typeof option !== 'string' && (
-                  <Typography variant="caption" sx={{ color: '#728197' }}>
-                    {option.mobile} • {option.city}
+          renderOption={(props, option, index) => {
+            const { key, ...otherProps } = props;
+            // Use combination of option and index to ensure unique keys
+            return (
+              <li key={`${option}-${index}`} {...otherProps}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {option}
                   </Typography>
-                )}
-              </Box>
-            </li>
-          )}
+                </Box>
+              </li>
+            );
+          }}
         />
       </SectionRow>
 
       <SectionRow>
-        <PhoneNoField
-          className="phone-no-field"
-          label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
-          variant="outlined"
-          placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
-          value={customerMobile}
-          onChange={(e) => {
-            onCustomerMobileChange(e.target.value);
-            // If user manually edits, clear selected customer
-            if (selectedCustomer) onCustomerSelect(null);
-          }}
-        />
+        {availablePhones.length > 0 ? (
+          <Autocomplete
+            freeSolo
+            options={availablePhones}
+            value={customerMobile || null}
+            isOptionEqualToValue={(option, value) => option === value}
+            onChange={(_, newValue) => {
+              const phoneValue = typeof newValue === 'string' ? newValue : '';
+              onCustomerMobileChange(phoneValue);
+              // Create Customer object when both name and phone are selected
+              if (customerName && phoneValue) {
+                const customer: Customer = {
+                  id: 0, // We'll need to get this from API later
+                  name: customerName,
+                  mobile: phoneValue,
+                  city: customerCity || '',
+                };
+                onCustomerSelect(customer);
+              } else {
+                onCustomerSelect(null);
+              }
+            }}
+            onInputChange={(_, newInputValue) => {
+              onCustomerMobileChange(newInputValue);
+              if (selectedCustomer && newInputValue !== selectedCustomer.mobile) {
+                onCustomerSelect(null);
+              }
+            }}
+            disableClearable={!customerMobile}
+            sx={{ width: '165px' }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
+                variant="outlined"
+                placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '48px',
+                    borderRadius: '12px',
+                    backgroundColor: '#FFFFFF',
+                    '& fieldset': {
+                      borderColor: '#9AA8BC',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#9AA8BC',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#5C17E5',
+                    },
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    padding: '12px 16px',
+                    fontFamily: "'Lexend', sans-serif",
+                    fontSize: '16px',
+                    color: '#1A212B',
+                    '&::placeholder': {
+                      color: '#728197',
+                      fontSize: '16px',
+                      fontFamily: "'Lexend', sans-serif",
+                      opacity: 1,
+                    },
+                  },
+                '& .MuiInputLabel-root': {
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: '16px',
+                  color: '#1A212B',
+                  '&.Mui-focused': {
+                    color: '#5C17E5',
+                  },
+                },
+                }}
+              />
+            )}
+          />
+        ) : (
+          <PhoneNoField
+            className="phone-no-field"
+            label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
+            variant="outlined"
+            placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
+            value={customerMobile}
+            onChange={(e) => {
+              const newMobile = e.target.value;
+              onCustomerMobileChange(newMobile);
+              // Only clear selected customer if the new value doesn't match the selected customer's mobile
+              if (selectedCustomer && newMobile !== selectedCustomer.mobile) {
+                onCustomerSelect(null);
+              }
+            }}
+          />
+        )}
         <Autocomplete
           options={cityOptions}
-          value={customerCity}
+          value={customerCity ? customerCity : undefined}
+          isOptionEqualToValue={(option, value) => option === (value || '')}
           onChange={(_, newValue) => {
             if (newValue) {
               onCustomerCityChange(newValue);
+            } else {
+              onCustomerCityChange('');
             }
           }}
           onInputChange={(_, newInputValue) => {
@@ -212,21 +313,20 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                 },
                 '& .MuiOutlinedInput-input': {
                   padding: '12px 16px',
-                  fontFamily: 'Lexend',
+                  fontFamily: "'Lexend', sans-serif",
                   fontSize: '16px',
-                  lineHeight: '24px',
-                  color: '#728197',
+                  color: '#1A212B',
                   '&::placeholder': {
                     color: '#728197',
                     fontSize: '16px',
-                    fontFamily: 'Lexend',
+                    fontFamily: "'Lexend', sans-serif",
                     opacity: 1,
                   },
                 },
                 '& .MuiInputLabel-root': {
-                  color: '#728197',
-                  fontFamily: 'Lexend',
-                  fontSize: '14px',
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: '16px',
+                  color: '#1A212B',
                   '&.Mui-focused': {
                     color: '#5C17E5',
                   },

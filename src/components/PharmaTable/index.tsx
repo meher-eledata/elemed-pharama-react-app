@@ -93,8 +93,6 @@ export const ReusableTable = <T,>({
     sortConfig,
     currentFilter, // Destructure the new prop
 }: ReusableTableProps<T>) => {
-    // Debug: Log sortConfig received by PharmaTable
-    console.log('PharmaTable received sortConfig:', sortConfig);
     const theme = useTheme();
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('md'));
     

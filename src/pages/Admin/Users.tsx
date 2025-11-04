@@ -348,6 +348,8 @@ const Users: React.FC = () => {
           color: USERS_CONSTANTS.TABLE.HEADER_COLOR,
           backgroundColor: USERS_CONSTANTS.TABLE.HEADER_BACKGROUND,
           padding: `${USERS_CONSTANTS.TABLE.HEADER_PADDING} !important`,
+          minHeight: 'auto !important',
+          height: 'auto !important',
           borderRight: USERS_CONSTANTS.TABLE.HEADER_CELL_BORDER_RIGHT,
           borderBottom: USERS_CONSTANTS.TABLE.ROW_BORDER,
           '&:last-child': {
