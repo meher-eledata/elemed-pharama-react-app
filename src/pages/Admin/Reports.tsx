@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
@@ -18,10 +18,10 @@ const Reports: React.FC = () => {
     dayjs(),
   ]);
 
-  const apiDateRange = {
+  const apiDateRange = useMemo(() => ({
     startDate: dateRange[0] ? dateRange[0].format('YYYY-MM-DD') : null,
     endDate: dateRange[1] ? dateRange[1].format('YYYY-MM-DD') : null,
-  };
+  }), [dateRange]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -113,7 +113,12 @@ const Reports: React.FC = () => {
       {/* Tab Content */}
       <Box>
         {activeTab === 'kpi' && (
-          <Box>
+          <Box
+            sx={{
+              contain: 'layout style paint',
+              willChange: 'auto',
+            }}
+          >
             {/* Date Range Filter */}
             <Box sx={{ mb: '24px' }}>
               <DateRangeFilter

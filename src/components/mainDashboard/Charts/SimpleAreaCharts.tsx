@@ -31,7 +31,10 @@ interface ThreeChartsComponentProps {
 }
 
 const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }) => {
-  const { data: kpis, isLoading, error } = useGetInvoiceKpisQuery(dateRange);
+  const { data: kpis, isLoading, error } = useGetInvoiceKpisQuery({
+    startDate: dateRange.startDate || '',
+    endDate: dateRange.endDate || '',
+  });
 
   if (isLoading) {
     return (
@@ -194,6 +197,18 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
   );
 };
 
-export default ThreeChartsComponent;
+// Custom comparison function for React.memo
+const arePropsEqual = (prevProps: ThreeChartsComponentProps, nextProps: ThreeChartsComponentProps) => {
+  return (
+    prevProps.dateRange.startDate === nextProps.dateRange.startDate &&
+    prevProps.dateRange.endDate === nextProps.dateRange.endDate
+  );
+};
+
+// Memoize the component with custom comparison
+const MemoizedThreeChartsComponent = React.memo(ThreeChartsComponent, arePropsEqual);
+MemoizedThreeChartsComponent.displayName = 'ThreeChartsComponent';
+
+export default MemoizedThreeChartsComponent;
 
 

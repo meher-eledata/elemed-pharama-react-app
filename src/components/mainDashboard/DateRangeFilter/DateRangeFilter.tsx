@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { DATE_RANGE_LABELS } from "../../../config/label/DateRange.labels";
 import { DATE_RANGE_CONSTANTS } from "../../../config/constants/DateRange.constants";
 
@@ -124,6 +125,22 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               p: 2,
               boxShadow: 3,
               borderRadius: DATE_RANGE_CONSTANTS.BOX_RADIUS,
+              overflow: "hidden !important",
+              overflowY: "hidden !important",
+              overflowX: "hidden !important",
+              maxHeight: "none !important",
+              width: "242px",
+              maxWidth: "242px",
+              minWidth: "242px",
+              height: "300px !important",
+              minHeight: "300px !important",
+              "&::-webkit-scrollbar": {
+                display: "none !important",
+                width: "0 !important",
+                height: "0 !important",
+              },
+              scrollbarWidth: "none !important",
+              msOverflowStyle: "none !important",
             }}
           >
             <Typography
@@ -138,18 +155,153 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             <DateCalendar
               value={editing === "start" ? dateRange[0] : dateRange[1] || dateRange[0]}
               onChange={handleSelect}
-              sx={{
-                "& .MuiDayCalendar-header": {
-                  color: DATE_RANGE_CONSTANTS.HEADER_COLOR,
-                  fontWeight: "600",
-                  fontSize: DATE_RANGE_CONSTANTS.HEADER_FONT_SIZE,
-                },
-                "& .MuiDayCalendar-weekDayLabel": {
-                  color: DATE_RANGE_CONSTANTS.HEADER_COLOR,
-                  fontWeight: 600,
-                  fontSize: DATE_RANGE_CONSTANTS.HEADER_FONT_SIZE,
-                },
-              }}
+              views={["year", "month", "day"]}
+              sx={
+                {
+                  "& .MuiPaper-root": {
+                    borderRadius: "12px",
+                    border: "1px solid #E6ECF5",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    padding: "16px",
+                    width: "242px",
+                    maxWidth: "242px",
+                    minWidth: "242px",
+                    height: "300px !important",
+                    minHeight: "300px !important",
+                  },
+                  "& .MuiDayCalendar-root": {
+                    width: "242px",
+                    maxWidth: "242px",
+                    marginTop:"-6px",
+                    height: "300px !important",
+                    minHeight: "300px !important",
+                  },
+                  "& .MuiYearCalendar-root": {
+                    marginLeft: "-20px",
+                    width: "273px"
+                  },
+                  "& .MuiPickersYear-root": {
+                    borderRadius: "20px",
+                    padding: "8px 16px",
+                    fontSize: "14px !important",
+                    "&.Mui-selected": {
+                      backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                      color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                      borderRadius: "20px",
+                      "&:hover": {
+                        backgroundColor: "#4A14C7 !important",
+                      },
+                    },
+                    "&:hover": {
+                      backgroundColor: "#F3E8FF",
+                      color: DATE_RANGE_CONSTANTS.DATE_SELECTED_BG,
+                      borderRadius: "20px",
+                    },
+                  },
+                  "& .MuiMonthCalendar-root": {
+                    marginLeft: "-16px",
+                    width: "283px",
+                    columnGap: "38px",
+                    padding:"-2px",
+                  },
+                  "& .MuiPickersMonth-root": {
+                    fontSize: "14px !important",
+                    "&.Mui-selected": {
+                      backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                      color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                      "&:hover": {
+                        backgroundColor: "#4A14C7 !important",
+                      },
+                    },
+                    "&:hover": {
+                      backgroundColor: "#F3E8FF",
+                      color: DATE_RANGE_CONSTANTS.DATE_SELECTED_BG,
+                    },
+                  },
+                  "& .MuiMonthCalendar-button": {
+                    fontSize: "14px !important",
+                    "&.Mui-selected": {
+                      backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                      color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                      borderRadius: "18px",
+                      "&:hover": {
+                        backgroundColor: "#4A14C7 !important",
+                      },
+                    },
+                  },
+                
+                  "& .MuiDayCalendar-header": {
+                    width: "242px",
+                    marginTop:"-6px",
+                  },
+                  "& .MuiPickersSlideTransition-root": {
+                    display: "block",
+                    position: "relative",
+                    overflowX: "hidden",
+                    minHeight: "242px",
+                    height: "300px !important",
+                    width: "242px",
+                    maxWidth: "242px",
+                  },
+                  "& .MuiPickersCalendarHeader-root": {
+                    padding: "0 8px 16px 8px",
+                    width:"242px",
+                    marginTop:"-6px",
+                    marginLeft: "-9px",
+                   
+    
+    
+                    "& .MuiPickersCalendarHeader-labelContainer": {
+                      "& .MuiPickersCalendarHeader-label": {
+                        fontFamily: "Lexend",
+                        fontSize: "14px",
+                        fontWeight: 400,
+                        color: "#202B3C",
+                        width:"242px",
+                        marginTop: "20px",
+                      },
+                    },
+                    "& .MuiIconButton-root": {
+                      color: "#5C17E5",
+                      "&:hover": {
+                        backgroundColor: "#F3E8FF",
+                      },
+                    },
+                  },
+                  overflow: "hidden !important",
+                  overflowY: "hidden !important",
+                  overflowX: "hidden !important",
+                  maxHeight: "none !important",
+                  height: "auto !important",
+                  "&::-webkit-scrollbar": {
+                    display: "none !important",
+                    width: "0 !important",
+                    height: "0 !important",
+                  },
+                  scrollbarWidth: "none !important",
+                  msOverflowStyle: "none !important",
+                  "& .MuiDayCalendar-monthContainer": {
+                    overflow: "hidden !important",
+                    overflowY: "hidden !important",
+                    overflowX: "hidden !important",
+                    maxHeight: "none !important",
+                    height: "auto !important",
+                  },
+                  "& .MuiDayCalendar-weekDayLabel": {
+                    color: DATE_RANGE_CONSTANTS.HEADER_COLOR,
+                    fontWeight: 600,
+                    fontSize: DATE_RANGE_CONSTANTS.HEADER_FONT_SIZE,
+                  },
+                  "& *": {
+                    "&::-webkit-scrollbar": {
+                      display: "none !important",
+                      width: "0 !important",
+                      height: "0 !important",
+                    },
+                    scrollbarWidth: "none !important",
+                    msOverflowStyle: "none !important",
+                  },
+                }}
               slotProps={{
                 day: {
                   sx: {
@@ -162,8 +314,64 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                       backgroundColor: DATE_RANGE_CONSTANTS.DATE_SELECTED_BG,
                       border: `1px solid ${DATE_RANGE_CONSTANTS.DATE_SELECTED_BORDER}`,
                     },
+                    "&.MuiPickersDay-today": {
+                      backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                      color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                      border: "none",
+                      "&:hover": {
+                        backgroundColor: "#4A14C7 !important",
+                        color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                      },
+                      "&.Mui-selected": {
+                        backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                        color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                        border: "none",
+                        "&:hover": {
+                          backgroundColor: "#4A14C7 !important",
+                        },
+                      },
+                    },
                     "& .MuiTouchRipple-root": {
                       display: "none",
+                    },
+                  },
+                },
+                monthButton: (ownerState) => {
+                  const month = (ownerState as any).month;
+                  const isCurrentMonth = month && dayjs.isDayjs(month) && 
+                    month.isSame(dayjs(), 'month') && 
+                    month.isSame(dayjs(), 'year');
+                  return {
+                    sx: {
+                      fontSize: "12px !important",
+                      width:"48px",
+                      ...(isCurrentMonth && {
+                        backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                        color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                      }),
+                      "&.Mui-selected": {
+                        backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                        color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                        "&:hover": {
+                          backgroundColor: "#4A14C7 !important",
+                        },
+                      },
+                      "&:hover": {
+                        backgroundColor: "#F3E8FF !important",
+                        color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                      },
+                    },
+                  };
+                },
+                yearButton: {
+                  sx: {
+                    fontSize: "14px !important",
+                    "&.Mui-selected": {
+                      backgroundColor: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_BG} !important`,
+                      color: `${DATE_RANGE_CONSTANTS.DATE_SELECTED_TEXT} !important`,
+                      "&:hover": {
+                        backgroundColor: "#4A14C7 !important",
+                      },
                     },
                   },
                 },

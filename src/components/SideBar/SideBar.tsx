@@ -1,6 +1,6 @@
 import './Sidebar.scss';
 import { Box, IconButton, Typography, Divider } from '@mui/material';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from 'react-redux';
 import { List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
@@ -73,6 +73,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const [isHovered, setIsHovered] = useState(false);
   const open = isHovered || (typeof isOpen === 'boolean' ? isOpen : uncontrolledOpen);
 
+  // Memoized handlers to prevent unnecessary re-renders during hover
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true);
+    if (onOpenChange) {
+      onOpenChange(true);
+    }
+  }, [onOpenChange]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovered(false);
+    // Only notify parent to close if sidebar wasn't manually opened
+    if (onOpenChange && !uncontrolledOpen && typeof isOpen !== 'boolean') {
+      onOpenChange(false);
+    }
+  }, [onOpenChange, uncontrolledOpen, isOpen]);
+
   useEffect(() => {
     if (onOpenChange) {
       onOpenChange(open);
@@ -83,13 +99,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const user = useSelector((state: any) => state.auth.user);
   const isAdmin = useMemo(() => Boolean((user as any)?.role === 'admin' || (user as any)?.is_admin), [user]);
 
-  const adminItems: SidebarItem[] = [
+  const adminItems: SidebarItem[] = useMemo(() => [
     { id: 'admin-home', icon: <WhiteIcon><DashboardIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Dashboard', label: 'Dashboard', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin', isComponent: true },
     { id: 'admin-users', icon: <WhiteIcon><PeopleAltIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Management', label: 'User Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/users', isComponent: true },
     { id: 'admin-reports', icon: <WhiteIcon><BarChartIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Reports', label: 'Reports', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/reports', isComponent: true },
     { id: 'admin-settings', icon: <WhiteIcon><SettingsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Settings', label: 'Settings', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/settings', isComponent: true },
     { id: 'admin-audit', icon: <WhiteIcon><DescriptionIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Audit Log', label: 'Audit Log', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/audit', isComponent: true },
-  ];
+  ], []);
 
   const sidebarItems = useMemo(() => {
     if (location.pathname.startsWith('/admin')) return adminItems;
@@ -101,13 +117,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
       ];
     }
     return baseItems;
-  }, [isAdmin, location.pathname]);
+  }, [isAdmin, location.pathname, adminItems]);
 return (
     <Box sx={{ display: 'flex', height: '100vh', }}>
       <Box
         className="sidebar"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         sx={{
           width: open ? 200 : 60,
           minWidth: open ? 200 : 60,
@@ -117,7 +133,7 @@ return (
           flexShrink: 0,
           backgroundColor: '#5C17E5',
           paddingTop: '10px',
-          zIndex: 1200,
+          zIndex: 100,
           position: 'fixed',
           top: 0,
           left: 0,
@@ -127,11 +143,11 @@ return (
           alignItems: 'flex-start',
           gap: 0,
           color: 'white',
-          transition: "width 0.3s ease",
+          transition: "width 0.08s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.08s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.08s cubic-bezier(0.4, 0, 0.2, 1)",
+          willChange: 'width',
+          contain: 'layout style paint',
           pointerEvents: 'auto',
-        }}
-        style={{
-          width: open ? '200px' : '60px',
+          boxShadow: open ? '2px 0 8px rgba(0, 0, 0, 0.1)' : 'none',
         }}
       >
          <Box
@@ -150,7 +166,15 @@ return (
 >
   <img src={GroupIcon} alt="Logo" style={{ width: '32px', height: '32px' }} />
   {open && (
-    <Typography variant="subtitle1" sx={{ fontSize: '18px', fontWeight: 700 }}>
+    <Typography 
+      variant="subtitle1" 
+      sx={{ 
+        fontSize: '18px', 
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden'
+      }}
+    >
       Pharma App
     </Typography>
   )}
@@ -208,6 +232,10 @@ return (
                   primaryTypographyProps={{
                     fontSize: "14px",
                     fontWeight: 400,
+                  }}
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden'
                   }}
                 />
               )}

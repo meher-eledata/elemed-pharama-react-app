@@ -30,9 +30,35 @@ export const DashboardLayout = () => {
   return (
     <Box display="flex" height="100vh">
       <Sidebar onOpenChange={handleSidebarChange} isOpen={sidebarOpen} />
-      <Box flexGrow={1} display="flex" flexDirection="column" sx={{ width: '100%', marginLeft: actualSidebarOpen ? '200px' : '60px', transition: 'margin-left 0.3s ease', boxSizing: 'border-box', minWidth: 0 }}>
+      <Box 
+        flexGrow={1} 
+        display="flex" 
+        flexDirection="column" 
+        sx={{ 
+          width: '100%', 
+          marginLeft: actualSidebarOpen ? '200px' : '60px', 
+          paddingLeft: '8px',
+          transition: 'margin-left 0.08s cubic-bezier(0.4, 0, 0.2, 1), padding-left 0.08s cubic-bezier(0.4, 0, 0.2, 1)', 
+          willChange: 'margin-left', 
+          boxSizing: 'border-box', 
+          minWidth: 0,
+          position: 'relative',
+          zIndex: 200,
+          backgroundColor: 'transparent',
+        }}
+      >
         <TopBar name={displayName} initials={getInitials()} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
-        <Box component="main" flexGrow={1} paddingLeft={2} paddingRight={3} overflow="auto" marginTop={0}>
+        <Box 
+          component="main" 
+          flexGrow={1} 
+          paddingLeft={2} 
+          paddingRight={3} 
+          overflow="auto" 
+          marginTop={0}
+          sx={{
+            contain: 'layout style',
+          }}
+        >
           <Outlet />
         </Box>
       </Box>
