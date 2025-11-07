@@ -111,7 +111,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
               }
             }}
             disableClearable
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '20px' }} />}
+            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             ListboxProps={{
               style: {
                 maxHeight: '200px',
@@ -132,7 +132,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   width: "344px",
                   "& .MuiOutlinedInput-root": {
                     height: "40px",
-                    borderRadius: "8px",
+                    borderRadius: "18px",
                     backgroundColor: "#FFFFFF",
                     border: "1px solid #D1D5DB",
                     "& fieldset": { 
@@ -156,6 +156,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   },
                   "& .MuiInputBase-input": {
                     padding: "8px 12px",
+                    paddingLeft: "0px",
                     fontFamily: "Inter, system-ui, sans-serif",
                     fontSize: "14px",
                     fontWeight: 400,
@@ -169,11 +170,11 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 }}
                 InputProps={{
                   ...params.InputProps,
-                  startAdornment: (
-                    <InputAdornment position="start" sx={{ marginLeft: "12px" }}>
+                  startAdornment: !isProductSelected ? (
+                    <InputAdornment position="start" sx={{ marginLeft: "12px", marginRight: "8px" }}>
                       <SearchIcon sx={{ color: "#9CA3AF", width: "16px", height: "16px" }} />
                     </InputAdornment>
-                  ),
+                  ) : null,
                   endAdornment: (
                     <>
                       {isProductSelected && (
@@ -206,10 +207,11 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             display: 'flex', 
             alignItems: 'center', 
             borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
-            border: '1px solid #e0e0e0',
+            border: '1px solid #D1D5DB',
             overflow: 'hidden',
             backgroundColor: 'white',
-            height: '40px'
+            height: '40px',
+            outline: 'none',
           }}>
             <IconButton 
               size="small" 
@@ -219,7 +221,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 bgcolor: 'grey.200', 
                 color: 'black',
                 borderRadius: 0,
-                borderRight: '1px solid #e0e0e0',
+                borderRight: '1px solid #D1D5DB',
                 height: '40px',
                 width: '40px',
                 '&:hover': { bgcolor: 'grey.300' },
@@ -243,12 +245,18 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   '&:hover:not(.Mui-disabled):before': { borderBottom: 'none !important' },
                   '&:hover:not(.Mui-disabled):after': { borderBottom: 'none !important' },
                   height: '40px',
+                  '&:focus': {
+                    outline: 'none',
+                  },
                 },
                 '& .MuiInput-input': {
                   textAlign: 'center',
                   padding: '4px 4px',
                   fontSize: '14px',
                   height: '40px',
+                  '&:focus': {
+                    outline: 'none',
+                  },
                 }
               }}
             />
@@ -260,7 +268,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 bgcolor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR, 
                 color: 'white',
                 borderRadius: 0,
-                borderLeft: '1px solid #e0e0e0',
+                borderLeft: '1px solid #D1D5DB',
                 height: '40px',
                 width: '40px',
                 '&:hover': { bgcolor: SALES_PAGE_CONSTANTS.PRIMARY_HOVER_COLOR },
@@ -284,8 +292,21 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 sx={{
                   borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
                   height: '40px',
+                  outline: 'none',
+                  '& .MuiSelect-icon': {
+                    fontSize: '24px',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+                    borderColor: '#D1D5DB',
+                  },
+                  '&.Mui-focused': {
+                    outline: 'none',
                   },
                 }}
               >
@@ -307,20 +328,43 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
           <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>{SALES_PAGE_LABELS.DISCOUNT_LABEL}</Typography>
           <TextField
             value={discount}
-            onChange={(e) => onDiscountChange(parseInt(e.target.value) || SALES_PAGE_CONSTANTS.MIN_DISCOUNT)}
+            onChange={(e) => {
+              const inputValue = e.target.value;
+              // Allow empty string or valid number
+              if (inputValue === '') {
+                onDiscountChange(0);
+              } else {
+                const numValue = parseInt(inputValue);
+                if (!isNaN(numValue)) {
+                  onDiscountChange(Math.max(SALES_PAGE_CONSTANTS.MIN_DISCOUNT, Math.min(SALES_PAGE_CONSTANTS.MAX_DISCOUNT, numValue)));
+                }
+              }
+            }}
+            onFocus={(e) => {
+              // Select all text when focused so typing replaces the value
+              e.target.select();
+            }}
             disabled={!isProductSelected}
             size="small"
             sx={{ 
               width: SALES_PAGE_CONSTANTS.DISCOUNT_FIELD_WIDTH,
               height: '40px',
+              outline: 'none',
               '& .MuiOutlinedInput-root': {
                 borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
                 height: '40px',
+                outline: 'none',
+                '& fieldset': {
+                  borderColor: '#D1D5DB',
+                },
                 '&:hover fieldset': {
-                  borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+                  borderColor: '#D1D5DB',
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+                  borderColor: '#D1D5DB',
+                },
+                '&.Mui-focused': {
+                  outline: 'none',
                 },
               },
             }}
@@ -338,6 +382,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         size="medium"
         sx={{
           marginTop: '20px',
+          borderRadius: '12px',
         }}
       >
         {isValidating ? 'Validating...' : SALES_PAGE_LABELS.ADD_TO_CART_BUTTON}

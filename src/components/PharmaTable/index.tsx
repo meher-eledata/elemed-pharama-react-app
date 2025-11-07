@@ -23,6 +23,7 @@ import { useTheme } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
+import CloseIcon from '@mui/icons-material/Close';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
@@ -267,11 +268,35 @@ export const ReusableTable = <T,>({
                         onChange={onSearchChange}
                         type={searchAndFilterConfig.filterOptions.find((f: FilterOption) => f.key === currentFilterKey)?.type || 'text'}
                         InputProps={{
-                            startAdornment: (
+                            startAdornment: !currentSearchTerm.trim() ? (
                                 <InputAdornment position="start">
                                     <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
                                 </InputAdornment>
-                            ),
+                            ) : null,
+                            endAdornment: currentSearchTerm ? (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const syntheticEvent = {
+                                                target: { value: '' }
+                                            } as ChangeEvent<HTMLInputElement>;
+                                            onSearchChange(syntheticEvent);
+                                        }}
+                                        sx={{
+                                            padding: '4px',
+                                            color: '#728197',
+                                            '&:hover': {
+                                                backgroundColor: 'transparent',
+                                                color: '#1A212B'
+                                            }
+                                        }}
+                                    >
+                                        <CloseIcon sx={{ fontSize: '18px' }} />
+                                    </IconButton>
+                                </InputAdornment>
+                            ) : null,
                             sx: {
                                 height: '40px',
                                 borderRadius: '12px',
@@ -282,14 +307,14 @@ export const ReusableTable = <T,>({
                                     border: 'none !important',
                                 },
                                 '&:hover': {
-                                    border: '1px solid #5C17E5 !important',
+                                    border: '1px solid #9AA8bc !important',
                                     outline: 'none !important',
                                     '& .MuiOutlinedInput-notchedOutline': {
                                         border: 'none !important',
                                     },
                                 },
                                 '&.Mui-focused': {
-                                    border: '2px solid #5C17E5 !important',
+                                    border: '1px solid #9AA8bc !important',
                                     outline: 'none !important',
                                     '& .MuiOutlinedInput-notchedOutline': {
                                         border: 'none !important',
@@ -438,25 +463,27 @@ export const ReusableTable = <T,>({
                                         ) : column.headerRender ? column.headerRender() : column.header}
 
                                         {column.sortable !== false && (
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.2 }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, marginTop: '-2px', marginBottom: '-2px' }}>
                                                 <KeyboardArrowUpIcon
                                                     sx={{
-                                                        fontSize: 16,
+                                                        fontSize: 12,
                                                         color: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#5C17E5' : '#B0BEC5',
                                                         fontWeight: sortConfig.key === column.key && sortConfig.direction === 'asc' ? 'bold' : 'normal',
                                                         backgroundColor: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#F3E8FF' : 'transparent',
                                                         borderRadius: '4px',
-                                                        padding: '2px',
+                                                        padding: '1px',
+                                                        marginBottom: '-2px',
                                                     }}
                                                 />
                                                 <KeyboardArrowDownIcon
                                                     sx={{
-                                                        fontSize: 16,
+                                                        fontSize: 12,
                                                         color: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#5C17E5' : '#B0BEC5',
                                                         fontWeight: sortConfig.key === column.key && sortConfig.direction === 'desc' ? 'bold' : 'normal',
                                                         backgroundColor: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#F3E8FF' : 'transparent',
                                                         borderRadius: '4px',
-                                                        padding: '2px',
+                                                        padding: '1px',
+                                                        marginTop: '-2px',
                                                     }}
                                                 />
                                             </Box>
@@ -565,7 +592,7 @@ export const ReusableTable = <T,>({
                             sx={{
                                 height: '100%',
                                 '& .MuiSelect-select': { py: 0, pr: 2, display: 'flex', alignItems: 'center', minWidth: 20 },
-                                '& .MuiSelect-icon': { top: '50%', transform: 'translateY(-50%)', color: '#5C17E5' },
+                                '& .MuiSelect-icon': { top: '50%', transform: 'translateY(-50%)', color: '#5C17E5', fontSize: '24px' },
                                 fontSize: '14px',
                                 fontWeight: 'bold',
                                 fontFamily: 'Lexend',

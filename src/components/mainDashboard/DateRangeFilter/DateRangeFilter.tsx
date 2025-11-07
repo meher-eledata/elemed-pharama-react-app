@@ -71,17 +71,23 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       <Box
         ref={anchorRef}
         sx={{
-          border: DATE_RANGE_CONSTANTS.BOX_BORDER,
+          border: open ? "2px solid #728197" : DATE_RANGE_CONSTANTS.BOX_BORDER,
           borderRadius: DATE_RANGE_CONSTANTS.BOX_RADIUS,
           padding: DATE_RANGE_CONSTANTS.BOX_PADDING,
           cursor: "pointer",
           width: DATE_RANGE_CONSTANTS.BOX_WIDTH,
+          height: DATE_RANGE_CONSTANTS.BOX_HEIGHT,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           backgroundColor: "#ffffff",
           fontFamily: DATE_RANGE_CONSTANTS.FONT_FAMILY,
           fontSize: DATE_RANGE_CONSTANTS.FONT_SIZE,
+          boxSizing: "border-box",
+          transition: "border-color 0.2s ease",
+          "&:hover": {
+            border: open ? "2px solid #728197" : DATE_RANGE_CONSTANTS.BOX_BORDER,
+          },
         }}
       >
         <Box

@@ -293,11 +293,11 @@ const Users: React.FC = () => {
             },
           }}
           InputProps={{
-            startAdornment: (
+            startAdornment: !currentSearchTerm.trim() ? (
               <InputAdornment position="start">
                 <SearchIcon sx={{ color: USERS_CONSTANTS.SEARCH_FIELD.ICON_COLOR, fontSize: USERS_CONSTANTS.SEARCH_FIELD.ICON_SIZE }} />
               </InputAdornment>
-            ),
+            ) : null,
           }}
         />
         

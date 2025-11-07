@@ -7,6 +7,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import AddIcon from '@mui/icons-material/Add';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
@@ -493,18 +494,22 @@ export default function SaleHistory() {
           onClick={handleStartNewSale}
           variant="primary"
           size="large"
+          startIcon={<AddIcon sx={{ fontSize: '18px' }} />}
           sx={{
             minWidth: '160px',
-            borderRadius: '10px',
+            borderRadius: '30px',
             backgroundColor: '#5C17E5',
             color: '#FFFFFF',
             fontWeight: 700,
             fontSize: '14px',
             textTransform: 'none',
             boxShadow: 'none',
+            '& .MuiButton-startIcon': {
+              marginRight: '8px',
+            },
           }}
         >
-          {SALES_HISTORY_LABELS.START_NEW_SALE}
+          Start new sale
         </StandardButton>
       </Box>
 
@@ -516,7 +521,7 @@ export default function SaleHistory() {
         mb: 3,
         bgcolor: '#F6F8FB',
         borderRadius: '16px',
-        border: '1px solid #9AABB',
+        border: '1px solid #E6ECF5',
         p: '12px',
       }}>
         <TextField
@@ -524,45 +529,50 @@ export default function SaleHistory() {
           value={currentSearchTerm}
           onChange={handleSearchChange}
           InputProps={{
-            startAdornment: (
-              <InputAdornment position="start" sx={{ transform: 'translateY(-2px)' }}>
-                <SearchIcon sx={{ color: '#8A99AF', fontSize: '22px' }} />
+            startAdornment: !currentSearchTerm.trim() ? (
+              <InputAdornment position="start" sx={{ marginRight: '0px' }}>
+                <SearchIcon sx={{ color: '#8A99AF', fontSize: '24px' }} />
               </InputAdornment>
-            ),
+            ) : null,
           }}
           sx={{
             height: '40px',
             borderRadius: '12px',
             backgroundColor: '#fff',
-            boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
             width: '600px',
             '& .MuiOutlinedInput-root': {
               height: '40px',
               borderRadius: '12px',
               backgroundColor: '#fff',
-              boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
+              boxShadow: 'inset 0 0 0 1px #BFD1E6',
               '& .MuiOutlinedInput-notchedOutline': { 
                 border: 'none !important',
                 display: 'none !important'
               },
               '&:hover': { 
-                boxShadow: 'inset 0 0 0 1px #5C17E5 !important',
+                boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
                 '& .MuiOutlinedInput-notchedOutline': { 
                   border: 'none !important',
                   display: 'none !important'
                 },
               },
               '&.Mui-focused': { 
-                boxShadow: 'inset 0 0 0 2px #5C17E5 !important',
+                boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
                 '& .MuiOutlinedInput-notchedOutline': { 
                   border: 'none !important',
                   display: 'none !important'
                 },
               },
             },
+            '& .MuiInputBase-input': {
+              padding: '10px 14px',
+              paddingLeft: '6px',
+            },
             '& .MuiOutlinedInput-input::placeholder': {
               textAlign: 'left',
               fontSize: '16px',
+              color: '#9CA3AF',
+              opacity: 1,
             },
           }}
         />
@@ -614,34 +624,31 @@ export default function SaleHistory() {
                 clearOnEscape
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 20 }} />}
+                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder={SALES_HISTORY_LABELS.SEARCH_DOCTOR_PLACEHOLDER}
                     sx={{
-                      width: 200,
+                      width: 220,
                       height: '40px',
                       borderRadius: '12px',
                       backgroundColor: '#ffffff',
-                      border: '1px solid #D1D5DB',
                       '& .MuiOutlinedInput-root': {
                         height: '40px',
                         borderRadius: '12px',
                         '& .MuiOutlinedInput-notchedOutline': {
-                          border: 'none',
+                          border: '1px solid #D1D5DB',
                         },
                         '&:hover': {
-                          border: '2px solid #D1D5DB',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none',
+                            border: '1px solid #D1D5DB',
                           },
                         },
                         '&.Mui-focused': {
-                          border: '2px solid #5C17E5',
                           outline: 'none',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none',
+                            border: '1px solid #D1D5DB',
                           },
                         },
                       },
@@ -688,34 +695,31 @@ export default function SaleHistory() {
                 clearOnEscape
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 20 }} />}
+                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder={SALES_HISTORY_LABELS.SEARCH_USERNAME_PLACEHOLDER}
                     sx={{
-                      width: 200,
+                      width: 220,
                       height: '40px',
                       borderRadius: '12px',
                       backgroundColor: '#ffffff',
-                      border: '1px solid #D1D5DB',
                       '& .MuiOutlinedInput-root': {
                         height: '40px',
                         borderRadius: '12px',
                         '& .MuiOutlinedInput-notchedOutline': {
-                          border: 'none',
+                          border: '1px solid #D1D5DB',
                         },
                         '&:hover': {
-                          border: '2px solid #D1D5DB',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none',
+                            border: '1px solid #D1D5DB',
                           },
                         },
                         '&.Mui-focused': {
-                          border: '2px solid #5C17E5',
                           outline: 'none',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none',
+                            border: '1px solid #D1D5DB',
                           },
                         },
                       },
@@ -756,7 +760,8 @@ export default function SaleHistory() {
               <PharmaDatePicker
                 value={startDate}
                 onChange={(newValue) => setStartDate(newValue)}
-                width={200}
+                width={260}
+                height={40}
               />
             </Box>
           </Box>
@@ -768,15 +773,17 @@ export default function SaleHistory() {
               variant="secondary"
               size="medium"
               sx={{
-                minWidth: 130,
+                minWidth: 160,
                 height: '40px',
-                borderRadius: '10px',
                 backgroundColor: '#F5F5F5',
-                border: '1px solid #E0E0E0',
-                color: '#616161',
-                fontWeight: 600,
-                fontSize: '14px',
-                textTransform: 'none',
+                border: '1px solid #D1D5DB',
+                color: '#1A212B',
+                fontWeight: 500,
+                marginRight: '10px',
+                '&:hover': {
+                  backgroundColor: '#E0E0E0',
+                  border: '1px solid #D1D5DB',
+                }
               }}
             >
               {SALES_HISTORY_LABELS.FILTER_RESET}

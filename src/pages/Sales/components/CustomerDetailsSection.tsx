@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Autocomplete, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { StandardButton } from '../../../components/Common';
 import { Customer } from '../../../redux/slices/salesApi';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
@@ -118,6 +119,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           // Only show clear button when value is present
           disableClearable={!customerName}
           forcePopupIcon
+          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
           sx={{ width: `${SALES_RECEIPT_CONSTANTS.CUSTOMER_NAME_WIDTH}px` }}
           renderInput={(params) => (
             <TextField
@@ -210,6 +212,8 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
               }
             }}
             disableClearable={!customerMobile}
+            forcePopupIcon
+            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             sx={{ width: '165px' }}
             renderInput={(params) => (
               <TextField
@@ -289,6 +293,8 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           }}
           // Only show clear button when value is selected
           {...(!customerCity ? { disableClearable: true } : {})}
+          forcePopupIcon
+          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
           sx={{ width: '165px' }}
           renderInput={(params) => (
             <TextField

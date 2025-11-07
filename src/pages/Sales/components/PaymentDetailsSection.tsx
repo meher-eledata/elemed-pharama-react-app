@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography, Autocomplete, TextField } from '@mui/material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../../config/constants/SalesReceipt.constants';
 import { paymentMethods } from '../../../config/constants/OrderDetail.constants';
@@ -53,6 +54,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
           }}
           disableClearable
           forcePopupIcon
+          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
           sx={{ width: '165px' }}
           renderInput={(params) => (
             <TextField

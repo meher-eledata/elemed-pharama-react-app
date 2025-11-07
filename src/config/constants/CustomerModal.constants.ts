@@ -62,7 +62,7 @@ export const CUSTOMER_MODAL_CONSTANTS = {
   // Input Style Configuration
   INPUT_STYLE: {
     OUTLINE_COLOR: '#B0B7C3',
-    FOCUSED_COLOR: '#5C17E5',
+    FOCUSED_COLOR: '#B0B7C3',
     LABEL_COLOR: '#B0B7C3',
     TEXT_COLOR: '#000000',
   },

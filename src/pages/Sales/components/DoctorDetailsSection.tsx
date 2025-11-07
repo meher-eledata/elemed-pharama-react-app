@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography, Autocomplete, TextField } from '@mui/material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { Doctor } from '../../../redux/slices/salesApi';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../../config/constants/SalesReceipt.constants';
@@ -60,6 +61,7 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
             onDoctorSelect(newValue);
           }}
           forcePopupIcon
+          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
           sx={{ width: `${SALES_RECEIPT_CONSTANTS.DOCTOR_NAME_WIDTH}px` }}
           renderInput={(params) => (
             <TextField

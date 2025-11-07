@@ -205,7 +205,7 @@ const OrderReceive: React.FC = () => {
           products: [],
           transaction_number: receipt.transaction_number || '',
           payment_vendor: receipt.payment_vendor || '',
-          invoice_date: (receipt as any).invoice_date || receipt.received_on,
+          invoice_date: (receipt as any).invoice_date || null, // Keep null if missing - don't auto-fill with received_on
         };
       });
   }, [receipts]);
@@ -246,6 +246,33 @@ const OrderReceive: React.FC = () => {
   
   const handleEditClick = (row: OrderReceiveRow) => {
     // Navigate to Order Details page with the selected order data
+    // Use received date only if invoice_date is truly missing (null/undefined) from database
+    let invoiceDateValue = '';
+    if (row.invoice_date) {
+      // If invoice_date exists, use it (convert to DD/MM/YYYY format if needed)
+      try {
+        const date = dayjs(row.invoice_date);
+        if (date.isValid()) {
+          invoiceDateValue = date.format('DD/MM/YYYY');
+        } else {
+          // If it's already in DD/MM/YYYY format, use as-is
+          invoiceDateValue = row.invoice_date;
+        }
+      } catch (e) {
+        invoiceDateValue = row.invoice_date;
+      }
+    } else if (row.received) {
+      // Only auto-fill from received date if invoice_date is missing
+      try {
+        const receivedDate = dayjs(row.received, 'MMM DD, YYYY h:mm A');
+        if (receivedDate.isValid()) {
+          invoiceDateValue = receivedDate.format('DD/MM/YYYY');
+        }
+      } catch (e) {
+        console.warn('Failed to parse received date:', e);
+      }
+    }
+    
     navigate('/receive/order-details', {
       state: {
         isEditMode: true,
@@ -254,7 +281,7 @@ const OrderReceive: React.FC = () => {
         receiptNumber: row.reNo,
         transactionNumber: row.transaction_number || '',
         paymentVendor: row.payment_vendor || '',
-        invoiceDate: row.invoice_date || ''
+        invoiceDate: invoiceDateValue
       }
     });
   };
@@ -908,7 +935,7 @@ const OrderReceive: React.FC = () => {
                 <Box
                   sx={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                    bgcolor: '#F6F8FB', borderRadius: '16px', border: '1px solid #E6ECF5', p: '12px', gap: '540px', mb: 2, mt: 2,
+                    bgcolor: '#F6F8FB', borderRadius: '25px', border: '1px solid #E6ECF5', p: '12px', gap: '540px', mb: 2, mt: 2,
                   }}
                 >
                   <TextField
@@ -916,11 +943,11 @@ const OrderReceive: React.FC = () => {
                     value={searchTerm}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => handleSearchChange(e)}
                     InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start" sx={{ transform: 'translateY(-2px)' }}>
-                          <SearchIcon sx={{ color: '#8A99AF', fontSize: '22px' }} />
+                      startAdornment: !searchTerm.trim() ? (
+                        <InputAdornment position="start" sx={{ marginRight: '4px' }}>
+                          <SearchIcon sx={{ color: '#8A99AF', fontSize: '24px' }} />
                         </InputAdornment>
-                      ),
+                      ) : null,
                     }}
                     sx={{
                       height: '40px',
@@ -929,12 +956,16 @@ const OrderReceive: React.FC = () => {
                       boxShadow: 'inset 0 0 0 1px #BFD1E6',
                       flex: 1,
                       '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-                      '&:hover': { boxShadow: 'inset 0 0 0 1px #5C17E5' },
-                      '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #5C17E5' },
+                      '&:hover': { boxShadow: 'inset 0 0 0 1px #BFD1E6' },
+                      '&.Mui-focused': { boxShadow: 'inset 0 0 0 1px #BFD1E6' },
+                      '& .MuiOutlinedInput-input': {
+                        padding: '10px 14px',
+                        paddingLeft: '8px',
+                      },
                       '& .MuiOutlinedInput-input::placeholder': {
-                        textAlign: 'left',
-                        transform: 'translateX(2px) translateY(-5px)',
                         fontSize: '16px',
+                        opacity: 1,
+                        color: '#9CA3AF',
                       },
                     }}
                   />
@@ -975,7 +1006,7 @@ const OrderReceive: React.FC = () => {
                           freeSolo
                           forcePopupIcon
                           disableClearable={!filters.supplier}
-                          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '20px' }} />}
+                          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
                           componentsProps={{
                             popper: {
                               sx: {
@@ -999,24 +1030,21 @@ const OrderReceive: React.FC = () => {
                                 height: '40px',
                                 borderRadius: '12px',
                                 backgroundColor: '#ffffff',
-                                border: '1px solid #D1D5DB',
                                 '& .MuiOutlinedInput-root': {
                                   height: '40px',
                                   borderRadius: '12px',
                                   '& .MuiOutlinedInput-notchedOutline': {
-                                    border: 'none',
+                                    border: '1px solid #D1D5DB',
                                   },
                                   '&:hover': {
-                                    border: '2px solid #D1D5DB',
                                     '& .MuiOutlinedInput-notchedOutline': {
-                                      border: 'none',
+                                      border: '1px solid #D1D5DB',
                                     },
                                   },
                                   '&.Mui-focused': {
-                                    border: '2px solid #D1D5DB',
                                     outline: 'none',
                                     '& .MuiOutlinedInput-notchedOutline': {
-                                      border: 'none',
+                                      border: '1px solid #D1D5DB',
                                     },
                                   },
                                 },
@@ -1059,16 +1087,18 @@ const OrderReceive: React.FC = () => {
                       </Box>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <Typography sx={{ fontSize: '12px', color: '#728197' }}>Received On</Typography>
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                           <PharmaDatePicker
                             value={dateRange.startDate}
                             onChange={(newValue) => setDateRange({ ...dateRange, startDate: newValue })}
-                            width={150}
+                            width={270}
+                            height={40}
                           />
                           <PharmaDatePicker
                             value={dateRange.endDate}
                             onChange={(newValue) => setDateRange({ ...dateRange, endDate: newValue })}
-                            width={150}
+                            width={270}
+                            height={40}
                           />
                         </Box>
                       </Box>
@@ -1084,12 +1114,13 @@ const OrderReceive: React.FC = () => {
                         variant="secondary"
                         size="medium"
                         sx={{
-                          minWidth: 120,
+                          minWidth: 160,
                           height: '40px',
                           backgroundColor: '#F5F5F5',
                           border: '1px solid #D1D5DB',
                           color: '#1A212B',
                           fontWeight: 500,
+                          marginRight: '10px',
                           '&:hover': {
                             backgroundColor: '#E0E0E0',
                             border: '1px solid #D1D5DB',

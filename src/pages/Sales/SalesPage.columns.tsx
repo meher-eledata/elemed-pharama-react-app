@@ -208,7 +208,7 @@ export const getTableColumns = ({
                 color: SALES_PAGE_CONSTANTS.GRAY_TEXT_COLOR,
                 '&:hover': {
                   backgroundColor: 'transparent',
-                  color: SALES_PAGE_CONSTANTS.PRIMARY_COLOR
+                  color: SALES_PAGE_CONSTANTS.GRAY_TEXT_COLOR
                 }
               }}
             >

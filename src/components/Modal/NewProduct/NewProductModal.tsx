@@ -186,12 +186,12 @@ export const NEW_PRODUCT_MODAL_CONSTANTS = {
   },
   TEXTFIELD: {
     HEIGHT: '44px',
-    BORDER_RADIUS: '8px',
+    BORDER_RADIUS: '6px',
     BG: '#ffffff',
     BORDER_COLOR: '#e2e8f0',
     INPUT_PADDING: '0 12px',
     INPUT_COLOR: '#2d3748',
-    FOCUS_BORDER_COLOR: '#5C17E5',
+    FOCUS_BORDER_COLOR: '#D1D5DB',
     LABEL_COLOR: '#4a5568',
     FONT_SIZE: '14px',
   },
@@ -218,7 +218,7 @@ export const NEW_PRODUCT_MODAL_CONSTANTS = {
     }
   },
   GRID: {
-    SPACING: 2,
+    SPACING: 6,
     ROW_SPACING: 2,
   }
 };
@@ -227,7 +227,7 @@ export const NEW_PRODUCT_MODAL_LABELS = {
   TITLE: 'New Product',
   FIELDS: [
     { key: 'product_name', label: 'Product name', type: 'text' },
-    { key: 'product_code', label: 'Product code', type: 'text' },
+    { key: 'expiry', label: 'Expiry date', type: 'date' },
     { key: 'type', label: 'Type', type: 'text' },
     { key: 'brand_name', label: 'Brand name', type: 'text' },
     { key: 'hsn_id', label: 'HSN code', type: 'text' },
@@ -236,7 +236,7 @@ export const NEW_PRODUCT_MODAL_LABELS = {
     { key: 'mrp', label: 'MRP', type: 'number' },
     { key: 'min_quantity', label: 'Minimum quantity', type: 'number' },
     { key: 'max_quantity', label: 'Maximum quantity', type: 'number' },
-    { key: 'expiry', label: 'Expiry date', type: 'date' }
+    { key: 'product_code', label: 'Product code', type: 'text' }
   ],
   BUTTON_CANCEL: 'Cancel',
   BUTTON_ADD: 'Add'
@@ -440,20 +440,28 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={handleClose}
-      aria-labelledby="new-product-modal-title"
-      aria-describedby="new-product-modal-description"
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backdropFilter: 'blur(8px)',
-        backgroundColor: 'rgba(0, 0, 0, 0.1)',
-      }}
-    >
-      <Box sx={{
+    <>
+      <style>
+        {`
+          .css-1rr4qq7 {
+           margin:0 12px!important;
+           }
+        `}
+      </style>
+      <Modal
+        open={open}
+        onClose={handleClose}
+        aria-labelledby="new-product-modal-title"
+        aria-describedby="new-product-modal-description"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(8px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <Box sx={{
         position: 'relative',
         width: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.WIDTH,
         maxWidth: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
@@ -541,7 +549,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
               {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((field, idx) => (
                 <Grid key={idx} item xs={12} sm={6} component="div">
                   {field.key === 'expiry' ? (
-                    <Box>
+                    <Box sx={{ width: '100%' }}>
                       <Typography 
                         variant="body2" 
                         sx={{ 
@@ -554,16 +562,19 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                       >
                         {field.label}
                       </Typography>
-                      <PharmaDatePicker
-                        value={expiryDate}
-                        onChange={(newValue) => {
-                          setExpiryDate(newValue);
-                          if (formErrors.expiry) {
-                            setFormErrors(prev => ({ ...prev, expiry: '' }));
-                          }
-                        }}
-                        width={250}
-                      />
+                      <Box sx={{ width: '100%' }}>
+                        <PharmaDatePicker
+                          value={expiryDate}
+                          onChange={(newValue) => {
+                            setExpiryDate(newValue);
+                            if (formErrors.expiry) {
+                              setFormErrors(prev => ({ ...prev, expiry: '' }));
+                            }
+                          }}
+                          width="100%"
+                          height={NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT}
+                        />
+                      </Box>
                     </Box>
                   ) : (
                     <Box>
@@ -640,6 +651,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         </Box>
       </Box>
     </Modal>
+    </>
   );
 };
 

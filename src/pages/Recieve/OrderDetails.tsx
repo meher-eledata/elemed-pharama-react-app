@@ -110,6 +110,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [isSupplierFocused, setIsSupplierFocused] = useState(false);
   const [isVendorFocused, setIsVendorFocused] = useState(false);
   const [isFindProductFocused, setIsFindProductFocused] = useState(false);
+  const [isFindProductHovered, setIsFindProductHovered] = useState(false);
   const [isTransactionFocused, setIsTransactionFocused] = useState(false);
   const [isTransactionHovered, setIsTransactionHovered] = useState(false);
 
@@ -721,11 +722,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   // Function to confirm delete
   const handleConfirmDelete = () => {
     if (rowToDeleteId) {
+      const rowToDelete = pharmaTableData.find(row => row.id === rowToDeleteId);
       setPharmaTableData(prev => prev.filter(row => row.id !== rowToDeleteId));
       if (editingRowId === rowToDeleteId) {
         setEditingRowId(null);
         setEditingData({});
       }
+      // Always clear the search bar when a row is deleted
+      setFindProductTerm("");
+      setIsProductSelected(false);
     }
     setIsDeleteDialogOpen(false);
     setRowToDeleteId(null);
@@ -808,6 +813,33 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     originalReceiptLines
   ]);
 
+  // Inject CSS for global input field styling
+  useEffect(() => {
+    const styleId = 'order-details-input-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        /* Target dynamically generated MUI TextField classes */
+        [class*="MuiFormControl-root"][class*="MuiTextField-root"] .MuiOutlinedInput-root,
+        .MuiFormControl-root.MuiTextField-root .MuiOutlinedInput-root {
+          border-radius: 18px !important;
+        }
+        [class*="MuiFormControl-root"][class*="MuiTextField-root"] .MuiOutlinedInput-root fieldset,
+        .MuiFormControl-root.MuiTextField-root .MuiOutlinedInput-root fieldset {
+          border-radius: 18px !important;
+          border-color: #D1D5DB !important;
+        }
+        [class*="MuiFormControl-root"][class*="MuiTextField-root"] .MuiOutlinedInput-root:hover fieldset,
+        .MuiFormControl-root.MuiTextField-root .MuiOutlinedInput-root:hover fieldset {
+          border-color: #D1D5DB !important;
+          border-radius: 18px !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   // Fetch supplier names on component mount
   useEffect(() => {
     fetchSupplierNames();
@@ -816,6 +848,35 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   // Fetch all products on component mount (not filtered by supplier)
   useEffect(() => {
     fetchAllProducts();
+  }, []);
+
+  // Handle click outside to hide close icon
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Check if click is outside the Autocomplete component
+      const autocompleteElement = document.querySelector('[data-product-search]');
+      const popperElement = document.querySelector('.MuiAutocomplete-popper');
+      
+      // Don't hide if clicking inside the Autocomplete or its dropdown
+      if (autocompleteElement && autocompleteElement.contains(target)) {
+        return;
+      }
+      if (popperElement && popperElement.contains(target)) {
+        return;
+      }
+      
+      // Hide close icon when clicking outside
+      setIsFindProductFocused(false);
+      setIsFindProductHovered(false);
+    };
+
+    // Add event listener when component is mounted
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   // Debug function to test API connectivity
@@ -918,9 +979,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
       
       // Initialize invoice date from navigation state (since it's not in receipt lines)
-      if (navigationInvoiceDate) {
+      // Only use received date if invoice_date is truly missing (not empty string)
+      if (navigationInvoiceDate && navigationInvoiceDate.trim() !== '') {
         setInvoiceDate(navigationInvoiceDate);
       }
+      // Don't auto-fill from received date - let user fill it manually if needed
       
       // Transform API response to PharmaTableRow format
       const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => ({
@@ -1058,7 +1121,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               updateEditingData("batch", formattedDate);
             }}
             minDate={dayjs()}
-            width={180}
+            width={220}
+            height={32}
           />
         ) : (
           <span style={{ 
@@ -1333,9 +1397,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           sx={{
             display: "flex",
             flexDirection: "column",
-            width: "275px",
+            width: "274px",
             gap: "4px",
-            height: "48px",
           }}
         >
           <Typography
@@ -1344,7 +1407,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
-              color: "#9AA8BC",
+              color: "#728197",
             }}
           >
             {orderLabels.supplierName}
@@ -1376,7 +1439,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             getOptionLabel={(option) => String(option)}
             // Only show clear button when value is present
             disableClearable={!supplierName}
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '20px' }} />}
+            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             renderOption={(props, option) => {
               const isLoading = String(option) === "Loading suppliers...";
               return (
@@ -1438,17 +1501,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 }
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    borderRadius: "12px",
-                    height: "48px",
+                    borderRadius: "18px",
+                    height: "44px",
                     backgroundColor: "#FFFFFF",
                     "& fieldset": {
-                      borderColor: suppliersError ? "#d32f2f" : "#9AA8BC",
+                      borderColor: suppliersError ? "#d32f2f" : "#D1D5DB",
                     },
                     "&:hover fieldset": {
-                      borderColor: suppliersError ? "#d32f2f" : "#9AA8BC",
+                      borderColor: suppliersError ? "#d32f2f" : "#D1D5DB",
                     },
                     "&.Mui-focused fieldset": {
-                      borderColor: suppliersError ? "#d32f2f" : "#9AA8BC",
+                      borderColor: suppliersError ? "#d32f2f" : "#728197",
+                      borderWidth: "2px",
                       outline: "none",
                     },
                     "&.Mui-focused": {
@@ -1506,17 +1570,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             placeholder={orderLabels.enterPoNumber}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: "12px",
-                height: "48px",
+                borderRadius: "18px",
+                height: "44px",
                 backgroundColor: "#FFFFFF",
                 "& fieldset": {
-                  borderColor: "#9AA8BC",
+                  borderColor: "#D1D5DB",
                 },
                 "&:hover fieldset": {
-                  borderColor: "#9AA8BC",
+                  borderColor: "#D1D5DB",
                 },
                 "&.Mui-focused fieldset": {
-                  borderColor: "#9AA8BC",
+                  borderColor: "#728197",
+                  borderWidth: "2px",
                   outline: "none",
                 },
                 "&.Mui-focused": {
@@ -1610,17 +1675,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 fullWidth
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    borderRadius: "12px",
-                    height: "48px",
+                    borderRadius: "18px",
+                    height: "44px",
                     backgroundColor: "#FFFFFF",
                     "& fieldset": {
-                      borderColor: "#9AA8BC",
+                      borderColor: "#D1D5DB",
                     },
                     "&:hover fieldset": {
-                      borderColor: "#9AA8BC",
+                      borderColor: "#D1D5DB",
                     },
                     "&.Mui-focused fieldset": {
-                      borderColor: "#9AA8BC",
+                      borderColor: "#728197",
+                      borderWidth: "2px",
                       outline: "none",
                     },
                     "&.Mui-focused": {
@@ -1676,11 +1742,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
           <Autocomplete
             options={paymentVendors}
-            value={paymentVendor}
+            value={paymentVendor || null}
+            isOptionEqualToValue={(option, value) => {
+              if (!value) return false;
+              return option === value;
+            }}
             onChange={(_, newValue) => {
-              if (newValue) {
-                setPaymentVendor(newValue);
-              }
+              setPaymentVendor(newValue || "");
             }}
             onFocus={() => setIsVendorFocused(true)}
             onBlur={() => setIsVendorFocused(false)}
@@ -1693,17 +1761,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 fullWidth
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    borderRadius: "12px",
-                    height: "48px",
+                    borderRadius: "18px",
+                    height: "44px",
                     backgroundColor: "#FFFFFF",
                     "& fieldset": {
-                      borderColor: "#9AA8BC",
+                      borderColor: "#D1D5DB",
                     },
                     "&:hover fieldset": {
-                      borderColor: "#9AA8BC",
+                      borderColor: "#D1D5DB",
                     },
                     "&.Mui-focused fieldset": {
-                      borderColor: "#9AA8BC",
+                      borderColor: "#728197",
+                      borderWidth: "2px",
                       outline: "none",
                     },
                     "&.Mui-focused": {
@@ -1738,7 +1807,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           sx={{
             display: "flex",
             flexDirection: "column",
-            width: "275px",
+            width: "274px",
             gap: "4px",
           }}
         >
@@ -1748,7 +1817,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
-              color: "#525E6F",
+              color: "#728197",
             }}
           >
             {orderLabels.transactionNumber}
@@ -1764,13 +1833,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             onMouseLeave={() => setIsTransactionHovered(false)}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: "12px",
-                height: "48px",
+                borderRadius: "18px",
+                height: "44px",
                 backgroundColor: "#FFFFFF",
-                "& fieldset": { borderColor: "#9AA8BC" },
-                "&:hover fieldset": { borderColor: "#9AA8BC" },
+                "& fieldset": { borderColor: "#D1D5DB" },
+                "&:hover fieldset": { borderColor: "#D1D5DB" },
                 "&.Mui-focused fieldset": { 
-                  borderColor: "#9AA8BC",
+                  borderColor: "#728197",
+                  borderWidth: "2px",
                   outline: "none",
                 },
                 "&.Mui-focused": {
@@ -1837,15 +1907,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               gap: "32px",
             }}
           >
+          <Box
+            onMouseEnter={() => setIsFindProductHovered(true)}
+            onMouseLeave={() => setIsFindProductHovered(false)}
+            sx={{ display: 'inline-block', width: '500px' }}
+            data-product-search
+          >
           <Autocomplete
-            key={isProductSelected ? 'selected' : 'not-selected'}
+            key={`product-search-${findProductTerm ? 'has-value' : 'empty'}`}
             freeSolo
             forcePopupIcon
             options={[
               ...(isProductsLoading ? ["Loading products..."] : productOptions.filter(option => option && typeof option === 'string')),
               orderLabels.addProducts,
             ]}
-            value={findProductTerm}
+            value={findProductTerm || undefined}
+            isOptionEqualToValue={(option, value) => {
+              if (!value) return false;
+              return option === value;
+            }}
             onInputChange={(_, v) => {
               setFindProductTerm(v);
               // Don't automatically reset isProductSelected here
@@ -1869,9 +1949,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 if (isFromDropdown) {
                   // Product selected from dropdown
                   console.log('Setting isProductSelected to TRUE');
-                  setFindProductTerm(value);
                   setIsProductSelected(true);
                   addProductToTable(value);
+                  // Keep the product name in search bar so close icon shows
+                  setFindProductTerm(value);
+                  setIsProductSelected(false);
                 } else {
                   // Manual typing - don't set as selected yet
                   console.log('Setting isProductSelected to FALSE (manual typing)');
@@ -1895,10 +1977,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               }
             }}
             onFocus={() => setIsFindProductFocused(true)}
-            onBlur={() => setIsFindProductFocused(false)}
-            // Only show clear button when value is present
-            disableClearable={!findProductTerm}
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '20px' }} />}
+            onBlur={() => {
+              setIsFindProductFocused(false);
+              // Also reset hover state on blur to ensure close icon hides
+              setIsFindProductHovered(false);
+            }}
+            // Disable MUI's built-in clear button since we have a custom one
+            disableClearable={true}
+            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             ListboxProps={{
               style: {
                 maxHeight: '200px',
@@ -1986,7 +2072,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     },
                   },
                   "& .MuiInputBase-input": {
-                    padding: "8px 12px",
+                    padding: "10px 14px",
+                    paddingLeft: "6px",
                     fontFamily: "Inter, system-ui, sans-serif",
                     fontSize: "14px",
                     fontWeight: 400,
@@ -1995,9 +2082,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     "&::placeholder": {
                       color: "#9CA3AF",
                       opacity: 1,
+                      fontSize: "14px",
                     },
                   },
-                  // Force dropdown arrow to be visible (standard MUI pattern)
+                  // Force dropdown arrow and clear button to be visible (standard MUI pattern)
                   "& .MuiAutocomplete-endAdornment": {
                     display: "flex !important",
                     visibility: "visible !important",
@@ -2006,18 +2094,66 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     display: "flex !important",
                     visibility: "visible !important",
                   },
+                  "& .MuiAutocomplete-clearIndicator": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                    color: "#6B7280",
+                    "&:hover": {
+                      color: "#374151",
+                    },
+                  },
                 }}
                 InputProps={{
                   ...params.InputProps,
-                  startAdornment: (
-                    <InputAdornment position="start" sx={{ marginLeft: "12px" }}>
-                      <SearchIcon sx={{ color: "#9CA3AF", width: "16px", height: "16px" }} />
+                  startAdornment: !(findProductTerm && findProductTerm.trim() !== "") ? (
+                    <InputAdornment position="start" sx={{ marginRight: "0px" }}>
+                      <SearchIcon sx={{ color: "#9CA3AF", fontSize: "24px" }} />
                     </InputAdornment>
+                  ) : null,
+                  endAdornment: (
+                    <>
+                      {findProductTerm && findProductTerm.trim() !== "" && (isFindProductFocused || isFindProductHovered) ? (
+                        <InputAdornment position="end" sx={{ marginRight: "8px" }}>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              // Find and remove the product from table that matches the search term
+                              const productToRemove = pharmaTableData.find(row => row.productId === findProductTerm);
+                              if (productToRemove && productToRemove.id) {
+                                setPharmaTableData(prev => prev.filter(row => row.id !== productToRemove.id));
+                                // Clear editing state if this row was being edited
+                                if (editingRowId === productToRemove.id) {
+                                  setEditingRowId(null);
+                                  setEditingData({});
+                                }
+                              }
+                              // Clear the search bar
+                              setFindProductTerm("");
+                              setIsProductSelected(false);
+                            }}
+                            sx={{
+                              padding: "4px",
+                              color: "#6B7280",
+                              "&:hover": {
+                                color: "#374151",
+                                backgroundColor: "transparent",
+                              },
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ) : null}
+                      {params.InputProps.endAdornment}
+                    </>
                   ),
                 }}
               />
             )}
           />
+          </Box>
           
           {/* Search bar moved from below */}
           {isEditMode && (
@@ -2045,7 +2181,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   },
                 },
                 "& .MuiInputBase-input": {
-                  padding: "8px 12px",
+                  padding: "10px 14px",
+                  paddingLeft: "6px",
                   fontFamily: "Inter, system-ui, sans-serif",
                   fontSize: "14px",
                   fontWeight: 400,
@@ -2054,13 +2191,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   "&::placeholder": {
                     color: "#9CA3AF",
                     opacity: 1,
+                    fontSize: "14px",
                   },
                 },
               }}
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start" sx={{ marginLeft: "12px" }}>
-                    <SearchIcon sx={{ color: "#9CA3AF", width: "16px", height: "16px" }} />
+                  <InputAdornment position="start" sx={{ marginRight: "0px" }}>
+                    <SearchIcon sx={{ color: "#9CA3AF", fontSize: "24px" }} />
                   </InputAdornment>
                 ),
               }}

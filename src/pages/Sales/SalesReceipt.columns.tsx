@@ -491,7 +491,7 @@ export const getTableColumns = ({
                 color: '#6B7280',
                 '&:hover': {
                   backgroundColor: 'transparent',
-                  color: '#5C17E5'
+                  color: '#6B7280'
                 }
               }}
             >
