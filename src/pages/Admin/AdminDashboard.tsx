@@ -67,28 +67,28 @@ const AdminDashboard: React.FC = () => {
         }}
       >
         <Card
-          icon={<PeopleAltOutlinedIcon sx={{ fontSize: 28 }} />}
+          icon={<PeopleAltOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.USER_MGMT.TITLE}
           desc={ADMIN_LABELS.SECTIONS.USER_MGMT.DESC}
           action={ADMIN_LABELS.SECTIONS.USER_MGMT.ACTION}
           onAction={() => navigate('/admin/users')}
         />
         <Card
-          icon={<BarChartOutlinedIcon sx={{ fontSize: 28 }} />}
+          icon={<BarChartOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.REPORTS.TITLE}
           desc={ADMIN_LABELS.SECTIONS.REPORTS.DESC}
           action={ADMIN_LABELS.SECTIONS.REPORTS.ACTION}
           onAction={() => navigate('/admin/reports')}
         />
         <Card
-          icon={<AssignmentOutlinedIcon sx={{ fontSize: 28 }} />}
+          icon={<AssignmentOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.AUDIT.TITLE}
           desc={ADMIN_LABELS.SECTIONS.AUDIT.DESC}
           action={ADMIN_LABELS.SECTIONS.AUDIT.ACTION}
           onAction={() => navigate('/admin/audit')}
         />
         <Card
-          icon={<SettingsOutlinedIcon sx={{ fontSize: 28 }} />}
+          icon={<SettingsOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.SETTINGS.TITLE}
           desc={ADMIN_LABELS.SECTIONS.SETTINGS.DESC}
           action={ADMIN_LABELS.SECTIONS.SETTINGS.ACTION}

@@ -126,6 +126,21 @@ export interface GetCustomerPhonesResponse {
   phones: string[];
 }
 
+// Doctor phone and email interfaces
+export interface GetDoctorPhonesAndEmailsRequest {
+  name: string;
+}
+
+export interface DoctorPhoneEmailInfo {
+  phone: string;
+  email: string;
+}
+
+export interface GetDoctorPhonesAndEmailsResponse {
+  name: string;
+  info: DoctorPhoneEmailInfo[];
+}
+
 // Doctor interfaces
 export interface Doctor {
   id: number;
@@ -296,6 +311,12 @@ export const salesApi = createApi({
       query: () => "sales/get-doctors",
     }),
 
+    // Get doctor names (simple array of strings)
+    getDoctorNames: builder.query<string[], void>({
+      query: () => "sales/get-doctor-names",
+      providesTags: ["Sales"],
+    }),
+
     // Get doctor by ID
     getDoctorById: builder.query<Doctor, { id: number }>({
       query: ({ id }) => `sales/doctors/${id}`,
@@ -363,6 +384,15 @@ export const salesApi = createApi({
         body,
       }),
     }),
+
+    // Get doctor phones and emails by name
+    getDoctorPhonesAndEmails: builder.mutation<GetDoctorPhonesAndEmailsResponse, GetDoctorPhonesAndEmailsRequest>({
+      query: (body) => ({
+        url: "sales/get-doctor-phones-and-emails/",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -378,6 +408,8 @@ export const {
   useSearchCustomersMutation,
   useGetDoctorsQuery,
   useLazyGetDoctorsQuery,
+  useGetDoctorNamesQuery,
+  useLazyGetDoctorNamesQuery,
   useGetDoctorByIdQuery,
   useLazyGetDoctorByIdQuery,
   useValidateSaleMutation,
@@ -387,4 +419,5 @@ export const {
   useGetAllCustomerNamesQuery,
   useLazyGetAllCustomerNamesQuery,
   useGetCustomerPhonesMutation,
+  useGetDoctorPhonesAndEmailsMutation,
 } = salesApi;

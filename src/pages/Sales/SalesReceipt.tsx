@@ -12,12 +12,14 @@ import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/Sale
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import { 
   useGetDoctorsQuery,
+  useGetDoctorNamesQuery,
   useSubmitSaleMutation,
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
   useSearchCustomersMutation,
   Customer,
-  Doctor
+  Doctor,
+  DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
 import { 
@@ -45,6 +47,7 @@ import { getTableColumns } from './SalesReceipt.columns';
 import { useCartLoader } from './hooks/useCartLoader';
 import { useFormPersistence } from './hooks/useFormPersistence';
 import { useCustomerPhones } from './hooks/useCustomerPhones';
+import { useDoctorPhonesAndEmails } from './hooks/useDoctorPhonesAndEmails';
 import { handleCustomerSubmit } from './SalesReceipt.customerHandler';
 import { executeSave } from './SalesReceipt.saveHandler';
 import {
@@ -69,6 +72,7 @@ const SalesReceipt: React.FC = () => {
   const [addCustomer] = useAddCustomerMutation();
   const [searchCustomers] = useSearchCustomersMutation();
   const { data: doctorsData = [] } = useGetDoctorsQuery();
+  const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
   const { 
     data: apiProducts = [], 
@@ -108,7 +112,8 @@ const SalesReceipt: React.FC = () => {
   const [doctorName, setDoctorName] = useState('');
   const [doctorMobile, setDoctorMobile] = useState('');
   const [doctorEmail, setDoctorEmail] = useState('');
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
+  const [availableDoctorInfo, setAvailableDoctorInfo] = useState<DoctorPhoneEmailInfo[]>([]);
   
   const [paymentMode, setPaymentMode] = useState('');
   const [insuranceCompany, setInsuranceCompany] = useState('');
@@ -125,8 +130,6 @@ const SalesReceipt: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
-  
-  const mockDoctors: Doctor[] = SALES_RECEIPT_CONSTANTS.MOCK_DOCTORS;
 
   // Load cart items
   useCartLoader({
@@ -169,6 +172,42 @@ const SalesReceipt: React.FC = () => {
     }
     
     setCustomerName(newName);
+  };
+
+  // Handle doctor phone and email fetching
+  const handleDoctorAutoFill = useCallback((phone: string, email: string) => {
+    setDoctorMobile(phone);
+    setDoctorEmail(email);
+  }, []);
+
+  const handleDoctorInfoClear = useCallback(() => {
+    setDoctorMobile('');
+    setDoctorEmail('');
+  }, []);
+
+  const { shouldFetchImmediatelyRef: shouldFetchDoctorInfoRef } = useDoctorPhonesAndEmails({
+    doctorName,
+    doctorMobile,
+    doctorEmail,
+    doctorNames,
+    onInfoFetched: setAvailableDoctorInfo,
+    onDoctorAutoFill: handleDoctorAutoFill,
+    onInfoClear: handleDoctorInfoClear
+  });
+
+  const handleDoctorNameChange = (value: string) => {
+    const normalizedNewName = value.trim().toLowerCase();
+    const isExactMatch = doctorNames.length > 0 && doctorNames.some(name => name.toLowerCase() === normalizedNewName);
+    
+    if (isExactMatch && value.trim()) {
+      shouldFetchDoctorInfoRef.current = true;
+    }
+    
+    setDoctorName(value);
+    // If typing a new name that's not in the list, clear selectedDoctor
+    if (!doctorNames.includes(value)) {
+      setSelectedDoctor(null);
+    }
   };
 
   // Handle form persistence
@@ -218,17 +257,18 @@ const SalesReceipt: React.FC = () => {
     }
   };
 
-  const handleDoctorSelect = (doctor: Doctor | null) => {
-    if (doctor) {
-      setSelectedDoctor(doctor);
-      setDoctorName(doctor.name);
-      setDoctorMobile(doctor.mobile);
-      setDoctorEmail(doctor.email || '');
+  const handleDoctorSelect = (doctorName: string | null) => {
+    if (doctorName) {
+      setSelectedDoctor(doctorName);
+      setDoctorName(doctorName);
+      // Trigger fetch for phones and emails
+      shouldFetchDoctorInfoRef.current = true;
     } else {
       setSelectedDoctor(null);
       setDoctorName('');
       setDoctorMobile('');
       setDoctorEmail('');
+      setAvailableDoctorInfo([]);
     }
   };
 
@@ -421,6 +461,7 @@ const SalesReceipt: React.FC = () => {
     setDoctorMobile('');
     setDoctorEmail('');
     setSelectedDoctor(null);
+    setAvailableDoctorInfo([]);
     setPaymentMode('');
     setInsuranceCompany('');
     setTotalValue('');
@@ -572,8 +613,11 @@ const SalesReceipt: React.FC = () => {
             doctorMobile={doctorMobile}
             doctorEmail={doctorEmail}
             selectedDoctor={selectedDoctor}
-            mockDoctors={mockDoctors}
+            doctorNames={doctorNames}
+            isLoadingDoctorNames={isLoadingDoctorNames}
+            availableDoctorInfo={availableDoctorInfo}
             onDoctorSelect={handleDoctorSelect}
+            onDoctorNameChange={handleDoctorNameChange}
             onDoctorMobileChange={setDoctorMobile}
             onDoctorEmailChange={setDoctorEmail}
           />
