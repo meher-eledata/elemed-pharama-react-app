@@ -133,29 +133,34 @@ export default function SalePage() {
   const [validateSale, { isLoading: isValidating }] = useValidateSaleMutation();
   
   // Cart is managed by Redux - no need for session storage
-  useEffect(() => {
-    console.log('🛒 Cart loaded from Redux:', cartItems);
-  }, [cartItems]);
+  // Removed verbose logging for cleaner test output
   
-  // Debug: Log API response
-  useEffect(() => {
-    if (productsError) {
-      console.error('Products API Error Details:', productsError);
-    }
-    if (apiProducts.length > 0) {
-    } else {
-    }
-  }, [apiProducts, isProductsLoading, productsError, isProductsFetching]);
-  
-  // Extract product names for autocomplete
-  const productOptions = useMemo(() => processProductOptions(apiProducts), [apiProducts]);
-
   // Helper function to show toast messages
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
+
+  // Debug: Log API response
+  useEffect(() => {
+    if (productsError) {
+      console.error('❌ Products API Error Details:', productsError);
+      console.error('❌ Error status:', (productsError as any)?.status);
+      console.error('❌ Error data:', (productsError as any)?.data);
+      showToast('Failed to load products. Please check the console for details.', 'error');
+    }
+    if (apiProducts.length === 0 && !isProductsLoading && !isProductsFetching && !productsError) {
+      console.warn('⚠️ No products returned from API');
+      console.warn('⚠️ API URL should be: receive/get-products');
+      showToast('No products found. Please check if the products endpoint is working.', 'warning');
+    }
+  }, [apiProducts, isProductsLoading, productsError, isProductsFetching]);
+  
+  // Extract product names for autocomplete
+  const productOptions = useMemo(() => {
+    return processProductOptions(apiProducts);
+  }, [apiProducts]);
 
   // Monitor validation error state changes
   useEffect(() => {

@@ -29,8 +29,8 @@ interface CustomerDetailsSectionProps {
   customerMobile: string;
   customerCity: string;
   selectedCustomer: Customer | null;
-  mockCustomers: Customer[];
-  availablePhones?: string[];
+  customerNames: string[]; // Customer names from /sales/get-all-customer-names endpoint
+  availablePhones?: string[]; // Phone numbers from /sales/get-customer-phones/ endpoint
   onCustomerNameChange: (value: string) => void;
   onCustomerSelect: (customer: Customer | null) => void;
   onCustomerMobileChange: (value: string) => void;
@@ -43,7 +43,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   customerMobile,
   customerCity,
   selectedCustomer,
-  mockCustomers,
+  customerNames,
   availablePhones = [],
   onCustomerNameChange,
   onCustomerSelect,
@@ -85,18 +85,20 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
       <SectionRow>
         <Autocomplete<string, false, boolean, true>
           freeSolo
-          options={[...new Set(mockCustomers.map(c => c.name))]} // Remove duplicates using Set
+          options={customerNames} // Customer names from /sales/get-all-customer-names endpoint
           getOptionLabel={(option) => option}
-          value={customerName || null}
+          value={customerName || ''}
           isOptionEqualToValue={(option, value) => option === value}
           onChange={(_, newValue) => {
             // Handle string (customer name) - this fires when selecting from dropdown
             const nameValue = typeof newValue === 'string' ? newValue : '';
             if (nameValue) {
+              // Clear the selected customer first - let the hook fetch phone and set it properly
+              onCustomerSelect(null);
+              // Clear mobile to trigger phone fetch from API
+              onCustomerMobileChange('');
+              // Update the name - this will trigger useCustomerPhones hook to fetch phone from /sales/get-customer-phones/
               onCustomerNameChange(nameValue);
-              // Don't clear selection immediately - let auto-fill handle it
-              // Only clear mobile to trigger phone fetch
-              onCustomerMobileChange(''); // Clear mobile when name changes to trigger phone fetch
             } else {
               // User cleared the field
               onCustomerNameChange('');

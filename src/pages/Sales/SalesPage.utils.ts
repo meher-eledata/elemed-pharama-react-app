@@ -5,37 +5,42 @@ import { Product, ApiProduct } from './SalesPage.types';
  * Handles both array format [name, id] and object format {name, id}
  */
 export const processProductOptions = (apiProducts: any[]): string[] => {
-  console.log('Processing product options from:', apiProducts);
-  
   if (!apiProducts || apiProducts.length === 0) {
-    console.log('No products available');
     return [];
   }
   
   const firstProduct = apiProducts[0];
-  console.log('First product structure:', firstProduct);
-  
   let options: string[] = [];
   
   // Handle array format [name, id]
   if (Array.isArray(firstProduct)) {
-    console.log('Detected array format: [name, id]');
     options = apiProducts
-      .filter((product: any) => product && Array.isArray(product) && product.length >= 2)
+      .filter((product: any) => {
+        return product && Array.isArray(product) && product.length >= 2;
+      })
       .map((product: any) => product[0]) // First element is the product name
-      .filter((name: string) => name && name.trim() !== '');
+      .filter((name: string) => {
+        return name && name.trim() !== '';
+      });
   } 
   // Handle object format {name: string, id: number}
   else if (typeof firstProduct === 'object' && firstProduct !== null) {
-    console.log('Detected object format: {name, id}');
     options = apiProducts
-      .filter((product: any) => product && product.name)
+      .filter((product: any) => {
+        return product && product.name;
+      })
       .map((product: any) => product.name)
-      .filter((name: string) => name && name.trim() !== '');
+      .filter((name: string) => {
+        return name && name.trim() !== '';
+      });
+  } else {
+    console.error('❌ Unknown product format:', firstProduct);
   }
   
-  console.log('Processed product options:', options);
-  console.log('Total options count:', options.length);
+  if (options.length === 0 && apiProducts.length > 0) {
+    console.error('❌ Failed to extract product names from:', apiProducts);
+  }
+  
   return options;
 };
 

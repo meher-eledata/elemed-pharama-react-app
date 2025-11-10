@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogActions,
   Typography,
+  Box,
 } from "@mui/material";
 import { StandardButton } from '../Common';
 
@@ -13,6 +14,7 @@ interface CommonModalProps {
   title: string;
   content: React.ReactNode;
   onClose: () => void;
+  actionButtons?: React.ReactNode; // Optional action buttons to display alongside Close button
 }
 
 const CommonModal: React.FC<CommonModalProps> = ({
@@ -20,6 +22,7 @@ const CommonModal: React.FC<CommonModalProps> = ({
   title,
   content,
   onClose,
+  actionButtons,
 }) => {
   return (
     <Dialog 
@@ -40,8 +43,9 @@ const CommonModal: React.FC<CommonModalProps> = ({
       }}
     >
       <DialogTitle>{title}</DialogTitle>
-      <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto' }}>{content}</DialogContent>
-      <DialogActions>
+      <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto', padding: 0 }}>{content}</DialogContent>
+      <DialogActions sx={{ padding: '8px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        {actionButtons}
         <StandardButton
           onClick={onClose}
           variant="primary"

@@ -25,7 +25,6 @@ interface ExecuteSaveParams {
   isProductsError: boolean;
   productsError: any;
   user: any;
-  searchCustomers: (params: { searchTerm: string }) => any;
   submitSale: (payload: any) => any;
   showToast: (message: string, severity: 'success' | 'error' | 'warning' | 'info') => void;
   resetForm: () => void;
@@ -55,7 +54,6 @@ export const executeSave = async ({
   isProductsError,
   productsError,
   user,
-  searchCustomers,
   submitSale,
   showToast,
   resetForm,
@@ -63,49 +61,29 @@ export const executeSave = async ({
   navigate,
 }: ExecuteSaveParams): Promise<void> => {
   try {
+    // Validate that we have customer name and mobile
     if (!customerName || !customerName.trim()) {
       showToast('Please enter or select a customer name', 'warning');
       return;
     }
-
-    let customerId: number;
     
+    if (!customerMobile || !customerMobile.trim()) {
+      showToast('Please enter a customer mobile number', 'warning');
+      return;
+    }
+
+    // Backend requires customer_id to be a number
+    // Since we don't have endpoints to get customer IDs, we always send 0
+    // The backend should use customer_name and customer_mobile to identify/create the customer
+    let customerId: number = 0;
+    
+    // Only use ID if we already have it from selectedCustomer (e.g., from add-customer response)
     if (selectedCustomer && selectedCustomer.id && selectedCustomer.id > 0) {
       customerId = selectedCustomer.id;
-    } else if (customerName && customerMobile) {
-      try {
-        const searchResults = await searchCustomers({ 
-          searchTerm: customerName.trim() 
-        }).unwrap();
-        
-        const matchingCustomer = searchResults.find(
-          (c: Customer) => c.name.toLowerCase().trim() === customerName.toLowerCase().trim() &&
-               c.mobile === customerMobile.trim()
-        );
-        
-        if (matchingCustomer && matchingCustomer.id) {
-          customerId = matchingCustomer.id;
-        } else {
-          showToast(
-            `Customer "${customerName}" with phone "${customerMobile}" not found. Please select a customer from the dropdown or click "Add New Customer" to create this customer.`,
-            'warning'
-          );
-          return;
-        }
-      } catch (error) {
-        console.error('❌ Error searching for customer:', error);
-        showToast(
-          `Could not find customer "${customerName}". Please select a customer from the dropdown or click "Add New Customer" to create this customer.`,
-          'warning'
-        );
-        return;
-      }
+      console.log('👤 Using customer ID from selectedCustomer:', customerId);
     } else {
-      showToast(
-        'Please select or enter a customer name and mobile number',
-        'warning'
-      );
-      return;
+      console.log('👤 No customer ID available - will send customer_id = 0');
+      console.log('👤 Backend should use customer_name and customer_mobile to identify customer');
     }
 
     if (salesItems.length === 0) {
@@ -140,17 +118,26 @@ export const executeSave = async ({
       const productId = getProductIdFromName(item.productName, apiProducts);
       
       if (!productId) {
+        console.error('❌ Product ID not found for:', item.productName);
+        console.error('❌ Available products:', apiProducts.map(p => 
+          Array.isArray(p) ? p[0] : p.name
+        ));
         throw new Error(`Product ID not found for product: "${item.productName}". Please check if the product name matches exactly.`);
       }
 
-      return {
+      const lineItem = {
         product_id: productId,
         quantity: parseFloat(item.quantity || '0'),
         mrp: parseFloat(item.mrp || '0'),
         sp: parseFloat(item.unitPrice || '0'),
         discount: parseFloat(item.discountPercent || '0') / 100,
       };
+      
+      console.log('📦 Line item:', lineItem);
+      return lineItem;
     });
+    
+    console.log('📋 Total lines to submit:', lines.length);
 
     const submitSalePayload = {
       quantity: totalQuantity,
@@ -158,11 +145,30 @@ export const executeSave = async ({
       payment_method: paymentMode || 'Cash',
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
-      customer_id: customerId,
+      customer_id: customerId, // Always send customer_id (0 if not found)
+      customer_name: customerName.trim(), // Always send name
+      customer_mobile: customerMobile.trim(), // Always send mobile
       lines: lines,
     };
     
-    const result = await submitSale(submitSalePayload).unwrap();
+    console.log('🚀 Submitting sale to /sales/submit-sale');
+    console.log('📦 Payload:', JSON.stringify(submitSalePayload, null, 2));
+    
+    let result;
+    try {
+      result = await submitSale(submitSalePayload).unwrap();
+      
+      console.log('✅ Sale submitted successfully!');
+      console.log('📄 Invoice ID:', result.invoice_id);
+      console.log('📋 Invoice Lines:', result.lines.length);
+      console.log('💬 Message:', result.message);
+    } catch (submitError: any) {
+      console.error('❌ Submit sale error:', submitError);
+      console.error('❌ Error status:', submitError?.status);
+      console.error('❌ Error data:', submitError?.data);
+      console.error('❌ Error message:', submitError?.message);
+      throw submitError; // Re-throw to be caught by outer catch
+    }
     
     const historyItem = {
       invoiceNumber,
@@ -194,7 +200,31 @@ export const executeSave = async ({
     }, 1500);
   } catch (error: any) {
     console.error('❌ Error saving receipt:', error);
-    const errorMessage = error?.data?.message || error?.message || 'Failed to save receipt. Please try again.';
+    console.error('❌ Error type:', typeof error);
+    console.error('❌ Error keys:', Object.keys(error || {}));
+    console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+    
+    // Extract error message from various possible locations
+    let errorMessage = 'Failed to save receipt. Please try again.';
+    
+    if (error?.data) {
+      // RTK Query error format
+      if (typeof error.data === 'string') {
+        errorMessage = error.data;
+      } else if (error.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error.data?.error) {
+        errorMessage = error.data.error;
+      }
+    } else if (error?.message) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    // Show detailed error in console for debugging
+    console.error('📝 Final error message to show user:', errorMessage);
+    
     showToast(errorMessage, 'error');
   }
 };

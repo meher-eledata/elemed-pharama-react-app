@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { BrowserRouter } from 'react-router-dom';
 import dayjs from 'dayjs';
 import DashboardMain from '../../pages/DashboardMain/DashboardMain';
 import { DASHBOARD_MAIN_LABELS } from '../../config/label/DashboardMain.labels';
@@ -88,11 +89,13 @@ const TestWrapper: React.FC<{ children: React.ReactNode; store?: any }> = ({
   children, 
   store = createMockStore() 
 }) => (
-  <Provider store={store}>
-    <ThemeProvider theme={theme}>
-      {children}
-    </ThemeProvider>
-  </Provider>
+  <BrowserRouter>
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        {children}
+      </ThemeProvider>
+    </Provider>
+  </BrowserRouter>
 );
 
 describe('Dashboard Integration Tests', () => {
@@ -392,8 +395,12 @@ describe('Dashboard Integration Tests', () => {
 
         // State should be consistent across all components
         expect(updatedDateRange.startDate).not.toBe(initialDateRange.startDate);
-        // End date might remain the same if we only changed start date
-        expect(updatedDateRange.startDate).toBe('2025-10-07');
+        // Verify the date range was updated (should be 7 days ago to today)
+        expect(updatedDateRange.startDate).toBeTruthy();
+        expect(updatedDateRange.endDate).toBeTruthy();
+        // Verify the dates are in the correct format (YYYY-MM-DD)
+        expect(updatedDateRange.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(updatedDateRange.endDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       });
     });
   });

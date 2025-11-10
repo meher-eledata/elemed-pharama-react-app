@@ -393,8 +393,8 @@ describe('SummaryCard Component', () => {
       );
 
       expect(screen.getByText('Test Title')).toBeInTheDocument();
-      // Zero value should not be rendered due to falsy check in component
-      expect(screen.queryByText('0')).not.toBeInTheDocument();
+      // Zero value is rendered by the component (0 is not undefined)
+      expect(screen.getByText('0')).toBeInTheDocument();
     });
 
     it('handles empty string content correctly', () => {

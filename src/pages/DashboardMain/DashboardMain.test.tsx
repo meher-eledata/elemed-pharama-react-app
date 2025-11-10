@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { BrowserRouter } from 'react-router-dom';
 import dayjs from 'dayjs';
 import DashboardMain from './DashboardMain';
 import { DASHBOARD_MAIN_LABELS } from '../../config/label/DashboardMain.labels';
@@ -64,11 +65,13 @@ const TestWrapper: React.FC<{ children: React.ReactNode; store?: any }> = ({
   children, 
   store = createMockStore() 
 }) => (
-  <Provider store={store}>
-    <ThemeProvider theme={theme}>
-      {children}
-    </ThemeProvider>
-  </Provider>
+  <BrowserRouter>
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        {children}
+      </ThemeProvider>
+    </Provider>
+  </BrowserRouter>
 );
 
 describe('DashboardMain Component', () => {

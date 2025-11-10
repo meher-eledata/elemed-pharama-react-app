@@ -196,7 +196,9 @@ export interface SubmitSaleRequest {
   payment_method: string;
   payment_amount: number;
   created_by: string;
-  customer_id: number;
+  customer_id?: number; // Optional - backend may accept name/mobile instead
+  customer_name?: string; // Send name if ID not available
+  customer_mobile?: string; // Send mobile if ID not available
   lines: SubmitSaleLine[];
 }
 
@@ -376,6 +378,13 @@ export const salesApi = createApi({
       providesTags: ["Sales"],
     }),
 
+    // Get all customers (full objects with IDs) - similar to getDoctors
+    // Note: This endpoint may not exist on all backends - handle 404 gracefully in components
+    getCustomers: builder.query<Customer[], void>({
+      query: () => "sales/get-customers",
+      providesTags: ["Sales"],
+    }),
+
     // Get customer phones by name
     getCustomerPhones: builder.mutation<GetCustomerPhonesResponse, GetCustomerPhonesRequest>({
       query: (body) => ({
@@ -418,6 +427,8 @@ export const {
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
   useLazyGetAllCustomerNamesQuery,
+  useGetCustomersQuery,
+  useLazyGetCustomersQuery,
   useGetCustomerPhonesMutation,
   useGetDoctorPhonesAndEmailsMutation,
 } = salesApi;

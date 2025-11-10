@@ -85,6 +85,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             key={isProductSelected ? 'selected' : 'not-selected'}
             freeSolo
             forcePopupIcon
+            openOnFocus
             options={
               isProductsLoading 
                 ? ["Loading products..."] 
@@ -92,7 +93,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   ? productOptions.filter(option => option && typeof option === 'string')
                   : ["No products found"]
             }
-            value={findProduct}
+            value={findProduct || ''}
             noOptionsText="No products found"
             onInputChange={(_, v) => {
               onProductInputChange(v);

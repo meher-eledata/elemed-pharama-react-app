@@ -805,13 +805,6 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
   const handleOpenModal = (title: string, items: ModalItem[], type: "low" | "excess" | "expired") => {
     // When the modal opens, set the data and reset the sort configuration and page
     const itemsArray = items || [];
-    console.log('🔍 Opening modal:', {
-      title,
-      itemCount: itemsArray.length,
-      type,
-      firstFewItems: itemsArray.slice(0, 3),
-      allItems: itemsArray,
-    });
     
     // Reset everything first
     setModalPage(1);
@@ -825,18 +818,9 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
 
   const handlePageChange = (newPage: number) => {
     const totalPages = Math.ceil(sortedModalData.length / MODAL_ROWS_PER_PAGE);
-    console.log('📄 Page change requested:', { 
-      fromPage: modalPage, 
-      toPage: newPage, 
-      totalPages,
-      sortedDataLength: sortedModalData.length 
-    });
     // Ensure the new page is within valid bounds
     const maxValidPage = Math.max(1, totalPages);
     const safePage = Math.min(Math.max(1, newPage), maxValidPage);
-    if (safePage !== newPage) {
-      console.warn('⚠️ Page adjusted:', { requested: newPage, adjusted: safePage, totalPages });
-    }
     setModalPage(safePage);
   };
 
@@ -917,7 +901,6 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
   // Sort the modal data first
   const sortedModalData = React.useMemo(() => {
     if (!modalData || modalData.length === 0) {
-      console.log('⚠️ modalData is empty');
       return [];
     }
     const sorted = [...modalData].sort((a, b) => {
@@ -943,12 +926,6 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
         }
       }
       return 0;
-    });
-    console.log('✅ Sorted modal data:', {
-      originalLength: modalData.length,
-      sortedLength: sorted.length,
-      sortKey: sortConfig.key,
-      sortDirection: sortConfig.direction,
     });
     return sorted;
   }, [modalData, sortConfig]);

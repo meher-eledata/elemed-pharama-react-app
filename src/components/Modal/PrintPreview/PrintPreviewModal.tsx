@@ -335,7 +335,12 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
       {/* Action Buttons - Hidden when view-only mode */}
       {!hideActionButtons && (
-        <Box sx={{ display: 'flex', gap: '12px', justifyContent: 'center', padding: '20px' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: '12px', 
+          justifyContent: 'flex-end', 
+          padding: '8px 24px' // Match DialogActions padding for alignment with Close button
+        }}>
           <StandardButton
             onClick={onCancel}
             variant="secondary"

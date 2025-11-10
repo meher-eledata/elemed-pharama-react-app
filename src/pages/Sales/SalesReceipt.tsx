@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, useCallback } from 'react';
+import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { StandardButton } from '../../components/Common';
@@ -11,14 +11,11 @@ import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDial
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import { 
-  useGetDoctorsQuery,
   useGetDoctorNamesQuery,
   useSubmitSaleMutation,
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
-  useSearchCustomersMutation,
   Customer,
-  Doctor,
   DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
@@ -70,10 +67,13 @@ const SalesReceipt: React.FC = () => {
   
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [addCustomer] = useAddCustomerMutation();
-  const [searchCustomers] = useSearchCustomersMutation();
-  const { data: doctorsData = [] } = useGetDoctorsQuery();
   const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
+  
+  // Note: We only have these customer endpoints:
+  // - GET /sales/get-all-customer-names (returns just names)
+  // - POST /sales/get-customer-phones/ (returns phones by name)
+  // Neither returns customer IDs, so we'll always send customer_id = 0
   const { 
     data: apiProducts = [], 
     isLoading: isProductsLoading, 
@@ -173,6 +173,25 @@ const SalesReceipt: React.FC = () => {
     
     setCustomerName(newName);
   };
+
+  // Handle customer selection from dropdown
+  // Since /sales/get-customers might not exist, we'll rely on get-customer-phones
+  // which is already handled by useCustomerPhones hook
+  // This function just ensures the name is set correctly
+  const handleCustomerSelectFromDropdown = useCallback((customerName: string) => {
+    if (!customerName || !customerName.trim()) {
+      setSelectedCustomer(null);
+      return;
+    }
+
+    // Set flag to fetch immediately when selecting from dropdown
+    shouldFetchImmediatelyRef.current = true;
+    // We don't have endpoints to get customer IDs
+    // Just set the name - useCustomerPhones will fetch the phone number
+    setCustomerName(customerName.trim());
+    // Don't set selectedCustomer here - let useCustomerPhones handle it
+    // selectedCustomer will only have an ID if customer was just added via add-customer
+  }, [shouldFetchImmediatelyRef]);
 
   // Handle doctor phone and email fetching
   const handleDoctorAutoFill = useCallback((phone: string, email: string) => {
@@ -278,13 +297,11 @@ const SalesReceipt: React.FC = () => {
   };
 
   const handleSaveClick = () => {
-    console.log('Saving changes for item:', editingRowId);
     setEditingRowId(null);
     setApplyGstToAll(false);
   };
 
   const handleCancelClick = () => {
-    console.log('Cancelling edit for item:', editingRowId);
     setEditingRowId(null);
     setApplyGstToAll(false);
   };
@@ -365,6 +382,15 @@ const SalesReceipt: React.FC = () => {
     navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
   }, [salesItems, dispatch, navigate]);
 
+  /**
+   * Handle Print Button Click
+   * Flow: Print Button → Sale Confirmation Dialog → Print Preview Modal → Direct Print
+   * 
+   * Step 1: User clicks "Print" button
+   * Step 2: Opens Sale Confirmation Dialog to confirm the action
+   * Step 3: After confirmation, opens Print Preview Modal (shows customer receipt preview)
+   * Step 4: User clicks "Print" in preview modal → Directly prints the customer receipt
+   */
   const handlePrint = () => {
     setPendingAction('print');
     setIsConfirmDialogOpen(true);
@@ -374,9 +400,16 @@ const SalesReceipt: React.FC = () => {
     setIsPrintModalOpen(false);
   };
 
+  /**
+   * Handle Print to PDF - Customer Receipt
+   * This function generates and prints the customer receipt.
+   * It opens a new window, writes the receipt HTML content, and triggers the browser's print dialog.
+   * After printing, it clears the cart and form data from storage.
+   */
   const handlePrintToPDF = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      // Generate customer receipt HTML content
       const htmlContent = generatePrintHTML({
         customerName,
         customerMobile,
@@ -398,6 +431,7 @@ const SalesReceipt: React.FC = () => {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
+      // Trigger browser print dialog
       printWindow.print();
       printWindow.onafterprint = () => {
         printWindow.close();
@@ -406,9 +440,9 @@ const SalesReceipt: React.FC = () => {
     } else {
       showToast('Failed to open print window', 'error');
     }
+    // Clear cart and form data after successful print
     clearCartFromStorage();
     clearFormDataFromStorage();
-    console.log('🗑️ Cart and form data cleared from storage after printing receipt');
     
     setIsPrintModalOpen(false);
   };
@@ -416,7 +450,6 @@ const SalesReceipt: React.FC = () => {
   const handleAfterSave = () => {
     clearCartFromStorage();
     clearFormDataFromStorage();
-    console.log('🗑️ Cart and form data cleared from storage after saving receipt');
     setIsPrintModalOpen(false);
   };
 
@@ -429,6 +462,12 @@ const SalesReceipt: React.FC = () => {
     setIsConfirmDialogOpen(true);
   };
 
+  /**
+   * Handle Print from Print Preview Modal
+   * This is called when user clicks "Print" button inside the Print Preview Modal.
+   * It directly prints the customer receipt without any additional confirmation.
+   * The confirmation already happened in Step 2 (Sale Confirmation Dialog).
+   */
   const handlePrintFromModal = () => {
     // Print directly from Print Preview modal without confirmation
     handlePrintToPDF();
@@ -439,12 +478,19 @@ const SalesReceipt: React.FC = () => {
     setPendingAction(null);
   };
 
+  /**
+   * Handle Confirmation Dialog Confirm
+   * After user confirms in Sale Confirmation Dialog:
+   * - If action is 'save': Execute save operation
+   * - If action is 'print': Open Print Preview Modal (shows customer receipt)
+   */
   const handleConfirmDialogConfirm = () => {
     setIsConfirmDialogOpen(false);
     
     if (pendingAction === 'save') {
       executeSaveWrapper();
     } else if (pendingAction === 'print') {
+      // Open Print Preview Modal which shows the customer receipt
       setIsPrintModalOpen(true);
     }
     
@@ -477,7 +523,6 @@ const SalesReceipt: React.FC = () => {
 
   const handleSave = () => {
     if (salesItems.length === 0) {
-      console.warn('⚠️ Cannot save: No items in the receipt');
       showToast('Cannot save: No items in the receipt', 'warning');
       return;
     }
@@ -514,14 +559,13 @@ const SalesReceipt: React.FC = () => {
       isProductsError,
       productsError,
       user,
-      searchCustomers,
       submitSale,
       showToast,
       resetForm,
       clearCart: () => dispatch(clearCart()),
       navigate,
     });
-  }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, searchCustomers, submitSale, showToast, navigate, dispatch]);
+  }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, showToast, navigate, dispatch]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {
@@ -536,9 +580,7 @@ const SalesReceipt: React.FC = () => {
     resetForm();
     
     dispatch(clearCart());
-    console.log('🛒 Cart cleared from Redux after cancellation');
     
-    console.log('❌ Receipt cancelled - navigating back to Sales page');
     navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
   };
 
@@ -599,9 +641,18 @@ const SalesReceipt: React.FC = () => {
             customerMobile={customerMobile}
             customerCity={customerCity}
             selectedCustomer={selectedCustomer}
-            mockCustomers={customerNames.map(name => ({ id: 0, name, mobile: '', city: '' }))}
+            customerNames={customerNames}
             availablePhones={availablePhones}
-            onCustomerNameChange={handleCustomerNameChange}
+            onCustomerNameChange={(newName) => {
+              // When name changes and it's an exact match from dropdown, set immediate fetch flag first
+              const normalizedNewName = newName.trim().toLowerCase();
+              const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
+              if (isExactMatch && newName.trim()) {
+                // Set flag to fetch immediately when selecting from dropdown
+                shouldFetchImmediatelyRef.current = true;
+              }
+              handleCustomerNameChange(newName);
+            }}
             onCustomerSelect={handleCustomerSelect}
             onCustomerMobileChange={setCustomerMobile}
             onCustomerCityChange={setCustomerCity}
@@ -757,10 +808,28 @@ const SalesReceipt: React.FC = () => {
               onCancel={handleCancelPrint}
               onPrint={handlePrintFromModal}
               onSaveClick={handleSaveFromModal}
-              hideActionButtons={false}
+              hideActionButtons={true}
             />
           }
           onClose={handleClosePrintModal}
+          actionButtons={
+            <>
+              <StandardButton
+                onClick={handleSaveFromModal}
+                variant="outline"
+                size="medium"
+              >
+                {SALES_RECEIPT_LABELS.SAVE_BUTTON}
+              </StandardButton>
+              <StandardButton
+                onClick={handlePrintFromModal}
+                variant="primary"
+                size="medium"
+              >
+                {SALES_RECEIPT_LABELS.PRINT_BUTTON}
+              </StandardButton>
+            </>
+          }
         />
 
         <Toast

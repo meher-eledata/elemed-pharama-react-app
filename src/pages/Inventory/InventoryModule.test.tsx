@@ -401,8 +401,8 @@ describe('InventoryModule', () => {
     it('sorts data by product name in ascending order', () => {
       renderWithProviders(<InventoryModule />);
       
-      fireEvent.click(screen.getByTestId('sort-name'));
-      
+      // Component starts with name sorted ascending by default
+      // Verify the data is already sorted
       const tableRows = screen.getAllByTestId(/table-row-/);
       expect(tableRows[0]).toHaveTextContent('Aspirin 100mg');
       expect(tableRows[1]).toHaveTextContent('Paracetamol 500mg');
@@ -411,13 +411,14 @@ describe('InventoryModule', () => {
     it('toggles sort direction when clicking same column twice', () => {
       renderWithProviders(<InventoryModule />);
       
-      // First click - ascending
-      fireEvent.click(screen.getByTestId('sort-name'));
-      expect(screen.getByTestId('sort-name')).toHaveTextContent('(asc)');
-      
-      // Second click - descending
+      // Component starts with name sorted ascending by default
+      // First click - should toggle to descending (since it's already asc)
       fireEvent.click(screen.getByTestId('sort-name'));
       expect(screen.getByTestId('sort-name')).toHaveTextContent('(desc)');
+      
+      // Second click - should toggle back to ascending
+      fireEvent.click(screen.getByTestId('sort-name'));
+      expect(screen.getByTestId('sort-name')).toHaveTextContent('(asc)');
     });
 
     it('sorts by current quantity', () => {

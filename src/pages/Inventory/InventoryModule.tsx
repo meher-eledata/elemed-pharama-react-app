@@ -82,9 +82,6 @@ const InventoryModule: React.FC = () => {
     direction: 'asc'
   });
 
-  // Debug: Log sortConfig changes
-  console.log('InventoryModule sortConfig:', sortConfig);
-
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
       useState<boolean>(false);
 
@@ -99,13 +96,6 @@ const InventoryModule: React.FC = () => {
 
   const { data: inventorySummary, isLoading: isSummaryLoading, error: summaryError } =
     useGetInventorySummaryQuery();
-
-  // Debug: Log API responses
-  console.log('Inventory Summary:', inventorySummary);
-  console.log('Summary Error:', summaryError);
-  console.log('Low Stock Items:', lowStockItems);
-  console.log('Excess Stock Items:', excessStockItems);
-  console.log('Expired Stock Items:', expiredStockItems);
 
   const currentTableData = useMemo(() => {
     switch (selectedStockType) {

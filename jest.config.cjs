@@ -14,6 +14,8 @@
 //   },
 // };
 
+const path = require('path');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
@@ -24,6 +26,7 @@ module.exports = {
     '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/__mocks__/fileMock.js'
   },
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest'
+    // Use preprocessor to replace import.meta.env before ts-jest compilation
+    '^.+\\.(ts|tsx)$': path.resolve(__dirname, 'jest.preprocessor.cjs'),
   },
 };

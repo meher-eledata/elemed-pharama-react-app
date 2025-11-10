@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, startTransition } from "react";
 import {
   Box,
   Typography,
@@ -249,11 +249,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const data = await response.json();
-      setSupplierOptions(data);
+      // Ensure data is always an array
+      // Set data synchronously to avoid test timeouts
+      setSupplierOptions(Array.isArray(data) ? data : []);
     } catch (error) {
-      setSuppliersError(error instanceof Error ? error.message : 'Failed to fetch suppliers');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch suppliers';
+      setSuppliersError(errorMessage);
+      setSupplierOptions([]);
     } finally {
-      setIsSuppliersLoading(false);
+      // Use startTransition only for loading state to reduce act() warnings
+      startTransition(() => {
+        setIsSuppliersLoading(false);
+      });
     }
   };
 
@@ -282,12 +289,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         .map((product: any) => product[0]) // First element is the product name
         .filter((name: string) => name && name.trim() !== '');
       
+      // Set data synchronously to avoid test timeouts
       setProductOptions(productNames);
     } catch (error) {
-      setProductsError(error instanceof Error ? error.message : 'Failed to fetch products');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
+      setProductsError(errorMessage);
       setProductOptions([]);
     } finally {
-      setIsProductsLoading(false);
+      // Use startTransition only for loading state to reduce act() warnings
+      startTransition(() => {
+        setIsProductsLoading(false);
+      });
     }
   };
 
@@ -302,7 +314,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
 
-    console.log('🔍 Supplier data:', { selectedSupplierData, isExistingSupplier, supplierName });
+    if (import.meta.env.DEV) {
+      console.log('🔍 Supplier data:', { selectedSupplierData, isExistingSupplier, supplierName });
+    }
 
     // Transform table data to lines format
     const lines = pharmaTableData.map((row, index) => {
@@ -320,12 +334,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             if (altParsedDate.isValid()) {
               expiryDate = altParsedDate.format('YYYY-MM-DD');
             } else {
-              console.warn(`⚠️ Invalid date format for row ${index + 1}:`, row.batch);
+              if (import.meta.env.DEV) {
+                console.warn(`⚠️ Invalid date format for row ${index + 1}:`, row.batch);
+              }
               expiryDate = ''; // Send empty string instead of null
             }
           }
         } catch (error) {
-          console.warn(`⚠️ Date parsing error for row ${index + 1}:`, error);
+          if (import.meta.env.DEV) {
+            console.warn(`⚠️ Date parsing error for row ${index + 1}:`, error);
+          }
           expiryDate = '';
         }
       }
@@ -342,7 +360,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         igst: Number(row.cgst) || 0, // Using cgst field for IGST
         discount: Number(row.sgst) || 0 // Using sgst field for discount
       };
-      console.log(`📦 Line ${index + 1}:`, line);
+      if (import.meta.env.DEV) {
+        console.log(`📦 Line ${index + 1}:`, line);
+      }
       return line;
     });
 
@@ -359,7 +379,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       lines: lines
     };
 
-    console.log('📋 Final payload:', payload);
+    if (import.meta.env.DEV) {
+      console.log('📋 Final payload:', payload);
+    }
     return payload;
   };
 
@@ -557,18 +579,24 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (isEditMode && receiptId) {
         // Use editReceipt API for existing receipts (Edit Receive Flow)
         const editPayload = transformFormDataToEditPayload();
-        console.log('📝 Edit payload:', editPayload);
+        if (import.meta.env.DEV) {
+          console.log('📝 Edit payload:', editPayload);
+        }
         result = await editReceipt(editPayload).unwrap();
       } else {
         // Use submitReceipt API for new receipts (Add Receive Flow)
         const submitPayload = transformFormDataToApiPayload();
-        console.log('📤 Submit payload:', submitPayload);
-        console.log('🌐 API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/');
+        if (import.meta.env.DEV) {
+          console.log('📤 Submit payload:', submitPayload);
+          console.log('🌐 API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/');
+        }
         
         try {
           result = await submitReceipt(submitPayload).unwrap();
         } catch (rtkError) {
-          console.warn('⚠️ RTK Query failed, trying direct fetch:', rtkError);
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ RTK Query failed, trying direct fetch:', rtkError);
+          }
           
           // Fallback to direct fetch if RTK Query fails
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
@@ -588,11 +616,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           }
 
           result = await response.json();
-          console.log('✅ Direct fetch successful:', result);
+          if (import.meta.env.DEV) {
+            console.log('✅ Direct fetch successful:', result);
+          }
         }
       }
       
-      console.log('✅ Receipt operation successful:', result);
+      if (import.meta.env.DEV) {
+        console.log('✅ Receipt operation successful:', result);
+      }
       
       // Store PO number locally for display (temporary fix until backend returns receipt data)
       if (!isEditMode) {
@@ -602,7 +634,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           timestamp: new Date().toISOString()
         };
         localStorage.setItem('lastReceiptData', JSON.stringify(receiptData));
-        console.log('💾 Stored receipt data locally:', receiptData);
+        if (import.meta.env.DEV) {
+          console.log('💾 Stored receipt data locally:', receiptData);
+        }
       }
       
       setSaveSuccess(true);
@@ -624,14 +658,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }, 2000);
 
     } catch (error: any) {
-      console.error('❌ Receipt submission error:', error);
-      console.error('❌ Error details:', {
-        status: error?.status,
-        data: error?.data,
-        message: error?.message,
-        originalStatus: error?.originalStatus,
-        error: error?.error
-      });
+      if (import.meta.env.DEV) {
+        console.error('❌ Receipt submission error:', error);
+        console.error('❌ Error details:', {
+          status: error?.status,
+          data: error?.data,
+          message: error?.message,
+          originalStatus: error?.originalStatus,
+          error: error?.error
+        });
+      }
       
       // More detailed error handling
       let errorMessage = 'Failed to submit receipt';
@@ -883,7 +919,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const testApiConnection = async () => {
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-      console.log('🧪 Testing API connection to:', apiBaseUrl);
+      if (import.meta.env.DEV) {
+        console.log('🧪 Testing API connection to:', apiBaseUrl);
+      }
       
       const response = await fetch(`${apiBaseUrl}receive/unique-supplier-names`, {
         method: 'GET',
@@ -894,14 +932,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ API connection successful:', data);
+        if (import.meta.env.DEV) {
+          console.log('✅ API connection successful:', data);
+        }
         return true;
       } else {
-        console.error('❌ API connection failed:', response.status, response.statusText);
+        if (import.meta.env.DEV) {
+          console.error('❌ API connection failed:', response.status, response.statusText);
+        }
         return false;
       }
     } catch (error) {
-      console.error('❌ API connection error:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ API connection error:', error);
+      }
       return false;
     }
   };
@@ -920,9 +964,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     });
   }, [supplierName, poNumber, pharmaTableData, paymentMethod, paymentVendor, transactionNumber]);
 
-  // Debug PO number changes
+  // Debug PO number changes (only in development)
   useEffect(() => {
-    console.log('📋 PO Number updated:', poNumber);
+    if (import.meta.env.DEV) {
+      console.log('📋 PO Number updated:', poNumber);
+    }
   }, [poNumber]);
 
   // Load existing receipt data when in edit mode
@@ -953,7 +999,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const receiptLines = await response.json();
+      const receiptLinesData = await response.json();
+      // Ensure receiptLines is always an array
+      const receiptLines = Array.isArray(receiptLinesData) ? receiptLinesData : [];
       
       // Initialize transaction_number and payment_vendor from first receipt line if available
       if (receiptLines && receiptLines.length > 0) {
@@ -1007,6 +1055,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         invoice_date: line.invoice_date || navigationInvoiceDate || '',
       }));
 
+      // Set data synchronously to avoid test timeouts
       setPharmaTableData(transformedLines);
       // Store original data for change detection
       setOriginalReceiptLines(transformedLines);
@@ -1021,7 +1070,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         paymentMethod: paymentMethod,
       });
     } catch (error) {
-      console.error('Error fetching receipt lines:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error fetching receipt lines:', error);
+      }
       // Set empty array on error
       setPharmaTableData([]);
       setOriginalReceiptLines([]);
@@ -1030,7 +1081,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   // Transform supplier options to extract supplier names
   const transformedSupplierOptions = useMemo(() => {
-    if (!supplierOptions || supplierOptions.length === 0) return [];
+    // Defensive check: ensure supplierOptions is an array
+    if (!Array.isArray(supplierOptions) || supplierOptions.length === 0) return [];
     return supplierOptions.map((supplier) => supplier.supplier_name);
   }, [supplierOptions]);
 
@@ -1482,7 +1534,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 error={!!suppliersError}
                 helperText={
                   suppliersError ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box 
+                      component="span" 
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
+                    >
                       <span>{suppliersError}</span>
                       <Button 
                         size="small" 
@@ -1499,6 +1554,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     </Box>
                   ) : ""
                 }
+                FormHelperTextProps={{
+                  component: 'div'
+                }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "18px",
@@ -1942,13 +2000,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               if (value && value !== orderLabels.addProducts && value !== "Loading products...") {
                 // Check if this is a selection from dropdown or manual typing
                 const isFromDropdown = productOptions.includes(value);
-                console.log('onChange - value:', value);
-                console.log('onChange - productOptions:', productOptions);
-                console.log('onChange - isFromDropdown:', isFromDropdown);
+                if (import.meta.env.DEV) {
+                  console.log('onChange - value:', value);
+                  console.log('onChange - productOptions:', productOptions);
+                  console.log('onChange - isFromDropdown:', isFromDropdown);
+                }
                 
                 if (isFromDropdown) {
                   // Product selected from dropdown
-                  console.log('Setting isProductSelected to TRUE');
+                  if (import.meta.env.DEV) {
+                    console.log('Setting isProductSelected to TRUE');
+                  }
                   setIsProductSelected(true);
                   addProductToTable(value);
                   // Keep the product name in search bar so close icon shows
@@ -1956,12 +2018,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   setIsProductSelected(false);
                 } else {
                   // Manual typing - don't set as selected yet
-                  console.log('Setting isProductSelected to FALSE (manual typing)');
+                  if (import.meta.env.DEV) {
+                    console.log('Setting isProductSelected to FALSE (manual typing)');
+                  }
                   setFindProductTerm(value);
                   setIsProductSelected(false);
                 }
               } else {
-                console.log('Setting isProductSelected to FALSE (empty or special value)');
+                if (import.meta.env.DEV) {
+                  console.log('Setting isProductSelected to FALSE (empty or special value)');
+                }
                 setFindProductTerm(value);
                 setIsProductSelected(false);
               }

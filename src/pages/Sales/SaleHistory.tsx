@@ -360,7 +360,6 @@ export default function SaleHistory() {
   };
 
   const handleViewInvoice = (invoiceId: number) => {
-    console.log('View invoice:', invoiceId);
     setSelectedInvoiceId(invoiceId);
     setIsInvoiceModalOpen(true);
   };
@@ -432,12 +431,10 @@ export default function SaleHistory() {
     
     if (pendingAction === 'save') {
       // Handle save logic here
-      console.log('Saving invoice...');
       // You can call handleAfterSave() here or implement save logic
       handleAfterSave();
     } else if (pendingAction === 'print') {
       // Handle print logic here
-      console.log('Printing invoice...');
       handlePrintToPDF();
     }
     
@@ -449,7 +446,6 @@ export default function SaleHistory() {
 
   const handleEditInvoice = (invoiceId: number) => {
     // Navigate to edit invoice or open edit modal
-    console.log('Edit invoice:', invoiceId);
     // navigate(`/sales/edit/${invoiceId}`);
   };
 

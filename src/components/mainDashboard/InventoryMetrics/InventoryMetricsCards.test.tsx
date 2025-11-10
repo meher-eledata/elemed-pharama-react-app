@@ -235,10 +235,22 @@ describe('InventoryMetricsCards', () => {
       expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
     });
 
-    // Click the 'Name' header to sort using the correct accessible name
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Name' }));
-
-    // Wait for the re-render and assert the new sorted order
+    // The default sort is already by name ascending, so clicking once will toggle to descending
+    // Click the 'Name' header twice: first click toggles to desc, second click goes back to asc
+    const nameHeader = screen.getByRole('columnheader', { name: 'Name' });
+    
+    // First click: asc -> desc
+    fireEvent.click(nameHeader);
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      // After first click, should be descending (Salbutamol first)
+      expect(within(rows[0]).getByText('Salbutamol Inhaler')).toBeInTheDocument();
+    });
+    
+    // Second click: desc -> asc (back to default)
+    fireEvent.click(nameHeader);
+    
+    // Wait for the re-render and assert the sorted order (ascending)
     await waitFor(() => {
       const rows = screen.getAllByRole('row').slice(1); // Exclude header row
       const firstRowText = within(rows[0]).getByText('Omeprazole Capsule').textContent;
@@ -267,10 +279,11 @@ describe('InventoryMetricsCards', () => {
       </ThemeProvider>
     );
 
-    // Find the card and verify that the count element (h4) does NOT exist
+    // Find the card and verify that the count element shows 0
     const expiredStockCard = screen.getByText('Expired Stock').closest('.MuiPaper-root');
     expect(expiredStockCard).not.toBeNull();
-    expect(within(expiredStockCard as HTMLElement).queryByText('0')).not.toBeInTheDocument();
+    // Zero value is rendered by the component
+    expect(within(expiredStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
 
     // Check that the "View Items" button is disabled
     const viewItemsButton = within(expiredStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
@@ -356,24 +369,41 @@ describe('InventoryMetricsCards', () => {
 
   // Test Case 8: Error state
   it('renders error message when API calls fail', () => {
-    (useGetInvoiceStatsQuery as jest.Mock).mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: new Error('API Error'),
-    });
-    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: new Error('API Error'),
-    });
+    // Mock console.error to suppress expected error logs during this test
+    const originalError = console.error;
+    const mockConsoleError = jest.fn();
+    
+    try {
+      console.error = mockConsoleError;
 
-    render(
-      <ThemeProvider theme={theme}>
-        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
-      </ThemeProvider>
-    );
+      (useGetInvoiceStatsQuery as jest.Mock).mockReturnValue({
+        data: null,
+        isLoading: false,
+        error: new Error('API Error'),
+      });
+      (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
+        data: null,
+        isLoading: false,
+        error: new Error('API Error'),
+      });
 
-    expect(screen.getByText(/Failed to load dashboard data/i)).toBeInTheDocument();
+      render(
+        <ThemeProvider theme={theme}>
+          <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+        </ThemeProvider>
+      );
+
+      expect(screen.getByText(/Failed to load dashboard data/i)).toBeInTheDocument();
+      
+      // Verify that the error was logged (but we suppressed it from console output)
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        'Inventory Metrics Error:',
+        expect.any(Error)
+      );
+    } finally {
+      // Always restore original console.error, even if test fails
+      console.error = originalError;
+    }
   });
 
   // Test Case 9: Empty data handling
@@ -404,15 +434,15 @@ describe('InventoryMetricsCards', () => {
     );
 
     await waitFor(() => {
-      // Check that all cards show 0 or default values
+      // Check that all cards show 0 (zero values are rendered by the component)
       const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
-      expect(within(lowStockCard as HTMLElement).queryByText('0')).not.toBeInTheDocument();
+      expect(within(lowStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
 
       const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
-      expect(within(excessStockCard as HTMLElement).queryByText('0')).not.toBeInTheDocument();
+      expect(within(excessStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
 
       const expiredStockCard = screen.getByText('Expired Stock').closest('.MuiPaper-root');
-      expect(within(expiredStockCard as HTMLElement).queryByText('0')).not.toBeInTheDocument();
+      expect(within(expiredStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
     });
   });
 
@@ -431,9 +461,12 @@ describe('InventoryMetricsCards', () => {
       </ThemeProvider>
     );
 
-    // Verify that the API hooks were called with the new date range
-    expect(useGetInvoiceStatsQuery).toHaveBeenCalledWith({ startDate: '2024-02-01', endDate: '2024-02-28' });
-    expect(useGetInventoryByDateQuery).toHaveBeenCalledWith({ startDate: '2024-02-01', endDate: '2024-02-28' });
+    // Verify that the API hooks were called with the new date range (check last call)
+    const invoiceStatsCalls = (useGetInvoiceStatsQuery as jest.Mock).mock.calls;
+    const inventoryCalls = (useGetInventoryByDateQuery as jest.Mock).mock.calls;
+    
+    expect(invoiceStatsCalls[invoiceStatsCalls.length - 1][0]).toEqual({ startDate: '2024-02-01', endDate: '2024-02-28' });
+    expect(inventoryCalls[inventoryCalls.length - 1][0]).toEqual({ startDate: '2024-02-01', endDate: '2024-02-28' });
   });
 
   // Test Case 11: Modal close functionality
