@@ -76,7 +76,6 @@ const LoginForm: React.FC = () => {
       }).unwrap();
       navigate("/dashboard");
     } catch (err) {
-      console.error("Login failed (unwrap catch):", err);
       const errMsg =
         (err as any)?.data?.error ||
         (err as any)?.data?.message ||

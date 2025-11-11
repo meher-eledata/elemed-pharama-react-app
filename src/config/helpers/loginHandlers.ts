@@ -54,6 +54,5 @@ export const handleLoginEffect = ({
     setSnackbarMessage(errorMessage);
     setSnackbarSeverity("error");
     setSnackbarOpen(true);
-    console.error("Login error (RTK):", error);
   }
 };

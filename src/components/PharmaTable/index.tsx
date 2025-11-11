@@ -438,7 +438,6 @@ export const ReusableTable = <T,>({
                             {visibleColumns.map((column, index) => (
                                 <TableCell
                                     key={index}
-                                    onClick={() => column.sortable !== false && onSortRequest(column.key as string)}
                                     sx={{
                                         fontFamily: "'Lexend', sans-serif",
                                         fontWeight: 500,
@@ -449,7 +448,7 @@ export const ReusableTable = <T,>({
                                         bgcolor: '#ffffff',
                                         whiteSpace: 'nowrap',
                                         width: getColumnWidth(column.key as string),
-                                        cursor: column.sortable !== false ? 'pointer' : 'default',
+                                        cursor: 'default',
                                         textAlign: 'left',
                                     }}
                                 >
@@ -460,11 +459,40 @@ export const ReusableTable = <T,>({
                                                 onChange={handleSelectAll}
                                                 sx={{ p: 0 }}
                                             />
-                                        ) : column.headerRender ? column.headerRender() : column.header}
+                                        ) : (
+                                            <Box 
+                                                sx={{ 
+                                                    pointerEvents: column.sortable !== false ? 'none' : 'auto'
+                                                }}
+                                            >
+                                                {column.headerRender ? column.headerRender() : column.header}
+                                            </Box>
+                                        )}
 
                                         {column.sortable !== false && (
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, marginTop: '-2px', marginBottom: '-2px' }}>
+                                            <Box 
+                                                sx={{ 
+                                                    display: 'flex', 
+                                                    flexDirection: 'column', 
+                                                    alignItems: 'center', 
+                                                    gap: 0, 
+                                                    marginTop: '-2px', 
+                                                    marginBottom: '-2px',
+                                                    cursor: 'pointer',
+                                                    userSelect: 'none'
+                                                }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    onSortRequest(column.key as string);
+                                                }}
+                                            >
                                                 <KeyboardArrowUpIcon
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        onSortRequest(column.key as string);
+                                                    }}
                                                     sx={{
                                                         fontSize: 12,
                                                         color: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#5C17E5' : '#B0BEC5',
@@ -473,9 +501,16 @@ export const ReusableTable = <T,>({
                                                         borderRadius: '4px',
                                                         padding: '1px',
                                                         marginBottom: '-2px',
+                                                        cursor: 'pointer',
+                                                        pointerEvents: 'auto'
                                                     }}
                                                 />
                                                 <KeyboardArrowDownIcon
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        onSortRequest(column.key as string);
+                                                    }}
                                                     sx={{
                                                         fontSize: 12,
                                                         color: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#5C17E5' : '#B0BEC5',
@@ -484,6 +519,8 @@ export const ReusableTable = <T,>({
                                                         borderRadius: '4px',
                                                         padding: '1px',
                                                         marginTop: '-2px',
+                                                        cursor: 'pointer',
+                                                        pointerEvents: 'auto'
                                                     }}
                                                 />
                                             </Box>

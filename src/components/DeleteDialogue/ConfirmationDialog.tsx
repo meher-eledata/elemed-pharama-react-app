@@ -44,19 +44,13 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           alignItems: 'center',
           pb: 1,
           px: 3,
-          pt: 3
+          pt: 3,
+          fontWeight: 600, 
+          color: '#1A212B',
+          fontFamily: "'Lexend', sans-serif"
         }}
       >
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            fontWeight: 600, 
-            color: '#1A212B',
-            fontFamily: "'Lexend', sans-serif"
-          }}
-        >
-          {title}
-        </Typography>
+        {title}
         <IconButton
           onClick={onClose}
           size="small"

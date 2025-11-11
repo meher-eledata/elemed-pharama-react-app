@@ -30,7 +30,8 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
       flexDirection: 'column',
       gap: ADMIN_CONSTANTS.CARDS.GAP,
       flex: 1,
-      minWidth: 360,
+      minWidth: ADMIN_CONSTANTS.CARDS.MIN_WIDTH,
+      maxWidth: ADMIN_CONSTANTS.CARDS.MAX_WIDTH,
     }}
   >
     <Box
@@ -78,8 +79,20 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '24px' }}>
-      <Box sx={{ mb: 2 }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: 2, 
+      padding: '24px',
+      paddingTop: '12px',
+      overflow: 'hidden',
+      '&::-webkit-scrollbar': {
+        display: 'none',
+      },
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
+    }}>
+      <Box sx={{ mb: -1, mt: -1 }}>
         <Typography 
           variant="h4" 
           sx={{ 
@@ -87,7 +100,7 @@ const AdminDashboard: React.FC = () => {
             fontSize: '32px',
             color: '#1A212B',
             fontFamily: "'Lexend', sans-serif",
-            mb: 0.5
+            mb: 1
           }}
         >
           {ADMIN_LABELS.PAGE_TITLE}
@@ -107,8 +120,14 @@ const AdminDashboard: React.FC = () => {
         sx={{
           display: 'grid',
           gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-          gap: 3,
+          gap: { xs: 2, md: 3 },
+          rowGap: { xs: 2, md: 3 },
           alignItems: 'stretch',
+          maxWidth: { xs: '100%', md: '1050px' },
+          margin: '0 auto',
+          '& > *:nth-child(2n)': {
+            marginLeft: { xs: 0, md: ADMIN_CONSTANTS.CARDS.RIGHT_COLUMN_MARGIN_LEFT },
+          },
         }}
       >
         <Card

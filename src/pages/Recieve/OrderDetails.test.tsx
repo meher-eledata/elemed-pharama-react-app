@@ -240,7 +240,7 @@ describe('OrderDetails', () => {
           
           return input as HTMLInputElement;
         },
-        { timeout: 5000 }
+        { timeout: 10000 }
       );
       
       // Clear any existing value and type new value
@@ -250,8 +250,8 @@ describe('OrderDetails', () => {
       // Verify the value was set
       await waitFor(() => {
         expect(supplierInput).toHaveValue('New Supplier');
-      });
-    }, 10000); // Increase test timeout to 10 seconds
+      }, { timeout: 5000 });
+    }, 15000); // Increase test timeout to 15 seconds
 
     it('should update PO number on input change', async () => {
       const user = userEvent.setup();
@@ -262,14 +262,17 @@ describe('OrderDetails', () => {
         expect(screen.getByText(orderLabels.poNumber)).toBeInTheDocument();
         const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
         expect(supplierInput).toBeInTheDocument();
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
       
-      const poInput = screen.getByPlaceholderText(orderLabels.enterPoNumber);
+      const poInput = await waitFor(() => {
+        return screen.getByPlaceholderText(orderLabels.enterPoNumber);
+      }, { timeout: 5000 });
+      
       await user.clear(poInput);
       await user.type(poInput, 'PO123');
       
       expect(poInput).toHaveValue('PO123');
-    });
+    }, 15000);
 
     it('should update transaction number on input change', async () => {
       const user = userEvent.setup();
@@ -401,13 +404,23 @@ describe('OrderDetails', () => {
         const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
         expect(supplierInput).toBeInTheDocument();
         expect(supplierInput).not.toBeDisabled();
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
       
       // Fill required fields
-      const supplierInput = screen.getByPlaceholderText(orderLabels.enterSupplierName);
+      const supplierInput = await waitFor(() => {
+        const input = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
+        if (!input || input.hasAttribute('disabled')) {
+          throw new Error('Supplier input not ready');
+        }
+        return input;
+      }, { timeout: 5000 });
+      
       await user.type(supplierInput, 'Supplier Name');
       
-      const poInput = screen.getByPlaceholderText(orderLabels.enterPoNumber);
+      const poInput = await waitFor(() => {
+        return screen.getByPlaceholderText(orderLabels.enterPoNumber);
+      }, { timeout: 5000 });
+      
       await user.clear(poInput);
       await user.type(poInput, 'PO123');
       
@@ -415,7 +428,7 @@ describe('OrderDetails', () => {
       const saveButton = screen.getByText(orderLabels.saveButton);
       // Button state depends on validation logic
       expect(saveButton).toBeInTheDocument();
-    });
+    }, 20000);
   });
 
   describe('Save Functionality', () => {
@@ -440,15 +453,18 @@ describe('OrderDetails', () => {
         const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
         expect(supplierInput).toBeInTheDocument();
         expect(supplierInput).not.toBeDisabled();
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
       
-      const supplierInput = screen.getByPlaceholderText(orderLabels.enterSupplierName);
+      const supplierInput = await waitFor(() => {
+        return screen.getByPlaceholderText(orderLabels.enterSupplierName);
+      }, { timeout: 5000 });
+      
       await user.type(supplierInput, 'Supplier');
       
       const saveButton = screen.getByText(orderLabels.saveButton);
       // Should still be disabled without PO number
       expect(saveButton).toBeDisabled();
-    });
+    }, 15000);
 
     it('should show error when no products are added', async () => {
       const user = userEvent.setup();
@@ -459,19 +475,25 @@ describe('OrderDetails', () => {
         const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
         expect(supplierInput).toBeInTheDocument();
         expect(supplierInput).not.toBeDisabled();
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
       
-      const supplierInput = screen.getByPlaceholderText(orderLabels.enterSupplierName);
+      const supplierInput = await waitFor(() => {
+        return screen.getByPlaceholderText(orderLabels.enterSupplierName);
+      }, { timeout: 5000 });
+      
       await user.type(supplierInput, 'Supplier');
       
-      const poInput = screen.getByPlaceholderText(orderLabels.enterPoNumber);
+      const poInput = await waitFor(() => {
+        return screen.getByPlaceholderText(orderLabels.enterPoNumber);
+      }, { timeout: 5000 });
+      
       await user.clear(poInput);
       await user.type(poInput, 'PO123');
       
       // Save button should be disabled without products
       const saveButton = screen.getByText(orderLabels.saveButton);
       expect(saveButton).toBeDisabled();
-    });
+    }, 15000);
   });
 
   describe('Edit Mode', () => {

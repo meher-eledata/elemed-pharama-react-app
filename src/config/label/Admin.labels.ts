@@ -1,6 +1,6 @@
 export const ADMIN_LABELS = {
   PAGE_TITLE: 'Hello, Guest!',
-  SUBTITLE: 'Access your system insights.',
+  SUBTITLE: 'Access key administrative functions and system insights..',
   SECTIONS: {
     USER_MGMT: {
       TITLE: 'User Accounts',

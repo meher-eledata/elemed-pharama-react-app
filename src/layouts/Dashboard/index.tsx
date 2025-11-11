@@ -57,6 +57,11 @@ export const DashboardLayout = () => {
           marginTop={0}
           sx={{
             contain: 'layout style',
+            '&::-webkit-scrollbar': {
+              display: 'none',
+            },
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
           }}
         >
           <Outlet />

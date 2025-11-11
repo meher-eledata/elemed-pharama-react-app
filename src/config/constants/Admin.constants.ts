@@ -11,7 +11,10 @@ export const ADMIN_CONSTANTS = {
     DESC_COLOR: '#1A212B',
     SHADOW: '0px 2px 8px rgba(0, 0, 0, 0.08)',
     ICON_CIRCLE_SIZE: 48,
-  },
+    MIN_WIDTH: 280,
+    MAX_WIDTH: 400,
+    RIGHT_COLUMN_MARGIN_LEFT: '30px',
+    },
   ICON_COLORS: {
     USER_MGMT: '#E3F2FD', // Light blue
     REPORTS: '#E8F5E9', // Light green
