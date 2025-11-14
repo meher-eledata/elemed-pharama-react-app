@@ -7,7 +7,7 @@ import {
   FormControl,
   FormControlLabel,
   Grid,
-  Button,
+  IconButton,
   Checkbox,
   Radio,
   RadioGroup,
@@ -144,26 +144,72 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
   };
 
   return (
-    <Modal open={isOpen} onClose={onClose} aria-labelledby={CUSTOMER_MODAL_LABELS.MODAL_ARIA_LABEL}>
+    <Modal 
+      open={isOpen} 
+      onClose={onClose} 
+      aria-labelledby={CUSTOMER_MODAL_LABELS.MODAL_ARIA_LABEL}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+      }}
+    >
       <Box sx={style} component="form" onSubmit={handleSubmit}>
-        {/* Header */}
-        <Box sx={{ flexShrink: 0 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography id={CUSTOMER_MODAL_LABELS.MODAL_ARIA_LABEL} variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
-            {CUSTOMER_MODAL_LABELS.MODAL_TITLE}
-          </Typography>
-          <Button
-            onClick={onClose}
-            sx={{
-              minWidth: 0,
-              padding: 0,
-              color: 'text.secondary',
-              '&:hover': { background: 'none' }
+        {/* Enhanced Header */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #e2e8f0',
+          pb: 1.5,
+          mb: 1
+        }}>
+          <Box>
+            <Typography 
+              id={CUSTOMER_MODAL_LABELS.MODAL_ARIA_LABEL} 
+              variant="h5" 
+              component="h2" 
+              sx={{ 
+                fontFamily: 'Lexend, sans-serif',
+                fontWeight: 600,
+                fontSize: '22px',
+                color: '#1a202c',
+                margin: 0,
+                mb: 0.5,
+              }}
+            >
+              {CUSTOMER_MODAL_LABELS.MODAL_TITLE}
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{
+                color: '#718096',
+                fontSize: '14px',
+                fontFamily: 'Lexend, sans-serif',
+              }}
+            >
+              Enter the customer's details below to create a new customer.
+            </Typography>
+          </Box>
+          <IconButton 
+            aria-label="close" 
+            onClick={onClose} 
+            sx={{ 
+              color: '#718096',
+              backgroundColor: '#f7fafc',
+              borderRadius: '8px',
+              width: '32px',
+              height: '32px',
+              '&:hover': {
+                backgroundColor: '#edf2f7',
+                color: '#2d3748',
+              }
             }}
           >
-            <CloseIcon />
-          </Button>
-        </Stack>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </Box>
 
         {/* Content Area - Scrollable */}
@@ -420,21 +466,19 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
         </Grid>
         </Box>
 
-        {/* Footer - Sticky Buttons */}
+        {/* Enhanced Action Buttons */}
         <Box sx={{ 
-          flexShrink: 0, 
           display: 'flex', 
           justifyContent: 'flex-end', 
-          mt: 3, 
-          pt: 2, 
+          gap: '12px', 
+          pt: 2,
           borderTop: '1px solid #e2e8f0',
-          backgroundColor: 'background.paper'
+          mt: 'auto'
         }}>
           <StandardButton
             onClick={onClose}
             variant="secondary"
             size="medium"
-            sx={{ mr: 2 }}
           >
             {CUSTOMER_MODAL_LABELS.CANCEL_BUTTON}
           </StandardButton>

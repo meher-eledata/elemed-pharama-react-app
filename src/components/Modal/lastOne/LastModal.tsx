@@ -458,13 +458,13 @@ import {
     Box, 
     Typography, 
     TextField, 
-    Button, 
     IconButton,
     Divider
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CloseIcon from '@mui/icons-material/Close';
+import { StandardButton } from '../../Common';
 import { PharmaTableRow } from "../../../pages/Recieve/OrderDetails";
 
 // Inline SVGs for self-contained component
@@ -567,7 +567,6 @@ const LastModal: React.FC<LastModalProps> = ({
             qtyReceived: Number(qtyReceived),
             qtyFree: Number(qtyFree),
             batch: batch,
-            expiryDate: expiryDate,
             pp: Number(pp),
             sp: Number(sp),
             mrp: Number(mrp),
@@ -655,20 +654,64 @@ const LastModal: React.FC<LastModalProps> = ({
             open={open}
             onClose={onClose}
             aria-labelledby="receive-supplier-modal-title"
+            sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(8px)',
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            }}
         >
             <Box sx={modalContentStyle}>
+                {/* Enhanced Header */}
                 <Box sx={{ 
                     display: 'flex', 
-                    justifyContent: 'space-between', 
                     alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid #e2e8f0',
+                    pb: 1.5,
                     mb: 2,
-                    pb: 2,
                 }}>
-                    <Typography id="receive-supplier-modal-title" sx={{ fontSize: '18px', color: '#111827' }}>
-                        Receive Supplier
-                    </Typography>
-                    <IconButton onClick={onClose} size="small">
-                        <CloseIcon />
+                    <Box>
+                        <Typography 
+                            id="receive-supplier-modal-title" 
+                            sx={{ 
+                                fontFamily: 'Lexend, sans-serif',
+                                fontWeight: 600,
+                                fontSize: '22px',
+                                color: '#1a202c',
+                                margin: 0,
+                                mb: 0.5,
+                            }}
+                        >
+                            Receive Supplier
+                        </Typography>
+                        <Typography 
+                            variant="body2" 
+                            sx={{
+                                color: '#718096',
+                                fontSize: '14px',
+                                fontFamily: 'Lexend, sans-serif',
+                            }}
+                        >
+                            Enter product details to receive from supplier.
+                        </Typography>
+                    </Box>
+                    <IconButton 
+                        onClick={onClose} 
+                        sx={{ 
+                            color: '#718096',
+                            backgroundColor: '#f7fafc',
+                            borderRadius: '8px',
+                            width: '32px',
+                            height: '32px',
+                            '&:hover': {
+                                backgroundColor: '#edf2f7',
+                                color: '#2d3748',
+                            }
+                        }}
+                    >
+                        <CloseIcon fontSize="small" />
                     </IconButton>
                 </Box>
 
@@ -808,52 +851,29 @@ const LastModal: React.FC<LastModalProps> = ({
                     </Box>
                 </Box>
 
+                {/* Enhanced Action Buttons */}
                 <Box sx={{ 
                     display: 'flex', 
                     justifyContent: 'flex-end', 
-                    gap: 1.5,
+                    gap: '12px',
                     pt: 2,
-                    pr: 1,
-                    borderTop: '1px solid #E5E7EB'
+                    borderTop: '1px solid #e2e8f0',
+                    mt: 'auto'
                 }}>
-                    <Button
-                        variant="text"
+                    <StandardButton
+                        variant="secondary"
+                        size="medium"
                         onClick={onClose}
-                        disableRipple
-                        sx={{
-                            color: '#6B7280',
-                            borderRadius: '12px',
-                            px: 3,
-                            height: 44,
-                            textTransform: 'none',
-                            bgcolor: 'transparent',
-                            boxShadow: 'none',
-                            '&:hover': { bgcolor: 'transparent', boxShadow: 'none' },
-                            '&:focus': { bgcolor: 'transparent' },
-                            '&:active': { bgcolor: 'transparent' }
-                        }}
                     >
                         Cancel
-                    </Button>
-                    <Button
-                        variant="contained"
+                    </StandardButton>
+                    <StandardButton
+                        variant="primary"
+                        size="medium"
                         onClick={handleDone}
-                        sx={{
-                            bgcolor: '#4F46E5',
-                            color: '#FFFFFF',
-                            borderRadius: '12px',
-                            px: 3,
-                            height: 44,
-                            textTransform: 'none',
-                            boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
-                            '&:hover': {
-                                bgcolor: '#4338CA',
-                                boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)'
-                            }
-                        }}
                     >
                         Done
-                    </Button>
+                    </StandardButton>
                 </Box>
             </Box>
         </Modal>

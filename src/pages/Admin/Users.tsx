@@ -7,6 +7,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { USERS_LABELS } from '../../config/label/Users.labels';
 import { USERS_CONSTANTS } from '../../config/constants/Users.constants';
+import AddUserModal from '../../components/Modal/AddUser/AddUserModal';
 
 interface User {
   id: number;
@@ -84,6 +85,7 @@ const Users: React.FC = () => {
     key: USERS_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY,
     direction: USERS_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION
   });
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
   const filteredData = useMemo(() => {
     let filtered = [...usersData];
@@ -253,6 +255,18 @@ const Users: React.FC = () => {
     }));
   };
 
+  const handleOpenAddUserModal=()=>{
+    setIsAddUserModalOpen(true);
+  };
+
+  const handleCloseAddUserModal = () => {
+    setIsAddUserModalOpen(false);
+  };
+
+  const handleUserCreated = () => {
+    // Optional: Refresh users list or perform other actions when user is created
+    // This callback is called after successful user creation
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: USERS_CONSTANTS.LAYOUT.PAGE_GAP, p: USERS_CONSTANTS.LAYOUT.PAGE_PADDING }}>
@@ -304,6 +318,7 @@ const Users: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
+          onClick={handleOpenAddUserModal}
           sx={{
             backgroundColor: USERS_CONSTANTS.BUTTON.BACKGROUND_COLOR,
             color: USERS_CONSTANTS.BUTTON.COLOR,
@@ -415,6 +430,11 @@ const Users: React.FC = () => {
           sortConfig={sortConfig}
         />
       </Box>
+      <AddUserModal
+        open={isAddUserModalOpen}
+        onClose={handleCloseAddUserModal}
+        onSuccess={handleUserCreated}
+      />
     </Box>
   );
 };

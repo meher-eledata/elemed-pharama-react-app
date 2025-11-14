@@ -486,20 +486,33 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
           pb: 1.5,
           mb: 1
         }}>
-          <Typography
-            id="new-product-modal-title"
-            variant="h5"
-            component="h2"
-            sx={{
-              fontFamily: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
-              fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
-              fontSize: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
-              color: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
-              margin: 0,
-            }}
-          >
-            {NEW_PRODUCT_MODAL_LABELS.TITLE}
-          </Typography>
+          <Box>
+            <Typography
+              id="new-product-modal-title"
+              variant="h5"
+              component="h2"
+              sx={{
+                fontFamily: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
+                fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
+                fontSize: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
+                color: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
+                margin: 0,
+                mb: 0.5,
+              }}
+            >
+              {NEW_PRODUCT_MODAL_LABELS.TITLE}
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{
+                color: '#718096',
+                fontSize: '14px',
+                fontFamily: 'Lexend, sans-serif',
+              }}
+            >
+              Enter the product details below to add a new product.
+            </Typography>
+          </Box>
           <IconButton 
             aria-label="close" 
             onClick={handleClose} 
