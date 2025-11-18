@@ -1455,7 +1455,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         >
           <Typography
             sx={{
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
@@ -1579,7 +1579,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   },
                   "& .MuiOutlinedInput-input": {
                     padding: "12px 16px",
-                    fontFamily: "Lexend",
+                    fontFamily: "'Lexend', sans-serif",
                     fontSize: "16px",
                     lineHeight: "24px",
                     color: "#728197",
@@ -1610,7 +1610,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         >
           <Typography
             sx={{
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
@@ -1648,7 +1648,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               },
               "& .MuiOutlinedInput-input": {
                 padding: "12px 16px",
-                fontFamily: "Lexend",
+                fontFamily: "'Lexend', sans-serif",
                 fontSize: "16px",
                 lineHeight: "24px",
                 color: "#728197",
@@ -1668,7 +1668,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         >
           <Typography
             sx={{
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
@@ -1706,7 +1706,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         >
           <Typography
             sx={{
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
@@ -1753,7 +1753,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   },
                   "& .MuiOutlinedInput-input": {
                     padding: "12px 16px",
-                    fontFamily: "Lexend",
+                    fontFamily: "'Lexend', sans-serif",
                     fontSize: "16px",
                     lineHeight: "24px",
                     color: "#728197",
@@ -1788,7 +1788,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         >
           <Typography
             sx={{
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
@@ -1839,7 +1839,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   },
                   "& .MuiOutlinedInput-input": {
                     padding: "12px 16px",
-                    fontFamily: "Lexend",
+                    fontFamily: "'Lexend', sans-serif",
                     fontSize: "16px",
                     lineHeight: "24px",
                     color: "#728197",
@@ -1871,7 +1871,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         >
           <Typography
             sx={{
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
@@ -1907,7 +1907,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               },
               "& .MuiOutlinedInput-input": {
                 padding: "12px 16px",
-                fontFamily: "Lexend",
+                fontFamily: "'Lexend', sans-serif",
                 fontSize: "16px",
                 lineHeight: "24px",
                 color: "#728197",
@@ -1948,7 +1948,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         >
           <Typography
             sx={{
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "18px",
@@ -2140,7 +2140,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   "& .MuiInputBase-input": {
                     padding: "10px 14px",
                     paddingLeft: "6px",
-                    fontFamily: "Inter, system-ui, sans-serif",
+                    fontFamily: "'Lexend', sans-serif",
                     fontSize: "14px",
                     fontWeight: 400,
                     lineHeight: "20px",
@@ -2249,7 +2249,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 "& .MuiInputBase-input": {
                   padding: "10px 14px",
                   paddingLeft: "6px",
-                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontFamily: "'Lexend', sans-serif",
                   fontSize: "14px",
                   fontWeight: 400,
                   lineHeight: "20px",
@@ -2369,7 +2369,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               height: "48px",
               width: "86px",
               borderRadius: "12px",
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "24px",
@@ -2440,7 +2440,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               borderRadius: "12px",
               width: "86px",
               height: "48px",
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               textTransform: "none",
               boxShadow: "none",
               position: "relative",
@@ -2496,7 +2496,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               },
               height: "48px",
               borderRadius: "12px",
-              fontFamily: "Lexend",
+              fontFamily: "'Lexend', sans-serif",
               fontWeight: 500,
               fontSize: "12px",
               lineHeight: "24px",

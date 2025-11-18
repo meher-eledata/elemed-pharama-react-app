@@ -8,7 +8,6 @@ export type UserRole = 0 | 1;
 export interface CreateUserRequest {
   username: string;
   email: string;
-  password: string;
   first_name: string;
   last_name: string;
   address_line1: string;

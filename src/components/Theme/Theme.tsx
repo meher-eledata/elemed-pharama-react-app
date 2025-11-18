@@ -3,7 +3,7 @@ import { createTheme } from "@mui/material/styles";
 
 const theme = createTheme({
   typography: {
-    fontFamily: "lexend", // ✅ Set your global font here
+    fontFamily: "'Lexend', sans-serif", // ✅ Set your global font here
   },
 });
 

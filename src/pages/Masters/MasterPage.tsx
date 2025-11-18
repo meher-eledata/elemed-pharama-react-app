@@ -105,14 +105,14 @@ const Masterpage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{fontFamily:'lexend'}}>
+    <Box sx={{fontFamily: "'Lexend', sans-serif"}}>
       <Box
         className="header"
         sx={{ display: "flex", justifyContent: "space-between", padding:'0px 18px', }}
       >
         <Typography
           variant="h5"
-          sx={{ fontFamily: "lexend", fontWeight: "600", fontSize: "36px" }}
+          sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: "600", fontSize: "36px" }}
         >
           Products
         </Typography>
@@ -127,9 +127,9 @@ const Masterpage: React.FC = () => {
         </StandardButton>
       </Box>
       <Box className="tab-content" sx={{
-          fontFamily: "Lexend",
+          fontFamily: "'Lexend', sans-serif",
           "& .MuiTableCell-root": {
-            fontFamily: "Lexend", // ✅ force table cells to use Lexend
+            fontFamily: "'Lexend', sans-serif", // ✅ force table cells to use Lexend
           },
         }}>
         <ReusableTable<OrderReceiveRow > 

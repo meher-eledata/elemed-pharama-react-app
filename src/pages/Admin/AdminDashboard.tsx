@@ -48,10 +48,10 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
     >
       <Box sx={{ color: '#5C17E5' }}>{icon}</Box>
     </Box>
-    <Typography sx={{ fontWeight: 700, color: ADMIN_CONSTANTS.CARDS.TITLE_COLOR, fontSize: '18px' }}>
+    <Typography sx={{ fontWeight: 700, color: ADMIN_CONSTANTS.CARDS.TITLE_COLOR, fontSize: '18px', fontFamily: "'Lexend', sans-serif" }}>
       {title}
     </Typography>
-    <Typography sx={{ color: ADMIN_CONSTANTS.CARDS.DESC_COLOR, fontSize: '14px', lineHeight: 1.5 }}>
+    <Typography sx={{ color: ADMIN_CONSTANTS.CARDS.DESC_COLOR, fontSize: '14px', lineHeight: 1.5, fontFamily: "'Lexend', sans-serif" }}>
       {desc}
     </Typography>
     <Box sx={{ mt: 'auto', pt: 1 }}>
@@ -124,10 +124,8 @@ const AdminDashboard: React.FC = () => {
           rowGap: { xs: 2, md: 3 },
           alignItems: 'stretch',
           maxWidth: { xs: '100%', md: '1050px' },
-          margin: '0 auto',
-          '& > *:nth-child(2n)': {
-            marginLeft: { xs: 0, md: ADMIN_CONSTANTS.CARDS.RIGHT_COLUMN_MARGIN_LEFT },
-          },
+          marginLeft: 0,
+          marginRight: 'auto',
         }}
       >
         <Card

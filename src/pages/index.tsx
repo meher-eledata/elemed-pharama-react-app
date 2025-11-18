@@ -30,7 +30,9 @@ export const Pages = () => {
       <Route path="/" element={<AuthLayout />}>
         <Route index element={<LogInLeft />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
+        <Route path="reset-password" element={<CreatePassword />} />
         <Route path="create-password" element={<CreatePassword />} />
+        <Route path="accept-invite" element={<CreatePassword />} />
       </Route>
 
       {/* Dashboard Routes - NO PROTECTION */}

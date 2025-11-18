@@ -69,7 +69,7 @@ const inputStyle = {
       color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
       fontSize: '14px',
       fontWeight: 400,
-      fontFamily: 'Lexend',
+      fontFamily: "'Lexend', sans-serif",
     },
 
     '& .MuiOutlinedInput-notchedOutline': {
@@ -172,7 +172,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
               variant="h5" 
               component="h2" 
               sx={{ 
-                fontFamily: 'Lexend, sans-serif',
+                fontFamily: "'Lexend', sans-serif",
                 fontWeight: 600,
                 fontSize: '22px',
                 color: '#1a202c',
@@ -187,7 +187,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
               sx={{
                 color: '#718096',
                 fontSize: '14px',
-                fontFamily: 'Lexend, sans-serif',
+                fontFamily: "'Lexend', sans-serif",
               }}
             >
               Enter the customer's details below to create a new customer.
@@ -296,7 +296,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                         fontSize: '14px',
                         fontWeight: 400,
                         marginLeft: '8px',
-                        fontFamily: 'Lexend',
+                        fontFamily: "'Lexend', sans-serif",
                         color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                       },
                     }}
@@ -325,7 +325,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                         fontSize: '14px',
                         fontWeight: 400,
                         marginLeft: '8px',
-                        fontFamily: 'Lexend',
+                        fontFamily: "'Lexend', sans-serif",
                         color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                       },
                     }}
@@ -354,7 +354,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                         fontSize: '14px',
                         fontWeight: 400,
                         marginLeft: '8px',
-                        fontFamily: 'Lexend',
+                        fontFamily: "'Lexend', sans-serif",
                         color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                       },
                     }}
@@ -417,7 +417,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                   '& .MuiFormControlLabel-label': {
                     whiteSpace: 'nowrap',
                     fontSize: CUSTOMER_MODAL_CONSTANTS.CHECKBOX_LABEL_FONT_SIZE,
-                    fontFamily: 'Lexend',
+                    fontFamily: "'Lexend', sans-serif",
                     fontWeight: 400,
                     color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                   }

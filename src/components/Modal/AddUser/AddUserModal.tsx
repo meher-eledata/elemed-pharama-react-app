@@ -126,7 +126,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     height: '100%',
     padding: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.INPUT_PADDING,
     boxSizing: 'border-box',
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: "'Lexend', sans-serif",
     fontWeight: 500,
     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
     fontSize: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
@@ -140,7 +140,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 
   '& .MuiInputLabel-root': {
     fontSize: '14px',
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: "'Lexend', sans-serif",
     fontWeight: 500,
     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
     backgroundColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BG,
@@ -159,7 +159,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 
   '& .MuiFormHelperText-root': {
     fontSize: '12px',
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: "'Lexend', sans-serif",
     fontWeight: 400,
     marginLeft: '4px',
     marginTop: '4px',
@@ -214,7 +214,7 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
 
   '& .MuiInputLabel-root': {
     fontSize: '14px',
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: "'Lexend', sans-serif",
     fontWeight: 500,
     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
     backgroundColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BG,
@@ -309,13 +309,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
     const username = userData.emailId.split('@')[0] || 
                      `${userData.firstName.toLowerCase()}_${userData.lastName.toLowerCase()}`;
 
-    // Generate a temporary password (backend might send password link via email)
-    const tempPassword = `Temp@${Math.random().toString(36).slice(-8)}`;
-
     return {
       username,
       email: userData.emailId,
-      password: tempPassword,
       first_name: userData.firstName,
       last_name: userData.lastName,
       address_line1: userData.address_line1 || '',
@@ -469,7 +465,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
               sx={{
                 color: '#718096',
                 fontSize: '14px',
-                fontFamily: 'Lexend, sans-serif',
+                fontFamily: "'Lexend', sans-serif",
               }}
             >
               Enter the new user's details below to create an account.
@@ -511,7 +507,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                   fontSize: '14px',
                   fontWeight: 500,
-                  fontFamily: 'Lexend, sans-serif'
+                  fontFamily: "'Lexend', sans-serif"
                 }}
               >
                 First Name
@@ -535,7 +531,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                   fontSize: '14px',
                   fontWeight: 500,
-                  fontFamily: 'Lexend, sans-serif'
+                  fontFamily: "'Lexend', sans-serif"
                 }}
               >
                 Last Name
@@ -559,7 +555,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                   fontSize: '14px',
                   fontWeight: 500,
-                  fontFamily: 'Lexend, sans-serif'
+                  fontFamily: "'Lexend', sans-serif"
                 }}
               >
                 Email ID
@@ -583,7 +579,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                   fontSize: '14px',
                   fontWeight: 500,
-                  fontFamily: 'Lexend, sans-serif'
+                  fontFamily: "'Lexend', sans-serif"
                 }}
               >
                 Mobile Number
@@ -607,7 +603,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                     fontSize: '14px',
                     fontWeight: 500,
-                    fontFamily: 'Lexend, sans-serif'
+                    fontFamily: "'Lexend', sans-serif"
                   }}
                 >
                   Address (optional)
@@ -624,7 +620,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       minWidth: 'auto',
                       padding: '6px 12px',
                       borderRadius: '6px',
-                      fontFamily: 'Lexend, sans-serif',
+                      fontFamily: "'Lexend', sans-serif",
                       fontWeight: 500,
                       fontSize: '14px',
                       textTransform: 'none',
@@ -654,7 +650,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       minWidth: 'auto',
                       padding: '6px 12px',
                       borderRadius: '6px',
-                      fontFamily: 'Lexend, sans-serif',
+                      fontFamily: "'Lexend', sans-serif",
                       fontWeight: 500,
                       fontSize: '14px',
                       textTransform: 'none',
@@ -685,7 +681,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                       fontSize: '14px',
                       fontWeight: 500,
-                      fontFamily: 'Lexend, sans-serif'
+                      fontFamily: "'Lexend', sans-serif"
                     }}
                   >
                     Street address, house/building number
@@ -708,7 +704,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                       fontSize: '14px',
                       fontWeight: 500,
-                      fontFamily: 'Lexend, sans-serif'
+                      fontFamily: "'Lexend', sans-serif"
                     }}
                   >
                     Optional unit/suite/floor
@@ -731,7 +727,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                       fontSize: '14px',
                       fontWeight: 500,
-                      fontFamily: 'Lexend, sans-serif'
+                      fontFamily: "'Lexend', sans-serif"
                     }}
                   >
                     City
@@ -754,7 +750,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                       fontSize: '14px',
                       fontWeight: 500,
-                      fontFamily: 'Lexend, sans-serif'
+                      fontFamily: "'Lexend', sans-serif"
                     }}
                   >
                     State
@@ -777,7 +773,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                       fontSize: '14px',
                       fontWeight: 500,
-                      fontFamily: 'Lexend, sans-serif'
+                      fontFamily: "'Lexend', sans-serif"
                     }}
                   >
                     Postal Code
@@ -800,7 +796,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                       fontSize: '14px',
                       fontWeight: 500,
-                      fontFamily: 'Lexend, sans-serif'
+                      fontFamily: "'Lexend', sans-serif"
                     }}
                   >
                     Country
@@ -826,7 +822,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                   fontSize: '14px',
                   fontWeight: 500,
-                  fontFamily: 'Lexend, sans-serif'
+                  fontFamily: "'Lexend', sans-serif"
                 }}
               >
                 Identity Document
@@ -856,7 +852,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                   fontSize: '14px',
                   fontWeight: 500,
-                  fontFamily: 'Lexend, sans-serif'
+                  fontFamily: "'Lexend', sans-serif"
                 }}
               >
                 ID Document Number
@@ -881,7 +877,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                   fontSize: '14px',
                   fontWeight: 500,
-                  fontFamily: 'Lexend, sans-serif'
+                  fontFamily: "'Lexend', sans-serif"
                 }}
               >
                 Role

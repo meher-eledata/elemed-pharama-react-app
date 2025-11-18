@@ -58,10 +58,26 @@ export const authApi = createApi({
                 body,
             }),
         }),
+        resetPassword: builder.mutation<ResetPasswordResponse, ResetPasswordRequest>({
+            query: (body) => ({
+                url: 'reset-password',
+                method: 'POST',
+                body,
+            }),
+        }),
+        // Create Password endpoint for new user setup (endpoint not ready yet)
+        // When backend implements this, it should accept: { token: string, password: string }
+        createPassword: builder.mutation<CreatePasswordResponse, CreatePasswordRequest>({
+            query: (body) => ({
+                url: 'create-password',
+                method: 'POST',
+                body,
+            }),
+        }),
     }),
 });
 
-export const { useLoginMutation, usePasswordRecoveryMutation } = authApi;
+export const { useLoginMutation, usePasswordRecoveryMutation, useResetPasswordMutation, useCreatePasswordMutation } = authApi;
 
 export interface User {
     id: number;
@@ -88,6 +104,24 @@ interface PasswordRecoveryRequest {
 interface PasswordRecoveryResponse {
     message: string;
     dev_reset_token?: string; // Only in development
+}
+
+interface ResetPasswordRequest {
+    token: string;
+    password: string;
+}
+
+interface ResetPasswordResponse {
+    message: string;
+}
+
+interface CreatePasswordRequest {
+    token: string;
+    password: string;
+}
+
+interface CreatePasswordResponse {
+    message: string;
 }
 
 interface AuthState {

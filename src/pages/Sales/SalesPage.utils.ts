@@ -73,10 +73,13 @@ export const extractProductId = (apiProducts: any[], productName: string): strin
 };
 
 /**
- * Calculate total cart value
+ * Calculate total cart value (with discount applied)
  */
 export const calculateCartTotal = (cartItems: Product[]): number => {
-  return cartItems.reduce((acc, item) => acc + item.sp * item.quantity, 0);
+  return cartItems.reduce((acc, item) => {
+    const discountMultiplier = 1 - ((item.discount || 0) / 100);
+    return acc + (item.sp * item.quantity * discountMultiplier);
+  }, 0);
 };
 
 /**

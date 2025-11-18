@@ -4,7 +4,7 @@ export const DASHBOARD_MAIN_CONSTANTS = {
     PADDING_BOTTOM: '8px',
   },
   HEADER: {
-    FONT_FAMILY: 'lexend',
+    FONT_FAMILY: "'Lexend', sans-serif",
     FONT_WEIGHT: '600',
     FONT_SIZE_XS: '24px',
     FONT_SIZE_SM: '28px',

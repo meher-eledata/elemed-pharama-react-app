@@ -30,7 +30,7 @@
 //     boxSizing: 'border-box',
 //     textAlign: 'center',
 //     lineHeight: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
-//     fontFamily: 'Lexend, sans-serif',
+//     fontFamily: "'Lexend', sans-serif",
 //     fontWeight: 400,
 //     color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
 //   },
@@ -43,7 +43,7 @@
 
 //   '& .MuiInputLabel-root': {
 //     fontSize: '14px',
-//     fontFamily: 'Lexend, sans-serif',
+//     fontFamily: "'Lexend', sans-serif",
 //     fontWeight: 400,
 //     color: '#728197',
 //     '&.MuiInputLabel-shrink': {
@@ -277,7 +277,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     height: '100%',
     padding: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_PADDING,
     boxSizing: 'border-box',
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: "'Lexend', sans-serif",
     fontWeight: 500,
     color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
     fontSize: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
@@ -291,7 +291,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 
   '& .MuiInputLabel-root': {
     fontSize: '14px',
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: "'Lexend', sans-serif",
     fontWeight: 500,
     color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
     backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
@@ -310,7 +310,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 
   '& .MuiFormHelperText-root': {
     fontSize: '12px',
-    fontFamily: 'Lexend, sans-serif',
+    fontFamily: "'Lexend', sans-serif",
     fontWeight: 400,
     marginLeft: '4px',
     marginTop: '4px',
@@ -507,7 +507,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
               sx={{
                 color: '#718096',
                 fontSize: '14px',
-                fontFamily: 'Lexend, sans-serif',
+                fontFamily: "'Lexend', sans-serif",
               }}
             >
               Enter the product details below to add a new product.
@@ -570,7 +570,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                           color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                           fontSize: '14px',
                           fontWeight: 500,
-                          fontFamily: 'Lexend, sans-serif'
+                          fontFamily: "'Lexend', sans-serif"
                         }}
                       >
                         {field.label}
@@ -598,7 +598,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                           color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                           fontSize: '14px',
                           fontWeight: 500,
-                          fontFamily: 'Lexend, sans-serif'
+                          fontFamily: "'Lexend', sans-serif"
                         }}
                       >
                         {field.label}

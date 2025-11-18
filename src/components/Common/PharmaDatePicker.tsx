@@ -512,7 +512,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
               },
               "& .MuiOutlinedInput-input": {
                 padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
-                fontFamily: "Lexend",
+                fontFamily: "'Lexend', sans-serif",
                 fontSize: typeof height === 'number' && height <= 32 ? "13px" : "16px",
                 lineHeight: typeof height === 'number' && height <= 32 ? "20px" : "24px",
                 color: "#728197 !important",
@@ -520,7 +520,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
               },
               "& .MuiPickersInputBase-input": {
                 padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
-                fontFamily: "Lexend",
+                fontFamily: "'Lexend', sans-serif",
                 fontSize: typeof height === 'number' && height <= 32 ? "13px" : "16px",
                 lineHeight: typeof height === 'number' && height <= 32 ? "20px" : "24px",
                 color: "#728197 !important",
@@ -683,7 +683,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
 
                 "& .MuiPickersCalendarHeader-labelContainer": {
                   "& .MuiPickersCalendarHeader-label": {
-                    fontFamily: "Lexend",
+                    fontFamily: "'Lexend', sans-serif",
                     fontSize: "16px",
                     fontWeight: 600,
                     color: "#202B3C",
@@ -703,7 +703,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
               },
               "& .MuiDayCalendar-weekDayLabel": {
                 color: "#5C17E5",
-                fontFamily: "Lexend",
+                fontFamily: "'Lexend', sans-serif",
                 fontWeight: 600,
                 fontSize: "12px",
                 width: "32px",
@@ -718,7 +718,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                 fontSize: "14px",
                 fontWeight: 500,
                 color: "#1A212B",
-                fontFamily: "Lexend",
+                fontFamily: "'Lexend', sans-serif",
                 borderRadius: "50%",
                 margin: "2px",
                 backgroundColor: "transparent",

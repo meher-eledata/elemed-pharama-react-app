@@ -676,7 +676,7 @@ const LastModal: React.FC<LastModalProps> = ({
                         <Typography 
                             id="receive-supplier-modal-title" 
                             sx={{ 
-                                fontFamily: 'Lexend, sans-serif',
+                                fontFamily: "'Lexend', sans-serif",
                                 fontWeight: 600,
                                 fontSize: '22px',
                                 color: '#1a202c',
@@ -691,7 +691,7 @@ const LastModal: React.FC<LastModalProps> = ({
                             sx={{
                                 color: '#718096',
                                 fontSize: '14px',
-                                fontFamily: 'Lexend, sans-serif',
+                                fontFamily: "'Lexend', sans-serif",
                             }}
                         >
                             Enter product details to receive from supplier.

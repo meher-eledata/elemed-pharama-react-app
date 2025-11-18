@@ -7,7 +7,7 @@ export const DATE_RANGE_CONSTANTS = {
     BOX_BORDER: "1px solid #9AA8BC",
     BOX_PADDING: "10px 14px",
     BOX_HEIGHT: "44px",
-    FONT_FAMILY: "lexend",
+    FONT_FAMILY: "'Lexend', sans-serif",
     FONT_SIZE: "14px",
   
     DATE_SELECTED_BG: "#5C17E5",

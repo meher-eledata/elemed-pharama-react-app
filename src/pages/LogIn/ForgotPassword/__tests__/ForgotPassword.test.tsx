@@ -278,8 +278,7 @@ describe('ForgotPassword', () => {
       }, { timeout: 3000 });
     });
 
-    it('navigates to create password page after successful recovery', async () => {
-      jest.useFakeTimers();
+    it('does not navigate after successful recovery - user should check email', async () => {
       const mockUnwrap = jest.fn().mockResolvedValue({
         message: 'Password reset email sent',
       });
@@ -301,14 +300,8 @@ describe('ForgotPassword', () => {
         expect(mockPasswordRecovery).toHaveBeenCalled();
       });
 
-      // Fast-forward timers
-      jest.advanceTimersByTime(2000);
-
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/create-password');
-      });
-
-      jest.useRealTimers();
+      // User should check email and click link - no automatic navigation
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 

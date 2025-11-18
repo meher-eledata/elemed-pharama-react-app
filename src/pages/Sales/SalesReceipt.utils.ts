@@ -5,33 +5,46 @@ import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.con
  * Transform cart items from Sales Page to SalesReceiptItem format
  */
 export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
-  return cartItems.map((item: any) => ({
-    id: item.id,
-    productName: item.name,
-    manufacturer: 'N/A',
-    batch: item.batch,
-    expiryDate: item.expiry,
-    quantity: item.quantity.toString(),
-    type: item.type || 'N/A',
-    unitPrice: item.sp.toString(),
-    mrp: item.mrp.toString(),
-    discount: (item.sp * item.discount / 100).toFixed(2),
-    discountPercent: item.discount.toString(),
-    // Preserve GST data if it exists (from previous edit), otherwise default to '0'
-    cgst: item.cgst || '0',
-    cgstPercent: item.cgstPercent || '0',
-    sgst: item.sgst || '0',
-    sgstPercent: item.sgstPercent || '0',
-    igst: item.igst || '0',
-    igstPercent: item.igstPercent || '0',
-    amount: item.amount || (item.sp * item.quantity).toFixed(2),
-  }));
+  return cartItems.map((item: any) => {
+    // Use totalPrice if available (already includes discount), otherwise calculate with discount
+    let amount: string;
+    if (item.amount) {
+      amount = item.amount;
+    } else if (item.totalPrice !== undefined) {
+      amount = item.totalPrice.toFixed(2);
+    } else {
+      // Calculate amount with discount
+      const discountMultiplier = 1 - ((item.discount || 0) / 100);
+      amount = (item.sp * item.quantity * discountMultiplier).toFixed(2);
+    }
+    
+    return {
+      id: item.id,
+      productName: item.name,
+      manufacturer: 'N/A',
+      batch: item.batch,
+      expiryDate: item.expiry,
+      quantity: item.quantity.toString(),
+      type: item.type || 'N/A',
+      unitPrice: item.sp.toString(),
+      mrp: item.mrp.toString(),
+      discount: (item.sp * item.discount / 100).toFixed(2),
+      discountPercent: item.discount.toString(),
+      cgst: item.cgst || '0',
+      cgstPercent: item.cgstPercent || '0',
+      sgst: item.sgst || '0',
+      sgstPercent: item.sgstPercent || '0',
+      igst: item.igst || '0',
+      igstPercent: item.igstPercent || '0',
+      amount: amount,
+    };
+  });
 };
 
 export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
   const totalValue = salesItems.reduce((sum, item) => sum + parseFloat(item.amount), 0);
   const totalDiscount = salesItems.reduce((sum, item) => sum + parseFloat(item.discount), 0);
-  const taxAmount = 0; // Calculate based on your tax logic
+  const taxAmount = 0; 
   const totalPayableAmount = totalValue;
 
   return {
@@ -42,9 +55,6 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
   };
 };
 
-/**
- * Get today's date in the formatted string
- */
 export const getTodayDate = (): string => {
   const today = new Date();
   return today.toLocaleDateString(
@@ -53,9 +63,6 @@ export const getTodayDate = (): string => {
   );
 };
 
-/**
- * Generate print preview HTML content
- */
 export const generatePrintHTML = (data: {
   customerName: string;
   customerMobile: string;
@@ -108,7 +115,7 @@ export const generatePrintHTML = (data: {
             box-sizing: border-box;
           }
           body { 
-            font-family: 'Lexend', Arial, sans-serif; 
+            font-family: 'Lexend', sans-serif; 
             margin: 20px;
             padding: 20px;
             color: #1A212B;

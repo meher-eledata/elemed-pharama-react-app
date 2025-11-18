@@ -62,12 +62,14 @@ const cartSlice = createSlice({
       
       if (existingItem) {
         existingItem.quantity += product.quantity;
-        existingItem.totalPrice = existingItem.quantity * existingItem.sp;
+        const discountMultiplier = 1 - (existingItem.discount / 100);
+        existingItem.totalPrice = existingItem.quantity * existingItem.sp * discountMultiplier;
       } else {
+        const discountMultiplier = 1 - (product.discount / 100);
         const newItem: CartItem = {
           ...product,
           quantity: product.quantity,
-          totalPrice: product.quantity * product.sp,
+          totalPrice: product.quantity * product.sp * discountMultiplier,
         };
         state.items.push(newItem);
       }
@@ -92,7 +94,8 @@ const cartSlice = createSlice({
       
       if (item) {
         item.quantity = Math.max(1, quantity); // Minimum quantity of 1
-        item.totalPrice = item.quantity * item.sp;
+        const discountMultiplier = 1 - (item.discount / 100);
+        item.totalPrice = item.quantity * item.sp * discountMultiplier;
         
         // Recalculate total
         state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
@@ -107,9 +110,10 @@ const cartSlice = createSlice({
       if (item) {
         Object.assign(item, updates);
         
-        // Recalculate total price if quantity or price changed
-        if (updates.quantity || updates.sp) {
-          item.totalPrice = item.quantity * item.sp;
+        // Recalculate total price if quantity, price, or discount changed
+        if (updates.quantity || updates.sp || updates.discount !== undefined) {
+          const discountMultiplier = 1 - ((item.discount || 0) / 100);
+          item.totalPrice = item.quantity * item.sp * discountMultiplier;
         }
         
         // Recalculate total
@@ -126,7 +130,14 @@ const cartSlice = createSlice({
 
     // Set cart items (for loading from storage or API)
     setCartItems: (state, action: PayloadAction<CartItem[]>) => {
-      state.items = action.payload;
+      state.items = action.payload.map(item => {
+        // Recalculate totalPrice with discount for each item
+        const discountMultiplier = 1 - ((item.discount || 0) / 100);
+        return {
+          ...item,
+          totalPrice: item.quantity * item.sp * discountMultiplier,
+        };
+      });
       state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
     },
 

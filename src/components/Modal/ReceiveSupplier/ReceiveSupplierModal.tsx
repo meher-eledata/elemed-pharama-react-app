@@ -118,7 +118,7 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
               variant="h5"
               component="h2"
               sx={{
-                fontFamily: 'Lexend, sans-serif',
+                fontFamily: "'Lexend', sans-serif",
                 fontWeight: 600,
                 fontSize: '22px',
                 color: '#1a202c',
@@ -133,7 +133,7 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
               sx={{
                 color: '#718096',
                 fontSize: '14px',
-                fontFamily: 'Lexend, sans-serif',
+                fontFamily: "'Lexend', sans-serif",
               }}
             >
               Select a supplier to receive products.
@@ -168,7 +168,7 @@ const ReceiveSupplierModal: React.FC<ReceiveSupplierModalProps> = ({
                 color: '#4a5568',
                 fontSize: '14px',
                 fontWeight: 500,
-                fontFamily: 'Lexend, sans-serif'
+                fontFamily: "'Lexend', sans-serif"
               }}
             >
               {FIND_SUPPLIER_LABEL}

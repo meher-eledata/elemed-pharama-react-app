@@ -632,7 +632,7 @@ export const ReusableTable = <T,>({
                                 '& .MuiSelect-icon': { top: '50%', transform: 'translateY(-50%)', color: '#5C17E5', fontSize: '24px' },
                                 fontSize: '14px',
                                 fontWeight: 'bold',
-                                fontFamily: 'Lexend',
+                                fontFamily: "'Lexend', sans-serif",
                             }}
                         >
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (

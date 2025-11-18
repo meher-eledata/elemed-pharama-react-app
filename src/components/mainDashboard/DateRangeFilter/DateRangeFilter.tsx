@@ -259,7 +259,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     
                     "& .MuiPickersCalendarHeader-labelContainer": {
                       "& .MuiPickersCalendarHeader-label": {
-                        fontFamily: "Lexend",
+                        fontFamily: "'Lexend', sans-serif",
                         fontSize: "14px",
                         fontWeight: 400,
                         color: "#202B3C",

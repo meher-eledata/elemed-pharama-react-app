@@ -164,7 +164,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
 
   return (
     <Box sx={{ p: 0, width: '100%' }}>
-      <Typography sx={{ fontFamily: 'lexend', fontWeight: 600, mb: '12px', mt: '28px' }}>
+      <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 600, mb: '12px', mt: '28px' }}>
         {DASHBOARD_LABELS.SALES_CONTRACTS_TITLE}
       </Typography>
       <Stack 

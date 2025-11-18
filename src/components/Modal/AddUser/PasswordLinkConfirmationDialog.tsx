@@ -48,7 +48,7 @@ const PasswordLinkConfirmationDialog:React.FC<PasswordLinkConfirmationDialogProp
                 fontWeight:700,
                 color:'#1A212B',
                 padding:'24px 24px 0 24px',
-                fontFamily:'Lexend, sans-serif',
+                fontFamily: "'Lexend', sans-serif",
             }}
             >
             Confirm User Regsiatration 
@@ -67,7 +67,7 @@ const PasswordLinkConfirmationDialog:React.FC<PasswordLinkConfirmationDialogProp
                     color:'#374151',
                      lineHeight:1.7,
                     fontWeight:500,
-                fontFamily:"'lexend' , sans-serif "          
+                fontFamily: "'Lexend', sans-serif"          
              }}
              >
              A link to create a password will be sent to the registered email addres

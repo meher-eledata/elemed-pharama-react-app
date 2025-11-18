@@ -1,9 +1,11 @@
 import React, { useState, useMemo, ChangeEvent } from 'react';
-import { Box, Typography, Button, Avatar, Chip, IconButton, TextField, InputAdornment } from '@mui/material';
+import { Box, Typography, Button, Avatar, Chip, IconButton, TextField, InputAdornment, Select, MenuItem, SelectChangeEvent } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import SearchIcon from '@mui/icons-material/Search';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { USERS_LABELS } from '../../config/label/Users.labels';
 import { USERS_CONSTANTS } from '../../config/constants/Users.constants';
@@ -20,7 +22,7 @@ interface User {
 }
 
 const Users: React.FC = () => {
-  const usersData: User[] = [
+  const [usersData, setUsersData] = useState<User[]>([
     {
       id: 1,
       name: 'Alice Johnson',
@@ -75,7 +77,7 @@ const Users: React.FC = () => {
       lastLogin: '2024-07-22 01:00 PM',
       avatar: 'F',
     },
-  ];
+  ]);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -86,6 +88,8 @@ const Users: React.FC = () => {
     direction: USERS_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION
   });
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editedRole, setEditedRole] = useState<string>('');
 
   const filteredData = useMemo(() => {
     let filtered = [...usersData];
@@ -152,22 +156,73 @@ const Users: React.FC = () => {
       key: 'role',
       header: USERS_LABELS.TABLE.ROLE,
       sortable: true,
-      render: (user) => (
-        <Chip
-          label={user.role}
-          size="small"
-          sx={{
-            backgroundColor: USERS_CONSTANTS.CHIP.ROLE.BACKGROUND_COLOR,
-            color: USERS_CONSTANTS.CHIP.ROLE.COLOR,
-            fontWeight: USERS_CONSTANTS.CHIP.ROLE.FONT_WEIGHT,
-            height: USERS_CONSTANTS.CHIP.ROLE.HEIGHT,
-            fontSize: USERS_CONSTANTS.CHIP.ROLE.FONT_SIZE,
-            '& .MuiChip-label': {
-              padding: USERS_CONSTANTS.CHIP.ROLE.LABEL_PADDING,
-            },
-          }}
-        />
-      ),
+      render: (user) => {
+        const isEditing = editingUserId === user.id;
+        
+        if (isEditing) {
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Select
+                value={editedRole}
+                onChange={(e: SelectChangeEvent<string>) => setEditedRole(e.target.value)}
+                size="small"
+                sx={{
+                  height: USERS_CONSTANTS.CHIP.ROLE.HEIGHT,
+                  fontSize: USERS_CONSTANTS.CHIP.ROLE.FONT_SIZE,
+                  minWidth: 120,
+                }}
+                autoFocus
+              >
+                <MenuItem value="Administrator">Administrator</MenuItem>
+                <MenuItem value="Editor">Editor</MenuItem>
+                <MenuItem value="Viewer">Viewer</MenuItem>
+              </Select>
+              <IconButton 
+                size="small" 
+                onClick={() => {
+                  setUsersData(prevUsers => 
+                    prevUsers.map(u => 
+                      u.id === user.id ? { ...u, role: editedRole } : u
+                    )
+                  );
+                  setEditingUserId(null);
+                  setEditedRole('');
+                }}
+                sx={{ padding: '4px', color: '#4caf50' }}
+              >
+                <CheckIcon fontSize="small" />
+              </IconButton>
+              <IconButton 
+                size="small" 
+                onClick={() => {
+                  setEditingUserId(null);
+                  setEditedRole('');
+                }}
+                sx={{ padding: '4px', color: '#f44336' }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          );
+        }
+        
+        return (
+          <Chip
+            label={user.role}
+            size="small"
+            sx={{
+              backgroundColor: USERS_CONSTANTS.CHIP.ROLE.BACKGROUND_COLOR,
+              color: USERS_CONSTANTS.CHIP.ROLE.COLOR,
+              fontWeight: USERS_CONSTANTS.CHIP.ROLE.FONT_WEIGHT,
+              height: USERS_CONSTANTS.CHIP.ROLE.HEIGHT,
+              fontSize: USERS_CONSTANTS.CHIP.ROLE.FONT_SIZE,
+              '& .MuiChip-label': {
+                padding: USERS_CONSTANTS.CHIP.ROLE.LABEL_PADDING,
+              },
+            }}
+          />
+        );
+      },
     },
     {
       key: 'status',
@@ -219,6 +274,10 @@ const Users: React.FC = () => {
         <Box sx={{ display: 'flex', gap: USERS_CONSTANTS.ACTIONS.GAP }}>
           <IconButton 
             size="small" 
+            onClick={() => {
+              setEditingUserId(user.id);
+              setEditedRole(user.role);
+            }}
             sx={{ 
               color: USERS_CONSTANTS.ACTIONS.EDIT_COLOR,
               padding: USERS_CONSTANTS.ACTIONS.ICON_PADDING,
@@ -355,11 +414,11 @@ const Users: React.FC = () => {
           border: USERS_CONSTANTS.TABLE.CELL_BORDER,
           borderBottom: USERS_CONSTANTS.TABLE.ROW_BORDER,
         },
-        '& .MuiTableHead .MuiTableCell-root': {
+        '& .MuiTableHead .MuiTableCell-root, & .MuiTableHead .MuiTableCell-root[class*="MuiTableCell-root"]': {
           fontFamily: USERS_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
           fontWeight: USERS_CONSTANTS.TABLE.HEADER_FONT_WEIGHT,
-          fontSize: USERS_CONSTANTS.TABLE.HEADER_FONT_SIZE,
-          lineHeight: USERS_CONSTANTS.TABLE.HEADER_LINE_HEIGHT,
+          fontSize: `${USERS_CONSTANTS.TABLE.HEADER_FONT_SIZE} !important`,
+          lineHeight: `${USERS_CONSTANTS.TABLE.HEADER_LINE_HEIGHT} !important`,
           color: USERS_CONSTANTS.TABLE.HEADER_COLOR,
           backgroundColor: USERS_CONSTANTS.TABLE.HEADER_BACKGROUND,
           padding: `${USERS_CONSTANTS.TABLE.HEADER_PADDING} !important`,

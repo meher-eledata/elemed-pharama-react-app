@@ -89,7 +89,7 @@ const LoginForm: React.FC = () => {
   return (
     <Box
       sx={{
-        fontFamily: "Lexend, sans-serif",
+        fontFamily: "'Lexend', sans-serif",
         display: "flex",
         flexDirection: "column",
         width: "100%",
@@ -102,7 +102,7 @@ const LoginForm: React.FC = () => {
       <Typography
         variant="h4"
         sx={{
-          fontFamily: "Lexend, sans-serif",
+          fontFamily: "'Lexend', sans-serif",
           fontWeight: 600,
           fontSize: "32px",
           lineHeight: "36px",
@@ -284,7 +284,7 @@ const LoginForm: React.FC = () => {
         </Box>
 
       
-        <Link to="/create-password" style={{ textDecoration: 'none', alignSelf: 'center' }}>
+        <Link to="/reset-password" style={{ textDecoration: 'none', alignSelf: 'center' }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
             <Typography>{LOGIN_LABELS.SIGNUP_QUESTION}</Typography>
             <Typography sx={{ color: '#2B80EC', textDecoration: 'underline' }}>

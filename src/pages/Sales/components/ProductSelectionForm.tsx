@@ -158,7 +158,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   "& .MuiInputBase-input": {
                     padding: "8px 12px",
                     paddingLeft: "0px",
-                    fontFamily: "Inter, system-ui, sans-serif",
+                    fontFamily: "'Lexend', sans-serif",
                     fontSize: "14px",
                     fontWeight: 400,
                     lineHeight: "20px",

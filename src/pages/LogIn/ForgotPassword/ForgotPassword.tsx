@@ -35,10 +35,8 @@ const ForgotPassword: React.FC = () => {
         const result = await passwordRecovery({ username: username.trim() }).unwrap();
         setShowSuccess(true);
         setErrorMessage('');
-        // Optionally navigate after a delay
-        setTimeout(() => {
-          navigate('/create-password');
-        }, 2000);
+        // User should check their email and click the reset link
+        // The link will redirect them to /reset-password?token=xxx
       } catch (error: any) {
         setErrorMessage(error?.data?.message || FORGOT_PASSWORD_LABELS.ERROR_MESSAGE);
         setShowError(true);
@@ -49,7 +47,7 @@ const ForgotPassword: React.FC = () => {
   return (
     <Box
       sx={{
-        fontFamily: 'Lexend, sans-serif',
+        fontFamily: "'Lexend', sans-serif",
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -131,7 +129,7 @@ const ForgotPassword: React.FC = () => {
               backgroundColor: '#FFFFFF',
               height: FORGOT_PASSWORD_CONSTANTS.INPUT_HEIGHT,
               padding: '0 16px',
-              fontFamily: 'Lexend, sans-serif',
+              fontFamily: "'Lexend', sans-serif",
               '& fieldset': {
                 borderColor: '#9AA8BC !important',
               },
