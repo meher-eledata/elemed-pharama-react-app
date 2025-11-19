@@ -36,11 +36,52 @@ export interface CreateUserResponse {
   };
 }
 
+export interface SendEmailTestRequest {
+  toEmail: string;
+  rawToken?: string; // Optional - backend will look up the token for the email address internally
+}
+
+// Response for sending email test
+export interface SendEmailTestResponse {
+  message: string;
+}
+
+export interface GetAllUsersResponse {
+  users: Array<{
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    status: string;
+    last_login: string | null;
+  }>;
+}
+
+export interface UpdateUserRoleRequest {
+  userId: number;
+  role: string; // 'admin' or 'pharmacist'
+}
+
+export interface UpdateUserRoleResponse {
+  message: string;
+  user: {
+    id: number;
+    role: string;
+  };
+}
+
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: baseQueryWithReauth,
   tagTypes: ['AdminUser'] as const,
   endpoints: (builder) => ({
+    getAllUsers: builder.query<GetAllUsersResponse, void>({
+      query: () => ({
+        url: 'admin/get-all-users',
+        method: 'GET',
+      }),
+      providesTags: ['AdminUser'],
+    }),
     createUser: builder.mutation<CreateUserResponse, CreateUserRequest>({
       query: (body) => ({
         url: 'admin/create-user',
@@ -49,9 +90,27 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ['AdminUser'],
     }),
+    sendEmailTest: builder.mutation<SendEmailTestResponse, SendEmailTestRequest>({
+      query: (body) => ({
+        url: 'admin/send-email-test',
+        method: 'POST',
+        body,
+      }),
+    }),
+    updateUserRole: builder.mutation<UpdateUserRoleResponse, UpdateUserRoleRequest>({
+      query: ({ userId, role }) => ({
+        url: `admin/update-user-role/${userId}`,
+        method: 'PUT',
+        body: { role },
+      }),
+      invalidatesTags: ['AdminUser'],
+    }),
   }),
 });
 
 export const {
+  useGetAllUsersQuery,
   useCreateUserMutation,
+  useSendEmailTestMutation,
+  useUpdateUserRoleMutation,
 } = adminApi;

@@ -10,6 +10,7 @@ import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { USERS_LABELS } from '../../config/label/Users.labels';
 import { USERS_CONSTANTS } from '../../config/constants/Users.constants';
 import AddUserModal from '../../components/Modal/AddUser/AddUserModal';
+import { useGetAllUsersQuery, useUpdateUserRoleMutation } from '../../redux/slices/adminSlice';
 
 interface User {
   id: number;
@@ -22,62 +23,57 @@ interface User {
 }
 
 const Users: React.FC = () => {
-  const [usersData, setUsersData] = useState<User[]>([
-    {
-      id: 1,
-      name: 'Alice Johnson',
-      email: 'alice.j@example.com',
-      role: 'Administrator',
-      status: 'Active',
-      lastLogin: '2024-07-28 10:30 AM',
-      avatar: 'A',
-    },
-    {
-      id: 2,
-      name: 'Bob Williams',
-      email: 'bob.w@example.com',
-      role: 'Editor',
-      status: 'Inactive',
-      lastLogin: '2024-07-20 02:15 PM',
-      avatar: 'B',
-    },
-    {
-      id: 3,
-      name: 'Charlie Brown',
-      email: 'charlie.b@example.com',
-      role: 'Viewer',
-      status: 'Active',
-      lastLogin: '2024-07-29 09:00 AM',
-      avatar: 'C',
-    },
-    {
-      id: 4,
-      name: 'Diana Miller',
-      email: 'diana.m@example.com',
-      role: 'Administrator',
-      status: 'Pending',
-      lastLogin: '2024-07-25 04:45 PM',
-      avatar: 'D',
-    },
-    {
-      id: 5,
-      name: 'Eve Davis',
-      email: 'eve.d@example.com',
-      role: 'Editor',
-      status: 'Active',
-      lastLogin: '2024-07-29 11:20 AM',
-      avatar: 'E',
-    },
-    {
-      id: 6,
-      name: 'Frank White',
-      email: 'frank.w@example.com',
-      role: 'Viewer',
-      status: 'Inactive',
-      lastLogin: '2024-07-22 01:00 PM',
-      avatar: 'F',
-    },
-  ]);
+  // Fetch users from API
+  const { data, isLoading, error, refetch } = useGetAllUsersQuery();
+  const [updateUserRole] = useUpdateUserRoleMutation();
+  
+  // Local state to track role updates (frontend only, not persisted to backend)
+  const [localRoleUpdates, setLocalRoleUpdates] = useState<Record<number, string>>({});
+
+  // Transform API response to match User interface
+  const usersData: User[] = useMemo(() => {
+    if (!data?.users) return [];
+    
+    return data.users.map((user) => {
+      // Get first letter of name for avatar
+      const avatar = user.name?.charAt(0).toUpperCase() || '?';
+      
+      // Format last_login date
+      let lastLogin = 'Never';
+      if (user.last_login) {
+        const date = new Date(user.last_login);
+        lastLogin = date.toLocaleString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+      }
+      
+      // Capitalize first letter of status
+      const status = user.status.charAt(0).toUpperCase() + user.status.slice(1);
+      
+      // Capitalize first letter of role
+      let role = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+      
+      // Apply local role update if exists (frontend only)
+      if (localRoleUpdates[user.id]) {
+        role = localRoleUpdates[user.id].charAt(0).toUpperCase() + localRoleUpdates[user.id].slice(1);
+      }
+      
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role,
+        status,
+        lastLogin,
+        avatar,
+      };
+    });
+  }, [data, localRoleUpdates]);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -110,9 +106,13 @@ const Users: React.FC = () => {
       const bValue = b[sortConfig.key as keyof User];
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
+        // Use natural sort (numeric-aware) for better sorting of names with numbers
+        // This will sort U1, U2, U3... U10 correctly instead of U1, U10, U2...
+        const compareResult = aValue.localeCompare(bValue, undefined, { 
+          numeric: true, 
+          sensitivity: 'base' 
+        });
+        return sortConfig.direction === 'asc' ? compareResult : -compareResult;
       }
       return 0;
     });
@@ -173,18 +173,19 @@ const Users: React.FC = () => {
                 }}
                 autoFocus
               >
-                <MenuItem value="Administrator">Administrator</MenuItem>
-                <MenuItem value="Editor">Editor</MenuItem>
-                <MenuItem value="Viewer">Viewer</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="pharmacist">Pharmacist</MenuItem>
               </Select>
               <IconButton 
                 size="small" 
                 onClick={() => {
-                  setUsersData(prevUsers => 
-                    prevUsers.map(u => 
-                      u.id === user.id ? { ...u, role: editedRole } : u
-                    )
-                  );
+                  // Update role in local state (frontend only, not persisted to backend)
+                  setLocalRoleUpdates(prev => ({
+                    ...prev,
+                    [user.id]: editedRole
+                  }));
+                  
+                  // Close edit mode
                   setEditingUserId(null);
                   setEditedRole('');
                 }}
@@ -276,7 +277,8 @@ const Users: React.FC = () => {
             size="small" 
             onClick={() => {
               setEditingUserId(user.id);
-              setEditedRole(user.role);
+              // Convert to lowercase to match dropdown values (admin/pharmacist)
+              setEditedRole(user.role.toLowerCase());
             }}
             sx={{ 
               color: USERS_CONSTANTS.ACTIONS.EDIT_COLOR,
@@ -323,6 +325,8 @@ const Users: React.FC = () => {
   };
 
   const handleUserCreated = () => {
+    // Refetch users list after creating a new user
+    refetch();
     // Optional: Refresh users list or perform other actions when user is created
     // This callback is called after successful user creation
   };

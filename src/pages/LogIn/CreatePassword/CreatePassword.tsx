@@ -25,7 +25,9 @@ const CreatePassword: React.FC = () => {
   
   // Determine if this is reset password or create password flow
   const isResetPassword = location.pathname === '/reset-password';
-  const isCreatePassword = location.pathname === '/create-password' || location.pathname === '/accept-invite';
+  const isCreatePassword = location.pathname === '/create-password' || 
+                           location.pathname === '/Create-password' || 
+                           location.pathname === '/accept-invite';
 
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);

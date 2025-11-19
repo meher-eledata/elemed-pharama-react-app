@@ -39,7 +39,7 @@ const PasswordLinkConfirmationDialog:React.FC<PasswordLinkConfirmationDialogProp
                 boxShadow:'0px 10px 40px rgba(0, 0, 0, 0.15)',
                     },
         }}
-        aria-labbelledby="password-link-dialog-title"
+        aria-labelledby="password-link-dialog-title"
         >
             <DialogTitle
             id="password-link-dialog-title"

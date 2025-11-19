@@ -276,7 +276,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   
-  // API hook
+  // API hooks
   const [createUser] = useCreateUserMutation();
   
   // Toast notification state
@@ -365,24 +365,22 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
   const handleConfirmSave = async () => {
     setIsCreatingUser(true);
     try {
-      // Transform the modal data to API request format
       const requestData = transformUserDataToRequest(formData);
+   
+      const createUserResponse = await createUser(requestData).unwrap();
       
-      // Call the API
-      await createUser(requestData).unwrap();
+      console.log('Create user response:', createUserResponse);
       
-      // Show success toast
-      showToast('User created successfully!', 'success');
+
+      showToast('User created successfully! Password setup link has been sent to the email.', 'success',);
       
       // Close dialogs
       setShowPasswordConfirmation(false);
       
-      // Call onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
       
-      // Close modal after a short delay to show toast
       setTimeout(() => {
         onClose();
         // Reset form
@@ -390,11 +388,26 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
       }, 1500);
       
     } catch (error: any) {
-      // Show error toast
-      const errorMessage = error?.data?.message || error?.message || 'Failed to create user. Please try again.';
+      console.error('Create user error:', error);
+      
+      let errorMessage = 'Failed to create user. Please try again.';
+      
+      if (error?.data) {
+        // Check for error message in data object
+        errorMessage = error.data.message || 
+                      error.data.error || 
+                      error.data.detail ||
+                      JSON.stringify(error.data);
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      if (error?.status) {
+        errorMessage = `Error ${error.status}: ${errorMessage}`;
+      }
+      
       showToast(errorMessage, 'error');
       
-      // Keep dialog open so user can retry
     } finally {
       setIsCreatingUser(false);
     }

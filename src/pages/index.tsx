@@ -32,6 +32,7 @@ export const Pages = () => {
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="reset-password" element={<CreatePassword />} />
         <Route path="create-password" element={<CreatePassword />} />
+        <Route path="Create-password" element={<CreatePassword />} />
         <Route path="accept-invite" element={<CreatePassword />} />
       </Route>
 

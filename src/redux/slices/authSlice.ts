@@ -65,11 +65,10 @@ export const authApi = createApi({
                 body,
             }),
         }),
-        // Create Password endpoint for new user setup (endpoint not ready yet)
-        // When backend implements this, it should accept: { token: string, password: string }
+        
         createPassword: builder.mutation<CreatePasswordResponse, CreatePasswordRequest>({
             query: (body) => ({
-                url: 'create-password',
+                url: 'create-new-password',
                 method: 'POST',
                 body,
             }),
@@ -150,7 +149,6 @@ export const authSlice = createSlice({
             state.user = action.payload.user;
             state.isAuthenticated = true;
             
-            // Persist to localStorage
             saveAuthToStorage(action.payload.token, action.payload.user);
         },
         logout: (state) => {
@@ -158,7 +156,6 @@ export const authSlice = createSlice({
             state.user = null;
             state.isAuthenticated = false;
             
-            // Remove from localStorage
             removeAuthFromStorage();
         },
     },
