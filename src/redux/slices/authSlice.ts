@@ -5,7 +5,6 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 const TOKEN_KEY = 'pharma_auth_token';
 const USER_KEY = 'pharma_user';
 
-
 const loadAuthFromStorage = () => {
   try {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -13,28 +12,23 @@ const loadAuthFromStorage = () => {
     const user = userStr ? JSON.parse(userStr) : null;
     return { token, user };
   } catch (error) {
-    console.error('Failed to load auth from storage:', error);
     return { token: null, user: null };
   }
 };
-
 
 const saveAuthToStorage = (token: string, user: User) => {
   try {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   } catch (error) {
-    console.error('Failed to save auth to storage:', error);
   }
 };
-
 
 const removeAuthFromStorage = () => {
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
   } catch (error) {
-    console.error('Failed to remove auth from storage:', error);
   }
 };
 
@@ -53,14 +47,14 @@ export const authApi = createApi({
         }),
         passwordRecovery: builder.mutation<PasswordRecoveryResponse, PasswordRecoveryRequest>({
             query: (body) => ({
-                url: 'password-recovery',
+                url: 'send-password-change-email',
                 method: 'POST',
                 body,
             }),
         }),
         resetPassword: builder.mutation<ResetPasswordResponse, ResetPasswordRequest>({
             query: (body) => ({
-                url: 'reset-password',
+                url: 'create-new-password',
                 method: 'POST',
                 body,
             }),
@@ -84,6 +78,7 @@ export interface User {
     email: string;
     first_name: string;
     last_name: string;
+    role?: string;
 }
 
 interface LoginResponse {
@@ -102,7 +97,7 @@ interface PasswordRecoveryRequest {
 
 interface PasswordRecoveryResponse {
     message: string;
-    dev_reset_token?: string; // Only in development
+    dev_reset_token?: string;
 }
 
 interface ResetPasswordRequest {

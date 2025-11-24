@@ -38,7 +38,20 @@ const ForgotPassword: React.FC = () => {
         // User should check their email and click the reset link
         // The link will redirect them to /reset-password?token=xxx
       } catch (error: any) {
-        setErrorMessage(error?.data?.message || FORGOT_PASSWORD_LABELS.ERROR_MESSAGE);
+        console.error('Password recovery error:', error);
+        let errorMsg = FORGOT_PASSWORD_LABELS.ERROR_MESSAGE;
+        
+        if (error?.status === 404) {
+          errorMsg = 'Password reset endpoint not found. Please contact support or check if the backend server is running.';
+        } else if (error?.data?.message) {
+          errorMsg = error.data.message;
+        } else if (error?.data?.error) {
+          errorMsg = error.data.error;
+        } else if (error?.message) {
+          errorMsg = error.message;
+        }
+        
+        setErrorMessage(errorMsg);
         setShowError(true);
       }
     }

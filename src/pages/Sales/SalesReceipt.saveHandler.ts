@@ -2,6 +2,7 @@ import { Customer } from '../../redux/slices/salesApi';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage } from '../../utils/cartStorage';
+import { extractErrorMessage, logError } from '../../utils/errorUtils';
 
 interface ExecuteSaveParams {
   customerName: string;
@@ -61,7 +62,6 @@ export const executeSave = async ({
   navigate,
 }: ExecuteSaveParams): Promise<void> => {
   try {
-    // Validate that we have customer name and mobile
     if (!customerName || !customerName.trim()) {
       showToast('Please enter or select a customer name', 'warning');
       return;
@@ -72,18 +72,11 @@ export const executeSave = async ({
       return;
     }
 
-    // Backend requires customer_id to be a number
-    // Since we don't have endpoints to get customer IDs, we always send 0
-    // The backend should use customer_name and customer_mobile to identify/create the customer
     let customerId: number = 0;
     
-    // Only use ID if we already have it from selectedCustomer (e.g., from add-customer response)
     if (selectedCustomer && selectedCustomer.id && selectedCustomer.id > 0) {
       customerId = selectedCustomer.id;
-      console.log('👤 Using customer ID from selectedCustomer:', customerId);
     } else {
-      console.log('👤 No customer ID available - will send customer_id = 0');
-      console.log('👤 Backend should use customer_name and customer_mobile to identify customer');
     }
 
     if (salesItems.length === 0) {
@@ -118,10 +111,7 @@ export const executeSave = async ({
       const productId = getProductIdFromName(item.productName, apiProducts);
       
       if (!productId) {
-        console.error('❌ Product ID not found for:', item.productName);
-        console.error('❌ Available products:', apiProducts.map(p => 
-          Array.isArray(p) ? p[0] : p.name
-        ));
+        logError(`Product ID not found for: ${item.productName}`, 'SalesReceipt');
         throw new Error(`Product ID not found for product: "${item.productName}". Please check if the product name matches exactly.`);
       }
 
@@ -133,11 +123,8 @@ export const executeSave = async ({
         discount: parseFloat(item.discountPercent || '0') / 100,
       };
       
-      console.log('📦 Line item:', lineItem);
       return lineItem;
     });
-    
-    console.log('📋 Total lines to submit:', lines.length);
 
     const submitSalePayload = {
       quantity: totalQuantity,
@@ -145,29 +132,18 @@ export const executeSave = async ({
       payment_method: paymentMode || 'Cash',
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
-      customer_id: customerId, // Always send customer_id (0 if not found)
-      customer_name: customerName.trim(), // Always send name
-      customer_mobile: customerMobile.trim(), // Always send mobile
+      customer_id: customerId,
+      customer_name: customerName.trim(),
+      customer_mobile: customerMobile.trim(),
       lines: lines,
     };
-    
-    console.log('🚀 Submitting sale to /sales/submit-sale');
-    console.log('📦 Payload:', JSON.stringify(submitSalePayload, null, 2));
     
     let result;
     try {
       result = await submitSale(submitSalePayload).unwrap();
-      
-      console.log('✅ Sale submitted successfully!');
-      console.log('📄 Invoice ID:', result.invoice_id);
-      console.log('📋 Invoice Lines:', result.lines.length);
-      console.log('💬 Message:', result.message);
     } catch (submitError: any) {
-      console.error('❌ Submit sale error:', submitError);
-      console.error('❌ Error status:', submitError?.status);
-      console.error('❌ Error data:', submitError?.data);
-      console.error('❌ Error message:', submitError?.message);
-      throw submitError; // Re-throw to be caught by outer catch
+      logError(submitError, 'SalesReceipt.submitSale');
+      throw submitError;
     }
     
     const historyItem = {
@@ -198,32 +174,10 @@ export const executeSave = async ({
     setTimeout(() => {
       navigate('/sales/sale-history');
     }, 1500);
-  } catch (error: any) {
-    console.error('❌ Error saving receipt:', error);
-    console.error('❌ Error type:', typeof error);
-    console.error('❌ Error keys:', Object.keys(error || {}));
-    console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+  } catch (error: unknown) {
+    logError(error, 'SalesReceipt.executeSave');
     
-    // Extract error message from various possible locations
-    let errorMessage = 'Failed to save receipt. Please try again.';
-    
-    if (error?.data) {
-      // RTK Query error format
-      if (typeof error.data === 'string') {
-        errorMessage = error.data;
-      } else if (error.data?.message) {
-        errorMessage = error.data.message;
-      } else if (error.data?.error) {
-        errorMessage = error.data.error;
-      }
-    } else if (error?.message) {
-      errorMessage = error.message;
-    } else if (typeof error === 'string') {
-      errorMessage = error;
-    }
-    
-    // Show detailed error in console for debugging
-    console.error('📝 Final error message to show user:', errorMessage);
+    const errorMessage = extractErrorMessage(error, 'Failed to save receipt. Please try again.');
     
     showToast(errorMessage, 'error');
   }

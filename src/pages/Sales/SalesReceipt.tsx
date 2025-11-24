@@ -680,13 +680,14 @@ const SalesReceipt: React.FC = () => {
             invoiceDate={invoiceDate}
             onPaymentModeChange={setPaymentMode}
             onInsuranceCompanyChange={setInsuranceCompany}
+            onInvoiceNumberChange={setInvoiceNumber}
+            onInvoiceDateChange={setInvoiceDate}
           />
         </CustomerDoctorSection>
 
         <Box sx={{ 
           marginTop: '8px',
-          width: '100%',
-          overflow: 'hidden'
+          width: '100%'
         }}>
           <Box sx={{ 
             display: 'flex', 

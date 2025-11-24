@@ -1,5 +1,6 @@
 import { Customer } from '../../redux/slices/salesApi';
-import { validateCustomerData, transformCustomerDataToApiPayload, extractErrorMessage } from './SalesReceipt.handlers';
+import { validateCustomerData, transformCustomerDataToApiPayload } from './SalesReceipt.handlers';
+import { extractErrorMessage, logError } from '../../utils/errorUtils';
 
 interface HandleCustomerSubmitParams {
   customerData: any;
@@ -47,9 +48,9 @@ export const handleCustomerSubmit = async ({
     showToast(`Customer "${newCustomer.name}" added successfully!`, 'success');
     onClose();
     
-  } catch (error: any) {
-    console.error('❌ Error adding customer:', error);
-    const errorMessage = extractErrorMessage(error);
+  } catch (error: unknown) {
+    logError(error, 'SalesReceipt.handleCustomerSubmit');
+    const errorMessage = extractErrorMessage(error, 'Failed to add customer. Please try again.');
     showToast(errorMessage, 'error');
   }
 };

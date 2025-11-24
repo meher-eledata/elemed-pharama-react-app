@@ -22,6 +22,7 @@ import {
   useGetExpiredStockQuery,
   useGetInventorySummaryQuery,
 } from '../../redux/slices/inventoryApi';
+import { extractErrorMessage } from '../../utils/errorUtils';
 
 
 import type { InventoryItem as RTKInventoryItem } from '../../redux/slices/inventoryApi';
@@ -460,9 +461,6 @@ const InventoryModule: React.FC = () => {
               open={isNewProductModalOpen}
               onClose={() => setIsNewProductModalOpen(false)}
               onProductAdded={() => {
-                // The inventory queries will automatically refetch due to RTK Query cache invalidation
-                // No additional action needed here as the queries use providesTags: ["Inventory"]
-                console.log('New product added - inventory data will refresh automatically');
               }}
             />
 
@@ -590,12 +588,7 @@ const InventoryModule: React.FC = () => {
       ) : error ? (
         <Box p={4} textAlign="center" color="error.main">
           <Typography variant="body1">
-            {INVENTORY_LABELS.error}{' '}
-            {isFetchBaseQueryError(error)
-              ? `Status: ${error.status} - ${JSON.stringify(error.data)}`
-              : isErrorWithMessage(error)
-                ? error.message
-                : 'An unknown error occurred'}
+            {extractErrorMessage(error, 'Failed to load inventory data. Please try again.')}
           </Typography>
         </Box>
       ) : (

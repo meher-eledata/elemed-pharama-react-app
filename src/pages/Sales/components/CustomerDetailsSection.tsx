@@ -53,13 +53,18 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
 }) => {
   return (
     <CustomerDetailsColumn>
-      <Box sx={{ position: 'relative', marginBottom: '8px' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        marginBottom: '8px',
+        gap: '12px'
+      }}>
         <Typography sx={{ 
           fontFamily: "'Lexend', sans-serif", 
           fontWeight: 600, 
           fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION, 
           color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY,
-          marginBottom: '8px'
+          marginBottom: 0
         }}>
           {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
         </Typography>
@@ -69,13 +74,12 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           size="small"
           startIcon={<AddIcon sx={{ color: '#FFFFFF', fontSize: '19.5px' }} />}
           sx={{
-            position: 'absolute',
-            top: '0px',
-            right: '0px',
             width: '180px',
             height: '35px',
             fontSize: '12px',
             padding: '6px 16px',
+            flexShrink: 0,
+            marginLeft: '20px',
           }}
         >
           {SALES_RECEIPT_LABELS.ADD_NEW_CUSTOMER_BUTTON}
@@ -133,7 +137,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                 width: `${SALES_RECEIPT_CONSTANTS.CUSTOMER_NAME_WIDTH}px`,
                 '& .MuiOutlinedInput-root': {
                   height: '48px',
-                  borderRadius: '12px',
+                  borderRadius: '8px',
                   backgroundColor: '#FFFFFF',
                   '& fieldset': {
                     borderColor: '#9AA8BC',
@@ -226,7 +230,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     height: '48px',
-                    borderRadius: '12px',
+                    borderRadius: '8px',
                     backgroundColor: '#FFFFFF',
                     '& fieldset': {
                       borderColor: '#9AA8BC',
@@ -307,7 +311,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
               sx={{
                 '& .MuiOutlinedInput-root': {
                   height: '48px',
-                  borderRadius: '12px',
+                  borderRadius: '8px',
                   backgroundColor: '#FFFFFF',
                   '& fieldset': {
                     borderColor: '#9AA8BC',

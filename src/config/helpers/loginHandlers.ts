@@ -32,7 +32,19 @@ export const handleLoginEffect = ({
     setSnackbarMessage(LOGIN_LABELS.SUCCESS_MESSAGE);
     setSnackbarSeverity("success");
     setSnackbarOpen(true);
-    // setTimeout(() => navigate("/inventory"), LOGIN_CONSTANTS.REDIRECT_DELAY);
+
+    const userRole = data?.user?.role;
+    const isAdmin =
+      userRole === 0 ||
+      userRole === '0' ||
+      (typeof userRole === 'string' && userRole.trim().toLowerCase() === 'admin');
+
+    if (isAdmin) {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
+
     return;
   }
 

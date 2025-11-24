@@ -1,5 +1,6 @@
 import { Customer } from '../../redux/slices/salesApi';
 import { SalesReceiptItem } from './SalesReceipt.types';
+import { extractErrorMessage as extractErrorFromUtils } from '../../utils/errorUtils';
 
 /**
  * Validate customer data from modal
@@ -77,35 +78,12 @@ export const transformCustomerDataToApiPayload = (customerData: any) => {
 
 /**
  * Extract error message from API error
+ * @deprecated Use extractErrorMessage from '../../utils/errorUtils' instead
+ * This function is kept for backward compatibility but will be removed in future versions
  */
-export const extractErrorMessage = (error: any): string => {
-  let errorMessage = 'Failed to add customer';
-  let errorDetails = '';
-  
-  if (error?.data) {
-    if (error.data.error) {
-      errorMessage = error.data.error;
-      
-      if (error.data.fields && Array.isArray(error.data.fields)) {
-        errorDetails = ` Fields: ${error.data.fields.join(', ')}`;
-      }
-      
-      if (error.data.details && Array.isArray(error.data.details)) {
-        const detailMessages = error.data.details.map((d: any) => `${d.field}: ${d.message}`).join(', ');
-        errorDetails = ` Details: ${detailMessages}`;
-      }
-    } else if (error.data.message) {
-      errorMessage = error.data.message;
-    } else if (typeof error.data === 'string') {
-      errorMessage = error.data;
-    }
-  } else if (error?.message) {
-    errorMessage = error.message;
-  } else if (typeof error === 'string') {
-    errorMessage = error;
-  }
-  
-  return errorMessage + errorDetails;
+export const extractErrorMessage = (error: unknown): string => {
+  // Re-export from centralized utility for backward compatibility
+  return extractErrorFromUtils(error, 'Failed to add customer');
 };
 
 /**

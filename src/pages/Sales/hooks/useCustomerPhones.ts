@@ -53,7 +53,6 @@ export const useCustomerPhones = ({
             }
           }
         } catch (error) {
-          console.error('❌ Error fetching customer phones:', error);
           onPhoneFetched([]);
         }
       } else {

@@ -3,24 +3,24 @@ export const ADMIN_LABELS = {
   SUBTITLE: 'Access key administrative functions and system insights..',
   SECTIONS: {
     USER_MGMT: {
-      TITLE: 'User Accounts',
-      DESC: 'Oversee user profiles, roles, permissions controls within system.',
+      TITLE: 'User Account Management',
+      DESC: 'Oversee user profiles, roles, permissions, s controls within the system.',
       ACTION: 'Manage Users',
     },
     REPORTS: {
-      TITLE: 'Performance',
-      DESC: 'Access detailed analytics on perform usage on activity trends.',
+      TITLE: 'System Performance Reports',
+      DESC: 'Access detailed analytics on system usage, p e metrics, and activity trends.',
       ACTION: 'View Reports',
     },
     AUDIT: {
-      TITLE: 'Activity Log',
-      DESC: 'Access comprehensive log of all changes, activities, and activity trends.',
-      ACTION: 'Manage Users',
+      TITLE: 'User Activity Log',
+      DESC: 'Review a comprehensive log of all changes and activities related to user accounts.',
+      ACTION: 'View Log',
     },
     SETTINGS: {
       TITLE: 'System Settings',
-      DESC: 'Access detailed analytics on system usage, parameters, and activity trends.',
-      ACTION: 'View Reports',
+      DESC: 'Configure application-wide parameters, default preferences, and operational controls.',
+      ACTION: 'Adjust Settings',
     },
   },
 } as const;

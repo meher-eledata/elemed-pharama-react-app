@@ -95,6 +95,12 @@ export const printStyles = `
 `;
 
 export const fieldStyles = `
+  body, html {
+    overflow-x: hidden !important;
+  }
+  #sales-receipt-content {
+    overflow-x: hidden !important;
+  }
   .phone-no-field .MuiOutlinedInput-root,
   .city-field .MuiOutlinedInput-root {
     background-color: #FFFFFF !important;
@@ -110,6 +116,20 @@ export const fieldStyles = `
   .phone-no-field .MuiInputBase-input,
   .city-field .MuiInputBase-input {
     background-color: #FFFFFF !important;
+  }
+  .css-1sampav {
+    margin-left: -1px !important;
+  }
+  .css-11fq6m1 {
+    margin-right: 20px !important;
+  }
+  .css-kpoye4-MuiFormControl-root-MuiPickersTextField-root .MuiOutlinedInput-root,
+  .css-kpoye4-MuiFormControl-root-MuiPickersTextField-root .MuiPickersInputBase-root {
+    border-radius: 8px !important;
+  }
+  .css-kpoye4-MuiFormControl-root-MuiPickersTextField-root .MuiOutlinedInput-root fieldset,
+  .css-kpoye4-MuiFormControl-root-MuiPickersTextField-root .MuiPickersInputBase-root fieldset {
+    border-radius: 8px !important;
   }
 `;
 

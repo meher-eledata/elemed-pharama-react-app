@@ -130,7 +130,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigationPaymentVendor = (location.state as any)?.paymentVendor || "";
   const navigationInvoiceDate = (location.state as any)?.invoiceDate || "";
   
-  // Initialize form fields based on edit mode or new order
   const [supplierName, setSupplierName] = useState<string>(
     isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier
   );
@@ -138,7 +137,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     isEditMode && selectedOrder ? selectedOrder.poNo : selectedPO
   );
 
-  // Save functionality states
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -154,29 +152,22 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     paymentMethod: 'Cash',
   });
   
-  // Delete functionality states
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<boolean>(false);
 
-  // Start with empty table - rows will be added when products are selected
   const [pharmaTableData, setPharmaTableData] = useState<PharmaTableRow[]>([]);
 
-  // State for tracking editing rows
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<PharmaTableRow>>({});
   
-  // State to track if a product was selected from dropdown
   const [isProductSelected, setIsProductSelected] = useState<boolean>(false);
   
-  // State for delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [rowToDeleteId, setRowToDeleteId] = useState<string | null>(null);
   
-  // State for receipt delete confirmation dialog
   const [isReceiptDeleteDialogOpen, setIsReceiptDeleteDialogOpen] = useState<boolean>(false);
 
-  // Reusable input field styles
   const inputFieldStyles = {
     '& .MuiOutlinedInput-root': {
       height: '32px',
@@ -201,7 +192,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     },
   };
 
-  // Reusable number input field styles (includes spinner removal)
   const numberInputStyles = {
     ...inputFieldStyles,
     '& input[type=number]': {
@@ -219,17 +209,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   };
 
-  // Direct API state for supplier names
   const [supplierOptions, setSupplierOptions] = useState<{supplier_name: string, supplier_id: number}[]>([]);
   const [isSuppliersLoading, setIsSuppliersLoading] = useState<boolean>(false);
   const [suppliersError, setSuppliersError] = useState<string | null>(null);
 
-  // API state for products by supplier
   const [productOptions, setProductOptions] = useState<string[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(false);
   const [productsError, setProductsError] = useState<string | null>(null);
 
-  // Direct API call for supplier names
   const fetchSupplierNames = async () => {
     try {
       setIsSuppliersLoading(true);
@@ -239,8 +226,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // Add authorization header if needed
-          // 'Authorization': `Bearer ${token}`
         },
       });
 
@@ -249,22 +234,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const data = await response.json();
-      // Ensure data is always an array
-      // Set data synchronously to avoid test timeouts
       setSupplierOptions(Array.isArray(data) ? data : []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch suppliers';
       setSuppliersError(errorMessage);
       setSupplierOptions([]);
     } finally {
-      // Use startTransition only for loading state to reduce act() warnings
       startTransition(() => {
         setIsSuppliersLoading(false);
       });
     }
   };
 
-  // Function to fetch ALL products (not filtered by supplier)
   const fetchAllProducts = async () => {
     try {
       setIsProductsLoading(true);
@@ -283,138 +264,104 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       const products = await response.json();
       
-      // Extract product names from the response - API returns array of [name, id] arrays
       const productNames = products
         .filter((product: any) => product && Array.isArray(product) && product.length >= 2)
-        .map((product: any) => product[0]) // First element is the product name
+        .map((product: any) => product[0])
         .filter((name: string) => name && name.trim() !== '');
       
-      // Set data synchronously to avoid test timeouts
       setProductOptions(productNames);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
       setProductsError(errorMessage);
       setProductOptions([]);
     } finally {
-      // Use startTransition only for loading state to reduce act() warnings
       startTransition(() => {
         setIsProductsLoading(false);
       });
     }
   };
 
-  // Retry function for failed API calls
   const retryFetchSuppliers = () => {
     fetchSupplierNames();
   };
 
-  // Function to transform form data to API payload for NEW receipts
   const transformFormDataToApiPayload = () => {
-    // Find supplier ID from supplier options
     const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
 
-    if (import.meta.env.DEV) {
-      console.log('🔍 Supplier data:', { selectedSupplierData, isExistingSupplier, supplierName });
-    }
-
-    // Transform table data to lines format
     const lines = pharmaTableData.map((row, index) => {
-      // Handle expiry date formatting
       let expiryDate: string = '';
       if (row.batch && row.batch.trim() !== '') {
         try {
-          // Try to parse the date in DD/MM/YYYY format
           const parsedDate = dayjs(row.batch, 'DD/MM/YYYY');
           if (parsedDate.isValid()) {
             expiryDate = parsedDate.format('YYYY-MM-DD');
           } else {
-            // Try other common date formats
             const altParsedDate = dayjs(row.batch);
             if (altParsedDate.isValid()) {
               expiryDate = altParsedDate.format('YYYY-MM-DD');
             } else {
-              if (import.meta.env.DEV) {
-                console.warn(`⚠️ Invalid date format for row ${index + 1}:`, row.batch);
-              }
-              expiryDate = ''; // Send empty string instead of null
+              expiryDate = '';
             }
           }
         } catch (error) {
-          if (import.meta.env.DEV) {
-            console.warn(`⚠️ Date parsing error for row ${index + 1}:`, error);
-          }
           expiryDate = '';
         }
       }
 
       const line = {
         product: row.productId,
-        product_id: null as number | null, // Let backend handle product ID assignment
+        product_id: null as number | null,
         received_qty: Number(row.qtyReceived) || 0,
         free_qty: Number(row.qtyFree) || 0,
-        expiry_date: expiryDate, // Properly formatted date or empty string
+        expiry_date: expiryDate,
         unit_price: Number(row.pp) || 0,
-        cgst: Number(row.sp) || 0, // Using sp field for CGST
-        sgst: Number(row.mrp) || 0, // Using mrp field for SGST
-        igst: Number(row.cgst) || 0, // Using cgst field for IGST
-        discount: Number(row.sgst) || 0 // Using sgst field for discount
+        cgst: Number(row.sp) || 0,
+        sgst: Number(row.mrp) || 0,
+        igst: Number(row.cgst) || 0,
+        discount: Number(row.sgst) || 0
       };
-      if (import.meta.env.DEV) {
-        console.log(`📦 Line ${index + 1}:`, line);
-      }
       return line;
     });
 
     const payload = {
       supplier_name: supplierName.trim(),
-      // Only include supplier_id if it's an existing supplier
       ...(isExistingSupplier && { supplier_id: selectedSupplierData.supplier_id }),
       po_number: poNumber.trim(),
       payment_method: paymentMethod || 'Cash',
       payment_vendor: paymentVendor.trim(),
       transaction_number: transactionNumber.trim(),
-      notes: "", // Add notes field if needed
-      created_by: "meher", // You might want to get this from user context
+      notes: "",
+      created_by: "meher",
       lines: lines
     };
 
-    if (import.meta.env.DEV) {
-      console.log('📋 Final payload:', payload);
-    }
     return payload;
   };
 
-  // Function to detect changes between original and current data
   const detectChanges = () => {
     const originalIds = new Set(originalReceiptLines.map(row => row.id));
     const currentIds = new Set(pharmaTableData.map(row => row.id));
     
-    // Helper function to check if an ID is a database ID (numeric) or a new product ID (timestamp)
     const isDatabaseId = (id: string | undefined) => {
       if (!id) return false;
-      // Database IDs are numeric, new product IDs are timestamps (long numbers)
-      return /^\d+$/.test(id) && parseInt(id) < 1000000000000; // Timestamps are > 1000000000000
+      return /^\d+$/.test(id) && parseInt(id) < 1000000000000;
     };
     
-    // Find deleted lines (in original but not in current)
     const deleted = originalReceiptLines
       .filter(originalRow => !currentIds.has(originalRow.id))
       .map(row => ({ receipt_line_id: parseInt(row.id || '0') }));
     
-    // Find added lines (in current but not in original, or new products with timestamp IDs)
     const added = pharmaTableData
       .filter(currentRow => {
-        // If it's not in original IDs, it's either deleted and re-added, or truly new
         if (!originalIds.has(currentRow.id)) return true;
-        // If it has a timestamp ID, it's a new product
         if (currentRow.id && !isDatabaseId(currentRow.id)) return true;
         return false;
       })
       .map(row => ({
         product: row.productId,
-        product_id: 101, // This might need to be adjusted based on your data structure
-        received_qty: row.qtyReceived,
+      product_id: 101,
+      received_qty: row.qtyReceived,
         free_qty: row.qtyFree,
         expiry_date: row.batch,
         unit_price: row.pp,
@@ -424,16 +371,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         discount: typeof row.sgst === 'number' ? row.sgst : 0
       }));
     
-    // Find edited lines (in both original and current, with database IDs, and with different values)
     const edited = pharmaTableData
       .filter(currentRow => {
-        // Must be a database ID (not a new product)
         if (!isDatabaseId(currentRow.id)) return false;
         
         const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
         if (!originalRow) return false;
         
-        // Check if any field has changed
         return (
           originalRow.productId !== currentRow.productId ||
           originalRow.qtyReceived !== currentRow.qtyReceived ||
@@ -448,9 +392,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       })
       .map(row => ({
         receipt_line_id: parseInt(row.id || '0'),
-        po_line_id: parseInt(row.id || '0'), // This might need to be adjusted based on your data structure
-        batch_id: 1, // This might need to be adjusted based on your data structure
-        product_id: 101, // This might need to be adjusted based on your data structure
+        po_line_id: parseInt(row.id || '0'),
+        batch_id: 1,
+        product_id: 101,
         product_name: row.productId,
         received_qty: row.qtyReceived,
         free_qty: row.qtyFree,
@@ -464,13 +408,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return { deleted, added, edited };
   };
 
-  // Function to transform form data to EDIT payload for existing receipts
   const transformFormDataToEditPayload = () => {
-    // Find supplier ID from supplier options
     const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
     const supplierId = selectedSupplierData ? selectedSupplierData.supplier_id : 0;
 
-    // Detect what actually changed
     const { deleted, added, edited } = detectChanges();
 
     const payload = {
@@ -517,8 +458,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          // Add authorization header if needed
-          // 'Authorization': `Bearer ${token}`
         },
       });
 
@@ -528,7 +467,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       setDeleteSuccess(true);
       
-      // Invalidate cache to refresh data
       dispatch(receiveApi.util.invalidateTags(['Receive']));
       
       setTimeout(() => {
@@ -579,24 +517,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (isEditMode && receiptId) {
         // Use editReceipt API for existing receipts (Edit Receive Flow)
         const editPayload = transformFormDataToEditPayload();
-        if (import.meta.env.DEV) {
-          console.log('📝 Edit payload:', editPayload);
-        }
         result = await editReceipt(editPayload).unwrap();
       } else {
         // Use submitReceipt API for new receipts (Add Receive Flow)
         const submitPayload = transformFormDataToApiPayload();
-        if (import.meta.env.DEV) {
-          console.log('📤 Submit payload:', submitPayload);
-          console.log('🌐 API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/');
-        }
         
         try {
           result = await submitReceipt(submitPayload).unwrap();
         } catch (rtkError) {
-          if (import.meta.env.DEV) {
-            console.warn('⚠️ RTK Query failed, trying direct fetch:', rtkError);
-          }
           
           // Fallback to direct fetch if RTK Query fails
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
@@ -604,8 +532,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              // Add authorization header if needed
-              // 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(submitPayload)
           });
@@ -616,17 +542,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           }
 
           result = await response.json();
-          if (import.meta.env.DEV) {
-            console.log('✅ Direct fetch successful:', result);
-          }
         }
       }
       
-      if (import.meta.env.DEV) {
-        console.log('✅ Receipt operation successful:', result);
-      }
-      
-      // Store PO number locally for display (temporary fix until backend returns receipt data)
       if (!isEditMode) {
         const receiptData = {
           poNumber: poNumber,
@@ -634,14 +552,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           timestamp: new Date().toISOString()
         };
         localStorage.setItem('lastReceiptData', JSON.stringify(receiptData));
-        if (import.meta.env.DEV) {
-          console.log('💾 Stored receipt data locally:', receiptData);
-        }
       }
       
       setSaveSuccess(true);
       
-      // Reset form after successful save and navigate back to main page
       setTimeout(() => {
         setPharmaTableData([]);
         setFindProductTerm("");
@@ -658,18 +572,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }, 2000);
 
     } catch (error: any) {
-      if (import.meta.env.DEV) {
-        console.error('❌ Receipt submission error:', error);
-        console.error('❌ Error details:', {
-          status: error?.status,
-          data: error?.data,
-          message: error?.message,
-          originalStatus: error?.originalStatus,
-          error: error?.error
-        });
-      }
-      
-      // More detailed error handling
       let errorMessage = 'Failed to submit receipt';
       
       if (error?.data) {
@@ -694,11 +596,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   };
 
-
-  // Function to add new product to table
   const addProductToTable = (productName: string) => {
     const newProduct: PharmaTableRow = {
-      id: Date.now().toString(), // Simple ID generation
+      id: Date.now().toString(),
       productId: productName,
       qtyReceived: 0,
       qtyFree: 0,
@@ -718,7 +618,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setPharmaTableData(prev => [...prev, newProduct]);
     setEditingRowId(newProduct.id!);
     setEditingData(newProduct);
-    // Reset the product selected state since we're clearing the field
     setIsProductSelected(false);
   };
 
@@ -802,12 +701,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return hasValidProducts;
   };
 
-  // Function to check if a specific product row is complete
   const isProductRowComplete = (row: PharmaTableRow) => {
     const hasProductName = row.productId && row.productId.trim() !== '';
     const hasValidQuantity = row.qtyReceived && row.qtyReceived > 0;
     
-    // Check if expiry date is valid (if provided)
     let hasValidExpiryDate = true;
     if (row.batch && row.batch.trim() !== '') {
       const parsedDate = dayjs(row.batch, 'DD/MM/YYYY');
@@ -817,13 +714,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return hasProductName && hasValidQuantity && hasValidExpiryDate;
   };
 
-  // Function to check if any changes have been made (for edit mode)
   const hasFormChanges = useMemo(() => {
     if (!isEditMode) {
-      return true; // In add mode, always allow save if validation passes
+      return true;
     }
 
-    // Check if form fields have changed
     const formFieldsChanged = 
       supplierName !== originalFormValues.supplierName ||
       poNumber !== originalFormValues.poNumber ||
@@ -832,7 +727,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       paymentVendor !== originalFormValues.paymentVendor ||
       paymentMethod !== originalFormValues.paymentMethod;
 
-    // Check if table data has changed
     const tableDataChanged = JSON.stringify(pharmaTableData) !== JSON.stringify(originalReceiptLines);
 
     return formFieldsChanged || tableDataChanged;
@@ -902,12 +796,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         return;
       }
       
-      // Hide close icon when clicking outside
       setIsFindProductFocused(false);
       setIsFindProductHovered(false);
     };
 
-    // Add event listener when component is mounted
     document.addEventListener('mousedown', handleClickOutside);
     
     return () => {
@@ -915,63 +807,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     };
   }, []);
 
-  // Debug function to test API connectivity
-  const testApiConnection = async () => {
-    try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-      if (import.meta.env.DEV) {
-        console.log('🧪 Testing API connection to:', apiBaseUrl);
-      }
-      
-      const response = await fetch(`${apiBaseUrl}receive/unique-supplier-names`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (import.meta.env.DEV) {
-          console.log('✅ API connection successful:', data);
-        }
-        return true;
-      } else {
-        if (import.meta.env.DEV) {
-          console.error('❌ API connection failed:', response.status, response.statusText);
-        }
-        return false;
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('❌ API connection error:', error);
-      }
-      return false;
-    }
-  };
-
-  // Expose debug function to window for console testing
-  useEffect(() => {
-    (window as any).testReceiveApi = testApiConnection;
-    (window as any).debugReceivePayload = transformFormDataToApiPayload;
-    (window as any).debugCurrentForm = () => ({
-      supplierName,
-      poNumber,
-      pharmaTableData,
-      paymentMethod,
-      paymentVendor,
-      transactionNumber
-    });
-  }, [supplierName, poNumber, pharmaTableData, paymentMethod, paymentVendor, transactionNumber]);
-
-  // Debug PO number changes (only in development)
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('📋 PO Number updated:', poNumber);
-    }
-  }, [poNumber]);
-
-  // Load existing receipt data when in edit mode
   useEffect(() => {
     if (isEditMode && receiptId) {
       fetchReceiptLines();
@@ -1000,10 +835,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const receiptLinesData = await response.json();
-      // Ensure receiptLines is always an array
       const receiptLines = Array.isArray(receiptLinesData) ? receiptLinesData : [];
       
-      // Initialize transaction_number and payment_vendor from first receipt line if available
       if (receiptLines && receiptLines.length > 0) {
         const firstLine = receiptLines[0];
         if (firstLine.transaction_number) {
@@ -1017,7 +850,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           setPaymentVendor(navigationPaymentVendor);
         }
       } else {
-        // Fallback to navigation state if no receipt lines
         if (navigationTransactionNumber) {
           setTransactionNumber(navigationTransactionNumber);
         }
@@ -1026,14 +858,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }
       }
       
-      // Initialize invoice date from navigation state (since it's not in receipt lines)
-      // Only use received date if invoice_date is truly missing (not empty string)
       if (navigationInvoiceDate && navigationInvoiceDate.trim() !== '') {
         setInvoiceDate(navigationInvoiceDate);
       }
-      // Don't auto-fill from received date - let user fill it manually if needed
       
-      // Transform API response to PharmaTableRow format
       const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => ({
         id: line.receipt_line_id?.toString() || line.id?.toString() || index.toString(),
         productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
@@ -1055,12 +883,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         invoice_date: line.invoice_date || navigationInvoiceDate || '',
       }));
 
-      // Set data synchronously to avoid test timeouts
       setPharmaTableData(transformedLines);
-      // Store original data for change detection
       setOriginalReceiptLines(transformedLines);
       
-      // Store original form values for change detection
       setOriginalFormValues({
         supplierName: supplierName,
         poNumber: poNumber,
@@ -1070,18 +895,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         paymentMethod: paymentMethod,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error fetching receipt lines:', error);
-      }
-      // Set empty array on error
       setPharmaTableData([]);
       setOriginalReceiptLines([]);
     }
   };
 
-  // Transform supplier options to extract supplier names
   const transformedSupplierOptions = useMemo(() => {
-    // Defensive check: ensure supplierOptions is an array
     if (!Array.isArray(supplierOptions) || supplierOptions.length === 0) return [];
     return supplierOptions.map((supplier) => supplier.supplier_name);
   }, [supplierOptions]);
@@ -2000,34 +1819,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               if (value && value !== orderLabels.addProducts && value !== "Loading products...") {
                 // Check if this is a selection from dropdown or manual typing
                 const isFromDropdown = productOptions.includes(value);
-                if (import.meta.env.DEV) {
-                  console.log('onChange - value:', value);
-                  console.log('onChange - productOptions:', productOptions);
-                  console.log('onChange - isFromDropdown:', isFromDropdown);
-                }
                 
                 if (isFromDropdown) {
-                  // Product selected from dropdown
-                  if (import.meta.env.DEV) {
-                    console.log('Setting isProductSelected to TRUE');
-                  }
                   setIsProductSelected(true);
                   addProductToTable(value);
                   // Keep the product name in search bar so close icon shows
                   setFindProductTerm(value);
                   setIsProductSelected(false);
                 } else {
-                  // Manual typing - don't set as selected yet
-                  if (import.meta.env.DEV) {
-                    console.log('Setting isProductSelected to FALSE (manual typing)');
-                  }
                   setFindProductTerm(value);
                   setIsProductSelected(false);
                 }
               } else {
-                if (import.meta.env.DEV) {
-                  console.log('Setting isProductSelected to FALSE (empty or special value)');
-                }
                 setFindProductTerm(value);
                 setIsProductSelected(false);
               }

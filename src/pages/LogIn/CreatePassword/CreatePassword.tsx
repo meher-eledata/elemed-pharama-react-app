@@ -21,7 +21,9 @@ const CreatePassword: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  // Decode token in case it's URL-encoded
+  const rawToken = searchParams.get('token');
+  const token = rawToken ? decodeURIComponent(rawToken) : null;
   
   // Determine if this is reset password or create password flow
   const isResetPassword = location.pathname === '/reset-password';
@@ -39,23 +41,45 @@ const CreatePassword: React.FC = () => {
   const [showErrorSnackbar, setShowErrorSnackbar] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  type PasswordMatchState = 'match' | 'mismatch' | null;
+  const [passwordMatchState, setPasswordMatchState] = useState<PasswordMatchState>(null);
+  const [passwordValidationError, setPasswordValidationError] = useState<string | null>(null);
+
   const [resetPassword, { isLoading: isResetting }] = useResetPasswordMutation();
   const [createPassword, { isLoading: isCreating }] = useCreatePasswordMutation();
   
   const isLoading = isResetting || isCreating;
 
-  // Check if token is present in URL
+  // Live password validation
   useEffect(() => {
-    if (!token) {
-      if (isResetPassword) {
-        setError('Invalid or missing reset token. Please request a new password reset link.');
-      } else if (isCreatePassword) {
-        setError('Invalid or missing token. Please contact your administrator for a new password setup link.');
-      } else {
-        setError('Invalid or missing token. Please request a new link.');
-      }
+    const { PASSWORD_REGEX } = CREATE_PASSWORD_CONSTANTS;
+    
+    if (!newPassword) {
+      setPasswordValidationError(null);
+      return;
     }
-  }, [token, isResetPassword, isCreatePassword]);
+
+    if (!PASSWORD_REGEX.test(newPassword)) {
+      setPasswordValidationError(CREATE_PASSWORD_LABELS.ERROR_INVALID);
+    } else {
+      setPasswordValidationError(null);
+    }
+  }, [newPassword]);
+
+  // Password match validation
+  useEffect(() => {
+    if (!newPassword && !confirmPassword) {
+      setPasswordMatchState(null);
+      return;
+    }
+
+    if (!confirmPassword) {
+      setPasswordMatchState(null);
+      return;
+    }
+
+    setPasswordMatchState(newPassword === confirmPassword ? 'match' : 'mismatch');
+  }, [newPassword, confirmPassword]);
 
   const handleClickShowNewPassword = () => setShowNewPassword((prev) => !prev);
   const handleMouseDownNewPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -77,18 +101,6 @@ const CreatePassword: React.FC = () => {
     setError(null);
     setErrorMessage('');
 
-    // Validate token
-    if (!token) {
-      if (isResetPassword) {
-        setError('Invalid or missing reset token. Please request a new password reset link.');
-      } else if (isCreatePassword) {
-        setError('Invalid or missing token. Please contact your administrator for a new password setup link.');
-      } else {
-        setError('Invalid or missing token. Please request a new link.');
-      }
-      return;
-    }
-
     // Validate password
     if (!newPassword) {
       setError(CREATE_PASSWORD_LABELS.ERROR_REQUIRED);
@@ -96,7 +108,7 @@ const CreatePassword: React.FC = () => {
     }
 
     if (!PASSWORD_REGEX.test(newPassword)) {
-      setError('Password must be at least 6 characters, include one uppercase letter, and one number or special character.');
+      setError(CREATE_PASSWORD_LABELS.ERROR_INVALID);
       return;
     }
 
@@ -108,15 +120,24 @@ const CreatePassword: React.FC = () => {
     // Call appropriate API based on the flow
     try {
       if (isResetPassword) {
-        await resetPassword({
-          token,
+        console.log('Resetting password');
+        console.log('Token (first 30 chars):', token ? `${token.substring(0, 30)}...` : 'missing');
+        console.log('Password length:', newPassword.length);
+        console.log('Request payload:', { token: token?.substring(0, 30) + '...', password: '***' });
+        
+        const response = await resetPassword({
+          token: token || '',
           password: newPassword,
         }).unwrap();
+        
+        console.log('Password reset successful:', response);
       } else if (isCreatePassword) {
-        await createPassword({
-          token,
+        console.log('Creating password with token:', token?.substring(0, 20) + '...');
+        const response = await createPassword({
+          token: token || '',
           password: newPassword,
         }).unwrap();
+        console.log('Password created successful:', response);
       } else {
         throw new Error('Invalid route');
       }
@@ -129,9 +150,34 @@ const CreatePassword: React.FC = () => {
         navigate('/');
       }, 2000);
     } catch (error: any) {
-      let message = error?.data?.message || error?.message;
+      console.error('Password reset/create error:', error);
+      console.error('Error status:', error?.status);
+      console.error('Error data:', error?.data);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+      
+      let message = '';
+      
+      if (error?.data) {
+        if (typeof error.data === 'string') {
+          message = error.data;
+        } else if (error.data?.error) {
+          message = error.data.error;
+        } else if (error.data?.message) {
+          message = error.data.message;
+        } else if (error.data?.detail) {
+          message = error.data.detail;
+        }
+      }
+      
+      if (!message && error?.message) {
+        message = error.message;
+      }
+      
+      // Fallback message with more context
       if (!message) {
-        if (isResetPassword) {
+        if (error?.status === 400) {
+          message = 'Invalid request. The token may be invalid or expired. Please request a new password reset link.';
+        } else if (isResetPassword) {
           message = 'Failed to reset password. Please try again.';
         } else if (isCreatePassword) {
           message = 'Failed to create password. Please try again.';
@@ -139,6 +185,7 @@ const CreatePassword: React.FC = () => {
           message = 'Failed to process request. Please try again.';
         }
       }
+      
       setErrorMessage(message);
       setShowErrorSnackbar(true);
       setError(message);
@@ -200,12 +247,14 @@ const CreatePassword: React.FC = () => {
               ),
             }}
           />
-          <Typography className="password-info">
-            *Minimum 6 characters, one uppercase letter, and one number or special character
-          </Typography>
+          {passwordValidationError && (
+            <Typography color="error" className="password-validation-error">
+              {passwordValidationError}
+            </Typography>
+          )}
         </Box>
 
-        {/* Confirm Password */}
+       
         <Box className="input-group">
           <Typography className="label confirm-password-label">
             {CREATE_PASSWORD_LABELS.CONFIRM_PASSWORD_LABEL}
@@ -231,6 +280,17 @@ const CreatePassword: React.FC = () => {
               ),
             }}
           />
+          {passwordMatchState && (
+            <Typography
+              className={`password-match-message ${
+                passwordMatchState === 'match' ? 'match' : 'mismatch'
+              }`}
+            >
+              {passwordMatchState === 'match'
+                ? 'Passwords match'
+                : 'Passwords do not match'}
+            </Typography>
+          )}
         </Box>
 
         {/* Error */}
@@ -247,7 +307,13 @@ const CreatePassword: React.FC = () => {
           fullWidth
           className="confirm-button"
           onClick={handleConfirmPasswordClick}
-          disabled={isLoading || !token}
+          disabled={
+            isLoading ||
+            !newPassword ||
+            !!passwordValidationError ||
+            newPassword !== confirmPassword ||
+            !token
+          }
         >
           {isLoading 
             ? (isResetPassword ? 'Resetting Password...' : 'Submitting Password...') 

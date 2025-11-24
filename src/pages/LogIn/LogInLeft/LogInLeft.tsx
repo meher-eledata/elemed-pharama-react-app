@@ -13,10 +13,9 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import { useLoginMutation } from "../../../redux/slices/authSlice";
+import { useLoginMutation, setCredentials } from "../../../redux/slices/authSlice";
 import { useDispatch } from "react-redux";
 
-// Config imports
 import { LOGIN_LABELS } from "../../../config/label/loginLabels";
 import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants";
 import { handleLoginEffect } from "../../../config/helpers/loginHandlers";
@@ -70,11 +69,21 @@ const LoginForm: React.FC = () => {
     if (!validate()) return;
 
     try {
-      await login({
+      const response = await login({
         username: username.trim(),
         password: password.trim(),
       }).unwrap();
-      navigate("/dashboard");
+      
+      // Set credentials before navigating
+      dispatch(setCredentials(response));
+      
+      const userRole = response?.user?.role;
+      const roleLower = typeof userRole === 'string' ? userRole.toLowerCase() : '';
+      if (roleLower === 'admin') {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       const errMsg =
         (err as any)?.data?.error ||
@@ -94,7 +103,6 @@ const LoginForm: React.FC = () => {
         flexDirection: "column",
         width: "100%",
         maxWidth: "100%",
-        // mx: "auto",
         alignItems: "center",
         marginBlock: "auto",
       }}
@@ -243,7 +251,7 @@ const LoginForm: React.FC = () => {
 
         {/* Forgot Password */}
         <Box sx={{ mb: "32px", alignSelf: "flex-start" }}>
-          <Link to="/Forgot-Password" style={{ textDecoration: "none" }}>
+          <Link to="/forgot-password" style={{ textDecoration: "none" }}>
             <Typography
               variant="caption"
               sx={{ fontSize: "16px", cursor: "pointer" ,color:'#5C17E5'}}
@@ -257,7 +265,6 @@ const LoginForm: React.FC = () => {
         <Button
           type="submit"
           variant="contained"
-          // fullWidth
           disabled={isLoading}
           disableRipple
           sx={{
@@ -266,7 +273,6 @@ const LoginForm: React.FC = () => {
             bgcolor: "#5C17E5",
             borderRadius: "12px",
             fontSize:"16px",
-            // lineHeight:"24px",
             boxShadow:'none',
              "&:hover":{bgcolor: "#5C17E5",boxShadow:'none'}
           }}

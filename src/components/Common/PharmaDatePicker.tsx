@@ -325,6 +325,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           onClose={() => setOpen(false)}
           openTo="day"
           views={["year", "month", "day"]}
+          format="MM/DD/YYYY"
         slotProps={{
           monthButton: (ownerState) => {
             // Try multiple possible property names

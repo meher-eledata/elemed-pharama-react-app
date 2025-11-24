@@ -48,7 +48,6 @@ export const useDoctorPhonesAndEmails = ({
             }
           }
         } catch (error) {
-          console.error('❌ Error fetching doctor phones and emails:', error);
           onInfoFetched([]);
         }
       } else {

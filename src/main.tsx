@@ -5,9 +5,6 @@ import { Provider } from 'react-redux';
 import { store } from './redux/store';  
 import { ThemeProvider } from "@mui/material/styles";
 import theme from './components/Theme/Theme';
-
-
-// Import MUI date adapter
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 

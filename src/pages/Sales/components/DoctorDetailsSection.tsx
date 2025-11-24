@@ -63,7 +63,7 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
     }
   };
   return (
-    <DoctorInvoiceColumn>
+    <DoctorInvoiceColumn sx={{ marginLeft: '-6px' }}>
       <Box sx={{ marginBottom: '8px' }}>
         <Typography sx={{ 
           fontFamily: "'Lexend', sans-serif", 
@@ -116,7 +116,7 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
                 width: `${SALES_RECEIPT_CONSTANTS.DOCTOR_NAME_WIDTH}px`,
                 '& .MuiOutlinedInput-root': {
                   height: '48px',
-                  borderRadius: '12px',
+                  borderRadius: '8px',
                   backgroundColor: '#FFFFFF',
                   '& fieldset': {
                     borderColor: '#9AA8BC',

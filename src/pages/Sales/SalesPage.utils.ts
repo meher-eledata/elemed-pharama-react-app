@@ -34,11 +34,9 @@ export const processProductOptions = (apiProducts: any[]): string[] => {
         return name && name.trim() !== '';
       });
   } else {
-    console.error('❌ Unknown product format:', firstProduct);
   }
   
   if (options.length === 0 && apiProducts.length > 0) {
-    console.error('❌ Failed to extract product names from:', apiProducts);
   }
   
   return options;

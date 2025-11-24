@@ -6,6 +6,7 @@ export type IdentityDocumentType = 0 | 1;
 export type UserRole = 0 | 1;
 
 export interface CreateUserRequest {
+  superusername: string;
   username: string;
   email: string;
   first_name: string;
@@ -70,6 +71,24 @@ export interface UpdateUserRoleResponse {
   };
 }
 
+export interface ActivityLogEntry {
+  id: number;
+  username: string;
+  userAvatar: string;
+  accessLevel: string;
+  role: string;
+  module: string;
+  eventType: string;
+  eventTime: string;
+  eventDetails: string;
+  quantityChanged: string | number;
+  relatedId?: string | number;
+}
+
+export interface GetActivityLogResponse {
+  activityLog: ActivityLogEntry[];
+}
+
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: baseQueryWithReauth,
@@ -105,6 +124,13 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ['AdminUser'],
     }),
+    getActivityLog: builder.query<GetActivityLogResponse, void>({
+      query: () => ({
+        url: 'admin/get-activity-log',
+        method: 'GET',
+      }),
+      providesTags: ['AdminUser'],
+    }),
   }),
 });
 
@@ -113,4 +139,5 @@ export const {
   useCreateUserMutation,
   useSendEmailTestMutation,
   useUpdateUserRoleMutation,
+  useGetActivityLogQuery,
 } = adminApi;

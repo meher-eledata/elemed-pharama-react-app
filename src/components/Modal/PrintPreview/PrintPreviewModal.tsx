@@ -69,8 +69,6 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
     if (!printContentRef.current) return;
     
     try {
-      console.log('📄 Starting PDF download...');
-      
       const filename = `sales-receipt-${invoiceNumber || Date.now()}.pdf`;
       
       const options = {
@@ -90,17 +88,12 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
       };
       
       await html2pdf().set(options).from(printContentRef.current).save();
-      
-      console.log('✅ PDF downloaded successfully');
-      
-      // Call the optional callback after save (for cart clearing, etc.)
       if (onAfterSave) {
         setTimeout(() => {
           onAfterSave();
         }, 500);
       }
     } catch (error) {
-      console.error('❌ Error generating PDF:', error);
     }
   };
   return (

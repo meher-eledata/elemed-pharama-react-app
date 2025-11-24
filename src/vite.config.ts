@@ -9,14 +9,12 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
-    // Production build optimizations
     outDir: 'dist',
-    sourcemap: false, // Disable sourcemaps in production for security
+    sourcemap: false,
     minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
-          // Separate vendor chunks for better caching
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-mui': ['@mui/material', '@mui/icons-material', '@mui/x-charts', '@mui/x-date-pickers'],
           'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
@@ -25,6 +23,5 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1000,
   },
-  // Environment variables configuration
   envPrefix: 'VITE_',
 });

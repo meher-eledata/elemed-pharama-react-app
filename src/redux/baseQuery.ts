@@ -3,7 +3,6 @@ import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolk
 import { logout } from './slices/authSlice';
 import type { RootState } from './store';
 
-// Base query with authentication headers
 const baseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/',
   prepareHeaders: (headers, { getState }) => {
@@ -15,9 +14,6 @@ const baseQuery = fetchBaseQuery({
   },
 });
 
-/**
- * Enhanced base query with automatic logout on 401 Unauthorized
- */
 export const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -25,14 +21,8 @@ export const baseQueryWithReauth: BaseQueryFn<
 > = async (args, api, extraOptions) => {
   const result = await baseQuery(args, api, extraOptions);
 
-  // Handle 401 Unauthorized - token expired or invalid
   if (result.error && result.error.status === 401) {
-    console.warn('Token expired or invalid. Logging out...');
-    
-    // Logout user
     api.dispatch(logout());
-    
-    // Redirect to login page
     window.location.href = '/';
   }
 

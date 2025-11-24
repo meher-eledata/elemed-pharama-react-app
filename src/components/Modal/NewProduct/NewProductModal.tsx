@@ -416,7 +416,6 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       
       onClose();
     } catch (err) {
-      console.error('Failed to add product:', err);
     }
   };
 

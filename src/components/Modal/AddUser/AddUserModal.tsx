@@ -16,10 +16,13 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import { useSelector } from 'react-redux';
 import { StandardButton } from '../../Common';
 import styled from '@mui/system/styled';
 import PasswordLinkConfirmationDialog from './PasswordLinkConfirmationDialog';
 import { useCreateUserMutation, CreateUserRequest, IdentityDocumentType, UserRole } from '../../../redux/slices/adminSlice';
+import { extractErrorMessage, logError } from '../../../utils/errorUtils';
+import { RootState } from '../../../redux/store';
 
 // Constants for styling
 export const ADD_USER_MODAL_CONSTANTS = {
@@ -276,6 +279,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   
+  // Get current user from Redux store
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  
   // API hooks
   const [createUser] = useCreateUserMutation();
   
@@ -310,6 +316,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                      `${userData.firstName.toLowerCase()}_${userData.lastName.toLowerCase()}`;
 
     return {
+      superusername: currentUser?.username || '',
       username,
       email: userData.emailId,
       first_name: userData.firstName,
@@ -369,8 +376,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
    
       const createUserResponse = await createUser(requestData).unwrap();
       
-      console.log('Create user response:', createUserResponse);
-      
 
       showToast('User created successfully! Password setup link has been sent to the email.', 'success',);
       
@@ -387,24 +392,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
         setFormData(initialUserState);
       }, 1500);
       
-    } catch (error: any) {
-      console.error('Create user error:', error);
+    } catch (error: unknown) {
+      logError(error, 'AddUserModal.createUser');
       
-      let errorMessage = 'Failed to create user. Please try again.';
-      
-      if (error?.data) {
-        // Check for error message in data object
-        errorMessage = error.data.message || 
-                      error.data.error || 
-                      error.data.detail ||
-                      JSON.stringify(error.data);
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      if (error?.status) {
-        errorMessage = `Error ${error.status}: ${errorMessage}`;
-      }
+      const errorMessage = extractErrorMessage(error, 'Failed to create user. Please try again.');
       
       showToast(errorMessage, 'error');
       

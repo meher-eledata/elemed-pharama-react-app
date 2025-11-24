@@ -39,6 +39,7 @@ export type FilterOption = {
 export interface SearchAndFilterConfig {
     filterOptions: FilterOption[];
     customFilters?: React.ReactNode;
+    defaultPlaceholder?: string;
 }
 
 export interface TableColumn<T> {
@@ -174,7 +175,10 @@ export const ReusableTable = <T,>({
 
     const getPlaceholder = () => {
         const activeFilter = searchAndFilterConfig.filterOptions.find((f: FilterOption) => f.key === currentFilterKey);
-        return activeFilter ? `Search by ${activeFilter.label}...` : 'Search...';
+        if (activeFilter) {
+            return `Search by ${activeFilter.label}...`;
+        }
+        return searchAndFilterConfig.defaultPlaceholder || 'Search...';
     };
 
     const handlePageChange = (newPage: number) => {
@@ -194,21 +198,17 @@ export const ReusableTable = <T,>({
         return 'auto';
     };
 
-    const hasSearchAndFilter = searchAndFilterConfig.filterOptions.length > 0;
+    const hasSearchAndFilter = searchAndFilterConfig.filterOptions.length > 0 || searchAndFilterConfig.defaultPlaceholder;
 
-    // Calculate actual row indices for the current page
     const getActualRowIndex = (localIndex: number) => startIndex + localIndex;
 
-    // Check if all rows on current page are selected
     const allSelected = paginatedData.length > 0 && paginatedData.every((_, idx) => selectedRows.includes(getActualRowIndex(idx)));
 
     const handleSelectAll = () => {
         if (allSelected) {
-            // Deselect all rows on current page
             const currentPageIndices = paginatedData.map((_, idx) => getActualRowIndex(idx));
             setSelectedRows(selectedRows.filter(idx => !currentPageIndices.includes(idx)));
         } else {
-            // Select all rows on current page
             const currentPageIndices = paginatedData.map((_, idx) => getActualRowIndex(idx));
             setSelectedRows([...selectedRows.filter(idx => !currentPageIndices.includes(idx)), ...currentPageIndices]);
         }
@@ -362,29 +362,31 @@ export const ReusableTable = <T,>({
                             },
                         }}
                     />
-                    <Button
-                        variant="contained"
-                        startIcon={
-                            showFilters 
-                                ? <FilterListOffIcon />
-                                : <FilterAltIcon />
-                        }
-                        onClick={onShowFiltersToggle}
-                        sx={{
-                            minWidth: 151,
-                            height: 38,
-                            borderRadius: '12px',
-                            bgcolor: '#ECEFF4',
-                            color: '#1A212B',
-                            textTransform: 'none',
-                            padding: '12px 16px',
-                            marginLeft: isTabletOrMobile ? 0 : '45%',
-                            width: isTabletOrMobile ? '100%' : 'auto',
-                            '&:hover': { bgcolor: '#E0E5EA', },
-                        }}
-                    >
-                        {showFilters ? 'Hide filters' : 'Show filters'}
-                    </Button>
+                    {searchAndFilterConfig.filterOptions.length > 0 && (
+                        <Button
+                            variant="contained"
+                            startIcon={
+                                showFilters 
+                                    ? <FilterListOffIcon />
+                                    : <FilterAltIcon />
+                            }
+                            onClick={onShowFiltersToggle}
+                            sx={{
+                                minWidth: 151,
+                                height: 38,
+                                borderRadius: '12px',
+                                bgcolor: '#ECEFF4',
+                                color: '#1A212B',
+                                textTransform: 'none',
+                                padding: '12px 16px',
+                                marginLeft: isTabletOrMobile ? 0 : '45%',
+                                width: isTabletOrMobile ? '100%' : 'auto',
+                                '&:hover': { bgcolor: '#E0E5EA', },
+                            }}
+                        >
+                            {showFilters ? 'Hide filters' : 'Show filters'}
+                        </Button>
+                    )}
                 </Box>
             )}
 

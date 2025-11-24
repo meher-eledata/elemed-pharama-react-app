@@ -5,7 +5,6 @@ import { RootState } from '../redux/store';
 import { getTimeUntilExpiry, isTokenExpired } from '../utils/tokenUtils';
 import { useNavigate } from 'react-router-dom';
 
-
 export const useTokenExpiration = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -15,7 +14,6 @@ export const useTokenExpiration = () => {
     if (!isAuthenticated || !token) return;
 
     if (isTokenExpired(token)) {
-      console.warn('Token is already expired. Logging out...');
       dispatch(logout());
       navigate('/');
       return;
@@ -29,10 +27,7 @@ export const useTokenExpiration = () => {
       return;
     }
 
-    console.log(`Token will expire in ${Math.floor(timeUntilExpiry / 1000 / 60)} minutes`);
-
     const timeoutId = setTimeout(() => {
-      console.warn('Session expired. Logging out...');
       dispatch(logout());
       navigate('/');
       

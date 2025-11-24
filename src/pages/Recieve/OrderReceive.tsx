@@ -27,6 +27,7 @@ import {
 } from "../../config/label/OrderReceive.labels";
 import { ADD_BUTTON_COLOR, ORDER_RECEIVE_CONSTANTS } from "../../config/constants/OrderReceive.constants";
 import { baseButtonStyle } from "../../config/constants/inventoryConstants";
+import { extractErrorMessage, logError } from "../../utils/errorUtils";
 
 import {
   useGetReceiptsQuery, useEditReceiptMutation, useDeleteReceiptMutation,
@@ -34,7 +35,6 @@ import {
   Receipt, EditReceiptRequest, PurchaseOrder
 } from "../../redux/slices/receiveApi";
 
-// Custom TickMark component
 const TickMarkIcon = (props: any) => (
   <svg
     {...(props as any)}
@@ -57,7 +57,6 @@ const TickMarkIcon = (props: any) => (
   </svg>
 );
 
-// Shared styles
 const commonStyles = {
   inputField: {
     '& .MuiOutlinedInput-root': {
@@ -129,13 +128,11 @@ const OrderReceive: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(2);
   
-  // Helper function to capitalize first letter
   const capitalizeFirstLetter = (str: string): string => {
     if (!str) return str;
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
   
-  // Get logged-in user data from Redux store
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -148,7 +145,6 @@ const OrderReceive: React.FC = () => {
     endDate: null
   });
   
-  // ADD THIS LINE: State to manage filter visibility
   const [showFilters, setShowFilters] = useState<boolean>(false);
 
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -210,18 +206,6 @@ const OrderReceive: React.FC = () => {
       });
   }, [receipts]);
 
-  // Debug function to check receipt data
-  const debugReceiptData = () => {
-    console.log('🔍 Current receipts data:', receipts);
-    console.log('🔍 Mapped receipts:', mappedReceipts);
-    console.log('🔍 Table data:', tableData);
-    return { receipts, mappedReceipts, tableData };
-  };
-
-  // Expose debug function to window
-  useEffect(() => {
-    (window as any).debugReceiptData = debugReceiptData;
-  }, [receipts, mappedReceipts, tableData]);
 
   const mappedPurchaseOrders: PurchaseOrderRow[] = useMemo(() => {
     return (purchaseOrders || [])
@@ -269,7 +253,6 @@ const OrderReceive: React.FC = () => {
           invoiceDateValue = receivedDate.format('DD/MM/YYYY');
         }
       } catch (e) {
-        console.warn('Failed to parse received date:', e);
       }
     }
     
@@ -315,40 +298,18 @@ const OrderReceive: React.FC = () => {
     };
   };
 
-  const extractApiErrorMessage = (error: any): string => {
-    try {
-      if (error?.data) {
-        if (typeof error.data === 'string') return error.data;
-        if (typeof error.data?.message === 'string') return error.data.message;
-        if (Array.isArray(error.data?.errors) && error.data.errors.length > 0) {
-          const first = error.data.errors[0];
-          if (typeof first === 'string') return first;
-          if (typeof first?.message === 'string') return first.message;
-        }
-      }
-      if (typeof error?.error === 'string') return error.error;
-      if (typeof error?.message === 'string') return error.message;
-    } catch (_) {
-    }
-    return 'Unexpected error occurred';
+  // Use standardized error extraction utility
+  const extractApiErrorMessage = (error: unknown): string => {
+    return extractErrorMessage(error, 'Unexpected error occurred');
   };
 
   const validateInlineEditing = () => {
     if (!editingDraft) {
-      console.log('Validation failed: No editing draft');
       return false;
     }
     
     const isValid = editingDraft.poNo?.trim() && 
                    editingDraft.amt && editingDraft.amt > 0;
-    
-    console.log('Inline editing validation:', {
-      poNo: editingDraft.poNo,
-      received: editingDraft.received,
-      reBy: editingDraft.reBy,
-      amt: editingDraft.amt,
-      isValid
-    });
     
     return isValid;
   };
@@ -382,7 +343,6 @@ const OrderReceive: React.FC = () => {
       setSnackbarMessage('Updated successfully');
       setSnackbarOpen(true);
     } catch (e) {
-      console.error("Save failed", e);
       setSnackbarSeverity('error');
       setSnackbarMessage(`Update failed: ${extractApiErrorMessage(e)}`);
       setSnackbarOpen(true);
@@ -422,7 +382,6 @@ const OrderReceive: React.FC = () => {
       setSnackbarMessage('Deleted successfully');
       setSnackbarOpen(true);
     } catch (e) {
-      console.error("Delete failed", e);
       setSnackbarSeverity('error');
       setSnackbarMessage(`Delete failed: ${extractApiErrorMessage(e)}`);
       setSnackbarOpen(true);
@@ -465,13 +424,11 @@ const OrderReceive: React.FC = () => {
   }, [activeTab, currentReceiptsData, mappedPurchaseOrders]);
 
   const handleFilterChange = (key: string, value: string | null) => {
-    console.log('Filter change:', key, value);
     setFilters(prev => {
       const newFilters = {
         ...prev,
         [key]: value || undefined
       };
-      console.log('New filters:', newFilters);
       return newFilters;
     });
     setCurrentPage(1);
@@ -483,15 +440,12 @@ const OrderReceive: React.FC = () => {
   }, [tableData]);
 
   const handleSupplierChange = (event: any, newValue: string | null) => {
-    console.log('Supplier change:', newValue);
     handleFilterChange('supplier', newValue);
     setSupplierSearchTerm(newValue || '');
   };
 
   const handleSupplierInputChange = (event: any, newInputValue: string) => {
-    console.log('Supplier input change:', newInputValue);
     setSupplierSearchTerm(newInputValue);
-    // If user types a value that matches a supplier, apply the filter
     if (uniqueSuppliers.includes(newInputValue)) {
       handleFilterChange('supplier', newInputValue);
     } else if (newInputValue === '') {
@@ -500,7 +454,6 @@ const OrderReceive: React.FC = () => {
   };
 
   const handleClearSupplier = () => {
-    console.log('Clear supplier');
     handleFilterChange('supplier', null);
     setSupplierSearchTerm('');
   };
@@ -526,10 +479,7 @@ const OrderReceive: React.FC = () => {
       let sortableItems = [...tableData];
 
       if (filters.supplier) {
-        console.log('Filtering by supplier:', filters.supplier);
-        console.log('Items before filter:', sortableItems.length);
         sortableItems = sortableItems.filter(item => item.supplier === filters.supplier);
-        console.log('Items after filter:', sortableItems.length);
       }
       
       if (dateRange.startDate || dateRange.endDate) {
@@ -886,33 +836,6 @@ const OrderReceive: React.FC = () => {
         </Box>
       </Box>
 
-      {/* <Box
-        className="inventory-tabs"
-        sx={{ mb: '24px', display: 'inline-flex', bgcolor: '#eef4ff', borderRadius: '16px', p: '6px', gap: '8px' }}
-      >
-        <Button
-          onClick={() => handleTabChange({} as any, 2)}
-          sx={{
-            ...baseButtonStyle,
-            width: '8.5rem',
-            height: '2.35rem',
-            backgroundColor: '#ffffff',
-            borderRadius: '0.5rem',
-            border: '1px solid transparent',
-            boxShadow: '0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12)',
-            '&:hover': {
-              outline: 'none',
-              backgroundColor: '#1976d2',
-              color: '#000000',
-              boxShadow: '0 6px 16px rgba(21, 101, 192, 0.35)'
-            }
-          }}
-        >
-          {TAB_RECEIVE_HISTORY}
-        </Button>
-      </Box> */}
-
-
       <Box className="tab-content">
         {loadingReceipts && activeTab === 2 ? (
           <Typography variant="body2">{ORDER_RECEIVE_MESSAGES.LOADING_RECEIPTS}</Typography>
@@ -935,7 +858,10 @@ const OrderReceive: React.FC = () => {
                 <Box
                   sx={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                    bgcolor: '#F6F8FB', borderRadius: '25px', border: '1px solid #E6ECF5', p: '12px', gap: '540px', mb: 2, mt: 2,
+                    bgcolor: '#F6F8FB', borderRadius: '25px', border: '1px solid #E6ECF5', p: '12px', 
+                    gap: { xs: 2, sm: 4, md: 8, lg: '540px' }, 
+                    mb: 2, mt: 2,
+                    flexWrap: { xs: 'wrap', lg: 'nowrap' },
                   }}
                 >
                   <TextField
@@ -1191,7 +1117,6 @@ const OrderReceive: React.FC = () => {
               state: { selectedSupplier: supplier }
             });
           } catch (e) {
-            console.error("Navigation failed", e);
           } finally {
             setOpen(false);
           }

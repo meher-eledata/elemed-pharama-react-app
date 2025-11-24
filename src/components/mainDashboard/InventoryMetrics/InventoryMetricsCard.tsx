@@ -948,7 +948,6 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
   }
 
   if (error) {
-    console.error('Inventory Metrics Error:', error);
     return (
       <Box sx={{ p: 2, textAlign: "center" }}>
         <Typography color="error">

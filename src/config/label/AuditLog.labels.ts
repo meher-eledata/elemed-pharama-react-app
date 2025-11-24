@@ -1,0 +1,28 @@
+export const AUDIT_LOG_LABELS = {
+  PAGE_TITLE: 'Activity Log',
+  SUBTITLE: 'Track critical events across all access levels.',
+  SEARCH_PLACEHOLDER: 'Search by User Name',
+  BACK_BUTTON: 'Back',
+  FILTERS: {
+    USERNAME: 'Username',
+    ACCESS_LEVEL: 'Role',
+    MODULE: 'Module',
+    EVENT_TYPE: 'Event Type',
+    DATE_RANGE: 'Date Range',
+    ALL: 'All',
+    RESET: 'Reset filters',
+  },
+  TABLE: {
+    TIME: 'Time',
+    MODULE: 'Module',
+    EVENT_TYPE: 'Event Type',
+    RELATED_ID: 'Related ID',
+    QUANTITY_CHANGED: 'Quantity Change',
+    DETAILS: 'Details',
+    USERNAME: 'Username',
+    ROLE: 'Role',
+  },
+} as const;
+
+export type AuditLogLabels = typeof AUDIT_LOG_LABELS;
+

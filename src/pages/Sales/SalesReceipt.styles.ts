@@ -8,8 +8,11 @@ export const SalesReceiptContainer = styled(Box)({
   backgroundColor: '#FFFFFF',
   minHeight: '100vh',
   width: '100%',
-  maxWidth: 'none',
-  overflow: 'visible',
+  maxWidth: '100vw',
+  overflowX: 'hidden',
+  overflowY: 'visible',
+  boxSizing: 'border-box',
+  position: 'relative',
 });
 
 // Header Components
@@ -78,7 +81,7 @@ export const HorizontalDivider = styled(Divider)({
 // Section Layout Components
 export const CustomerDoctorSection = styled(Box)({
   display: 'flex',
-  gap: '60px', 
+  gap: '40px', 
   marginTop: '24px', 
   position: 'relative',
   paddingBottom: '24px', 
@@ -111,6 +114,7 @@ export const PaymentDetailsContainer = styled(Box)({
   gap: '20px',
   minWidth: '380px',
   flex: '1',
+  marginLeft: '0px',
 });
 
 export const SectionRow = styled(Box)({
@@ -125,22 +129,22 @@ export const SectionRow = styled(Box)({
 // Text Field Components
 export const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: '#FFFFFF !important',
     '& fieldset': {
       border: '1px solid #D1D5DB',
-      borderRadius: '12px',
+      borderRadius: '8px',
     },
     '&:hover fieldset': {
       border: '1px solid #5C17E5',
-      borderRadius: '12px',
+      borderRadius: '8px',
     },
     '&:hover': {
       backgroundColor: '#FFFFFF !important',
     },
     '&.Mui-focused fieldset': {
       border: '2px solid #5C17E5',
-      borderRadius: '12px',
+      borderRadius: '8px',
     },
     '&.Mui-focused': {
       backgroundColor: '#FFFFFF !important',

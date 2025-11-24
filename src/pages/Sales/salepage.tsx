@@ -142,17 +142,11 @@ export default function SalePage() {
     setSnackbarOpen(true);
   };
 
-  // Debug: Log API response
   useEffect(() => {
     if (productsError) {
-      console.error('❌ Products API Error Details:', productsError);
-      console.error('❌ Error status:', (productsError as any)?.status);
-      console.error('❌ Error data:', (productsError as any)?.data);
       showToast('Failed to load products. Please check the console for details.', 'error');
     }
     if (apiProducts.length === 0 && !isProductsLoading && !isProductsFetching && !productsError) {
-      console.warn('⚠️ No products returned from API');
-      console.warn('⚠️ API URL should be: receive/get-products');
       showToast('No products found. Please check if the products endpoint is working.', 'warning');
     }
   }, [apiProducts, isProductsLoading, productsError, isProductsFetching]);
@@ -189,13 +183,9 @@ export default function SalePage() {
           disc: debouncedDiscount / 100,
         };
         
-        console.log('🔄 Debounced validation call with params:', requestPayload);
-        
-        // Direct API call with debounced parameters
         const response = await validateSale(requestPayload).unwrap();
 
         if (response.message && !response.mrp && !response.selling_price) {
-          console.error('❌ Backend returned error in success response:', response.message);
           setValidatedData(null);
           setValidationError(response.message);
         } else {
@@ -203,7 +193,6 @@ export default function SalePage() {
           setValidationError("");
         }
       } catch (error: any) {
-        console.error('❌ Validation error:', error);
         setValidatedData(null);
         
         let errorMessage = "";
@@ -272,12 +261,10 @@ export default function SalePage() {
               setShowTypeDropdown(false);
             }
           } catch (error) {
-            console.error('Error fetching product types:', error);
             setShowTypeDropdown(false);
           }
         }
       } else {
-        console.error('❌ Failed to extract product ID from selected product');
       }
     } else {
       handleClearProduct();

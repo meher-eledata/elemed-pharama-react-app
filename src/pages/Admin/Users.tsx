@@ -1,11 +1,11 @@
 import React, { useState, useMemo, ChangeEvent } from 'react';
-import { Box, Typography, Button, Avatar, Chip, IconButton, TextField, InputAdornment, Select, MenuItem, SelectChangeEvent } from '@mui/material';
+import { Box, Typography, Button, Avatar, Chip, IconButton, Select, MenuItem, SelectChangeEvent, TextField, InputAdornment, CircularProgress } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
-import SearchIcon from '@mui/icons-material/Search';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import SearchIcon from '@mui/icons-material/Search';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { USERS_LABELS } from '../../config/label/Users.labels';
 import { USERS_CONSTANTS } from '../../config/constants/Users.constants';
@@ -27,19 +27,15 @@ const Users: React.FC = () => {
   const { data, isLoading, error, refetch } = useGetAllUsersQuery();
   const [updateUserRole] = useUpdateUserRoleMutation();
   
-  // Local state to track role updates (frontend only, not persisted to backend)
   const [localRoleUpdates, setLocalRoleUpdates] = useState<Record<number, string>>({});
 
-  // Transform API response to match User interface
   const usersData: User[] = useMemo(() => {
     if (!data?.users) return [];
     
     return data.users.map((user) => {
-      // Get first letter of name for avatar
       const avatar = user.name?.charAt(0).toUpperCase() || '?';
       
-      // Format last_login date
-      let lastLogin = 'Never';
+      let lastLogin: string = USERS_LABELS.LAST_LOGIN.NEVER;
       if (user.last_login) {
         const date = new Date(user.last_login);
         lastLogin = date.toLocaleString('en-US', {
@@ -52,13 +48,10 @@ const Users: React.FC = () => {
         });
       }
       
-      // Capitalize first letter of status
       const status = user.status.charAt(0).toUpperCase() + user.status.slice(1);
       
-      // Capitalize first letter of role
       let role = user.role.charAt(0).toUpperCase() + user.role.slice(1);
       
-      // Apply local role update if exists (frontend only)
       if (localRoleUpdates[user.id]) {
         role = localRoleUpdates[user.id].charAt(0).toUpperCase() + localRoleUpdates[user.id].slice(1);
       }
@@ -106,8 +99,7 @@ const Users: React.FC = () => {
       const bValue = b[sortConfig.key as keyof User];
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        // Use natural sort (numeric-aware) for better sorting of names with numbers
-        // This will sort U1, U2, U3... U10 correctly instead of U1, U10, U2...
+       
         const compareResult = aValue.localeCompare(bValue, undefined, { 
           numeric: true, 
           sensitivity: 'base' 
@@ -161,7 +153,7 @@ const Users: React.FC = () => {
         
         if (isEditing) {
           return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: USERS_CONSTANTS.ROLE_EDIT.GAP }}>
               <Select
                 value={editedRole}
                 onChange={(e: SelectChangeEvent<string>) => setEditedRole(e.target.value)}
@@ -169,12 +161,12 @@ const Users: React.FC = () => {
                 sx={{
                   height: USERS_CONSTANTS.CHIP.ROLE.HEIGHT,
                   fontSize: USERS_CONSTANTS.CHIP.ROLE.FONT_SIZE,
-                  minWidth: 120,
+                  minWidth: USERS_CONSTANTS.ROLE_EDIT.SELECT_MIN_WIDTH,
                 }}
                 autoFocus
               >
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="pharmacist">Pharmacist</MenuItem>
+                <MenuItem value="admin">{USERS_LABELS.ROLES.ADMIN}</MenuItem>
+                <MenuItem value="pharmacist">{USERS_LABELS.ROLES.PHARMACIST}</MenuItem>
               </Select>
               <IconButton 
                 size="small" 
@@ -189,7 +181,7 @@ const Users: React.FC = () => {
                   setEditingUserId(null);
                   setEditedRole('');
                 }}
-                sx={{ padding: '4px', color: '#4caf50' }}
+                sx={{ padding: USERS_CONSTANTS.ACTIONS.BUTTON_PADDING, color: USERS_CONSTANTS.ACTIONS.CONFIRM_COLOR }}
               >
                 <CheckIcon fontSize="small" />
               </IconButton>
@@ -199,7 +191,7 @@ const Users: React.FC = () => {
                   setEditingUserId(null);
                   setEditedRole('');
                 }}
-                sx={{ padding: '4px', color: '#f44336' }}
+                sx={{ padding: USERS_CONSTANTS.ACTIONS.BUTTON_PADDING, color: USERS_CONSTANTS.ACTIONS.CANCEL_COLOR }}
               >
                 <CloseIcon fontSize="small" />
               </IconButton>
@@ -342,42 +334,82 @@ const Users: React.FC = () => {
           {USERS_LABELS.SUBTITLE}
         </Typography>
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: USERS_CONSTANTS.LAYOUT.ACTION_BAR_GAP, mb: USERS_CONSTANTS.LAYOUT.ACTION_BAR_MARGIN_BOTTOM }}>
+      
+      {/* Loading State */}
+      {isLoading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+          <CircularProgress />
+          <Typography variant="body1" sx={{ ml: 2 }}>Loading users...</Typography>
+        </Box>
+      ) : error ? (
+        <Box p={4} textAlign="center" color="error.main">
+          <Typography variant="body1">Failed to load users. Please try again.</Typography>
+        </Box>
+      ) : (
+        <>
+      {/* Search Bar and Add Button Row */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        gap: 2,
+        mb: USERS_CONSTANTS.LAYOUT.ACTION_BAR_MARGIN_BOTTOM,
+      }}>
         {/* Search Bar */}
         <TextField
           placeholder={USERS_LABELS.SEARCH_PLACEHOLDER}
-          variant="outlined"
-          size="small"
           value={currentSearchTerm}
           onChange={handleSearchChange}
-          sx={{ 
-            flex: 1, 
-            maxWidth: USERS_CONSTANTS.SEARCH_FIELD.MAX_WIDTH,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: USERS_CONSTANTS.SEARCH_FIELD.BORDER_RADIUS,
-              backgroundColor: USERS_CONSTANTS.SEARCH_FIELD.BACKGROUND_COLOR,
-              height: USERS_CONSTANTS.SEARCH_FIELD.HEIGHT,
-              border: USERS_CONSTANTS.SEARCH_FIELD.DEFAULT_BORDER,
-              '&:hover': {
-                border: USERS_CONSTANTS.SEARCH_FIELD.HOVER_BORDER,
-              },
-              '&.Mui-focused': {
-                border: USERS_CONSTANTS.SEARCH_FIELD.FOCUS_BORDER,
-              },
-              '& .MuiOutlinedInput-notchedOutline': {
-                border: 'none',
-              },
-            },
-          }}
           InputProps={{
             startAdornment: !currentSearchTerm.trim() ? (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: USERS_CONSTANTS.SEARCH_FIELD.ICON_COLOR, fontSize: USERS_CONSTANTS.SEARCH_FIELD.ICON_SIZE }} />
+              <InputAdornment position="start" sx={{ marginRight: '0px' }}>
+                <SearchIcon sx={{ color: '#8A99AF', fontSize: '24px' }} />
               </InputAdornment>
             ) : null,
           }}
+          sx={{
+            width: '400px',
+            height: '40px',
+            borderRadius: '12px',
+            backgroundColor: '#fff',
+            '& .MuiOutlinedInput-root': {
+              height: '40px',
+              borderRadius: '12px',
+              backgroundColor: '#fff',
+              boxShadow: 'inset 0 0 0 1px #BFD1E6',
+              '& .MuiOutlinedInput-notchedOutline': { 
+                border: 'none !important',
+                display: 'none !important'
+              },
+              '&:hover': { 
+                boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
+                '& .MuiOutlinedInput-notchedOutline': { 
+                  border: 'none !important',
+                  display: 'none !important'
+                },
+              },
+              '&.Mui-focused': { 
+                boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
+                '& .MuiOutlinedInput-notchedOutline': { 
+                  border: 'none !important',
+                  display: 'none !important'
+                },
+              },
+            },
+            '& .MuiInputBase-input': {
+              padding: '10px 14px',
+              paddingLeft: '6px',
+            },
+            '& .MuiOutlinedInput-input::placeholder': {
+              textAlign: 'left',
+              fontSize: '16px',
+              opacity: 1,
+              color: '#9CA3AF',
+            },
+          }}
         />
         
+        {/* Add New User Button */}
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -389,6 +421,7 @@ const Users: React.FC = () => {
             px: USERS_CONSTANTS.BUTTON.PADDING_X,
             borderRadius: USERS_CONSTANTS.BUTTON.BORDER_RADIUS,
             '&:hover': { backgroundColor: USERS_CONSTANTS.BUTTON.HOVER_BACKGROUND },
+            flexShrink: 0,
           }}
         >
           {USERS_LABELS.ADD_BUTTON}
@@ -446,7 +479,7 @@ const Users: React.FC = () => {
             borderBottom: 'none',
           },
           '&:hover': {
-            backgroundColor: '#F0F0F0 !important',
+            backgroundColor: `${USERS_CONSTANTS.TABLE.ROW_HOVER_BACKGROUND} !important`,
           },
           '&:focus': {
             backgroundColor: 'inherit !important',
@@ -478,7 +511,9 @@ const Users: React.FC = () => {
           data={sortedData}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
-          searchAndFilterConfig={{ filterOptions: [] }}
+          searchAndFilterConfig={{ 
+            filterOptions: [],
+          }}
           currentSearchTerm=""
           onSearchChange={() => {}}
           showFilters={false}
@@ -493,6 +528,9 @@ const Users: React.FC = () => {
           sortConfig={sortConfig}
         />
       </Box>
+        </>
+      )}
+      
       <AddUserModal
         open={isAddUserModalOpen}
         onClose={handleCloseAddUserModal}

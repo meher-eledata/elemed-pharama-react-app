@@ -284,8 +284,6 @@ export const receiveApi = createApi({
       }
     >({
       query: (body) => {
-        console.log('🚀 Submitting receipt to API:', body);
-        console.log('🌐 API URL:', "receive/submit-receipt");
         return {
           url: "receive/submit-receipt",
           method: "POST",
@@ -298,63 +296,39 @@ export const receiveApi = createApi({
     // Get all products endpoint (shared across modules)
     getProducts: builder.query<{name: string, id: number}[], void>({
       query: () => {
-        console.log('🔍 Fetching products from: receive/get-products');
         return "receive/get-products";
       },
       providesTags: ["Receive"],
       transformResponse: (response: any, meta) => {
-        console.log('📦 Raw products API response:', response);
-        console.log('📦 Response type:', typeof response);
-        console.log('📦 Is array?', Array.isArray(response));
-        console.log('📦 Response length:', Array.isArray(response) ? response.length : 'N/A');
-        
         if (!response) {
-          console.error('❌ Products API returned null/undefined');
           return [];
         }
         
         if (!Array.isArray(response)) {
-          console.error('❌ Products API response is not an array:', response);
           return [];
         }
         
         if (response.length === 0) {
-          console.warn('⚠️ Products API returned empty array');
           return [];
         }
         
-        // Extract product names and IDs from the response - API returns array of [name, id] arrays
         const products = response
           .filter((product: any) => {
             const isValid = product && Array.isArray(product) && product.length >= 2;
-            if (!isValid) {
-              console.warn('⚠️ Invalid product format (expected [name, id]):', product);
-            }
             return isValid;
           })
           .map((product: any) => ({
-            name: product[0], // First element is the product name
-            id: product[1]    // Second element is the product ID
+            name: product[0],
+            id: product[1]
           }))
           .filter((product: any) => {
             const isValid = product.name && product.name.trim() !== '' && product.id;
-            if (!isValid) {
-              console.warn('⚠️ Product missing name or id:', product);
-            }
             return isValid;
           });
-        
-        console.log('✅ Extracted products:', products.length);
-        console.log('📦 Sample products:', products.slice(0, 3));
-        
-        if (products.length === 0 && response.length > 0) {
-          console.error('❌ Failed to extract products from response. Response format:', response);
-        }
         
         return products;
       },
       transformErrorResponse: (response: any) => {
-        console.error('❌ Products API Error Response:', response);
         return response;
       },
     }),

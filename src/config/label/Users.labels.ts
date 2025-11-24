@@ -16,9 +16,14 @@ export const USERS_LABELS = {
     PENDING: 'Pending',
   },
   ROLES: {
+    ADMIN: 'Admin',
     ADMINISTRATOR: 'Administrator',
+    PHARMACIST: 'Pharmacist',
     EDITOR: 'Editor',
     VIEWER: 'Viewer',
+  },
+  LAST_LOGIN: {
+    NEVER: 'Never',
   },
 } as const;
 

@@ -1,4 +1,4 @@
-export const USERS_CONSTANTS = {
+export const AUDIT_LOG_CONSTANTS = {
   LAYOUT: {
     PAGE_PADDING: 3,
     PAGE_GAP: 3,
@@ -6,6 +6,11 @@ export const USERS_CONSTANTS = {
     ACTION_BAR_MARGIN_BOTTOM: 1,
     ACTION_BAR_GAP: 2,
     TABLE_MARGIN_TOP: '8px',
+    BACK_BUTTON_POSITION: {
+      position: 'absolute' as const,
+      bottom: 24,
+      right: 24,
+    },
   },
   TYPOGRAPHY: {
     TITLE_VARIANT: 'h4' as const,
@@ -25,12 +30,37 @@ export const USERS_CONSTANTS = {
     ICON_SIZE: '20px',
   },
   BUTTON: {
-    BACKGROUND_COLOR: '#5C17E5',
-    COLOR: 'white',
-    HOVER_BACKGROUND: '#4a12b8',
-    PADDING_X: 3,
-    TEXT_TRANSFORM: 'none' as const,
-    BORDER_RADIUS: '10px',
+    FILTERS: {
+      BACKGROUND_COLOR: '#ffffff',
+      COLOR: '#1A212B',
+      HOVER_BACKGROUND: '#F5F5F5',
+      PADDING_X: 2,
+      TEXT_TRANSFORM: 'none' as const,
+      BORDER_RADIUS: '12px',
+      BORDER: '1px solid #D7DFEA',
+      HEIGHT: '40px',
+    },
+    DROPDOWN: {
+      BACKGROUND_COLOR: '#ffffff',
+      COLOR: '#1A212B',
+      HOVER_BACKGROUND: '#F5F5F5',
+      PADDING_X: 2,
+      TEXT_TRANSFORM: 'none' as const,
+      BORDER_RADIUS: '12px',
+      BORDER: '1px solid #D7DFEA',
+      HEIGHT: '40px',
+      MIN_WIDTH: '40px',
+    },
+    BACK: {
+      BACKGROUND_COLOR: '#5C17E5',
+      COLOR: 'white',
+      HOVER_BACKGROUND: '#4a12b8',
+      PADDING_X: 3,
+      TEXT_TRANSFORM: 'none' as const,
+      BORDER_RADIUS: '12px',
+      HEIGHT: '40px',
+      MIN_WIDTH: '100px',
+    },
   },
   TABLE: {
     CONTAINER_BACKGROUND: '#ffffff',
@@ -50,6 +80,8 @@ export const USERS_CONSTANTS = {
     HEADER_CELL_BORDER_RIGHT: '1px solid #E0E0E0',
     ROW_BORDER: '1px solid #E0E0E0',
     ROW_HOVER_BACKGROUND: '#F0F0F0',
+    TEXT_COLOR_PRIMARY: '#1A212B',
+    TEXT_COLOR_SECONDARY: '#728197',
   },
   AVATAR: {
     SIZE: 30,
@@ -58,15 +90,12 @@ export const USERS_CONSTANTS = {
     GAP: 1.5,
   },
   USER_INFO: {
-    NAME_FONT_SIZE: '12px',
+    NAME_FONT_SIZE: '14px',
     NAME_FONT_WEIGHT: 400,
     NAME_LINE_HEIGHT: 1.25,
-    EMAIL_FONT_SIZE: '11px',
-    EMAIL_COLOR: '#728197',
-    EMAIL_LINE_HEIGHT: 1.15,
   },
   CHIP: {
-    ROLE: {
+    ACCESS_LEVEL: {
       HEIGHT: '24px',
       FONT_SIZE: '14px',
       FONT_WEIGHT: 400,
@@ -74,58 +103,13 @@ export const USERS_CONSTANTS = {
       COLOR: '#1A212B',
       LABEL_PADDING: '0 7px',
     },
-    STATUS: {
-      HEIGHT: '24px',
-      FONT_SIZE: '14px',
-      FONT_WEIGHT: 400,
-      LABEL_PADDING: '0 7px',
-      ACTIVE: {
-        BACKGROUND: '#ffffff',
-        COLOR: '#1A212B',
-      },
-      PENDING: {
-        BACKGROUND: '#ffffff',
-        COLOR: '#1A212B',
-      },
-      INACTIVE: {
-        BACKGROUND: '#ffffff',
-        COLOR: '#1A212B',
-      },
-    },
-  },
-  LAST_LOGIN: {
-    FONT_SIZE: '12px',
-    COLOR: '#728197',
-    LINE_HEIGHT: 1.25,
-  },
-  ACTIONS: {
-    GAP: 0.5,
-    EDIT_COLOR: '#1A212B',
-    DELETE_COLOR: '#1A212B',
-    ICON_PADDING: '4px',
-    ICON_SIZE: '18px',
-    CONFIRM_COLOR: '#4caf50',
-    CANCEL_COLOR: '#f44336',
-    BUTTON_PADDING: '4px',
-  },
-  ROLE_EDIT: {
-    SELECT_MIN_WIDTH: 120,
-    GAP: 1,
   },
   PAGINATION: {
-    ROWS_PER_PAGE: 5,
-    DEFAULT_SORT_KEY: 'name',
-    DEFAULT_SORT_DIRECTION: 'asc' as const,
-  },
-  SCROLLBAR: {
-    HEIGHT: '8px',
-    TRACK_COLOR: '#f1f1f1',
-    TRACK_BORDER_RADIUS: '4px',
-    THUMB_COLOR: '#c1c1c1',
-    THUMB_BORDER_RADIUS: '4px',
-    THUMB_HOVER_COLOR: '#a8a8a8',
+    ROWS_PER_PAGE: 10,
+    DEFAULT_SORT_KEY: 'eventTime',
+    DEFAULT_SORT_DIRECTION: 'desc' as const,
   },
 } as const;
 
-export type UsersConstants = typeof USERS_CONSTANTS;
+export type AuditLogConstants = typeof AUDIT_LOG_CONSTANTS;
 
