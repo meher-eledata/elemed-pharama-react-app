@@ -20,6 +20,7 @@ export const orderLabels = {
   
   // Table headers
   productName: 'Product name',
+  batchNumber: 'Batch Number',
   receivedQty: 'Received Qty',
   freeQty: 'Free Qty',
   expiryDate: 'Expiry date',

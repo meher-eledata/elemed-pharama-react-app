@@ -49,6 +49,7 @@ interface OrderDetailsProps {
 export interface PharmaTableRow {
   id?: string;
   productId: string;
+  batchNumber?: string;
   qtyReceived: number;
   qtyFree: number;
   batch: string;
@@ -106,6 +107,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     useState<boolean>(false);
 
   const [findProductTerm, setFindProductTerm] = useState<string>("");
+  const [batchNumber, setBatchNumber] = useState<string>("");
   
   const [isSupplierFocused, setIsSupplierFocused] = useState(false);
   const [isVendorFocused, setIsVendorFocused] = useState(false);
@@ -214,6 +216,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [suppliersError, setSuppliersError] = useState<string | null>(null);
 
   const [productOptions, setProductOptions] = useState<string[]>([]);
+  const [productOptionsWithIds, setProductOptionsWithIds] = useState<{name: string, id: number}[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(false);
   const [productsError, setProductsError] = useState<string | null>(null);
 
@@ -264,12 +267,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       const products = await response.json();
       
-      const productNames = products
+      const productData = products
         .filter((product: any) => product && Array.isArray(product) && product.length >= 2)
-        .map((product: any) => product[0])
-        .filter((name: string) => name && name.trim() !== '');
+        .map((product: any) => ({
+          name: product[0],
+          id: product[1]
+        }))
+        .filter((product: {name: string, id: number}) => product.name && product.name.trim() !== '' && product.id);
       
-      setProductOptions(productNames);
+      setProductOptions(productData.map(p => p.name));
+      setProductOptionsWithIds(productData);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
       setProductsError(errorMessage);
@@ -288,6 +295,29 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const transformFormDataToApiPayload = () => {
     const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
+
+    // Helper function to get product_id from product name
+    const getProductIdFromName = (productName: string): number | null => {
+      if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
+        return null;
+      }
+      
+      const normalize = (str: string) => str.trim().toLowerCase();
+      const normalizedProductName = normalize(productName);
+      
+      // Try exact match first
+      let product = productOptionsWithIds.find(p => normalize(p.name) === normalizedProductName);
+      
+      // If no exact match, try partial match
+      if (!product) {
+        product = productOptionsWithIds.find(p => 
+          normalize(p.name).includes(normalizedProductName) || 
+          normalizedProductName.includes(normalize(p.name))
+        );
+      }
+      
+      return product ? product.id : null;
+    };
 
     const lines = pharmaTableData.map((row, index) => {
       let expiryDate: string = '';
@@ -309,9 +339,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }
       }
 
+      // Get product_id from product name
+      const productId = getProductIdFromName(row.productId);
+
       const line = {
         product: row.productId,
-        product_id: null as number | null,
+        product_id: productId,
+        batch_number: row.batchNumber || "",
         received_qty: Number(row.qtyReceived) || 0,
         free_qty: Number(row.qtyFree) || 0,
         expiry_date: expiryDate,
@@ -600,6 +634,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     const newProduct: PharmaTableRow = {
       id: Date.now().toString(),
       productId: productName,
+      batchNumber: batchNumber || "",
       qtyReceived: 0,
       qtyFree: 0,
       batch: "",
@@ -933,6 +968,36 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               {row.productId}
             </span>
           </Tooltip>
+        )
+      ),
+    },
+    {
+      key: "batchNumber",
+      header: orderLabels.batchNumber,
+      sortable: false,
+      render: (row) => (
+        editingRowId === row.id ? (
+          <TextField
+            size="small"
+            value={editingData.batchNumber || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Only allow alphanumeric characters and limit to 8 characters
+              const alphanumericValue = value.replace(/[^A-Za-z0-9]/g, '');
+              if (alphanumericValue.length <= 8) {
+                updateEditingData("batchNumber", alphanumericValue);
+              }
+            }}
+            variant="outlined"
+            fullWidth
+            inputProps={{
+              maxLength: 8,
+              pattern: '[A-Za-z0-9]*',
+            }}
+            sx={inputFieldStyles}
+          />
+        ) : (
+          <span>{row.batchNumber || '-'}</span>
         )
       ),
     },
@@ -1743,6 +1808,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             }}
           />
         </Box>
+
       </Box>
       <Divider sx={{ marginTop: "10px", border: "0.3px solid #CBD4E14D" }} />
 
@@ -1761,21 +1827,100 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         <Box
           sx={{
             display: "flex",
-            flexDirection: "column",
-            gap: "4px",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: "32px",
           }}
         >
-          <Typography
+          {/* Batch Number field */}
+          <Box
             sx={{
-              fontFamily: "'Lexend', sans-serif",
-              fontWeight: 500,
-              fontSize: "12px",
-              lineHeight: "18px",
-              color: "#728197",
+              display: "flex",
+              flexDirection: "column",
+              width: "220px",
+              gap: "4px",
             }}
           >
-            {orderLabels.findProduct}
-          </Typography>
+            <Typography
+              sx={{
+                fontFamily: "'Lexend', sans-serif",
+                fontWeight: 500,
+                fontSize: "12px",
+                lineHeight: "18px",
+                color: "#728197",
+              }}
+            >
+              Batch Number
+            </Typography>
+
+            <TextField 
+              variant="outlined"
+              fullWidth
+              value={batchNumber}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow alphanumeric characters and limit to 8 characters
+                const alphanumericValue = value.replace(/[^A-Za-z0-9]/g, '');
+                if (alphanumericValue.length <= 8) {
+                  setBatchNumber(alphanumericValue);
+                }
+              }}
+              placeholder="Enter Batch Number (max 8 alphanumeric)"
+              inputProps={{
+                maxLength: 8,
+                pattern: '[A-Za-z0-9]*',
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "18px",
+                  height: "44px",
+                  backgroundColor: "#FFFFFF",
+                  "& fieldset": {
+                    borderColor: "#D1D5DB",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#D1D5DB",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#728197",
+                    borderWidth: "2px",
+                    outline: "none",
+                  },
+                  "&.Mui-focused": {
+                    outline: "none",
+                  },
+                },
+                "& .MuiOutlinedInput-input": {
+                  padding: "12px 16px",
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: "16px",
+                  lineHeight: "24px",
+                  color: "#728197",
+                },
+              }}
+            />
+          </Box>
+
+          {/* Find Product field */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              flex: 1,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: "'Lexend', sans-serif",
+                fontWeight: 500,
+                fontSize: "12px",
+                lineHeight: "18px",
+                color: "#728197",
+              }}
+            >
+              {orderLabels.findProduct}
+            </Typography>
           <Box
             sx={{
               display: "flex",
@@ -2074,9 +2219,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             />
           )}
           </Box>
+          </Box>
         </Box>
-
-        </Box>
+      </Box>
 
       {/* Pharma Table */}
       <Box sx={{ 

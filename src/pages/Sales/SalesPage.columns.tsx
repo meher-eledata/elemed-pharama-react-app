@@ -1,5 +1,5 @@
 import React, { Dispatch, SetStateAction } from 'react';
-import { Box, TextField, IconButton, Tooltip } from '@mui/material';
+import { Box, TextField, IconButton, Tooltip, Select, MenuItem, FormControl } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
@@ -74,8 +74,50 @@ export const getTableColumns = ({
   },
   { 
     key: "batch", 
-    header: "Batch", 
-    render: (item) => item.batch 
+    header: "Batch Number", 
+    render: (item) => (
+      editingRowId === item.id ? (
+        <FormControl size="small" sx={{ width: 150 }}>
+          <Select
+            value={item.batch || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Only allow alphanumeric characters and limit to 8 characters
+              const alphanumericValue = value.replace(/[^A-Za-z0-9]/g, '');
+              if (alphanumericValue.length <= 8) {
+                dispatch(updateItemDetails({
+                  id: item.id,
+                  updates: { batch: alphanumericValue }
+                }));
+              }
+            }}
+            displayEmpty
+            sx={{ 
+              height: '32px',
+              borderRadius: '8px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#D1D5DB',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+              },
+            }}
+          >
+            <MenuItem value={item.batch || ""}>
+              {item.batch || "Select Batch"}
+            </MenuItem>
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+          </Select>
+        </FormControl>
+      ) : (
+        <span>{item.batch || '-'}</span>
+      )
+    )
   },
   { 
     key: "mrp", 

@@ -60,6 +60,81 @@ export interface AddProductResponse {
   };
 }
 
+// Get Batches for Product interfaces
+export interface GetBatchesForProductRequest {
+  product_id: number;
+}
+
+export interface Batch {
+  batch_id: number;
+  current_qty: number;
+  expiry_date: string;
+}
+
+export interface ProductInfo {
+  product_id: number;
+  product_name: string;
+  type: string;
+  brand_id: string;
+  product_code: string;
+  hsn_id: string;
+  total_quantity: number;
+}
+
+export interface GetBatchesForProductResponse {
+  product: ProductInfo;
+  batches: Batch[];
+}
+
+// Brand interfaces
+export interface Brand {
+  id: number;
+  brand_name: string;
+}
+
+// Product for Brand interfaces
+export interface ProductForBrand {
+  product_id: number;
+  name: string;
+}
+
+export interface GetProductsForBrandRequest {
+  brand_id: number;
+}
+
+// Type for Brand and Product interfaces
+export interface TypeForBrandAndProduct {
+  type: string;
+  product_id: number;
+}
+
+export interface GetTypesForBrandAndProductRequest {
+  brand_id: number;
+  brand_name: string;
+  product_name: string;
+}
+
+// Adjust Inventory Batches interfaces
+export interface AdjustInventoryBatchLine {
+  batch_id: number;
+  old_qty: number;
+  new_qty: number;
+  expiry_date: string;
+}
+
+export interface AdjustInventoryBatchesRequest {
+  user: string;
+  product_id: number;
+  lines: AdjustInventoryBatchLine[];
+}
+
+export interface AdjustInventoryBatchesResponse {
+  message: string;
+  product_id: number;
+  total_delta: number;
+  new_balance_quantity: number;
+}
+
 export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
   baseQuery: baseQueryWithReauth,
@@ -89,6 +164,40 @@ export const inventoryApi = createApi({
       }),
       invalidatesTags: ["Inventory"],
     }),
+    getBatchesForProduct: builder.mutation<GetBatchesForProductResponse, GetBatchesForProductRequest>({
+      query: (body) => ({
+        url: "inventory/get-batches-for-product",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Inventory"],
+    }),
+    getAllBrands: builder.query<Brand[], void>({
+      query: () => "inventory/get-all-brands",
+      providesTags: ["Inventory"],
+    }),
+    getProductsForBrand: builder.mutation<ProductForBrand[], GetProductsForBrandRequest>({
+      query: (body) => ({
+        url: "inventory/get-products-for-brand",
+        method: "POST",
+        body,
+      }),
+    }),
+    getTypesForBrandAndProduct: builder.mutation<TypeForBrandAndProduct[], GetTypesForBrandAndProductRequest>({
+      query: (body) => ({
+        url: "inventory/get-types-for-brand-and-product",
+        method: "POST",
+        body,
+      }),
+    }),
+    adjustInventoryBatches: builder.mutation<AdjustInventoryBatchesResponse, AdjustInventoryBatchesRequest>({
+      query: (body) => ({
+        url: "inventory/adjust-inventory-batches",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Inventory"],
+    }),
   }),
 });
 
@@ -98,4 +207,9 @@ export const {
   useGetExpiredStockQuery,
   useGetInventorySummaryQuery,
   useAddProductMutation,
+  useGetBatchesForProductMutation,
+  useGetAllBrandsQuery,
+  useGetProductsForBrandMutation,
+  useGetTypesForBrandAndProductMutation,
+  useAdjustInventoryBatchesMutation,
 } = inventoryApi;

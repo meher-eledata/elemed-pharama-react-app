@@ -34,7 +34,8 @@ const CommonModal: React.FC<CommonModalProps> = ({
         '& .MuiDialog-paper': {
           maxHeight: '85vh',
           height: 'auto',
-          width: '80%',
+          width: '90%',
+          maxWidth: '1000px',
         },
         '& .MuiDialogContent-root': {
           overflowY: 'auto',

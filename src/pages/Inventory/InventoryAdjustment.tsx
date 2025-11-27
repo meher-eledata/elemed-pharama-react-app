@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, startTransition } from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../redux/store';
 import {
   Box,
   Card,
@@ -9,88 +11,176 @@ import {
   MenuItem,
   Paper,
   TextField,
-  Typography
+  Typography,
+  CircularProgress,
+  Alert,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl,
+  Autocomplete
 } from '@mui/material';
-import Modal from '@mui/material/Modal';
-import CloseIcon from '@mui/icons-material/Close';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import './InventoryAdjustment.scss';
 import dayjs from 'dayjs';
 import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
+import {
+  useGetBatchesForProductMutation,
+  useGetAllBrandsQuery,
+  useGetProductsForBrandMutation,
+  useGetTypesForBrandAndProductMutation,
+  useAdjustInventoryBatchesMutation,
+  ProductInfo,
+  Brand,
+  ProductForBrand,
+  TypeForBrandAndProduct,
+} from '../../redux/slices/inventoryApi';
 
 type BatchRow = {
   id: string;
   quantity: number;
+  oldQuantity: number; // Original quantity when batch was loaded
   expiryDate: string;
 };
 
-type SearchMode = 'product' | 'id' | 'code';
+type SelectedBrand = Brand | null;
+type SelectedProduct = ProductForBrand | null;
+type SelectedType = TypeForBrandAndProduct | null;
 
-const PRODUCT_OPTIONS = [
-  {
-    label: 'Paracetamol 500 mg',
-    id: 'PCM500',
-    hsn: '300450',
-    type: 'Tablet',
-    brand: 'Dolo',
-    batches: [
-      { id: '1', quantity: 55, expiryDate: '2028-12-30' },
-      { id: '2', quantity: 120, expiryDate: '2027-11-15' },
-      { id: '3', quantity: 80, expiryDate: '2029-03-01' }
-    ]
-  },
-  {
-    label: 'Azithromycin 250 mg',
-    id: 'AZM250',
-    hsn: '300420',
-    type: 'Tablet',
-    brand: 'Zithro',
-    batches: [
-      { id: '1', quantity: 200, expiryDate: '2027-09-12' },
-      { id: '2', quantity: 140, expiryDate: '2028-03-22' }
-    ]
-  },
-  {
-    label: 'Ibuprofen 200 mg',
-    id: 'IBU200',
-    hsn: '300490',
-    type: 'Tablet',
-    brand: 'Advil',
-    batches: [
-      { id: '1', quantity: 95, expiryDate: '2028-05-10' },
-      { id: '2', quantity: 70, expiryDate: '2029-01-05' },
-      { id: '3', quantity: 50, expiryDate: '2028-11-18' },
-      { id: '4', quantity: 30, expiryDate: '2030-02-01' }
-    ]
-  }
-];
+type SearchType = 'product' | 'id' | 'code';
+
 
 const inputFieldStyles = {
+  borderRadius: '10px !important',
+  backgroundColor: '#ffffff',
   '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    height: 36,
+    borderRadius: '10px !important',
+    height: 40,
+    fontSize: '0.875rem',
+    backgroundColor: '#ffffff',
+    transition: 'all 0.2s ease',
     '& input': {
-      padding: '6px 12px',
+      padding: '10px 14px',
+      fontSize: '0.875rem',
+      color: '#1f2937',
+      borderRadius: '10px !important',
     },
+    '& fieldset': {
+      borderColor: '#e5e7eb !important',
+      borderWidth: '1.5px',
+      borderRadius: '10px !important',
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderRadius: '10px !important',
+      borderColor: '#e5e7eb !important',
+    },
+    '&:hover': {
+      borderRadius: '10px !important',
+      backgroundColor: '#f9fafb',
+      '& fieldset': {
+        borderColor: '#d1d5db !important',
+        borderRadius: '10px !important',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderRadius: '10px !important',
+        borderColor: '#d1d5db !important',
+      },
+    },
+    '&.Mui-focused': {
+      borderRadius: '10px !important',
+      backgroundColor: '#ffffff',
+      boxShadow: '0 0 0 3px rgba(99, 102, 241, 0.1)',
+      '& fieldset': {
+        borderColor: '#6366f1 !important',
+        borderWidth: '2px',
+        borderRadius: '10px !important',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderRadius: '10px !important',
+        borderColor: '#6366f1 !important',
+      },
+    },
+    '&.Mui-disabled': {
+      backgroundColor: '#f3f4f6',
+      '& fieldset': {
+        borderColor: '#e5e7eb !important',
+      },
+    },
+  },
+  '& .MuiInputLabel-root': {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+  },
+  '& .MuiSelect-icon': {
+    color: '#6b7280',
   },
 };
 
 const InventoryAdjustment: React.FC = () => {
-  const [selectedProductCode, setSelectedProductCode] = useState(PRODUCT_OPTIONS[0].id);
-  const [batchRows, setBatchRows] = useState<BatchRow[]>(PRODUCT_OPTIONS[0].batches);
-  const [productBrand, setProductBrand] = useState(PRODUCT_OPTIONS[0].brand);
-  const [productType, setProductType] = useState(PRODUCT_OPTIONS[0].type);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const [getBatchesForProduct, { isLoading: isLoadingBatches, error: batchesError }] = useGetBatchesForProductMutation();
+  const [getProductsForBrand] = useGetProductsForBrandMutation();
+  const [getTypesForBrandAndProduct] = useGetTypesForBrandAndProductMutation();
+  const [adjustInventoryBatches, { isLoading: isSaving }] = useAdjustInventoryBatchesMutation();
+  const { data: brands = [], isLoading: isLoadingBrands } = useGetAllBrandsQuery();
+  
+  const [selectedBrand, setSelectedBrand] = useState<SelectedBrand>(null);
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct>(null);
+  const [selectedType, setSelectedType] = useState<SelectedType>(null);
+  const [productsForBrand, setProductsForBrand] = useState<ProductForBrand[]>([]);
+  const [typesForProduct, setTypesForProduct] = useState<TypeForBrandAndProduct[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isLoadingTypes, setIsLoadingTypes] = useState(false);
+  
+  const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
+  const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: 'id',
     direction: 'asc'
   });
-  const [searchMode, setSearchMode] = useState<SearchMode>('product');
-  const [productSearchValue, setProductSearchValue] = useState('');
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchType, setSearchType] = useState<SearchType>('product');
+  const [productIdSearch, setProductIdSearch] = useState<string>('');
+  const [productCodeSearch, setProductCodeSearch] = useState<string>('');
+  const [productIdOptions, setProductIdOptions] = useState<Array<{ id: number; name: string }>>([]);
+  const [productCodeOptions, setProductCodeOptions] = useState<Array<{ code: string; name: string; id: number }>>([]);
+  const [isLoadingProductOptions, setIsLoadingProductOptions] = useState(false);
+  const [selectedProductById, setSelectedProductById] = useState<{ id: number; name: string } | null>(null);
+  const [selectedProductByCode, setSelectedProductByCode] = useState<{ code: string; name: string; id: number } | null>(null);
+
+  // Ensure consistent border radius from the start
+  useEffect(() => {
+    const styleId = 'inventory-adjustment-input-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root,
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root fieldset,
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+          border-radius: 10px !important;
+        }
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root:hover,
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root:hover fieldset,
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root.Mui-focused,
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root.Mui-focused fieldset,
+        .inventory-adjustment-page .MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+          border-radius: 10px !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    return () => {
+      const styleElement = document.getElementById(styleId);
+      if (styleElement) {
+        styleElement.remove();
+      }
+    };
+  }, []);
 
   const searchAndFilterConfig: SearchAndFilterConfig = useMemo(
     () => ({
@@ -99,15 +189,145 @@ const InventoryAdjustment: React.FC = () => {
     []
   );
 
-  const selectedProduct = useMemo(
-    () => PRODUCT_OPTIONS.find((option) => option.id === selectedProductCode) ?? PRODUCT_OPTIONS[0],
-    [selectedProductCode]
-  );
-
   const totalQuantity = useMemo(
     () => batchRows.reduce((acc, batch) => acc + (Number.isNaN(batch.quantity) ? 0 : batch.quantity), 0),
     [batchRows]
   );
+
+  // Fetch products when brand is selected
+  const fetchProductsForBrand = useCallback(async (brandId: number) => {
+    setIsLoadingProducts(true);
+    try {
+      const result = await getProductsForBrand({ brand_id: brandId }).unwrap();
+      setProductsForBrand(result);
+      setSelectedProduct(null);
+      setSelectedType(null);
+      setTypesForProduct([]);
+      setProductInfo(null);
+      setBatchRows([]);
+    } catch (error) {
+      console.error('Error fetching products for brand:', error);
+      setProductsForBrand([]);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  }, [getProductsForBrand]);
+
+  // Fetch types when product is selected
+  const fetchTypesForProduct = useCallback(async (brandId: number, brandName: string, productName: string) => {
+    setIsLoadingTypes(true);
+    try {
+      const result = await getTypesForBrandAndProduct({
+        brand_id: brandId,
+        brand_name: brandName,
+        product_name: productName,
+      }).unwrap();
+      setTypesForProduct(result);
+      setSelectedType(null);
+      setProductInfo(null);
+      setBatchRows([]);
+    } catch (error) {
+      console.error('Error fetching types for product:', error);
+      setTypesForProduct([]);
+    } finally {
+      setIsLoadingTypes(false);
+    }
+  }, [getTypesForBrandAndProduct]);
+
+  // Fetch batches when type is selected
+  const fetchBatchesForProduct = useCallback(async (productId: number) => {
+    try {
+      const result = await getBatchesForProduct({ product_id: productId }).unwrap();
+      
+      // Transform API batches to BatchRow format
+      const transformedBatches: BatchRow[] = result.batches.map((batch) => ({
+        id: batch.batch_id.toString(),
+        quantity: batch.current_qty,
+        oldQuantity: batch.current_qty, // Store original quantity
+        expiryDate: batch.expiry_date ? dayjs(batch.expiry_date).format('YYYY-MM-DD') : ''
+      }));
+      
+      // Batch state updates together to prevent blinking
+      startTransition(() => {
+        setProductInfo(result.product);
+        setBatchRows(transformedBatches);
+      });
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+      startTransition(() => {
+        setProductInfo(null);
+        setBatchRows([]);
+      });
+    }
+  }, [getBatchesForProduct]);
+
+  // Fetch all product IDs and codes for dropdown options
+  const fetchProductOptions = useCallback(async () => {
+    setIsLoadingProductOptions(true);
+    try {
+      const productIds: Array<{ id: number; name: string }> = [];
+      const productCodes: Array<{ code: string; name: string; id: number }> = [];
+
+      for (const brand of brands) {
+        try {
+          const products = await getProductsForBrand({ brand_id: brand.id }).unwrap();
+          for (const product of products) {
+            try {
+              const types = await getTypesForBrandAndProduct({
+                brand_id: brand.id,
+                brand_name: brand.brand_name,
+                product_name: product.name,
+              }).unwrap();
+              
+              for (const type of types) {
+                try {
+                  const batchResult = await getBatchesForProduct({ product_id: type.product_id }).unwrap();
+                  const productInfo = batchResult.product;
+                  
+                  // Add to product ID options
+                  if (!productIds.find(p => p.id === productInfo.product_id)) {
+                    productIds.push({
+                      id: productInfo.product_id,
+                      name: `${productInfo.product_name} (${productInfo.type})`
+                    });
+                  }
+                  
+                  // Add to product code options
+                  if (productInfo.product_code && !productCodes.find(p => p.code === productInfo.product_code)) {
+                    productCodes.push({
+                      code: productInfo.product_code,
+                      name: `${productInfo.product_name} (${productInfo.type})`,
+                      id: productInfo.product_id
+                    });
+                  }
+                } catch (e) {
+                  // Continue
+                }
+              }
+            } catch (e) {
+              // Continue
+            }
+          }
+        } catch (e) {
+          // Continue to next brand
+        }
+      }
+
+      setProductIdOptions(productIds);
+      setProductCodeOptions(productCodes);
+    } catch (error) {
+      console.error('Error fetching product options:', error);
+    } finally {
+      setIsLoadingProductOptions(false);
+    }
+  }, [brands, getProductsForBrand, getTypesForBrandAndProduct, getBatchesForProduct]);
+
+  // Load product options when search type changes to ID or Code
+  useEffect(() => {
+    if ((searchType === 'id' || searchType === 'code') && brands.length > 0) {
+      fetchProductOptions();
+    }
+  }, [searchType, brands.length, fetchProductOptions]);
 
   const sortedRows = useMemo(() => {
     const rowsCopy = [...batchRows];
@@ -149,41 +369,48 @@ const InventoryAdjustment: React.FC = () => {
     return sortedRows.filter((row) => row.id.toLowerCase().includes(query));
   }, [sortedRows, searchTerm]);
 
-  const filteredProductOptions = useMemo(() => {
-    if (!productSearchValue.trim()) {
-      return PRODUCT_OPTIONS;
+  // Handle brand selection
+  const handleBrandChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const brandId = parseInt(event.target.value);
+    const brand = brands.find((b) => b.id === brandId) || null;
+    setSelectedBrand(brand);
+    if (brand) {
+      fetchProductsForBrand(brand.id);
+    } else {
+      setProductsForBrand([]);
+      setSelectedProduct(null);
+      setSelectedType(null);
+      setTypesForProduct([]);
+      setProductInfo(null);
+      setBatchRows([]);
     }
+  };
 
-    const query = productSearchValue.toLowerCase();
+  // Handle product selection
+  const handleProductChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const productName = event.target.value;
+    const product = productsForBrand.find((p) => p.name === productName) || null;
+    setSelectedProduct(product);
+    if (product && selectedBrand) {
+      fetchTypesForProduct(selectedBrand.id, selectedBrand.brand_name, product.name);
+    } else {
+      setTypesForProduct([]);
+      setSelectedType(null);
+      setProductInfo(null);
+      setBatchRows([]);
+    }
+  };
 
-    return PRODUCT_OPTIONS.filter((option) => {
-      switch (searchMode) {
-        case 'product':
-          return (
-            option.label.toLowerCase().includes(query) ||
-            option.type.toLowerCase().includes(query) ||
-            option.brand.toLowerCase().includes(query)
-          );
-        case 'id':
-          return option.id.toLowerCase().includes(query);
-        case 'code':
-          return option.id.toLowerCase().includes(query); // Using id as both Product ID and Code for demo data
-        default:
-          return false;
-      }
-    });
-  }, [productSearchValue, searchMode]);
-
-  const getResultPrimaryValue = (option: typeof PRODUCT_OPTIONS[number]) => {
-    switch (searchMode) {
-      case 'product':
-        return option.label;
-      case 'id':
-        return option.id;
-      case 'code':
-        return option.id;
-      default:
-        return '';
+  // Handle type selection
+  const handleTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const type = event.target.value;
+    const typeData = typesForProduct.find((t) => t.type === type) || null;
+    setSelectedType(typeData);
+    if (typeData) {
+      fetchBatchesForProduct(typeData.product_id);
+    } else {
+      setProductInfo(null);
+      setBatchRows([]);
     }
   };
 
@@ -194,42 +421,57 @@ const InventoryAdjustment: React.FC = () => {
     );
   };
 
-  const handleBrandChange = (value: string) => setProductBrand(value);
-  const handleProductType = (value: string) => setProductType(value);
-
-  const handleProductChange = (value: string) => {
-    setSelectedProductCode(value);
-    const matched = PRODUCT_OPTIONS.find((option) => option.id === value);
-    if (matched) {
-      setProductBrand(matched.brand);
-      setProductType(matched.type);
-      setBatchRows(matched.batches);
-    }
-  };
 
   const handleRemoveRow = (batchId: string) => {
     setBatchRows((prev) => prev.filter((batch) => batch.id !== batchId));
   };
 
   const handleReset = () => {
-    setBatchRows(PRODUCT_OPTIONS[0].batches);
-    setSelectedProductCode(PRODUCT_OPTIONS[0].id);
-    setProductBrand(PRODUCT_OPTIONS[0].brand);
-    setProductType(PRODUCT_OPTIONS[0].type);
+    setSelectedBrand(null);
+    setSelectedProduct(null);
+    setSelectedType(null);
+    setProductsForBrand([]);
+    setTypesForProduct([]);
+    setProductInfo(null);
+    setBatchRows([]);
     setSelectedRows([]);
     setSearchTerm('');
     setSortConfig({ key: 'id', direction: 'asc' });
-    setProductSearchValue('');
-    setSearchMode('product');
+    setProductIdSearch('');
+    setProductCodeSearch('');
+    setSelectedProductById(null);
+    setSelectedProductByCode(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!productInfo || !selectedType || batchRows.length === 0) {
+      return;
+    }
     
-    console.log('Saving inventory adjustment', {
-      product: selectedProduct,
-      batches: batchRows,
-      total: totalQuantity
-    });
+    try {
+      // Get user from auth state
+      const username = user?.username || 'admin';
+      
+      // Transform batch rows to API format
+      const lines = batchRows.map((batch) => ({
+        batch_id: parseInt(batch.id),
+        old_qty: batch.oldQuantity,
+        new_qty: batch.quantity,
+        expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
+      }));
+
+      const result = await adjustInventoryBatches({
+        user: username,
+        product_id: selectedType.product_id,
+        lines,
+      }).unwrap();
+
+      console.log('Inventory adjusted successfully:', result);
+      // TODO: Show success toast/notification
+    } catch (error) {
+      console.error('Error adjusting inventory:', error);
+      // TODO: Show error toast/notification
+    }
   };
 
   const handleSortRequest = (key: string) => {
@@ -310,206 +552,324 @@ const InventoryAdjustment: React.FC = () => {
         </Typography>
 
         <Paper elevation={0} className="adjustment-card">
-          <Box className="search-trigger-row">
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              Product search
-            </Typography>
-            <StandardButton variant="primary" size="large" onClick={() => setIsSearchModalOpen(true)}>
-              Search inventory
-            </StandardButton>
+          <Box className="product-selection-section">
+            <Box className="product-selection-header">
+              <Typography variant="h6" className="product-selection-title">
+                Product Selection
+              </Typography>
+              <StandardButton 
+                variant="outline" 
+                size="medium" 
+                onClick={handleReset}
+                sx={{ minWidth: '100px' }}
+              >
+                Clear All
+              </StandardButton>
+            </Box>
+            <Box className="search-type-wrapper">
+              <FormControl component="fieldset">
+                <RadioGroup
+                  row
+                  value={searchType}
+                  onChange={(e) => setSearchType(e.target.value as SearchType)}
+                  className="search-type-radio-group"
+                >
+                  <FormControlLabel
+                    value="product"
+                    control={<Radio />}
+                    label="Search by Brand"
+                  />
+                  <FormControlLabel
+                    value="id"
+                    control={<Radio />}
+                    label="Search by Product ID"
+                  />
+                  <FormControlLabel
+                    value="code"
+                    control={<Radio />}
+                    label="Search by Product Code"
+                  />
+                </RadioGroup>
+              </FormControl>
+            </Box>
+            <Box className="product-selection-fields">
+              <Box className="selection-field-group">
+                <Typography variant="body2" className="field-label">
+                  {searchType === 'product' ? 'Brand' : searchType === 'id' ? 'Product ID' : 'Product Code'}
+                </Typography>
+                {searchType === 'product' ? (
+                  <Autocomplete
+                    options={brands}
+                    getOptionLabel={(option) => option.brand_name}
+                    value={selectedBrand}
+                    onChange={(_, newValue) => {
+                      setSelectedBrand(newValue);
+                      if (newValue) {
+                        fetchProductsForBrand(newValue.id);
+                      } else {
+                        setProductsForBrand([]);
+                        setSelectedProduct(null);
+                        setSelectedType(null);
+                        setTypesForProduct([]);
+                        setProductInfo(null);
+                        setBatchRows([]);
+                      }
+                    }}
+                    disabled={isLoadingBrands}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        placeholder="Select Brand"
+                        sx={inputFieldStyles}
+                      />
+                    )}
+                    sx={{ width: '100%' }}
+                  />
+                ) : searchType === 'id' ? (
+                  <Autocomplete
+                    options={productIdOptions}
+                    getOptionLabel={(option) => typeof option === 'string' ? option : `${option.id} - ${option.name}`}
+                    value={selectedProductById}
+                    onChange={(_, newValue) => {
+                      setSelectedProductById(newValue);
+                      if (newValue) {
+                        fetchBatchesForProduct(newValue.id);
+                      } else {
+                        setProductInfo(null);
+                        setBatchRows([]);
+                      }
+                    }}
+                    loading={isLoadingProductOptions}
+                    filterOptions={(options, params) => {
+                      const filtered = options.filter((option) => {
+                        const searchValue = params.inputValue.toLowerCase();
+                        return (
+                          option.id.toString().includes(searchValue) ||
+                          option.name.toLowerCase().includes(searchValue)
+                        );
+                      });
+                      return filtered;
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        placeholder="Select Product ID"
+                        sx={inputFieldStyles}
+                      />
+                    )}
+                    sx={{ width: '100%' }}
+                  />
+                ) : (
+                  <Autocomplete
+                    options={productCodeOptions}
+                    getOptionLabel={(option) => typeof option === 'string' ? option : `${option.code} - ${option.name}`}
+                    value={selectedProductByCode}
+                    onChange={(_, newValue) => {
+                      setSelectedProductByCode(newValue);
+                      if (newValue) {
+                        fetchBatchesForProduct(newValue.id);
+                      } else {
+                        setProductInfo(null);
+                        setBatchRows([]);
+                      }
+                    }}
+                    loading={isLoadingProductOptions}
+                    filterOptions={(options, params) => {
+                      const filtered = options.filter((option) => {
+                        const searchValue = params.inputValue.toLowerCase();
+                        return (
+                          option.code.toLowerCase().includes(searchValue) ||
+                          option.name.toLowerCase().includes(searchValue)
+                        );
+                      });
+                      return filtered;
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        placeholder="Select Product Code"
+                        sx={inputFieldStyles}
+                      />
+                    )}
+                    sx={{ width: '100%' }}
+                  />
+                )}
+              </Box>
+              <Box className="selection-field-group">
+                <Typography variant="body2" className="field-label">
+                  Medicine Name
+                </Typography>
+                <Autocomplete
+                  options={productsForBrand}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedProduct}
+                  onChange={(_, newValue) => {
+                    setSelectedProduct(newValue);
+                    if (newValue && selectedBrand) {
+                      fetchTypesForProduct(selectedBrand.id, selectedBrand.brand_name, newValue.name);
+                    } else {
+                      setTypesForProduct([]);
+                      setSelectedType(null);
+                      setProductInfo(null);
+                      setBatchRows([]);
+                    }
+                  }}
+                  disabled={!selectedBrand || isLoadingProducts}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      size="small"
+                      placeholder="Select Medicine"
+                      sx={inputFieldStyles}
+                    />
+                  )}
+                  sx={{ width: '100%' }}
+                />
+              </Box>
+              <Box className="selection-field-group">
+                <Typography variant="body2" className="field-label">
+                  Type
+                </Typography>
+                <Autocomplete
+                  options={typesForProduct}
+                  getOptionLabel={(option) => option.type}
+                  value={selectedType}
+                  onChange={(_, newValue) => {
+                    setSelectedType(newValue);
+                    if (newValue) {
+                      fetchBatchesForProduct(newValue.product_id);
+                    } else {
+                      setProductInfo(null);
+                      setBatchRows([]);
+                    }
+                  }}
+                  disabled={!selectedProduct || isLoadingTypes}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      size="small"
+                      placeholder="Select Type"
+                      sx={inputFieldStyles}
+                    />
+                  )}
+                  sx={{ width: '100%' }}
+                />
+              </Box>
+              <Box className="product-details-wrapper">
+                <Card variant="outlined" className="product-details-card">
+                  <CardContent>
+                    <Typography variant="subtitle1" className="product-details-title">
+                      Product Details
+                    </Typography>
+                    {productInfo ? (
+                      <Box className="product-details-grid">
+                        <Typography variant="body2" className="detail-label">
+                          Product ID
+                        </Typography>
+                        <Typography variant="body2" className="detail-value">
+                          {productInfo.product_id}
+                        </Typography>
+
+                        <Typography variant="body2" className="detail-label">
+                          Product Code
+                        </Typography>
+                        <Typography variant="body2" className="detail-value">
+                          {productInfo.product_code}
+                        </Typography>
+
+                        <Typography variant="body2" className="detail-label">
+                          HSN ID
+                        </Typography>
+                        <Typography variant="body2" className="detail-value">
+                          {productInfo.hsn_id}
+                        </Typography>
+
+                        <Typography variant="body2" className="detail-label">
+                          Total Quantity
+                        </Typography>
+                        <Typography variant="body2" className="detail-value">
+                          {totalQuantity}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box className="product-details-empty">
+                        <Typography variant="body2" className="empty-message">
+                          Select a product to view details
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Box>
+            </Box>
           </Box>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={8}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={5}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Product Name"
-                    value={selectedProductCode}
-                    onChange={(event) => handleProductChange(event.target.value)}
-                    sx={inputFieldStyles}
-                  >
-                    {PRODUCT_OPTIONS.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Type"
-                    value={productType}
-                    onChange={(event) => handleProductType(event.target.value)}
-                    sx={inputFieldStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Brand"
-                    value={productBrand}
-                    onChange={(event) => handleBrandChange(event.target.value)}
-                    sx={inputFieldStyles}
-                  />
-                </Grid>
-              </Grid>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Card variant="outlined" className="product-details-card">
-                <CardContent>
-                  <Typography variant="subtitle1" className="product-details-title">
-                    Product details
-                  </Typography>
-                  <Box className="product-details-grid">
-                    <Typography variant="body2" color="text.secondary">
-                      Product ID :
-                    </Typography>
-                    <Typography variant="body2">{selectedProduct.id}</Typography>
+          {batchesError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Error loading batches. Please try again.
+            </Alert>
+          )}
 
-                    <Typography variant="body2" color="text.secondary">
-                      Product Code :
-                    </Typography>
-                    <Typography variant="body2">{selectedProduct.id}</Typography>
-
-                    <Typography variant="body2" color="text.secondary">
-                      HSN ID :
-                    </Typography>
-                    <Typography variant="body2">{selectedProduct.hsn}</Typography>
-
-                    <Typography variant="body2" color="text.secondary">
-                      Total Quantity :
-                    </Typography>
-                    <Typography variant="body2">{totalQuantity}</Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          <Box className="inventory-table-wrapper">
-            <Typography variant="subtitle1" className="section-title">
-              Inventory Details
-            </Typography>
-      <ReusableTable
-        data={filteredRows}
-        columns={batchColumns}
-        selectedRows={selectedRows}
-        setSelectedRows={setSelectedRows}
-        searchAndFilterConfig={searchAndFilterConfig}
-        currentSearchTerm={searchTerm}
-        onSearchChange={(event) => setSearchTerm(event.target.value)}
-        showFilters={false}
-        onShowFiltersToggle={() => undefined}
-        currentFilterKey=""
-        onFilterSelect={() => undefined}
-        totalRows={filteredRows.length}
-        rowsPerPage={Math.max(filteredRows.length, 1)}
-        currentPage={1}
-        onPageChange={() => undefined}
-        onSortRequest={handleSortRequest}
-        sortConfig={sortConfig}
-        emptyMessage="No batches for this product"
-      />
-          </Box>
+            <Box className="inventory-table-wrapper" sx={{ position: 'relative' }}>
+              <Typography variant="subtitle1" className="section-title">
+                Inventory Details
+              </Typography>
+              {isLoadingBatches && (
+                <Box sx={{ 
+                  position: 'absolute', 
+                  top: '48px', // Start below the title
+                  left: 0, 
+                  right: 0, 
+                  bottom: 0, 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  zIndex: 1
+                }}>
+                  <CircularProgress />
+                </Box>
+              )}
+              <ReusableTable
+                data={filteredRows}
+                columns={batchColumns}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+                searchAndFilterConfig={searchAndFilterConfig}
+                currentSearchTerm={searchTerm}
+                onSearchChange={(event) => setSearchTerm(event.target.value)}
+                showFilters={false}
+                onShowFiltersToggle={() => undefined}
+                currentFilterKey=""
+                onFilterSelect={() => undefined}
+                totalRows={filteredRows.length}
+                rowsPerPage={Math.max(filteredRows.length, 1)}
+                currentPage={1}
+                onPageChange={() => undefined}
+                onSortRequest={handleSortRequest}
+                sortConfig={sortConfig}
+                emptyMessage={productInfo ? "No batches for this product" : "No data available"}
+              />
+            </Box>
 
           <Box className="actions-row">
             <StandardButton variant="outline" size="large" onClick={handleReset}>
               Cancel
             </StandardButton>
-            <StandardButton variant="primary" size="large" onClick={handleSave}>
-              Save
+            <StandardButton 
+              variant="primary" 
+              size="large" 
+              onClick={handleSave}
+              disabled={!productInfo || batchRows.length === 0 || isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save'}
             </StandardButton>
           </Box>
         </Paper>
       </Container>
-
-      <Modal
-        open={isSearchModalOpen}
-        onClose={() => setIsSearchModalOpen(false)}
-        aria-labelledby="product-search-modal-title"
-        aria-describedby="product-search-modal-description"
-        className="product-search-modal"
-      >
-        <Box className="product-search-modal__content">
-          <IconButton className="product-search-modal__close" onClick={() => setIsSearchModalOpen(false)} size="small">
-            <CloseIcon />
-          </IconButton>
-          <Typography id="product-search-modal-title" variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-            Search products
-          </Typography>
-          <Box className="product-search-modal__body">
-            <Box className="modal-search-left">
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Search filters
-              </Typography>
-              <Box className="search-mode-toggle modal-toggle">
-                {[
-                  { key: 'product', label: 'Product (Name/Type/Brand)' },
-                  { key: 'id', label: 'Product ID' },
-                  { key: 'code', label: 'Product Code' },
-                ].map((mode) => (
-                  <StandardButton
-                    key={mode.key}
-                    variant={searchMode === mode.key ? 'primary' : 'outline'}
-                    size="small"
-                    onClick={() => setSearchMode(mode.key as SearchMode)}
-                  >
-                    {mode.label}
-                  </StandardButton>
-                ))}
-              </Box>
-              <TextField
-                fullWidth
-                size="small"
-                value={productSearchValue}
-                onChange={(event) => setProductSearchValue(event.target.value)}
-                placeholder={
-                  searchMode === 'product'
-                    ? 'Search by product name, type, or brand'
-                    : searchMode === 'id'
-                    ? 'Search by product ID'
-                    : 'Search by product code'
-                }
-                sx={{ ...inputFieldStyles, mt: 2 }}
-              />
-            </Box>
-            <Box className="modal-search-right">
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Results ({filteredProductOptions.length})
-              </Typography>
-              <Box className="search-results">
-                {filteredProductOptions.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    No matches found
-                  </Typography>
-                ) : (
-                  filteredProductOptions.map((option) => (
-                    <Box
-                      key={option.id}
-                      className={`search-result ${selectedProductCode === option.id ? 'active' : ''}`}
-                      onClick={() => {
-                        handleProductChange(option.id);
-                        setIsSearchModalOpen(false);
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {getResultPrimaryValue(option)}
-                      </Typography>
-                    </Box>
-                  ))
-                )}
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </Modal>
     </Box>
   );
 };

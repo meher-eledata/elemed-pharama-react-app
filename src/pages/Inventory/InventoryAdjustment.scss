@@ -1,6 +1,6 @@
 .inventory-adjustment-page {
   min-height: calc(100vh - 64px);
-  padding: 24px;
+  padding: 16px 24px 24px 24px;
   background-color: #ffffff;
 
   .page-breadcrumb {
@@ -14,7 +14,7 @@
   }
 
   .page-heading {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     font-weight: 700;
     padding-left: 32px;
     @media (max-width: 600px) {
@@ -24,8 +24,9 @@
 
   .adjustment-card {
     border-radius: 16px;
-    padding: 32px;
+    padding: 24px 32px;
     background-color: #fff;
+    margin-top: -24px;
   }
 
   .search-trigger-row {
@@ -36,25 +37,193 @@
     gap: 16px;
   }
 
+  .product-selection-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease;
+
+    &:hover {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+    }
+
+      .product-selection-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+
+        .product-selection-title {
+          font-weight: 600;
+          font-size: 18px;
+          color: #1f2937;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          &::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 2px;
+          }
+        }
+      }
+
+      .search-type-wrapper {
+        margin: 12px auto 24px;
+
+        .search-type-radio-group {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+          width: 700px;
+
+          @media (max-width: 768px) {
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .MuiFormControlLabel-root {
+            margin-right: 0;
+            margin-left: 0;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+
+            &:hover {
+              background-color: #f3f4f6;
+            }
+
+            .MuiRadio-root {
+              color: #6b7280;
+              
+              &.Mui-checked {
+                color: #8b5cf6;
+              }
+            }
+
+            .MuiFormControlLabel-label {
+              font-size: 14px;
+              font-weight: 500;
+              color: #374151;
+            }
+          }
+        }
+      }
+
+    .product-selection-fields {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-top: 40px;
+      justify-content: center;
+
+      @media (max-width: 768px) {
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .selection-field-group {
+        flex: 1;
+        min-width: 200px;
+        max-width: 280px;
+
+        @media (max-width: 768px) {
+          max-width: 100%;
+          width: 100%;
+        }
+
+        .field-label {
+          font-weight: 600;
+          font-size: 13px;
+          color: #374151;
+          margin-bottom: 8px;
+          display: block;
+          letter-spacing: 0.3px;
+        }
+      }
+
+      .product-details-wrapper {
+        flex: 1;
+        min-width: 280px;
+        max-width: 320px;
+        align-self: flex-start;
+        margin-top: -12px;
+
+        @media (max-width: 768px) {
+          max-width: 100%;
+          width: 100%;
+        }
+      }
+    }
+  }
+
   .product-details-card {
     height: 100%;
     border-radius: 12px;
-    background-color: #f7f8fb;
+    background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease;
+
+    &:hover {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
   }
 
   .product-details-title {
     font-weight: 600;
-    margin-bottom: 12px;
+    font-size: 16px;
+    color: #1f2937;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
   }
 
   .product-details-grid {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 8px 12px;
+    gap: 12px 16px;
+
+    .detail-label {
+      font-weight: 500;
+      color: #6b7280;
+      font-size: 13px;
+    }
+
+    .detail-value {
+      font-weight: 600;
+      color: #1f2937;
+      font-size: 13px;
+    }
+  }
+
+  .product-details-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    padding: 20px;
+
+    .empty-message {
+      color: #9ca3af;
+      font-size: 14px;
+      font-style: italic;
+      text-align: center;
+    }
   }
 
   .inventory-table-wrapper {
     margin-top: 32px;
+    min-height: 200px; // Prevent layout shift
 
     .MuiTableRow-root {
       height: 64px;

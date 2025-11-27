@@ -34,6 +34,7 @@ import {
   useGetCurrentPurchaseOrdersQuery, useGetReceiptLinesQuery,
   Receipt, EditReceiptRequest, PurchaseOrder
 } from "../../redux/slices/receiveApi";
+import { useGetBatchesForProductMutation } from "../../redux/slices/inventoryApi";
 
 const TickMarkIcon = (props: any) => (
   <svg
@@ -179,6 +180,55 @@ const OrderReceive: React.FC = () => {
     selectedReceiptId !== null ? { receipt_id: selectedReceiptId } : (undefined as any),
     { skip: selectedReceiptId === null }
   );
+  const [getBatchesForProduct] = useGetBatchesForProductMutation();
+  const [productNameCache, setProductNameCache] = useState<{ [key: number]: string }>({});
+
+  // Fetch product names for lines where product_name is null but product_id is valid
+  useEffect(() => {
+    if (!receiptLines || receiptLines.length === 0) return;
+
+    const fetchMissingProductNames = async () => {
+      const missingNames: { [key: number]: Promise<string> } = {};
+      
+      for (const line of receiptLines) {
+        // If product_name is null/empty but product_id is valid (> 0)
+        if ((!line.product_name || line.product_name === null) && line.product_id && line.product_id > 0) {
+          // Check cache first
+          if (!productNameCache[line.product_id]) {
+            missingNames[line.product_id] = getBatchesForProduct({ product_id: line.product_id })
+              .unwrap()
+              .then((result) => result.product.product_name)
+              .catch((error) => {
+                console.error(`Error fetching product name for product_id ${line.product_id}:`, error);
+                return `Product ID: ${line.product_id}`;
+              });
+          }
+        }
+      }
+
+      // Fetch all missing product names
+      const results = await Promise.allSettled(
+        Object.entries(missingNames).map(async ([productId, promise]) => {
+          const name = await promise;
+          return { productId: parseInt(productId), name };
+        })
+      );
+
+      // Update cache with fetched names
+      const newCache = { ...productNameCache };
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          newCache[result.value.productId] = result.value.name;
+        }
+      });
+
+      if (Object.keys(newCache).length > Object.keys(productNameCache).length) {
+        setProductNameCache(newCache);
+      }
+    };
+
+    fetchMissingProductNames();
+  }, [receiptLines, getBatchesForProduct, productNameCache]);
 
 
   const mappedReceipts: OrderReceiveRow[] = useMemo(() => {
@@ -1152,17 +1202,24 @@ const OrderReceive: React.FC = () => {
               selectedProduct
                 ? {
                   ...selectedProduct,
-                  products: (receiptLines || []).map((line) => ({
-                    lineId: line.receipt_line_id,
-                    productName: line.product_name,
-                    type: 'Medicine', 
-                    quantity: line.received_qty,
-                    hsnCode: line.hsn_id || line.hsn_code || 'N/A',
-                    amount: parseFloat(line.unit_price) || 0,
-                    transaction_number: line.transaction_number || '',
-                    payment_vendor: line.payment_vendor || '',
-                    invoice_date: '', 
-                  })) as ProductItem[],
+                  products: (receiptLines || []).map((line) => {
+                    // Use cached product name if available, otherwise use line.product_name, or fallback
+                    const productName = line.product_name || 
+                                      (line.product_id && line.product_id > 0 ? productNameCache[line.product_id] : null) ||
+                                      (line.product_id && line.product_id > 0 ? `Product ID: ${line.product_id}` : 'Unknown Product');
+                    
+                    return {
+                      lineId: line.receipt_line_id,
+                      productName: productName,
+                      type: 'Medicine', 
+                      quantity: line.received_qty,
+                      hsnCode: line.hsn_id || line.hsn_code || 'N/A',
+                      amount: parseFloat(line.unit_price) || 0,
+                      transaction_number: line.transaction_number || '',
+                      payment_vendor: line.payment_vendor || '',
+                      invoice_date: '', 
+                    };
+                  }) as ProductItem[],
                 }
                 : null
             }
