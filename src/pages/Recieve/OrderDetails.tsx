@@ -275,7 +275,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }))
         .filter((product: {name: string, id: number}) => product.name && product.name.trim() !== '' && product.id);
       
-      setProductOptions(productData.map(p => p.name));
+      setProductOptions(productData.map((p: {name: string; id: number}) => p.name));
       setProductOptionsWithIds(productData);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
@@ -350,10 +350,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         free_qty: Number(row.qtyFree) || 0,
         expiry_date: expiryDate,
         unit_price: Number(row.pp) || 0,
-        cgst: Number(row.sp) || 0,
-        sgst: Number(row.mrp) || 0,
-        igst: Number(row.cgst) || 0,
-        discount: Number(row.sgst) || 0
+        cgst: Number(row.cgst) || 0,
+        sgst: Number(row.sgst) || 0,
+        igst: Number(row.igst) || 0,
+        discount: Number(row.disc) || 0
       };
       return line;
     });
@@ -399,10 +399,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         free_qty: row.qtyFree,
         expiry_date: row.batch,
         unit_price: row.pp,
-        cgst: row.sp,
-        sgst: row.mrp,
-        igst: row.cgst,
-        discount: typeof row.sgst === 'number' ? row.sgst : 0
+        cgst: row.cgst,
+        sgst: row.sgst,
+        igst: row.igst,
+        discount: typeof row.disc === 'number' ? row.disc : 0
       }));
     
     const edited = pharmaTableData
@@ -433,10 +433,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         received_qty: row.qtyReceived,
         free_qty: row.qtyFree,
         unit_price: row.pp.toString(),
-        cgst: row.sp.toString(),
-        sgst: row.mrp.toString(),
-        igst: row.cgst.toString(),
-        discount: (typeof row.sgst === 'number' ? row.sgst : 0).toString()
+        cgst: row.cgst.toString(),
+        sgst: row.sgst.toString(),
+        igst: row.igst.toString(),
+        discount: (typeof row.disc === 'number' ? row.disc : 0).toString()
       }));
 
     return { deleted, added, edited };
@@ -630,7 +630,54 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   };
 
-  const addProductToTable = (productName: string) => {
+  const addProductToTable = async (productName: string) => {
+    // Get product ID from name
+    const getProductIdFromName = (name: string): number | null => {
+      if (!name || !productOptionsWithIds || productOptionsWithIds.length === 0) {
+        return null;
+      }
+      const normalize = (str: string) => str.trim().toLowerCase();
+      const normalizedName = normalize(name);
+      let product = productOptionsWithIds.find(p => normalize(p.name) === normalizedName);
+      if (!product) {
+        product = productOptionsWithIds.find(p => 
+          normalize(p.name).includes(normalizedName) || 
+          normalizedName.includes(normalize(p.name))
+        );
+      }
+      return product ? product.id : null;
+    };
+
+    const productId = getProductIdFromName(productName);
+    
+    // Try to fetch product details including MRP
+    let productMRP = 0;
+    let productSellingPrice = 0;
+    
+    if (productId) {
+      try {
+        // Fetch product details from backend
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/inventory/get-product-details?product_id=${productId}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        
+        if (response.ok) {
+          const productData = await response.json();
+          productMRP = productData.mrp || 0;
+          productSellingPrice = productData.selling_price || productData.mrp || 0;
+        }
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+        // Continue with default values if fetch fails
+      }
+    }
+
     const newProduct: PharmaTableRow = {
       id: Date.now().toString(),
       productId: productName,
@@ -638,9 +685,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       qtyReceived: 0,
       qtyFree: 0,
       batch: "",
-      pp: 0,
-      sp: 0,
-      mrp: 0,
+      pp: 0, // Purchase price - user needs to enter
+      sp: productSellingPrice || 0, // Selling price - populate from product if available
+      mrp: productMRP || 0, // MRP - populate from product
       cgst: 0,
       sgst: 0,
       igst: 0,
@@ -904,12 +951,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         qtyFree: line.free_qty || 0,
         batch: line.expiry_date || '',
         pp: parseFloat(line.unit_price) || 0,
-        sp: parseFloat(line.cgst) || 0,
-        mrp: parseFloat(line.sgst) || 0,
-        cgst: parseFloat(line.igst) || 0,
-        sgst: parseFloat(line.discount) || 0,
-        igst: 0,
-        disc: 0,
+        sp: parseFloat(line.selling_price) || parseFloat(line.unit_price) || 0, // Use selling_price if available, else unit_price
+        mrp: parseFloat(line.mrp) || parseFloat(line.unit_price) || 0, // Use mrp if available, else unit_price
+        cgst: parseFloat(line.cgst) || 0,
+        sgst: parseFloat(line.sgst) || 0,
+        igst: parseFloat(line.igst) || 0,
+        disc: parseFloat(line.discount) || 0,
         margPercent: 0,
         salesDiscPercent: 0,
         isEditing: false,

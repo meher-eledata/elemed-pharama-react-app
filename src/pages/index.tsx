@@ -18,6 +18,7 @@ import Users from "./Admin/Users";
 import Reports from "./Admin/Reports";
 import AdminSettings from "./Admin/Settings";
 import AuditLog from "./Admin/AuditLog";
+import DetailedSalesTable from "./Admin/DetailedSalesTable";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 
@@ -61,6 +62,7 @@ export const Pages = () => {
         <Route index element={<AdminDashboard />} />
         <Route path="users" element={<Users />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="audit" element={<AuditLog />} />
       </Route>

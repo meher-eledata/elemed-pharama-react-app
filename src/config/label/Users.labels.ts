@@ -25,6 +25,10 @@ export const USERS_LABELS = {
   LAST_LOGIN: {
     NEVER: 'Never',
   },
+  MESSAGES: {
+    LOADING: 'Loading users...',
+    ERROR: 'Failed to load users. Please try again.',
+  },
 } as const;
 
 export type UsersLabels = typeof USERS_LABELS;

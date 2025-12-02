@@ -781,12 +781,12 @@ const AuditLog: React.FC = () => {
       {isLoading ? (
         <Box display="flex" justifyContent="center" alignItems="center" p={4}>
           <CircularProgress />
-          <Typography variant="body1" sx={{ ml: 2 }}>Loading activity log...</Typography>
+          <Typography variant="body1" sx={{ ml: 2 }}>{AUDIT_LOG_LABELS.MESSAGES.LOADING}</Typography>
         </Box>
       ) : error ? (
         <Box p={4} textAlign="center" color="error.main">
           <Typography variant="body1">
-            {extractErrorMessage(error, 'Failed to load activity log. Please try again.')}
+            {extractErrorMessage(error, AUDIT_LOG_LABELS.MESSAGES.ERROR)}
           </Typography>
         </Box>
       ) : (
@@ -913,7 +913,7 @@ const AuditLog: React.FC = () => {
           borderBottom: '1px solid #E0E0E0',
           pb: 2,
         }}>
-          Event Details
+          {AUDIT_LOG_LABELS.DIALOG.EVENT_DETAILS_TITLE}
         </DialogTitle>
         <DialogContent sx={{ pt: 3, pb: 2 }}>
           <Typography sx={{ 
@@ -932,7 +932,7 @@ const AuditLog: React.FC = () => {
             variant="primary"
             size="medium"
           >
-            Close
+            {AUDIT_LOG_LABELS.DIALOG.CLOSE_BUTTON}
           </StandardButton>
         </DialogActions>
       </Dialog>

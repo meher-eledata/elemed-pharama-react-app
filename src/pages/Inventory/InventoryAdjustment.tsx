@@ -20,11 +20,14 @@ import {
   FormControl,
   Autocomplete
 } from '@mui/material';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import DeleteNewIcon from '../../assets/DeleteNew.svg';
 import './InventoryAdjustment.scss';
 import dayjs from 'dayjs';
 import { StandardButton, PharmaDatePicker } from '../../components/Common';
+import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
 import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
 import {
   useGetBatchesForProductMutation,
@@ -150,6 +153,10 @@ const InventoryAdjustment: React.FC = () => {
   const [isLoadingProductOptions, setIsLoadingProductOptions] = useState(false);
   const [selectedProductById, setSelectedProductById] = useState<{ id: number; name: string } | null>(null);
   const [selectedProductByCode, setSelectedProductByCode] = useState<{ code: string; name: string; id: number } | null>(null);
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [originalValues, setOriginalValues] = useState<{ quantity: number; expiryDate: string } | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingBatchId, setPendingBatchId] = useState<string | null>(null);
 
   // Ensure consistent border radius from the start
   useEffect(() => {
@@ -250,7 +257,7 @@ const InventoryAdjustment: React.FC = () => {
       // Batch state updates together to prevent blinking
       startTransition(() => {
         setProductInfo(result.product);
-        setBatchRows(transformedBatches);
+      setBatchRows(transformedBatches);
       });
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -408,7 +415,7 @@ const InventoryAdjustment: React.FC = () => {
     setSelectedType(typeData);
     if (typeData) {
       fetchBatchesForProduct(typeData.product_id);
-    } else {
+      } else {
       setProductInfo(null);
       setBatchRows([]);
     }
@@ -419,6 +426,115 @@ const InventoryAdjustment: React.FC = () => {
     setBatchRows((prev) =>
       prev.map((batch) => (batch.id === batchId ? { ...batch, quantity: Number.isNaN(parsed) ? 0 : parsed } : batch))
     );
+  };
+
+  const handleEditRow = (batchId: string) => {
+    const batch = batchRows.find(b => b.id === batchId);
+    if (batch) {
+      setEditingRowId(batchId);
+      // Store original values to restore if user cancels
+      setOriginalValues({
+        quantity: batch.quantity,
+        expiryDate: batch.expiryDate
+      });
+    }
+  };
+
+  const handleCancelEdit = (batchId?: string) => {
+    const rowToCancel = batchId || editingRowId;
+    if (rowToCancel && originalValues) {
+      // Restore original values
+      setBatchRows((prev) =>
+        prev.map((b) =>
+          b.id === rowToCancel
+            ? {
+                ...b,
+                quantity: originalValues.quantity,
+                expiryDate: originalValues.expiryDate,
+              }
+            : b
+        )
+      );
+    }
+    setEditingRowId(null);
+    setOriginalValues(null);
+  };
+
+  const handleConfirmEdit = (batchId: string) => {
+    setPendingBatchId(batchId);
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmAdjustment = async () => {
+    if (!pendingBatchId || !productInfo || !selectedType) {
+      setConfirmDialogOpen(false);
+      setPendingBatchId(null);
+      return;
+    }
+
+    const batch = batchRows.find(b => b.id === pendingBatchId);
+    if (!batch) {
+      setConfirmDialogOpen(false);
+      setPendingBatchId(null);
+      return;
+    }
+
+    try {
+      const username = user?.username || 'admin';
+      
+      const lines = [{
+        batch_id: parseInt(pendingBatchId),
+        old_qty: batch.oldQuantity,
+        new_qty: batch.quantity,
+        expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
+      }];
+
+      await adjustInventoryBatches({
+        user: username,
+        product_id: selectedType.product_id,
+        lines,
+      }).unwrap();
+
+      // Update oldQuantity to reflect the new quantity after successful save
+      setBatchRows((prev) =>
+        prev.map((b) =>
+          b.id === pendingBatchId
+            ? {
+                ...b,
+                oldQuantity: b.quantity, // Update old quantity to current quantity
+              }
+            : b
+        )
+      );
+
+      // Exit edit mode
+      setEditingRowId(null);
+      setOriginalValues(null);
+      setConfirmDialogOpen(false);
+      setPendingBatchId(null);
+      
+      // Optionally refresh batches to get latest data
+      if (selectedType) {
+        fetchBatchesForProduct(selectedType.product_id);
+      }
+    } catch (error) {
+      console.error('Error adjusting inventory:', error);
+      // TODO: Show error toast/notification
+      // On error, restore original values
+      if (originalValues) {
+    setBatchRows((prev) =>
+          prev.map((b) =>
+            b.id === pendingBatchId
+              ? {
+                  ...b,
+                  quantity: originalValues.quantity,
+                  expiryDate: originalValues.expiryDate,
+                }
+              : b
+          )
+        );
+      }
+    }
   };
 
 
@@ -497,50 +613,135 @@ const InventoryAdjustment: React.FC = () => {
       key: 'quantity',
       header: 'Current Qty',
       sortable: true,
-      render: (batch) => (
+      render: (batch) => {
+        const isEditing = editingRowId === batch.id;
+        
+        return (
         <TextField
           value={batch.quantity}
           size="small"
           type="number"
           onChange={(event) => handleQuantityChange(batch.id, event.target.value)}
           InputProps={{ inputProps: { min: 0 } }}
-          sx={{ ...inputFieldStyles, width: 120 }}
-        />
-      )
+            disabled={!isEditing}
+            sx={{ 
+              ...inputFieldStyles, 
+              width: 120,
+              '& .MuiInputBase-input.Mui-disabled': {
+                WebkitTextFillColor: '#1f2937',
+                backgroundColor: 'transparent'
+              }
+            }}
+          />
+        );
+      }
     },
     {
       key: 'expiryDate',
       header: 'Expiry date',
       sortable: true,
-      render: (batch) => (
+      render: (batch) => {
+        const isEditing = editingRowId === batch.id;
+        
+        return (
         <PharmaDatePicker
           value={batch.expiryDate ? dayjs(batch.expiryDate) : null}
-          onChange={(newValue) =>
+            onChange={(newValue) => {
             setBatchRows((prev) =>
               prev.map((row) =>
                 row.id === batch.id ? { ...row, expiryDate: newValue ? newValue.format('YYYY-MM-DD') : '' } : row
               )
-            )
-          }
+              );
+            }}
+            disabled={!isEditing}
           width={220}
           height={36}
         />
-      )
+        );
+      }
     },
     {
       key: 'actions',
       header: 'Actions',
       sortable: false,
-      render: (batch) => (
+      render: (batch) => {
+        const isEditing = editingRowId === batch.id;
+        
+        return (
         <Box display="flex" justifyContent="center" gap={1}>
-          <IconButton size="small">
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" color="error" onClick={() => handleRemoveRow(batch.id)}>
-            <DeleteOutlineOutlinedIcon fontSize="small" />
-          </IconButton>
+            {isEditing ? (
+              <>
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleConfirmEdit(batch.id)}
+                  sx={{ 
+                    padding: '4px',
+                    color: '#5C17E5',
+                    '&:hover': {
+                      backgroundColor: '#F3E8FF',
+                      color: '#5C17E5'
+                    }
+                  }}
+                >
+                  <CheckIcon fontSize="small" />
+                </IconButton>
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleCancelEdit(batch.id)}
+                  title="Cancel editing"
+                  sx={{ 
+                    padding: '4px',
+                    color: '#728197',
+                    '&:hover': {
+                      color: '#EF4444',
+                      backgroundColor: '#FEF2F2'
+                    }
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </>
+            ) : (
+              <>
+                <IconButton 
+                  size="small"
+                  onClick={() => handleEditRow(batch.id)}
+                  sx={{ 
+                    padding: '4px',
+                    color: '#728197',
+                    '&:hover': {
+                      color: '#5C17E5'
+                    }
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleRemoveRow(batch.id)}
+                  sx={{ 
+                    padding: '4px',
+                    color: '#728197',
+                    '&:hover': {
+                      color: '#EF4444',
+                      backgroundColor: '#FEF2F2'
+                    }
+                  }}
+                >
+                  <img 
+                    src={DeleteNewIcon} 
+                    alt="Delete" 
+                    style={{ 
+                      width: '16px', 
+                      height: '16px'
+                    }} 
+                  />
+                </IconButton>
+              </>
+            )}
         </Box>
-      )
+        );
+      }
     }
   ];
 
@@ -556,7 +757,7 @@ const InventoryAdjustment: React.FC = () => {
             <Box className="product-selection-header">
               <Typography variant="h6" className="product-selection-title">
                 Product Selection
-              </Typography>
+            </Typography>
               <StandardButton 
                 variant="outline" 
                 size="medium" 
@@ -564,8 +765,8 @@ const InventoryAdjustment: React.FC = () => {
                 sx={{ minWidth: '100px' }}
               >
                 Clear All
-              </StandardButton>
-            </Box>
+            </StandardButton>
+          </Box>
             <Box className="search-type-wrapper">
               <FormControl component="fieldset">
                 <RadioGroup
@@ -617,12 +818,12 @@ const InventoryAdjustment: React.FC = () => {
                     }}
                     disabled={isLoadingBrands}
                     renderInput={(params) => (
-                      <TextField
+                    <TextField
                         {...params}
-                        size="small"
+                      size="small"
                         placeholder="Select Brand"
-                        sx={inputFieldStyles}
-                      />
+                      sx={inputFieldStyles}
+                    />
                     )}
                     sx={{ width: '100%' }}
                   />
@@ -652,9 +853,9 @@ const InventoryAdjustment: React.FC = () => {
                       return filtered;
                     }}
                     renderInput={(params) => (
-                      <TextField
+                    <TextField
                         {...params}
-                        size="small"
+                      size="small"
                         placeholder="Select Product ID"
                         sx={inputFieldStyles}
                       />
@@ -691,8 +892,8 @@ const InventoryAdjustment: React.FC = () => {
                         {...params}
                         size="small"
                         placeholder="Select Product Code"
-                        sx={inputFieldStyles}
-                      />
+                      sx={inputFieldStyles}
+                    />
                     )}
                     sx={{ width: '100%' }}
                   />
@@ -765,47 +966,47 @@ const InventoryAdjustment: React.FC = () => {
                       Product Details
                     </Typography>
                     {productInfo ? (
-                      <Box className="product-details-grid">
+                    <Box className="product-details-grid">
                         <Typography variant="body2" className="detail-label">
                           Product ID
-                        </Typography>
+                      </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.product_id}
-                        </Typography>
+                      </Typography>
 
                         <Typography variant="body2" className="detail-label">
                           Product Code
-                        </Typography>
+                      </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.product_code}
-                        </Typography>
+                      </Typography>
 
                         <Typography variant="body2" className="detail-label">
                           HSN ID
-                        </Typography>
+                      </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.hsn_id}
-                        </Typography>
+                      </Typography>
 
                         <Typography variant="body2" className="detail-label">
                           Total Quantity
-                        </Typography>
+                      </Typography>
                         <Typography variant="body2" className="detail-value">
                           {totalQuantity}
                         </Typography>
-                      </Box>
+                    </Box>
                     ) : (
                       <Box className="product-details-empty">
                         <Typography variant="body2" className="empty-message">
                           Select a product to view details
-                        </Typography>
-                      </Box>
-                    )}
+              </Typography>
+            </Box>
+          )}
                   </CardContent>
                 </Card>
-              </Box>
             </Box>
-          </Box>
+            </Box>
+            </Box>
 
           {batchesError && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -870,6 +1071,19 @@ const InventoryAdjustment: React.FC = () => {
           </Box>
         </Paper>
       </Container>
+
+      <ConfirmationDialog
+        open={confirmDialogOpen}
+        title="Confirm Inventory Adjustment"
+        message={`Are you sure you want to adjust the inventory for Batch ID ${pendingBatchId}? This action cannot be undone.`}
+        onClose={() => {
+          setConfirmDialogOpen(false);
+          setPendingBatchId(null);
+        }}
+        onConfirm={handleConfirmAdjustment}
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+      />
     </Box>
   );
 };

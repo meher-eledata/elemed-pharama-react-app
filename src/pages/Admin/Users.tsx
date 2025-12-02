@@ -339,11 +339,11 @@ const Users: React.FC = () => {
       {isLoading ? (
         <Box display="flex" justifyContent="center" alignItems="center" p={4}>
           <CircularProgress />
-          <Typography variant="body1" sx={{ ml: 2 }}>Loading users...</Typography>
+          <Typography variant="body1" sx={{ ml: 2 }}>{USERS_LABELS.MESSAGES.LOADING}</Typography>
         </Box>
       ) : error ? (
         <Box p={4} textAlign="center" color="error.main">
-          <Typography variant="body1">Failed to load users. Please try again.</Typography>
+          <Typography variant="body1">{USERS_LABELS.MESSAGES.ERROR}</Typography>
         </Box>
       ) : (
         <>

@@ -18,6 +18,8 @@ interface ConfirmationDialogProps {
   message: string;
   onClose: () => void;
   onConfirm: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -26,6 +28,8 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   message,
   onClose,
   onConfirm,
+  confirmLabel = 'Yes',
+  cancelLabel = 'Cancel',
 }) => {
   return (
     <Dialog
@@ -86,7 +90,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
                 "&:active": { backgroundColor: "#5C17E5" },
               }}
             >
-              Yes
+              {confirmLabel}
             </Button>
             <Button
               variant="contained"
@@ -101,7 +105,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
                 "&:active": { backgroundColor: "#5C17E5" },
               }}
             >
-              Do not delete
+              {cancelLabel}
             </Button>
           </DialogActions>
         </Box>

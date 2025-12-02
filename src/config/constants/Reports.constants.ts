@@ -17,6 +17,72 @@ export const REPORTS_CONSTANTS = {
   PAGE: {
     PADDING_BOTTOM: '24px',
   },
+  DAILY_SALES_REPORT: {
+    HEADER: {
+      TITLE_VARIANT: 'h5' as const,
+      TITLE_FONT_WEIGHT: 700,
+      TITLE_COLOR: '#1A212B',
+      DATE_PICKER: {
+        WIDTH: 180,
+        HEIGHT: 44,
+      },
+    },
+    CARD: {
+      BORDER_RADIUS: '12px',
+      BOX_SHADOW: '0 1px 3px rgba(0,0,0,0.1)',
+      BORDER: '1px solid #E5E7EB',
+      PADDING: 2.5,
+      METRIC_LABEL: {
+        FONT_SIZE: '14px',
+        COLOR: '#728197',
+        FONT_WEIGHT: 400,
+      },
+      METRIC_VALUE: {
+        FONT_SIZE: '24px',
+        FONT_WEIGHT: 700,
+        COLOR: '#1A212B',
+      },
+      SALES_CARD: {
+        PADDING: 2,
+        TITLE_FONT_SIZE: '16px',
+        TITLE_FONT_WEIGHT: 500,
+        AMOUNT_FONT_SIZE: '20px',
+        AMOUNT_FONT_WEIGHT: 700,
+        SUBTEXT_FONT_SIZE: '14px',
+        SUBTEXT_COLOR: '#728197',
+      },
+    },
+    SECTION_TITLE: {
+      FONT_SIZE: '18px',
+      FONT_WEIGHT: 600,
+      COLOR: '#1A212B',
+      MARGIN_BOTTOM: '-21px',
+    },
+    TAX_SUMMARY: {
+      CARD_WIDTH: '518px',
+      CARD_HEIGHT: '201px',
+      LABEL_FONT_SIZE: '14px',
+      LABEL_COLOR: '#728197',
+      VALUE_FONT_SIZE: '16px',
+      VALUE_FONT_WEIGHT: 600,
+      VALUE_COLOR: '#1A212B',
+      BORDER_BOTTOM: '1px solid #E5E7EB',
+      BORDER_BOTTOM_LIGHT: '1px solid #F3F4F6',
+    },
+    WEEKLY_TREND: {
+      CARD_WIDTH: '515px',
+      CARD_HEIGHT: '201px',
+      CHART_COLOR: '#7C3AED',
+      TICK_LABEL_FONT_SIZE: 12,
+      TICK_LABEL_COLOR: '#728197',
+    },
+    LINK: {
+      COLOR: '#5C17E5',
+      FONT_SIZE: '16px',
+      FONT_WEIGHT: 500,
+      ARROW_SIZE: '16px',
+    },
+  },
 } as const;
 
 export type ReportsConstants = typeof REPORTS_CONSTANTS;

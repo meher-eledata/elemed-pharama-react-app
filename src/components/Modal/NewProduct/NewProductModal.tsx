@@ -164,6 +164,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import CloseIcon from '@mui/icons-material/Close';
 import styled from '@mui/system/styled';
 import { useAddProductMutation } from '../../../redux/slices/inventoryApi';
+import { extractErrorMessage } from '../../../utils/errorUtils';
 
 // Enhanced constants for better UI
 export const NEW_PRODUCT_MODAL_CONSTANTS = {
@@ -375,21 +376,44 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    // Double check expiry date is set (validation should catch this, but just in case)
+    if (!expiryDate) {
+      setFormErrors({ expiry: 'Expiry date is required' });
+      return;
+    }
+
     try {
       const productData = {
-        product_name: formData.product_name,
-        product_code: formData.product_code,
-        type: formData.type,
-        hsn_id: formData.hsn_id,
-        package_info: formData.package_info,
-        unit_of_measure: formData.unit_of_measure,
+        product_name: formData.product_name.trim(),
+        product_code: formData.product_code.trim(),
+        type: formData.type.trim(),
+        hsn_id: formData.hsn_id.trim(),
+        package_info: formData.package_info.trim(),
+        unit_of_measure: formData.unit_of_measure.trim(),
         max_quantity: Number(formData.max_quantity),
         min_quantity: Number(formData.min_quantity),
-        expiry: expiryDate ? expiryDate.format('YYYY-MM-DD') : '',
+        expiry: expiryDate.format('YYYY-MM-DD'), // Since validation passed, expiryDate should exist
         mrp: Number(formData.mrp),
-        brand_name: formData.brand_name,
+        brand_name: formData.brand_name.trim(),
       };
 
+      // Validate numeric fields
+      if (isNaN(productData.max_quantity) || productData.max_quantity < 0) {
+        setFormErrors({ max_quantity: 'Valid maximum quantity is required' });
+        return;
+      }
+      if (isNaN(productData.min_quantity) || productData.min_quantity < 0) {
+        setFormErrors({ min_quantity: 'Valid minimum quantity is required' });
+        return;
+      }
+      if (isNaN(productData.mrp) || productData.mrp < 0) {
+        setFormErrors({ mrp: 'Valid MRP is required' });
+        return;
+      }
+
+      console.log('Submitting product data:', productData);
+      console.log('Expiry date value:', expiryDate);
+      console.log('Formatted expiry:', expiryDate ? expiryDate.format('YYYY-MM-DD') : 'EMPTY');
       await addProduct(productData).unwrap();
       
       // Reset form and close modal on success
@@ -415,7 +439,9 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       }
       
       onClose();
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Error adding product:', err);
+      // Error will be displayed via the error state from RTK Query
     }
   };
 
@@ -545,7 +571,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
               }
             }}
           >
-            Failed to add product. Please try again.
+            {extractErrorMessage(error, 'Failed to add product. Please try again.')}
           </Alert>
         )}
 
@@ -578,6 +604,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                         <PharmaDatePicker
                           value={expiryDate}
                           onChange={(newValue) => {
+                            console.log('Date picker onChange:', newValue);
                             setExpiryDate(newValue);
                             if (formErrors.expiry) {
                               setFormErrors(prev => ({ ...prev, expiry: '' }));
@@ -585,7 +612,21 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                           }}
                           width="100%"
                           height={NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT}
+                          error={!!formErrors.expiry}
                         />
+                        {formErrors.expiry && (
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: '#e53e3e', 
+                              mt: 0.5, 
+                              ml: 1.5,
+                              fontSize: '12px'
+                            }}
+                          >
+                            {formErrors.expiry}
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
                   ) : (

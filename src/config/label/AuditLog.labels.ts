@@ -22,6 +22,14 @@ export const AUDIT_LOG_LABELS = {
     USERNAME: 'Username',
     ROLE: 'Role',
   },
+  MESSAGES: {
+    LOADING: 'Loading activity log...',
+    ERROR: 'Failed to load activity log. Please try again.',
+  },
+  DIALOG: {
+    EVENT_DETAILS_TITLE: 'Event Details',
+    CLOSE_BUTTON: 'Close',
+  },
 } as const;
 
 export type AuditLogLabels = typeof AUDIT_LOG_LABELS;
