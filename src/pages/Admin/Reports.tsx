@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Box, Typography, Card, Grid, Stack } from '@mui/material';
+import React, { useState, Suspense, lazy } from 'react';
+import { Box, Typography, Card, Grid, Stack, CircularProgress } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
-import { PieChart } from '@mui/x-charts/PieChart';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate } from 'react-router-dom';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
@@ -9,6 +8,9 @@ import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
 import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
+
+// Lazy-loaded Pie Chart Component
+const PaymentTypePieChart = lazy(() => import('../../components/Charts/PaymentTypePieChart'));
 
 const Reports: React.FC = () => {
   return (
@@ -495,42 +497,28 @@ const DailySalesReport: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', ml: 6, mr: 5 }}>
             <Box
               sx={{
-                '& .MuiChartsLegend-root': {
-                  display: 'none !important',
-                },
-                '& .MuiChartsLegend-container': {
-                  display: 'none !important',
-                },
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}
             >
-              <PieChart
-                series={[
-                  {
-                    data: reportData.paymentTypeData,
-                    innerRadius: 50,
-                    outerRadius: 80,
-                    paddingAngle: 0,
-                    cornerRadius: 0,
-                    arcLabel: (item) => {
-                      const percentage = ((item.value / totalPaymentValue) * 100).toFixed(1);
-                      return `${percentage}%`;
-                    },
-                    arcLabelMinAngle: 5,
-                    arcLabelRadius: 58,
-                  },
-                ]}
-                width={200}
-                height={200}
-                margin={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                sx={{
-                  '& .MuiChartsPie-arcLabel': {
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    fill: '#1A212B',
-                    fontFamily: "'Lexend', sans-serif",
-                  },
-                }}
-              />
+              <Suspense
+                fallback={
+                  <Box
+                    sx={{
+                      width: 220,
+                      height: 220,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <CircularProgress size={40} />
+                  </Box>
+                }
+              >
+                <PaymentTypePieChart data={reportData.paymentTypeData} />
+              </Suspense>
             </Box>
             <Box>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
@@ -561,7 +549,6 @@ const DailySalesReport: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Tax Summary and Weekly Sales Trend */}
       <Grid container spacing={3} sx={{ mb: 4, mt: 3 }}>
         {/* Tax Summary Section */}
         <Grid item xs={12} md={6}>
@@ -604,7 +591,7 @@ const DailySalesReport: React.FC = () => {
                 <Typography
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_COLOR,
+                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
@@ -633,7 +620,7 @@ const DailySalesReport: React.FC = () => {
                 <Typography
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_COLOR,
+                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
@@ -662,7 +649,7 @@ const DailySalesReport: React.FC = () => {
                 <Typography
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_COLOR,
+                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
@@ -690,7 +677,7 @@ const DailySalesReport: React.FC = () => {
                 <Typography
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_COLOR,
+                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
