@@ -158,7 +158,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       }));
   };
 
-  const revenueProps = prepareChartProps(DASHBOARD_LABELS.CHART_REVENUE, 'revenueByDay', 'totalRevenue', '$');
+  const revenueProps = prepareChartProps(DASHBOARD_LABELS.CHART_REVENUE, 'revenueByDay', 'totalRevenue', '₹');
   const salesProps = prepareChartProps(DASHBOARD_LABELS.CHART_SALES, 'salesByDay', 'totalSales');
   const patientsProps = prepareChartProps(DASHBOARD_LABELS.CHART_PATIENTS, 'uniquePatientsByDay', 'uniquePatients');
 

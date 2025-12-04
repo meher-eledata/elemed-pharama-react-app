@@ -116,7 +116,7 @@ describe('ThreeChartsComponent', () => {
 
       // Assert that the mocked ChartCard component received the correct props
       const revenueCall = (ChartCard as jest.Mock).mock.calls.find(call => call[0].title === 'Revenue');
-      expect(revenueCall[0].metric).toBe('$50000');
+      expect(revenueCall[0].metric).toBe('₹50000');
       expect(revenueCall[0].chartData.series1).toEqual([1500, 2500, 3000]);
 
       // Fix this line to match the received filename format
@@ -145,7 +145,7 @@ describe('ThreeChartsComponent', () => {
       expect(revenueCall).toBeDefined();
 
       // Check for the expected properties of the empty data
-      expect(revenueCall[0].metric).toBe('$0');
+      expect(revenueCall[0].metric).toBe('₹0');
       expect(revenueCall[0].chartData.series1).toEqual([]);
     });
   });

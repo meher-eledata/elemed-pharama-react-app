@@ -81,7 +81,7 @@ describe('ChartsCard', () => {
   it('renders metric with currency symbol', () => {
     const currencyProps = {
       ...mockProps,
-      metric: '$50,000',
+      metric: '₹50,000',
     };
     
     render(
@@ -90,7 +90,7 @@ describe('ChartsCard', () => {
       </ThemeProvider>
     );
     
-    expect(screen.getByText('$50,000')).toBeInTheDocument();
+    expect(screen.getByText('₹50,000')).toBeInTheDocument();
   });
 
   // Test Case 4: Handles empty chart data

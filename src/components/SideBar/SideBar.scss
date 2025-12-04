@@ -3,7 +3,6 @@ $brand-primary: #5C17E5;
 $background-secondary: #F6F8FB;
 
 .sidebar {
-  // Width is controlled by inline styles for hover functionality
   height: 100vh;
   background-color: $brand-primary;
   border-radius: 0 24px 24px 0;
@@ -12,10 +11,9 @@ $background-secondary: #F6F8FB;
   align-items: center;
   overflow: hidden;
   box-sizing: border-box;
-  padding-top: 14px; // Initial padding from the top
-  // Ensure hover events work
+  padding-top: 14px; 
+  
   pointer-events: auto;
-  // Smooth transitions for width changes
   transition: width 0.08s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.08s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.08s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: width;
 }
@@ -30,7 +28,7 @@ $background-secondary: #F6F8FB;
   margin: 0;
   padding: 0;
   transition: background 0.2s, opacity 0.2s;
-  position: relative; // Needed for pseudo-element positioning
+  position: relative; 
 
   .MuiIconButton-root {
     padding: 0;
@@ -40,19 +38,20 @@ $background-secondary: #F6F8FB;
 
   img {
     display: block;
+    transition: transform 0.2s ease;
   }
 
   svg {
     fill: white !important;
     color: white !important;
     filter: invert(100%) brightness(100%);
+    transition: transform 0.2s ease;
     path, polygon, circle, rect {
       fill: white !important;
       stroke: white !important;
     }
   }
 
-  // Ensure Material-UI icons are white (without filter that might interfere)
   .MuiSvgIcon-root {
     fill: white !important;
     color: white !important;
@@ -69,20 +68,26 @@ $background-secondary: #F6F8FB;
 }
 
 .sidebar-item-active {
-  background: transparent; // Active item background is transparent
   position: relative;
-
-  // Pseudo-element for the active state background
+  background: rgba(74, 18, 196, 0.7) !important;
+  
   &::before {
     content: '';
     position: absolute;
-    top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(92, 23, 229, 0.2); // This creates the lighter purple background
-    border-radius: 16px;
-    z-index: -1; // Place it behind the icon
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    background: white;
+    border-radius: 0 4px 4px 0;
+    z-index: 1;
+  }
+
+  // Optional: Slight scale effect on icon
+  img, svg {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
   }
 }
 

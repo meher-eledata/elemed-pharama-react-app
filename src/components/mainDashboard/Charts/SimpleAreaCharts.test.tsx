@@ -121,7 +121,7 @@ describe('SimpleAreaCharts Component', () => {
 
       // Assert that the mocked ChartsCard component received the correct props
       const revenueCall = (ChartsCard as jest.Mock).mock.calls.find(call => call[0].title === 'Revenue');
-      expect(revenueCall[0].metric).toBe('$50000');
+      expect(revenueCall[0].metric).toBe('₹50000');
       expect(revenueCall[0].chartData.series1).toEqual([1500, 2500, 3000]);
 
       // Fix this line to match the received filename format
@@ -150,7 +150,7 @@ describe('SimpleAreaCharts Component', () => {
       expect(revenueCall).toBeDefined();
 
       // Check for the expected properties of the empty data
-      expect(revenueCall[0].metric).toBe('$0');
+      expect(revenueCall[0].metric).toBe('₹0');
       expect(revenueCall[0].chartData.series1).toEqual([]);
     });
   });
@@ -320,7 +320,7 @@ describe('SimpleAreaCharts Component', () => {
     await waitFor(() => {
       const revenueCall = (ChartsCard as jest.Mock).mock.calls.find(call => call[0].title === 'Revenue');
       expect(revenueCall[0].chartData.series1).toEqual([]);
-      expect(revenueCall[0].metric).toBe('$50000'); // Total should still be available
+      expect(revenueCall[0].metric).toBe('₹50000'); // Total should still be available
     });
   });
 

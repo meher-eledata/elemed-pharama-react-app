@@ -42,10 +42,9 @@ const baseItems: SidebarItem[] = [
 ];
 interface SidebarProps {
   onOpenChange?: (isOpen: boolean) => void;
-  isOpen?: boolean; // controlled open state (from parent)
+  isOpen?: boolean; 
 }
 
-// Helper component to render white Material-UI icons
 const WhiteIcon: React.FC<{ children: React.ReactElement }> = ({ children }) => (
   <Box 
     sx={{ 
@@ -73,7 +72,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const [isHovered, setIsHovered] = useState(false);
   const open = isHovered || (typeof isOpen === 'boolean' ? isOpen : uncontrolledOpen);
 
-  // Memoized handlers to prevent unnecessary re-renders during hover
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);
     if (onOpenChange) {
@@ -83,7 +81,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
 
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
-    // Only notify parent to close if sidebar wasn't manually opened
     if (onOpenChange && !uncontrolledOpen && typeof isOpen !== 'boolean') {
       onOpenChange(false);
     }
@@ -109,7 +106,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
 
   const sidebarItems = useMemo(() => {
     if (location.pathname.startsWith('/admin')) return adminItems;
-    // Otherwise show norma app sidebar if user is admin, include an entry to jump to Admin
     if (isAdmin) {
       return [
         ...baseItems,
@@ -118,6 +114,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
     }
     return baseItems;
   }, [isAdmin, location.pathname, adminItems]);
+
+  useEffect(() => {
+    const currentPath = location.pathname;
+        const sortedItems = [...sidebarItems].filter(item => item.route).sort((a, b) => {
+      const aLength = a.route?.length || 0;
+      const bLength = b.route?.length || 0;
+      return bLength - aLength;
+    });
+    
+    const matchingItem = sortedItems.find(item => {
+      if (!item.route) return false;
+      
+      if (item.route === currentPath) return true;
+         
+      if (currentPath.startsWith(item.route + '/')) return true;
+      
+      return false;
+    });
+    
+    if (matchingItem) {
+      setActiveItemId(matchingItem.id);
+    } else {
+      if (sidebarItems.length > 0) {
+        setActiveItemId(sidebarItems[0].id);
+      }
+    }
+  }, [location.pathname, sidebarItems]);
 return (
     <Box sx={{ display: 'flex', height: '100vh', }}>
       <Box
@@ -196,9 +219,10 @@ return (
                 display: "flex",
                 alignItems: "center",
                 '&:hover': {
-                  backgroundColor: "rgba(255,255,255,0.1)",
+                  backgroundColor: activeItemId === item.id ? "rgba(74, 18, 196, 0.8)" : "rgba(255,255,255,0.1)",
                 },
                 marginBottom: 0,
+                position: 'relative',
               }}
             >
               <ListItemIcon 
