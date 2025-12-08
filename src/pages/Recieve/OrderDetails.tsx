@@ -49,13 +49,13 @@ interface OrderDetailsProps {
 export interface PharmaTableRow {
   id?: string;
   productId: string;
-  product_id?: number; // Store actual product_id from backend
+  product_id?: number; 
   batchNumber?: string;
-  batch_id?: number; // Store batch_id for edited items
-  po_line_id?: number; // Store po_line_id for edited items
+  batch_id?: number;
+  po_line_id?: number; 
   qtyReceived: number;
   qtyFree: number;
-  batch: string; // This is the expiry_date in DD/MM/YYYY format
+  batch: string; 
   pp: number;
   sp: number;
   mrp: number;
