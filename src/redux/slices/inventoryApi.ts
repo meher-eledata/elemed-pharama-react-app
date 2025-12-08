@@ -143,10 +143,28 @@ export const inventoryApi = createApi({
     getLowStock: builder.query<InventoryItem[], void>({
       query: () => "inventory/min-quantity",
       providesTags: ["Inventory"],
+      transformResponse: (response: any[]): InventoryItem[] => {
+        if (!Array.isArray(response)) return [];
+        return response.map((item: any) => ({
+          id: item.product_id?.toString(),
+          name: item.name || '',
+          currentQuantity: item.current_qty ?? 0,
+          minQuantity: item.min_qty ?? undefined,
+        }));
+      },
     }),
     getExcessStock: builder.query<InventoryItem[], void>({
       query: () => "inventory/max-quantity",
       providesTags: ["Inventory"],
+      transformResponse: (response: any[]): InventoryItem[] => {
+        if (!Array.isArray(response)) return [];
+        return response.map((item: any) => ({
+          id: item.product_id?.toString(),
+          name: item.name || '',
+          currentQuantity: item.current_qty ?? 0,
+          maxQuantity: item.max_qty ?? undefined,
+        }));
+      },
     }),
     getExpiredStock: builder.query<InventoryItem[], void>({
       query: () => "inventory/expiry",

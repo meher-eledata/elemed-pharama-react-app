@@ -338,12 +338,10 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
     unit_of_measure: '',
     mrp: '',
     min_quantity: '',
-    max_quantity: '',
-    expiry: ''
+    max_quantity: ''
   });
 
   const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
-
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (key: string, value: string) => {
@@ -376,7 +374,6 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    // Double check expiry date is set (validation should catch this, but just in case)
     if (!expiryDate) {
       setFormErrors({ expiry: 'Expiry date is required' });
       return;
@@ -392,7 +389,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         unit_of_measure: formData.unit_of_measure.trim(),
         max_quantity: Number(formData.max_quantity),
         min_quantity: Number(formData.min_quantity),
-        expiry: expiryDate.format('YYYY-MM-DD'), // Since validation passed, expiryDate should exist
+        expiry: expiryDate.format('YYYY-MM-DD'),
         mrp: Number(formData.mrp),
         brand_name: formData.brand_name.trim(),
       };
@@ -412,8 +409,6 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       }
 
       console.log('Submitting product data:', productData);
-      console.log('Expiry date value:', expiryDate);
-      console.log('Formatted expiry:', expiryDate ? expiryDate.format('YYYY-MM-DD') : 'EMPTY');
       await addProduct(productData).unwrap();
       
       // Reset form and close modal on success
@@ -427,8 +422,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         unit_of_measure: '',
         mrp: '',
         min_quantity: '',
-        max_quantity: '',
-        expiry: ''
+        max_quantity: ''
       });
       setExpiryDate(null);
       setFormErrors({});
@@ -456,8 +450,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       unit_of_measure: '',
       mrp: '',
       min_quantity: '',
-      max_quantity: '',
-      expiry: ''
+      max_quantity: ''
     });
     setExpiryDate(null);
     setFormErrors({});
@@ -604,7 +597,6 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                         <PharmaDatePicker
                           value={expiryDate}
                           onChange={(newValue) => {
-                            console.log('Date picker onChange:', newValue);
                             setExpiryDate(newValue);
                             if (formErrors.expiry) {
                               setFormErrors(prev => ({ ...prev, expiry: '' }));

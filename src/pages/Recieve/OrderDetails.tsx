@@ -49,10 +49,13 @@ interface OrderDetailsProps {
 export interface PharmaTableRow {
   id?: string;
   productId: string;
+  product_id?: number; // Store actual product_id from backend
   batchNumber?: string;
+  batch_id?: number; // Store batch_id for edited items
+  po_line_id?: number; // Store po_line_id for edited items
   qtyReceived: number;
   qtyFree: number;
-  batch: string;
+  batch: string; // This is the expiry_date in DD/MM/YYYY format
   pp: number;
   sp: number;
   mrp: number;
@@ -403,6 +406,43 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (!id) return false;
       return /^\d+$/.test(id) && parseInt(id) < 1000000000000;
     };
+
+    const getProductIdFromName = (productName: string): number | null => {
+      if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
+        return null;
+      }
+      
+      const normalize = (str: string) => str.trim().toLowerCase();
+      const normalizedProductName = normalize(productName);
+      
+      let product = productOptionsWithIds.find(p => normalize(p.name) === normalizedProductName);
+      
+      if (!product) {
+        product = productOptionsWithIds.find(p => 
+          normalize(p.name).includes(normalizedProductName) || 
+          normalizedProductName.includes(normalize(p.name))
+        );
+      }
+      
+      return product ? product.id : null;
+    };
+
+    const formatExpiryDate = (batchDate: string): string => {
+      if (!batchDate || !batchDate.trim()) return '';
+      try {
+        const parsed = dayjs(batchDate, 'DD/MM/YYYY');
+        if (parsed.isValid()) {
+          return parsed.format('YYYY-MM-DD');
+        }
+        const altParsed = dayjs(batchDate);
+        if (altParsed.isValid()) {
+          return altParsed.format('YYYY-MM-DD');
+        }
+      } catch (error) {
+        // Ignore parsing errors
+      }
+      return '';
+    };
     
     const deleted = originalReceiptLines
       .filter(originalRow => !currentIds.has(originalRow.id))
@@ -414,18 +454,29 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         if (currentRow.id && !isDatabaseId(currentRow.id)) return true;
         return false;
       })
-      .map(row => ({
-        product: row.productId,
-      product_id: 101,
-      received_qty: row.qtyReceived,
-        free_qty: row.qtyFree,
-        expiry_date: row.batch,
-        unit_price: row.pp,
-        cgst: row.cgst,
-        sgst: row.sgst,
-        igst: row.igst,
-        discount: typeof row.disc === 'number' ? row.disc : 0
-      }));
+      .map(row => {
+        const productId = row.product_id || getProductIdFromName(row.productId);
+        if (!productId) {
+          console.warn(`Could not find product_id for product: ${row.productId}`);
+        }
+        if (!row.batchNumber || row.batchNumber.trim() === '') {
+          console.warn(`batch_number is required for product: ${row.productId}`);
+        }
+        
+        return {
+          product: row.productId,
+          product_id: productId || 0, // Fallback to 0 if not found, backend will reject
+          batch_number: row.batchNumber || '', // Required by backend
+          received_qty: row.qtyReceived,
+          free_qty: row.qtyFree,
+          expiry_date: formatExpiryDate(row.batch),
+          unit_price: row.pp,
+          cgst: row.cgst,
+          sgst: row.sgst,
+          igst: row.igst,
+          discount: typeof row.disc === 'number' ? row.disc : 0
+        };
+      });
     
     const edited = pharmaTableData
       .filter(currentRow => {
@@ -440,26 +491,32 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           originalRow.qtyFree !== currentRow.qtyFree ||
           originalRow.batch !== currentRow.batch ||
           originalRow.pp !== currentRow.pp ||
-          originalRow.sp !== currentRow.sp ||
-          originalRow.mrp !== currentRow.mrp ||
           originalRow.cgst !== currentRow.cgst ||
-          originalRow.sgst !== currentRow.sgst
+          originalRow.sgst !== currentRow.sgst ||
+          originalRow.igst !== currentRow.igst ||
+          originalRow.disc !== currentRow.disc
         );
       })
-      .map(row => ({
-        receipt_line_id: parseInt(row.id || '0'),
-        po_line_id: parseInt(row.id || '0'),
-        batch_id: 1,
-        product_id: 101,
-        product_name: row.productId,
-        received_qty: row.qtyReceived,
-        free_qty: row.qtyFree,
-        unit_price: row.pp.toString(),
-        cgst: row.cgst.toString(),
-        sgst: row.sgst.toString(),
-        igst: row.igst.toString(),
-        discount: (typeof row.disc === 'number' ? row.disc : 0).toString()
-      }));
+      .map(row => {
+        const originalRow = originalReceiptLines.find(orig => orig.id === row.id);
+        const productId = row.product_id || originalRow?.product_id || getProductIdFromName(row.productId);
+        
+        return {
+          receipt_line_id: parseInt(row.id || '0'),
+          po_line_id: row.po_line_id || originalRow?.po_line_id || 0,
+          batch_id: row.batch_id || originalRow?.batch_id || 0, // Backend expects batch_id from InventoryBatch
+          product_id: productId || 0,
+          product_name: row.productId,
+          received_qty: row.qtyReceived,
+          free_qty: row.qtyFree,
+          expiry_date: formatExpiryDate(row.batch),
+          unit_price: row.pp.toString(),
+          cgst: row.cgst.toString(),
+          sgst: row.sgst.toString(),
+          igst: row.igst.toString(),
+          discount: (typeof row.disc === 'number' ? row.disc : 0).toString()
+        };
+      });
 
     return { deleted, added, edited };
   };
@@ -664,15 +721,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       return product ? product.id : null;
     };
 
-    const productId = getProductIdFromName(productName);
+    const resolvedProductId = getProductIdFromName(productName);
     
     let productMRP = 0;
     let productSellingPrice = 0;
     
-    if (productId) {
+    if (resolvedProductId) {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/inventory/get-product-details?product_id=${productId}`,
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/inventory/get-product-details?product_id=${resolvedProductId}`,
           {
             method: 'GET',
             headers: {
@@ -690,10 +747,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         console.error('Error fetching product details:', error);
       }
     }
-
+    
     const newProduct: PharmaTableRow = {
       id: Date.now().toString(),
       productId: productName,
+      product_id: resolvedProductId || undefined,
       batchNumber: batchNumber || "",
       qtyReceived: 0,
       qtyFree: 0,
@@ -939,26 +997,45 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setInvoiceDate(navigationInvoiceDate);
       }
       
-      const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => ({
-        id: line.receipt_line_id?.toString() || line.id?.toString() || index.toString(),
-        productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
-        qtyReceived: line.received_qty || 0,
-        qtyFree: line.free_qty || 0,
-        batch: line.expiry_date || '',
-        pp: parseFloat(line.unit_price) || 0,
-        sp: parseFloat(line.selling_price) || parseFloat(line.unit_price) || 0, // Use selling_price if available, else unit_price
-        mrp: parseFloat(line.mrp) || parseFloat(line.unit_price) || 0, // Use mrp if available, else unit_price
-        cgst: parseFloat(line.cgst) || 0,
-        sgst: parseFloat(line.sgst) || 0,
-        igst: parseFloat(line.igst) || 0,
-        disc: parseFloat(line.discount) || 0,
-        margPercent: 0,
-        salesDiscPercent: 0,
-        isEditing: false,
-        transaction_number: line.transaction_number || '',
-        payment_vendor: line.payment_vendor || '',
-        invoice_date: line.invoice_date || navigationInvoiceDate || '',
-      }));
+      const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => {
+        // Parse expiry_date to DD/MM/YYYY format for display
+        let expiryDateFormatted = '';
+        if (line.expiry_date) {
+          try {
+            const parsed = dayjs(line.expiry_date);
+            if (parsed.isValid()) {
+              expiryDateFormatted = parsed.format('DD/MM/YYYY');
+            }
+          } catch (e) {
+            expiryDateFormatted = '';
+          }
+        }
+
+        return {
+          id: line.receipt_line_id?.toString() || line.id?.toString() || index.toString(),
+          productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
+          product_id: line.product_id ? Number(line.product_id) : undefined,
+          batchNumber: line.batch_number || '',
+          batch_id: line.batch_id || undefined, // Will need to fetch from inventory_batch if not in response
+          po_line_id: line.po_line_id ? Number(line.po_line_id) : undefined,
+          qtyReceived: line.received_qty || 0,
+          qtyFree: line.free_qty || 0,
+          batch: expiryDateFormatted, // Expiry date in DD/MM/YYYY format
+          pp: parseFloat(line.unit_price) || 0,
+          sp: parseFloat(line.selling_price) || parseFloat(line.unit_price) || 0,
+          mrp: parseFloat(line.mrp) || parseFloat(line.unit_price) || 0,
+          cgst: parseFloat(line.cgst) || 0,
+          sgst: parseFloat(line.sgst) || 0,
+          igst: parseFloat(line.igst) || 0,
+          disc: parseFloat(line.discount) || 0,
+          margPercent: 0,
+          salesDiscPercent: 0,
+          isEditing: false,
+          transaction_number: line.transaction_number || '',
+          payment_vendor: line.payment_vendor || '',
+          invoice_date: line.invoice_date || navigationInvoiceDate || '',
+        };
+      });
 
       setPharmaTableData(transformedLines);
       setOriginalReceiptLines(transformedLines);
