@@ -94,9 +94,12 @@ const Users: React.FC = () => {
   }, [usersData, currentSearchTerm]);
 
   const sortedData = useMemo(() => {
+    const activeSortKey = sortConfig.key || USERS_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY;
+    const activeSortDirection = sortConfig.direction || USERS_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION;
+    
     return [...filteredData].sort((a, b) => {
-      const aValue = a[sortConfig.key as keyof User];
-      const bValue = b[sortConfig.key as keyof User];
+      const aValue = a[activeSortKey as keyof User];
+      const bValue = b[activeSortKey as keyof User];
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
        
@@ -104,9 +107,12 @@ const Users: React.FC = () => {
           numeric: true, 
           sensitivity: 'base' 
         });
-        return sortConfig.direction === 'asc' ? compareResult : -compareResult;
+        return activeSortDirection === 'asc' ? compareResult : -compareResult;
       }
-      return 0;
+      // Fallback: convert to string and compare
+      return activeSortDirection === 'asc'
+        ? String(aValue).localeCompare(String(bValue))
+        : String(bValue).localeCompare(String(aValue));
     });
   }, [filteredData, sortConfig]);
 

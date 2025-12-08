@@ -559,19 +559,30 @@ const OrderReceive: React.FC = () => {
         );
       }
 
-      if (sortConfig.key) {
-        sortableItems.sort((a, b) => {
-          const aValue = a[sortConfig.key as keyof OrderReceiveRow];
-          const bValue = b[sortConfig.key as keyof OrderReceiveRow];
+      const activeSortKey = sortConfig.key || 'reNo';
+      const activeSortDirection = sortConfig.direction || 'desc';
+      
+      sortableItems.sort((a, b) => {
+        const aValue = a[activeSortKey as keyof OrderReceiveRow];
+        const bValue = b[activeSortKey as keyof OrderReceiveRow];
 
-          if (typeof aValue === 'string' && typeof bValue === 'string') {
-            return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-          } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-            return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-          }
-          return 0;
-        });
-      }
+        if (activeSortKey === 'reNo' && typeof aValue === 'string' && typeof bValue === 'string') {
+          const aNum = parseInt(aValue.replace(/\D/g, ''), 10) || 0;
+          const bNum = parseInt(bValue.replace(/\D/g, ''), 10) || 0;
+          return activeSortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return activeSortDirection === 'asc' 
+            ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
+            : bValue.localeCompare(aValue, undefined, { numeric: true, sensitivity: 'base' });
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return activeSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+        return activeSortDirection === 'asc'
+          ? String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: 'base' })
+          : String(bValue).localeCompare(String(aValue), undefined, { numeric: true, sensitivity: 'base' });
+      });
       return sortableItems;
     } else {
       let sortableItems = [...purchaseOrderData];
@@ -582,17 +593,31 @@ const OrderReceive: React.FC = () => {
         );
       }
 
-      if (sortConfig.key) {
-        sortableItems.sort((a, b) => {
-          const aValue = a[sortConfig.key as keyof PurchaseOrderRow];
-          const bValue = b[sortConfig.key as keyof PurchaseOrderRow];
+      // Always apply sorting - use default if sortConfig.key is empty
+      const activeSortKey = sortConfig.key || 'reNo';
+      const activeSortDirection = sortConfig.direction || 'desc';
+      
+      sortableItems.sort((a, b) => {
+        const aValue = a[activeSortKey as keyof PurchaseOrderRow];
+        const bValue = b[activeSortKey as keyof PurchaseOrderRow];
 
-          if (typeof aValue === 'string' && typeof bValue === 'string') {
-            return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-          }
-          return 0;
-        });
-      }
+        // Special handling for receipt numbers (reNo) - extract numeric part for proper sorting
+        if (activeSortKey === 'reNo' && typeof aValue === 'string' && typeof bValue === 'string') {
+          const aNum = parseInt(aValue.replace(/\D/g, ''), 10) || 0;
+          const bNum = parseInt(bValue.replace(/\D/g, ''), 10) || 0;
+          return activeSortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          // Use numeric-aware comparison for better sorting
+          return activeSortDirection === 'asc'
+            ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
+            : bValue.localeCompare(aValue, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        return activeSortDirection === 'asc'
+          ? String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: 'base' })
+          : String(bValue).localeCompare(String(aValue), undefined, { numeric: true, sensitivity: 'base' });
+      });
       return sortableItems;
     }
   }, [activeTab, tableData, purchaseOrderData, sortConfig, searchTerm, filters, dateRange]);

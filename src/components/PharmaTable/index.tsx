@@ -97,10 +97,8 @@ export const ReusableTable = <T,>({
 }: ReusableTableProps<T>) => {
     const theme = useTheme();
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('md'));
-    
+
     const tableContainerRef = useRef<HTMLDivElement>(null);
-    const scrollbarRef = useRef<HTMLDivElement>(null);
-    const [showScrollbar, setShowScrollbar] = useState(false);
 
     const visibleColumns = columns.filter((col) => !col.hide);
     const totalPages = Math.ceil(totalRows / rowsPerPage);
@@ -109,69 +107,6 @@ export const ReusableTable = <T,>({
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
     const paginatedData = data.slice(startIndex, endIndex);
-    
-    // Sync scrollbar with table
-    useEffect(() => {
-        if (totalRows === 0) return;
-        
-        const tableContainer = tableContainerRef.current;
-        const scrollbar = scrollbarRef.current;
-        
-        if (!tableContainer) return;
-        
-        // Calculate and set scrollbar content width
-        const updateScrollbarWidth = () => {
-            const table = tableContainer.querySelector('table');
-            if (!table) return;
-            
-            const scrollWidth = table.scrollWidth;
-            const clientWidth = tableContainer.clientWidth;
-            
-            // Show scrollbar only if content overflows
-            const needsScrollbar = scrollWidth > clientWidth;
-            setShowScrollbar(needsScrollbar);
-            
-            if (needsScrollbar && scrollbar) {
-                const scrollbarContent = scrollbar.querySelector('.scrollbar-content') as HTMLElement;
-                if (scrollbarContent) {
-                    scrollbarContent.style.width = `${scrollWidth}px`;
-                    scrollbarContent.style.minWidth = `${clientWidth}px`;
-                }
-            }
-        };
-        
-        // Initial setup
-        setTimeout(updateScrollbarWidth, 100);
-        
-        // Update on resize
-        const resizeObserver = new ResizeObserver(updateScrollbarWidth);
-        resizeObserver.observe(tableContainer);
-        
-        const handleTableScroll = () => {
-            if (scrollbar && showScrollbar) {
-                scrollbar.scrollLeft = tableContainer.scrollLeft;
-            }
-        };
-        
-        const handleScrollbarScroll = () => {
-            if (tableContainer && scrollbar && showScrollbar) {
-                tableContainer.scrollLeft = scrollbar.scrollLeft;
-            }
-        };
-        
-        tableContainer.addEventListener('scroll', handleTableScroll);
-        if (scrollbar) {
-            scrollbar.addEventListener('scroll', handleScrollbarScroll);
-        }
-        
-        return () => {
-            resizeObserver.disconnect();
-            tableContainer.removeEventListener('scroll', handleTableScroll);
-            if (scrollbar) {
-                scrollbar.removeEventListener('scroll', handleScrollbarScroll);
-            }
-        };
-    }, [paginatedData, totalRows, data, showScrollbar]);
 
     const getPlaceholder = () => {
         const activeFilter = searchAndFilterConfig.filterOptions.find((f: FilterOption) => f.key === currentFilterKey);
@@ -191,9 +126,21 @@ export const ReusableTable = <T,>({
         onPageChange(event.target.value as number);
     };
 
-    const getColumnWidth = (columnKey: string) => {
+    const getColumnWidth = (columnKey: string, index: number, totalColumns: number) => {
         if (columnKey === 'checkbox' || columnKey === 'actions') {
-            return '50px';
+            return '60px';
+        }
+        const column = visibleColumns[index];
+        if (column?.columnWidth) {
+            return column.columnWidth;
+        }
+        const specialColumns = visibleColumns.filter(col => col.key === 'checkbox' || col.key === 'actions').length;
+        const regularColumns = visibleColumns.length - specialColumns;
+        
+        if (regularColumns > 0) {
+            // Distribute width evenly, ensuring exactly 100% total
+            const percentage = 100 / regularColumns;
+            return `${percentage}%`;
         }
         return 'auto';
     };
@@ -366,7 +313,7 @@ export const ReusableTable = <T,>({
                         <Button
                             variant="contained"
                             startIcon={
-                                showFilters 
+                                showFilters
                                     ? <FilterListOffIcon />
                                     : <FilterAltIcon />
                             }
@@ -418,7 +365,15 @@ export const ReusableTable = <T,>({
                 </Box>
             )}
 
-            <Box sx={{ borderRadius: totalRows > 0 ? '16px 16px 0 0' : '16px', border: '1px solid #9AABB', borderBottom: totalRows > 0 ? 'none' : '1px solid #9AABB', overflow: 'hidden' }}>
+            <Box sx={{ 
+                borderRadius: totalRows > 0 ? '12px 12px 0 0' : '12px', 
+                border: '1px solid #E5E7EB', 
+                borderBottom: totalRows > 0 ? 'none' : '1px solid #E5E7EB', 
+                overflow: 'hidden', 
+                width: '100%',
+                overflowX: 'hidden',
+                boxSizing: 'border-box',
+            }}>
                 <TableContainer
                     component={Paper}
                     ref={tableContainerRef}
@@ -426,133 +381,175 @@ export const ReusableTable = <T,>({
                         borderRadius: 0,
                         border: 'none',
                         p: 0,
-                        overflowX: 'auto',
+                        m: 0,
+                        maxHeight: '350px',
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        width: '100%',
                         maxWidth: '100%',
+                        position: 'relative',
+                        boxSizing: 'border-box',
                         '&::-webkit-scrollbar': {
-                            display: 'none', // Hide native scrollbar - will show custom one below if needed
+                            width: '6px',
+                            height: '0px !important',
+                            display: 'block',
                         },
-                        scrollbarWidth: 'none',
+                        '&::-webkit-scrollbar:horizontal': {
+                            display: 'none !important',
+                            height: '0px !important',
+                            width: '0px !important',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                            backgroundColor: '#F3F4F6',
+                            borderRadius: '3px',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: '#D1D5DB',
+                            borderRadius: '3px',
+                            '&:hover': {
+                                backgroundColor: '#9CA3AF',
+                            },
+                        },
+                        '&::-webkit-scrollbar-corner': {
+                            display: 'none !important',
+                        },
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: '#D1D5DB #F3F4F6',
+                        '& table': {
+                            width: '100% !important',
+                            maxWidth: '100% !important',
+                            tableLayout: 'fixed',
+                        },
+                        '& *': {
+                            overflowX: 'hidden !important',
+                            maxWidth: '100% !important',
+                        },
                     }}
                 >
-                <Table stickyHeader sx={{ minWidth: 1200 }}>
-                    <TableHead>
-                        <TableRow>
-                            {visibleColumns.map((column, index) => (
+                <Table stickyHeader sx={{ 
+                    width: '100%', 
+                    tableLayout: 'fixed', 
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    margin: 0,
+                    padding: 0,
+                }}>
+                        <TableHead>
+                            <TableRow>
+                                {visibleColumns.map((column, index) => (
                                 <TableCell
                                     key={index}
                                     sx={{
                                         fontFamily: "'Lexend', sans-serif",
-                                        fontWeight: 500,
-                                        fontSize: '16px',
-                                        lineHeight: '24px',
-                                        color: '#1A212B',
-                                        padding: '12px',
-                                        bgcolor: '#ffffff',
+                                        fontWeight: 600,
+                                        fontSize: '14px',
+                                        lineHeight: '20px',
+                                        color: '#374151',
+                                        padding: '12px 16px',
+                                        bgcolor: '#F9FAFB',
                                         whiteSpace: 'nowrap',
-                                        width: getColumnWidth(column.key as string),
+                                        width: getColumnWidth(column.key as string, index, visibleColumns.length) || 'auto',
+                                        maxWidth: getColumnWidth(column.key as string, index, visibleColumns.length) || 'auto',
                                         cursor: 'default',
                                         textAlign: 'left',
+                                        borderBottom: '1px solid #E5E7EB',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
                                     }}
                                 >
-                                    <Box display="flex" alignItems="center" gap={1}>
-                                        {column.key === 'checkbox' ? (
-                                            <Checkbox
-                                                indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
-                                                onChange={handleSelectAll}
-                                                sx={{ p: 0 }}
-                                            />
-                                        ) : (
-                                            <Box 
-                                                sx={{ 
-                                                    pointerEvents: column.sortable !== false ? 'none' : 'auto'
-                                                }}
-                                            >
-                                                {column.headerRender ? column.headerRender() : column.header}
-                                            </Box>
-                                        )}
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            {column.key === 'checkbox' && totalRows > 0 ? (
+                                                <Checkbox
+                                                    indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
+                                                    onChange={handleSelectAll}
+                                                    sx={{ p: 0 }}
+                                                />
+                                            ) : column.key !== 'checkbox' ? (
+                                                <Box
+                                                    sx={{
+                                                        pointerEvents: column.sortable !== false ? 'none' : 'auto'
+                                                    }}
+                                                >
+                                                    {column.headerRender ? column.headerRender() : column.header}
+                                                </Box>
+                                            ) : null}
 
-                                        {column.sortable !== false && (
-                                            <Box 
-                                                sx={{ 
-                                                    display: 'flex', 
-                                                    flexDirection: 'column', 
-                                                    alignItems: 'center', 
-                                                    gap: 0, 
-                                                    marginTop: '-2px', 
-                                                    marginBottom: '-2px',
-                                                    cursor: 'pointer',
-                                                    userSelect: 'none'
-                                                }}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    e.preventDefault();
-                                                    onSortRequest(column.key as string);
-                                                }}
-                                            >
-                                                <KeyboardArrowUpIcon
+                                            {column.sortable !== false && totalRows > 0 && (
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: 0,
+                                                        marginLeft: '4px',
+                                                        cursor: 'pointer',
+                                                        userSelect: 'none',
+                                                        width: '16px',
+                                                        height: '20px',
+                                                    }}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         e.preventDefault();
                                                         onSortRequest(column.key as string);
                                                     }}
-                                                    sx={{
-                                                        fontSize: 12,
-                                                        color: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#5C17E5' : '#B0BEC5',
-                                                        fontWeight: sortConfig.key === column.key && sortConfig.direction === 'asc' ? 'bold' : 'normal',
-                                                        backgroundColor: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#F3E8FF' : 'transparent',
-                                                        borderRadius: '4px',
-                                                        padding: '1px',
-                                                        marginBottom: '-2px',
-                                                        cursor: 'pointer',
-                                                        pointerEvents: 'auto'
-                                                    }}
-                                                />
-                                                <KeyboardArrowDownIcon
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        onSortRequest(column.key as string);
-                                                    }}
-                                                    sx={{
-                                                        fontSize: 12,
-                                                        color: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#5C17E5' : '#B0BEC5',
-                                                        fontWeight: sortConfig.key === column.key && sortConfig.direction === 'desc' ? 'bold' : 'normal',
-                                                        backgroundColor: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#F3E8FF' : 'transparent',
-                                                        borderRadius: '4px',
-                                                        padding: '1px',
-                                                        marginTop: '-2px',
-                                                        cursor: 'pointer',
-                                                        pointerEvents: 'auto'
-                                                    }}
-                                                />
-                                            </Box>
-                                        )}
-                                    </Box>
-                                </TableCell>
-                            ))}
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {paginatedData.length > 0 ? (
-                            paginatedData.map((row, rowIndex) => {
-                                const actualRowIndex = getActualRowIndex(rowIndex);
-                                return (
-                                    <TableRow
-                                        key={actualRowIndex}
-                                        sx={{
-                                            backgroundColor: '#FFFFFF !important',
-                                            borderBottom: 'none',
-                                            '&:hover': {
+                                                >
+                                                    <KeyboardArrowUpIcon
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            onSortRequest(column.key as string);
+                                                        }}
+                                                        sx={{
+                                                            fontSize: 12,
+                                                            color: sortConfig.key === column.key && sortConfig.direction === 'asc' ? '#5C17E5' : '#B0BEC5',
+                                                            marginBottom: '-2px',
+                                                            cursor: 'pointer',
+                                                            pointerEvents: 'auto'
+                                                        }}
+                                                    />
+                                                    <KeyboardArrowDownIcon
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            onSortRequest(column.key as string);
+                                                        }}
+                                                        sx={{
+                                                            fontSize: 12,
+                                                            color: sortConfig.key === column.key && sortConfig.direction === 'desc' ? '#5C17E5' : '#B0BEC5',
+                                                            marginTop: '-2px',
+                                                            cursor: 'pointer',
+                                                            pointerEvents: 'auto'
+                                                        }}
+                                                    />
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {paginatedData.length > 0 ? (
+                                paginatedData.map((row, rowIndex) => {
+                                    const actualRowIndex = getActualRowIndex(rowIndex);
+                                    return (
+                                        <TableRow
+                                            key={actualRowIndex}
+                                            sx={{
                                                 backgroundColor: '#FFFFFF !important',
-                                            },
-                                            '&:focus': {
-                                                backgroundColor: '#FFFFFF !important',
-                                            },
-                                            '&:active': {
-                                                backgroundColor: '#FFFFFF !important',
-                                            },
-                                        }}
-                                    >
+                                                borderBottom: 'none',
+                                                '&:hover': {
+                                                    backgroundColor: '#F9FAFB !important',
+                                                },
+                                                '&:focus': {
+                                                    backgroundColor: '#F9FAFB !important',
+                                                },
+                                                '&:active': {
+                                                    backgroundColor: '#F9FAFB !important',
+                                                },
+                                            }}
+                                        >
                                         {visibleColumns.map((column, colIndex) => (
                                             <TableCell
                                                 key={colIndex}
@@ -561,37 +558,43 @@ export const ReusableTable = <T,>({
                                                     fontWeight: 400,
                                                     fontSize: '14px',
                                                     lineHeight: '20px',
-                                                    color: '#1A212B',
-                                                    padding: '12px',
+                                                    color: '#374151',
+                                                    padding: '12px 16px',
                                                     whiteSpace: 'normal',
                                                     wordBreak: 'break-word',
-                                                    width: getColumnWidth(column.key as string),
+                                                    width: getColumnWidth(column.key as string, colIndex, visibleColumns.length) || 'auto',
+                                                    maxWidth: getColumnWidth(column.key as string, colIndex, visibleColumns.length) || 'auto',
                                                     textAlign: 'left',
+                                                    borderBottom: '1px solid #F3F4F6',
+                                                    overflow: column.key === 'batch' ? 'visible' : 'hidden',
+                                                    textOverflow: 'ellipsis',
                                                 }}
                                             >
-                                                {column.key === 'checkbox' ? (
+                                                {column.key === 'checkbox' && totalRows > 0 ? (
                                                     <Checkbox
                                                         checked={selectedRows.includes(actualRowIndex)}
                                                         onChange={() => handleSelectRow(rowIndex)}
                                                         sx={{ p: 0 }}
                                                     />
-                                                ) : column.render ? column.render(row) : (row as any)[column.key]}
+                                                ) : column.key !== 'checkbox' ? (
+                                                    column.render ? column.render(row) : (row as any)[column.key]
+                                                ) : null}
                                             </TableCell>
                                         ))}
-                                    </TableRow>
-                                );
-                            })
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={visibleColumns.length}>
-                                    <Typography align="center" sx={{ padding: 2 }}>
-                                        {emptyMessage}
-                                    </Typography>
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                                        </TableRow>
+                                    );
+                                })
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={visibleColumns.length}>
+                                        <Typography align="center" sx={{ padding: 2 }}>
+                                            {emptyMessage}
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 </TableContainer>
             </Box>
             {totalRows > 0 && (
@@ -602,11 +605,11 @@ export const ReusableTable = <T,>({
                         alignItems: 'center',
                         px: 2,
                         py: 1.5,
-                        border: '1px solid #9AABB',
-                        borderTop: '1px solid #E0E0E0',
+                        border: '1px solid #E5E7EB',
+                        borderTop: '1px solid #E5E7EB',
                         gap: 2,
-                        bgcolor: '#ffffff',
-                        borderRadius: 0,
+                        bgcolor: '#F9FAFB',
+                        borderRadius: '0 0 12px 12px',
                         marginTop: '-1px',
                     }}
                 >
@@ -652,11 +655,11 @@ export const ReusableTable = <T,>({
                         <IconButton
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
-                            sx={{ 
-                                border: '1px solid #E0E0E0', 
-                                borderRadius: '4px', 
-                                p: 0.5, 
-                                height: 32, 
+                            sx={{
+                                border: '1px solid #E0E0E0',
+                                borderRadius: '4px',
+                                p: 0.5,
+                                height: 32,
                                 width: 32,
                                 bgcolor: '#ffffff',
                                 '&:hover:not(:disabled)': {
@@ -673,11 +676,11 @@ export const ReusableTable = <T,>({
                         <IconButton
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
-                            sx={{ 
-                                border: '1px solid #E0E0E0', 
-                                borderRadius: '4px', 
-                                p: 0.5, 
-                                height: 32, 
+                            sx={{
+                                border: '1px solid #E0E0E0',
+                                borderRadius: '4px',
+                                p: 0.5,
+                                height: 32,
                                 width: 32,
                                 bgcolor: '#ffffff',
                                 '&:hover:not(:disabled)': {
@@ -693,57 +696,6 @@ export const ReusableTable = <T,>({
                         </IconButton>
                     </Box>
                 </Box>
-            )}
-            {/* Scrollbar only shown when table content overflows */}
-            {totalRows > 0 && showScrollbar && (
-                <Box
-                    ref={scrollbarRef}
-                    component="div"
-                    sx={{
-                        width: '100%',
-                        height: '12px',
-                        bgcolor: '#ffffff',
-                        border: '1px solid #9AABB',
-                        borderTop: 'none',
-                        borderRadius: '0 0 16px 16px',
-                        overflowX: 'auto',
-                        overflowY: 'hidden',
-                        '&::-webkit-scrollbar': {
-                            height: '8px',
-                        },
-                        '&::-webkit-scrollbar-track': {
-                            backgroundColor: '#f1f1f1',
-                            borderRadius: '4px',
-                        },
-                        '&::-webkit-scrollbar-thumb': {
-                            backgroundColor: '#c1c1c1',
-                            borderRadius: '4px',
-                            '&:hover': {
-                                backgroundColor: '#a8a8a8',
-                            },
-                        },
-                    }}
-                >
-                    <Box 
-                        className="scrollbar-content"
-                        sx={{ 
-                            width: '100%', 
-                            height: '1px',
-                        }} 
-                    />
-                </Box>
-            )}
-            {totalRows > 0 && !showScrollbar && (
-                <Box
-                    sx={{
-                        width: '100%',
-                        height: '1px',
-                        bgcolor: '#ffffff',
-                        border: '1px solid #9AABB',
-                        borderTop: 'none',
-                        borderRadius: '0 0 16px 16px',
-                    }}
-                />
             )}
         </>
     );

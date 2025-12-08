@@ -237,22 +237,27 @@ export default function SaleHistory() {
     setCurrentFilter({});
   };
 
-  // Sorting logic
   const sortedData = useMemo(() => {
+    const activeSortKey = sortConfig.key || 'invoiceDate';
+    const activeSortDirection = sortConfig.direction || 'desc';
+    
     return [...filteredData].sort((a, b) => {
-      const aValue = a[sortConfig.key as keyof SalesHistoryItem];
-      const bValue = b[sortConfig.key as keyof SalesHistoryItem];
+      const aValue = a[activeSortKey as keyof SalesHistoryItem];
+      const bValue = b[activeSortKey as keyof SalesHistoryItem];
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc'
+        return activeSortDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc'
+        return activeSortDirection === 'asc'
           ? aValue - bValue
           : bValue - aValue;
       }
-      return 0;
+      // Fallback: convert to string and compare
+      return activeSortDirection === 'asc'
+        ? String(aValue).localeCompare(String(bValue))
+        : String(bValue).localeCompare(String(aValue));
     });
   }, [filteredData, sortConfig]);
 

@@ -329,7 +329,6 @@ const InventoryAdjustment: React.FC = () => {
     }
   }, [brands, getProductsForBrand, getTypesForBrandAndProduct, getBatchesForProduct]);
 
-  // Load product options when search type changes to ID or Code
   useEffect(() => {
     if ((searchType === 'id' || searchType === 'code') && brands.length > 0) {
       fetchProductOptions();
@@ -338,11 +337,14 @@ const InventoryAdjustment: React.FC = () => {
 
   const sortedRows = useMemo(() => {
     const rowsCopy = [...batchRows];
+    const activeSortKey = sortConfig.key || 'id';
+    const activeSortDirection = sortConfig.direction || 'asc';
+    
     return rowsCopy.sort((a, b) => {
       let aValue: string | number = '';
       let bValue: string | number = '';
 
-      switch (sortConfig.key) {
+      switch (activeSortKey) {
         case 'quantity':
           aValue = a.quantity;
           bValue = b.quantity;
@@ -359,10 +361,10 @@ const InventoryAdjustment: React.FC = () => {
       }
 
       if (aValue < bValue) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
+        return activeSortDirection === 'asc' ? -1 : 1;
       }
       if (aValue > bValue) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
+        return activeSortDirection === 'asc' ? 1 : -1;
       }
       return 0;
     });

@@ -3,6 +3,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
 export interface PharmaDatePickerProps {
   value: Dayjs | null;
@@ -30,13 +31,11 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close calendar on scroll (but not when scrolling inside the calendar)
   useEffect(() => {
     if (!open) return;
 
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement;
-      // Don't close if scrolling inside the calendar popup
       if (target.closest('.MuiPickersPopper-root') || 
           target.closest('.MuiPaper-root') ||
           target.closest('[role="dialog"]')) {
@@ -45,7 +44,6 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       setOpen(false);
     };
 
-    // Listen to scroll events on window and all scrollable containers
     window.addEventListener('scroll', handleScroll, true);
     document.addEventListener('scroll', handleScroll, true);
 
@@ -55,11 +53,9 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
     };
   }, [open]);
 
-  // Force popper position update after opening to fix initial positioning
   useEffect(() => {
     if (!open) return;
 
-    // Small delay to ensure popper is rendered, then trigger position update
     const timer = setTimeout(() => {
       const popper = document.querySelector('.MuiPickersPopper-root') as HTMLElement;
       if (popper) {
@@ -313,7 +309,20 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <div ref={containerRef}>
+      <div 
+        ref={containerRef}
+        onClick={(e) => {
+          if (!disabled) {
+            const target = e.target as HTMLElement;
+            if (target.closest('.MuiInputBase-root') || target.closest('.MuiIconButton-root') || target.closest('.MuiInputAdornment-root')) {
+              if (!open) {
+                setOpen(true);
+              }
+            }
+          }
+        }}
+        style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+      >
         <DatePicker
           value={value}
           onChange={onChange}
@@ -326,6 +335,9 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           openTo="day"
           views={["year", "month", "day"]}
           format="MM/DD/YYYY"
+          slots={{
+            openPickerIcon: CalendarTodayIcon,
+          }}
         slotProps={{
           monthButton: (ownerState) => {
             // Try multiple possible property names
@@ -408,7 +420,11 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
             size: "small",
             placeholder,
             error: error,
+            InputProps: {
+              readOnly: true,
+            },
             sx: {
+              cursor: disabled ? 'not-allowed' : 'pointer',
               width,
               "& .MuiOutlinedInput-root": {
                 borderRadius: "18px !important",
@@ -554,6 +570,65 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
               "& .MuiOutlinedInput-input::placeholder": {
                 color: "#728197",
                 opacity: 1,
+              },
+              "& .MuiInputAdornment-root": {
+                display: "flex !important",
+                visibility: "visible !important",
+                opacity: "1 !important",
+                "& .MuiIconButton-root": {
+                  color: "#6B7280 !important",
+                  padding: "4px",
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  display: "flex !important",
+                  visibility: "visible !important",
+                  opacity: "1 !important",
+                  "&:hover": {
+                    backgroundColor: disabled ? "transparent" : "rgba(0, 0, 0, 0.04)",
+                  },
+                  "& svg": {
+                    fontSize: "20px !important",
+                    display: "block !important",
+                    visibility: "visible !important",
+                    opacity: "1 !important",
+                  },
+                  "&:focus": {
+                    outline: "none",
+                  },
+                },
+              },
+              "& .MuiPickersInputAdornment-root": {
+                display: "flex !important",
+                visibility: "visible !important",
+                opacity: "1 !important",
+                "& .MuiIconButton-root": {
+                  color: "#6B7280 !important",
+                  padding: "4px",
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  display: "flex !important",
+                  visibility: "visible !important",
+                  opacity: "1 !important",
+                  "&:hover": {
+                    backgroundColor: disabled ? "transparent" : "rgba(0, 0, 0, 0.04)",
+                  },
+                  "& svg": {
+                    fontSize: "20px !important",
+                    display: "block !important",
+                    visibility: "visible !important",
+                    opacity: "1 !important",
+                  },
+                  "&:focus": {
+                    outline: "none",
+                  },
+                },
+              },
+              "& .MuiInputBase-inputAdornedEnd": {
+                paddingRight: "40px !important",
+              },
+              "& .MuiOutlinedInput-adornedEnd": {
+                paddingRight: "8px !important",
+                "& .MuiInputAdornment-root": {
+                  marginLeft: "0 !important",
+                },
               },
             },
           },

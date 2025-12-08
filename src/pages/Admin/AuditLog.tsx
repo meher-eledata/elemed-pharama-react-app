@@ -163,18 +163,24 @@ const AuditLog: React.FC = () => {
   };
 
   const sortedData = useMemo(() => {
+    const activeSortKey = sortConfig.key || AUDIT_LOG_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY;
+    const activeSortDirection = sortConfig.direction || AUDIT_LOG_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION;
+    
     return [...filteredData].sort((a, b) => {
-      const aValue = a[sortConfig.key as keyof AuditLogEntry];
-      const bValue = b[sortConfig.key as keyof AuditLogEntry];
+      const aValue = a[activeSortKey as keyof AuditLogEntry];
+      const bValue = b[activeSortKey as keyof AuditLogEntry];
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         const compareResult = aValue.localeCompare(bValue, undefined, { 
           numeric: true, 
           sensitivity: 'base' 
         });
-        return sortConfig.direction === 'asc' ? compareResult : -compareResult;
+        return activeSortDirection === 'asc' ? compareResult : -compareResult;
       }
-      return 0;
+      // Fallback: convert to string and compare
+      return activeSortDirection === 'asc'
+        ? String(aValue).localeCompare(String(bValue))
+        : String(bValue).localeCompare(String(aValue));
     });
   }, [filteredData, sortConfig]);
 

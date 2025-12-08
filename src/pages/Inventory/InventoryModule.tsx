@@ -200,9 +200,8 @@ const InventoryModule: React.FC = () => {
       });
     }
 
-    // Apply sorting - always sort using current sortConfig
-    const currentSortKey = sortConfig.key;
-    const currentDirection = sortConfig.direction;
+    const currentSortKey = sortConfig.key || 'name';
+    const currentDirection = sortConfig.direction || 'asc';
     
     filtered = [...filtered].sort((a, b) => {
       let aValue: any;

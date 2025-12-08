@@ -93,7 +93,6 @@ describe('ChartsCard', () => {
     expect(screen.getByText('₹50,000')).toBeInTheDocument();
   });
 
-  // Test Case 4: Handles empty chart data
   it('handles empty chart data gracefully', () => {
     const emptyDataProps = {
       ...mockProps,

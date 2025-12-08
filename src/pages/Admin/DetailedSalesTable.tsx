@@ -103,23 +103,29 @@ const DetailedSalesTable: React.FC = () => {
   }, [mockData, currentSearchTerm]);
 
   const sortedData = useMemo(() => {
+    const activeSortKey = sortConfig.key || DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY;
+    const activeSortDirection = sortConfig.direction || DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION;
+    
     return [...filteredData].sort((a, b) => {
-      const aValue = a[sortConfig.key as keyof SalesData];
-      const bValue = b[sortConfig.key as keyof SalesData];
+      const aValue = a[activeSortKey as keyof SalesData];
+      const bValue = b[activeSortKey as keyof SalesData];
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         const compareResult = aValue.localeCompare(bValue, undefined, {
           numeric: true,
           sensitivity: 'base'
         });
-        return sortConfig.direction === 'asc' ? compareResult : -compareResult;
+        return activeSortDirection === 'asc' ? compareResult : -compareResult;
       }
 
       if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+        return activeSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
       }
 
-      return 0;
+      // Fallback: convert to string and compare
+      return activeSortDirection === 'asc'
+        ? String(aValue).localeCompare(String(bValue))
+        : String(bValue).localeCompare(String(aValue));
     });
   }, [filteredData, sortConfig]);
 

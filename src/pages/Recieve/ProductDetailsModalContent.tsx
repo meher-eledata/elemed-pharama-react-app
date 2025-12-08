@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Box, Typography, Paper, Grid, IconButton, Snackbar, Alert, Pagination } from "@mui/material";
+import { Box, Typography, Snackbar, Alert } from "@mui/material";
 import { OrderReceiveRow, ProductItem } from "./OrderReceive"; 
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import { PRODUCT_DETAILS_MODAL_CONSTANTS } from "../../config/constants/ProductDetailsModal.constants";
 import { PRODUCT_DETAILS_MODAL_LABELS } from "../../config/label/ProductDetailsModal.labels";
 
@@ -18,7 +18,11 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
 }) => {
   const [editableProducts, setEditableProducts] = useState<ProductItem[]>(productData?.products || []);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 5; // Show 5 items per page
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'productName',
+    direction: 'asc'
+  });
+  const rowsPerPage = 5;
 
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
@@ -30,13 +34,76 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
     }
   }, [productData]);
 
-  // Calculate pagination
-  const totalPages = Math.ceil(editableProducts.length / itemsPerPage);
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return editableProducts.slice(startIndex, endIndex);
-  }, [editableProducts, currentPage, itemsPerPage]);
+  const sortedProducts = useMemo(() => {
+    const activeSortKey = sortConfig.key || 'productName';
+    const activeSortDirection = sortConfig.direction || 'asc';
+    
+    return [...editableProducts].sort((a, b) => {
+      const aValue = a[activeSortKey as keyof ProductItem];
+      const bValue = b[activeSortKey as keyof ProductItem];
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return activeSortDirection === 'asc'
+          ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
+          : bValue.localeCompare(aValue, undefined, { numeric: true, sensitivity: 'base' });
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return activeSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      return activeSortDirection === 'asc'
+        ? String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: 'base' })
+        : String(bValue).localeCompare(String(aValue), undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [editableProducts, sortConfig]);
+
+  const handleSortRequest = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      setSortConfig({ key: 'productName', direction: 'asc' });
+      return;
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const columns: TableColumn<ProductItem>[] = [
+    {
+      key: 'productName',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.PRODUCT_NAME,
+      sortable: true,
+      columnWidth: '25%',
+    },
+    {
+      key: 'type',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.TYPE,
+      sortable: true,
+      columnWidth: '12%',
+    },
+    {
+      key: 'quantity',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.QUANTITY,
+      sortable: true,
+      columnWidth: '20%',
+    },
+    {
+      key: 'hsnCode',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.HSN_CODE,
+      sortable: true,
+      columnWidth: '23%',
+    },
+    {
+      key: 'amount',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.AMOUNT,
+      sortable: true,
+      columnWidth: '20%',
+      render: (item) => `₹${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    },
+  ];
 
   if (!productData) {
     return <Typography>{PRODUCT_DETAILS_MODAL_LABELS.TOAST.NO_DATA}</Typography>;
@@ -44,7 +111,7 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.HEADER_GAP }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_VARIANT}>
           {PRODUCT_DETAILS_MODAL_LABELS.RECEIPT_PREFIX} <span style={{ fontWeight: 'bold' }}>{productData.reNo}</span>
         </Typography>
@@ -52,102 +119,27 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
           {PRODUCT_DETAILS_MODAL_LABELS.SUPPLIER_PREFIX} <span style={{ fontWeight: 'bold' }}>{productData.supplier}</span>
         </Typography>
       </Box>
-      <Paper variant="outlined" sx={{ p: PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.PAPER_PADDING }}>
-        {/* Table Headers */}
-        <Grid container spacing={PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.GRID_SPACING} alignItems="center">
-          <Grid item xs={2.4}>
-            <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
-              {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.PRODUCT_NAME}
-            </Typography>
-          </Grid>
-          <Grid item xs={2.4}>
-            <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
-              {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.TYPE}
-            </Typography>
-          </Grid>
-          <Grid item xs={2.4}>
-            <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
-              {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.QUANTITY}
-            </Typography>
-          </Grid>
-          <Grid item xs={2.4}>
-            <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
-              {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.HSN_CODE}
-            </Typography>
-          </Grid>
-          <Grid item xs={2.4}>
-            <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT} sx={{ fontWeight: PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_WEIGHT }}>
-              {PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.AMOUNT}
-            </Typography>
-          </Grid>
-        </Grid>
-        
-        {/* Table Data */}
-        {editableProducts.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography variant="body1" color="text.secondary">
-              No product details available for this receipt.
-            </Typography>
-          </Box>
-        ) : (
-          paginatedProducts.map((product, index) => (
-            <Grid container spacing={PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.GRID_SPACING} sx={{ mt: PRODUCT_DETAILS_MODAL_CONSTANTS.LAYOUT.ROW_MARGIN_TOP }} alignItems="center" key={index}>
-              <Grid item xs={2.4}>
-                <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.productName}</Typography>
-              </Grid>
-              <Grid item xs={2.4}>
-                <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.type}</Typography>
-              </Grid>
-              <Grid item xs={2.4}>
-                <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.quantity}</Typography>
-              </Grid>
-              <Grid item xs={2.4}>
-                <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.hsnCode}</Typography>
-              </Grid>
-              <Grid item xs={2.4}>
-                <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.CELL_VARIANT}>{product.amount}</Typography>
-              </Grid>
-            </Grid>
-          ))
-        )}
-      </Paper>
       
-      {/* Pagination */}
-      {editableProducts.length > itemsPerPage && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            {currentPage} of {totalPages} pages
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton 
-              size="small" 
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              sx={{ 
-                color: currentPage === 1 ? '#9CA3AF' : '#5C17E5',
-                '&:hover': {
-                  backgroundColor: currentPage === 1 ? 'transparent' : '#F3E8FF'
-                }
-              }}
-            >
-              <ChevronRightIcon sx={{ transform: 'rotate(180deg)' }} />
-            </IconButton>
-            <IconButton 
-              size="small" 
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              sx={{ 
-                color: currentPage === totalPages ? '#9CA3AF' : '#5C17E5',
-                '&:hover': {
-                  backgroundColor: currentPage === totalPages ? 'transparent' : '#F3E8FF'
-                }
-              }}
-            >
-              <ChevronRightIcon />
-            </IconButton>
-          </Box>
-        </Box>
-      )}
+      <ReusableTable<ProductItem>
+        columns={columns}
+        data={sortedProducts}
+        selectedRows={[]}
+        setSelectedRows={() => {}}
+        emptyMessage="No product details available for this receipt."
+        searchAndFilterConfig={{ filterOptions: [] }}
+        currentSearchTerm=""
+        onSearchChange={() => {}}
+        showFilters={false}
+        onShowFiltersToggle={() => {}}
+        currentFilterKey=""
+        onFilterSelect={() => {}}
+        totalRows={sortedProducts.length}
+        rowsPerPage={rowsPerPage}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+        onSortRequest={handleSortRequest}
+        sortConfig={sortConfig}
+      />
 
       <Snackbar
         open={snackbarOpen}

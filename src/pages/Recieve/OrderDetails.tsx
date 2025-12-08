@@ -220,6 +220,32 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(false);
   const [productsError, setProductsError] = useState<string | null>(null);
 
+  const autocompleteOptions = useMemo(() => {
+    if (isProductsLoading) {
+      return ["Loading products..."];
+    }
+    const validOptions = productOptions.filter(option => option && typeof option === 'string');
+    return [...validOptions, orderLabels.addProducts];
+  }, [productOptions, isProductsLoading]);
+
+  const filterOptions = useMemo(() => {
+    return (options: string[], state: any) => {
+      const inputValue = state.inputValue.toLowerCase().trim();
+      if (!inputValue) {
+        const uniqueOptions = Array.from(new Set(options));
+        return uniqueOptions;
+      }
+      
+      const filtered = options.filter(option => {
+        const optionStr = String(option).toLowerCase();
+        return optionStr.includes(inputValue) || option === orderLabels.addProducts || option === "Loading products...";
+      });
+      
+      const uniqueFiltered = Array.from(new Set(filtered));
+      return uniqueFiltered;
+    };
+  }, []);
+
   const fetchSupplierNames = async () => {
     try {
       setIsSuppliersLoading(true);
@@ -275,7 +301,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }))
         .filter((product: {name: string, id: number}) => product.name && product.name.trim() !== '' && product.id);
       
-      setProductOptions(productData.map((p: {name: string; id: number}) => p.name));
+      setProductOptions(productData.map((p: {name: string; id: number}) => p.name) as string[]);
       setProductOptionsWithIds(productData);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
@@ -296,7 +322,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
 
-    // Helper function to get product_id from product name
     const getProductIdFromName = (productName: string): number | null => {
       if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
         return null;
@@ -305,10 +330,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       const normalize = (str: string) => str.trim().toLowerCase();
       const normalizedProductName = normalize(productName);
       
-      // Try exact match first
       let product = productOptionsWithIds.find(p => normalize(p.name) === normalizedProductName);
       
-      // If no exact match, try partial match
       if (!product) {
         product = productOptionsWithIds.find(p => 
           normalize(p.name).includes(normalizedProductName) || 
@@ -339,7 +362,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }
       }
 
-      // Get product_id from product name
       const productId = getProductIdFromName(row.productId);
 
       const line = {
@@ -467,7 +489,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return payload;
   };
 
-  // Function to show receipt delete confirmation dialog
   const deleteReceipt = () => {
     if (!isEditMode || !receiptId) {
       setDeleteError('No receipt selected for deletion');
@@ -476,7 +497,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setIsReceiptDeleteDialogOpen(true);
   };
 
-  // Function to confirm receipt deletion
   const handleConfirmReceiptDelete = async () => {
     if (!isEditMode || !receiptId) {
       setIsReceiptDeleteDialogOpen(false);
@@ -549,18 +569,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       let result;
       
       if (isEditMode && receiptId) {
-        // Use editReceipt API for existing receipts (Edit Receive Flow)
         const editPayload = transformFormDataToEditPayload();
         result = await editReceipt(editPayload).unwrap();
       } else {
-        // Use submitReceipt API for new receipts (Add Receive Flow)
         const submitPayload = transformFormDataToApiPayload();
         
         try {
           result = await submitReceipt(submitPayload).unwrap();
         } catch (rtkError) {
           
-          // Fallback to direct fetch if RTK Query fails
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
           const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
             method: 'POST',
@@ -631,7 +648,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const addProductToTable = async (productName: string) => {
-    // Get product ID from name
     const getProductIdFromName = (name: string): number | null => {
       if (!name || !productOptionsWithIds || productOptionsWithIds.length === 0) {
         return null;
@@ -650,13 +666,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const productId = getProductIdFromName(productName);
     
-    // Try to fetch product details including MRP
     let productMRP = 0;
     let productSellingPrice = 0;
     
     if (productId) {
       try {
-        // Fetch product details from backend
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/inventory/get-product-details?product_id=${productId}`,
           {
@@ -674,7 +688,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }
       } catch (error) {
         console.error('Error fetching product details:', error);
-        // Continue with default values if fetch fails
       }
     }
 
@@ -703,13 +716,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setIsProductSelected(false);
   };
 
-  // Function to start editing a row
   const startEditing = (row: PharmaTableRow) => {
     setEditingRowId(row.id!);
     setEditingData({ ...row });
   };
 
-  // Function to save edited row
   const saveRow = () => {
     if (editingRowId && editingData) {
       setPharmaTableData(prev => 
@@ -724,19 +735,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   };
 
-  // Function to cancel editing
   const cancelEditing = () => {
     setEditingRowId(null);
     setEditingData({});
   };
 
-  // Function to delete a row
   const deleteRow = (rowId: string) => {
     setRowToDeleteId(rowId);
     setIsDeleteDialogOpen(true);
   };
 
-  // Function to confirm delete
   const handleConfirmDelete = () => {
     if (rowToDeleteId) {
       const rowToDelete = pharmaTableData.find(row => row.id === rowToDeleteId);
@@ -745,7 +753,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setEditingRowId(null);
         setEditingData({});
       }
-      // Always clear the search bar when a row is deleted
       setFindProductTerm("");
       setIsProductSelected(false);
     }
@@ -753,14 +760,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setRowToDeleteId(null);
   };
 
-  // Function to update editing data
   const updateEditingData = (field: keyof PharmaTableRow, value: string | number) => {
     setEditingData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Function to validate if all required fields are filled
   const validateRequiredFields = () => {
-    // Check basic required fields
     if (!supplierName.trim()) {
       return false;
     }
@@ -768,12 +772,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       return false;
     }
     
-    // Check if there's at least one product in the table
     if (pharmaTableData.length === 0) {
       return false;
     }
     
-    // Check if at least one product has essential fields filled (only Product Name and Quantity)
     const hasValidProducts = pharmaTableData.some(row => {
       const isValid = row.productId && row.productId.trim() !== '' && 
              row.qtyReceived && row.qtyReceived > 0;
@@ -825,7 +827,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     originalReceiptLines
   ]);
 
-  // Inject CSS for global input field styling
   useEffect(() => {
     const styleId = 'order-details-input-styles';
     if (!document.getElementById(styleId)) {
@@ -852,25 +853,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   }, []);
 
-  // Fetch supplier names on component mount
   useEffect(() => {
     fetchSupplierNames();
   }, []);
 
-  // Fetch all products on component mount (not filtered by supplier)
   useEffect(() => {
     fetchAllProducts();
   }, []);
 
-  // Handle click outside to hide close icon
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      // Check if click is outside the Autocomplete component
       const autocompleteElement = document.querySelector('[data-product-search]');
       const popperElement = document.querySelector('.MuiAutocomplete-popper');
       
-      // Don't hide if clicking inside the Autocomplete or its dropdown
       if (autocompleteElement && autocompleteElement.contains(target)) {
         return;
       }
@@ -895,7 +891,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   }, [isEditMode, receiptId]);
 
-  // Function to fetch existing receipt lines
   const fetchReceiptLines = async () => {
     if (!receiptId) {
       return;
@@ -1029,7 +1024,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             value={editingData.batchNumber || ""}
             onChange={(e) => {
               const value = e.target.value;
-              // Only allow alphanumeric characters and limit to 8 characters
               const alphanumericValue = value.replace(/[^A-Za-z0-9]/g, '');
               if (alphanumericValue.length <= 8) {
                 updateEditingData("batchNumber", alphanumericValue);
@@ -1093,28 +1087,96 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       header: orderLabels.expiryDate,
       sortable: false,
       render: (row) => {
-        const isDateValid = !row.batch || row.batch.trim() === '' || dayjs(row.batch, 'DD/MM/YYYY').isValid();
-        const hasInvalidDate = row.batch && row.batch.trim() !== '' && !dayjs(row.batch, 'DD/MM/YYYY').isValid();
+        const currentBatch = editingRowId === row.id ? editingData.batch : row.batch;
+        const dateValue = currentBatch 
+          ? (() => {
+              const parsed = dayjs(currentBatch, 'DD/MM/YYYY');
+              return parsed.isValid() ? parsed : null;
+            })()
+          : null;
         
-        return editingRowId === row.id ? (
-          <PharmaDatePicker
-            value={editingData.batch ? dayjs(editingData.batch, 'DD/MM/YYYY') : null}
-            onChange={(newValue: Dayjs | null) => {
-              const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
-              updateEditingData("batch", formattedDate);
-            }}
-            minDate={dayjs()}
-            width={220}
-            height={32}
-          />
-        ) : (
-          <span style={{ 
-            color: hasInvalidDate ? '#EF4444' : 'inherit',
-            fontWeight: hasInvalidDate ? 'bold' : 'normal'
+        return (
+          <Box sx={{ 
+            position: 'relative',
+            width: '100%',
+            overflow: 'visible !important',
+            '& > *': {
+              overflow: 'visible !important',
+            },
+            '& .MuiInputBase-root': {
+              overflow: 'visible !important',
+            },
+            '& .MuiOutlinedInput-root': {
+              overflow: 'visible !important',
+              '& .MuiInputAdornment-root': {
+                display: 'flex !important',
+                visibility: 'visible !important',
+                opacity: '1 !important',
+                position: 'relative !important',
+                overflow: 'visible !important',
+                '& .MuiIconButton-root': {
+                  display: 'inline-flex !important',
+                  visibility: 'visible !important',
+                  opacity: '1 !important',
+                  '& svg': {
+                    display: 'block !important',
+                    visibility: 'visible !important',
+                    opacity: '1 !important',
+                  },
+                },
+              },
+            },
+            '& .MuiInputAdornment-root': {
+              display: 'flex !important',
+              visibility: 'visible !important',
+              opacity: '1 !important',
+              '& .MuiIconButton-root': {
+                display: 'inline-flex !important',
+                visibility: 'visible !important',
+                opacity: '1 !important',
+                '& svg': {
+                  display: 'block !important',
+                  visibility: 'visible !important',
+                  opacity: '1 !important',
+                },
+              },
+            },
+            '& .MuiPickersInputAdornment-root': {
+              display: 'flex !important',
+              visibility: 'visible !important',
+              opacity: '1 !important',
+              '& .MuiIconButton-root': {
+                display: 'inline-flex !important',
+                visibility: 'visible !important',
+                opacity: '1 !important',
+                '& svg': {
+                  display: 'block !important',
+                  visibility: 'visible !important',
+                  opacity: '1 !important',
+                },
+              },
+            },
           }}>
-            {row.batch || '-'}
-            {hasInvalidDate && <span style={{ fontSize: '10px', marginLeft: '4px' }}>⚠️</span>}
-          </span>
+            <PharmaDatePicker
+              value={dateValue}
+              onChange={(newValue: Dayjs | null) => {
+                const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
+                if (editingRowId === row.id) {
+                  updateEditingData("batch", formattedDate);
+                } else {
+                  setPharmaTableData(prev => 
+                    prev.map(item => 
+                      item.id === row.id 
+                        ? { ...item, batch: formattedDate }
+                        : item
+                    )
+                  );
+                }
+              }}
+              minDate={dayjs()}
+              width={320}
+            />
+          </Box>
         );
       },
     },
@@ -1297,7 +1359,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     if (sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
     } else if (sortConfig.key === key && sortConfig.direction === "desc") {
-      // Revert to default sorting instead of clearing
       setSortConfig({ key: "productName", direction: "asc" });
       return;
     }
@@ -1320,7 +1381,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       );
     }
 
-    // Always apply sorting - if no specific sort, use default
     const currentSortKey = sortConfig.key || 'productName';
     const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
     
@@ -1375,7 +1435,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       <Divider sx={{ marginTop: "16px", border: "0.5px solid #CBD4E1" }} />
 
       <Box sx={{ display: "flex", gap: "32px", marginTop: "10px" }}>
-        {/* supplier field (UPDATED: Using standard MUI dropdown arrow) */}
         <Box
           sx={{
             display: "flex",
@@ -1402,14 +1461,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             value={supplierName}
             onInputChange={(_, v) => setSupplierName(v)}
             onChange={(_, v) => {
-              // Don't allow selection of loading option
               if (v !== "Loading suppliers...") {
                 setSupplierName(v || "");
               }
             }}
             onFocus={() => setIsSupplierFocused(true)}
             onBlur={() => {
-              // Add small delay to prevent dropdown from closing too quickly during loading
               setTimeout(() => {
                 if (!isSuppliersLoading) {
                   setIsSupplierFocused(false);
@@ -1420,7 +1477,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             disabled={isSuppliersLoading}
             isOptionEqualToValue={(option, value) => option === value}
             getOptionLabel={(option) => String(option)}
-            // Only show clear button when value is present
             disableClearable={!supplierName}
             popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             renderOption={(props, option) => {
@@ -1515,7 +1571,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     lineHeight: "24px",
                     color: "#728197",
                   },
-                  // Force dropdown arrow to be visible (standard MUI pattern)
                   "& .MuiAutocomplete-endAdornment": {
                     display: "flex !important",
                     visibility: "visible !important",
@@ -1530,7 +1585,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         </Box>
 
-        {/* PO Number field (kept unchanged) */}
         <Box
           sx={{
             display: "flex",
@@ -1588,7 +1642,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         </Box>
 
-        {/* Invoice Date field (UPDATED: DatePicker implementation) */}
         <Box
           sx={{
             display: "flex",
@@ -1626,7 +1679,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         </Box>
         
-        {/* Payment method (UPDATED: Using standard MUI dropdown arrow) */}
         <Box
           sx={{
             display: "flex",
@@ -1689,7 +1741,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     lineHeight: "24px",
                     color: "#728197",
                   },
-                  // Force dropdown arrow to be visible (standard MUI pattern)
                   "& .MuiAutocomplete-endAdornment": {
                     display: "flex !important",
                     visibility: "visible !important",
@@ -1701,14 +1752,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 }}
                 InputProps={{
                   ...params.InputProps,
-                  endAdornment: params.InputProps.endAdornment, // Standard Material-UI dropdown arrow
+                  endAdornment: params.InputProps.endAdornment, 
                 }}
               />
             )}
           />
         </Box>
 
-        {/* Payment vendor field (UPDATED: Using standard MUI dropdown arrow) */}
         <Box
           sx={{
             display: "flex",
@@ -1775,7 +1825,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     lineHeight: "24px",
                     color: "#728197",
                   },
-                  // Force dropdown arrow to be visible (standard MUI pattern)
                   "& .MuiAutocomplete-endAdornment": {
                     display: "flex !important",
                     visibility: "visible !important",
@@ -1791,7 +1840,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         </Box>
 
-        {/* Transaction Number field (kept unchanged) */}
         <Box
           sx={{
             display: "flex",
@@ -1859,7 +1907,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       </Box>
       <Divider sx={{ marginTop: "10px", border: "0.3px solid #CBD4E14D" }} />
 
-      {/* Find Product section */}
       <Box
         sx={{
           display: "flex",
@@ -1870,7 +1917,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           width: "100%",
         }}
       >
-        {/* Find Product row */}
         <Box
           sx={{
             display: "flex",
@@ -1879,7 +1925,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             gap: "32px",
           }}
         >
-          {/* Batch Number field */}
           <Box
             sx={{
               display: "flex",
@@ -1906,7 +1951,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               value={batchNumber}
               onChange={(e) => {
                 const value = e.target.value;
-                // Only allow alphanumeric characters and limit to 8 characters
                 const alphanumericValue = value.replace(/[^A-Za-z0-9]/g, '');
                 if (alphanumericValue.length <= 8) {
                   setBatchNumber(alphanumericValue);
@@ -1948,7 +1992,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             />
           </Box>
 
-          {/* Find Product field */}
           <Box
             sx={{
               display: "flex",
@@ -1983,39 +2026,33 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             data-product-search
           >
           <Autocomplete
-            key={`product-search-${findProductTerm ? 'has-value' : 'empty'}`}
             freeSolo
             forcePopupIcon
-            options={[
-              ...(isProductsLoading ? ["Loading products..."] : productOptions.filter(option => option && typeof option === 'string')),
-              orderLabels.addProducts,
-            ]}
-            value={findProductTerm || undefined}
+            options={autocompleteOptions}
+            filterOptions={filterOptions}
+            inputValue={findProductTerm}
+            onInputChange={(_, v) => {
+              setFindProductTerm(v);
+            }}
+            value={findProductTerm ? findProductTerm : undefined}
             isOptionEqualToValue={(option, value) => {
               if (!value) return false;
               return option === value;
             }}
-            onInputChange={(_, v) => {
-              setFindProductTerm(v);
-              // Don't automatically reset isProductSelected here
-              // It will be managed by onChange
-            }}
             onChange={(_, v) => {
               if (v === orderLabels.addProducts) {
                 setIsNewProductModalOpen(true);
-                setFindProductTerm(""); // Clear field when opening modal
+                setFindProductTerm(""); 
                 setIsProductSelected(false);
                 return;
               }
               const value = (v as string) || "";
               if (value && value !== orderLabels.addProducts && value !== "Loading products...") {
-                // Check if this is a selection from dropdown or manual typing
                 const isFromDropdown = productOptions.includes(value);
                 
                 if (isFromDropdown) {
                   setIsProductSelected(true);
                   addProductToTable(value);
-                  // Keep the product name in search bar so close icon shows
                   setFindProductTerm(value);
                   setIsProductSelected(false);
                 } else {
@@ -2028,11 +2065,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               }
             }}
             onKeyDown={(e) => {
-              // Allow adding custom products by pressing Enter
               if (e.key === 'Enter' && findProductTerm && findProductTerm !== orderLabels.addProducts) {
                 e.preventDefault();
                 addProductToTable(findProductTerm);
-                // Clear the input field after adding to table
                 setFindProductTerm("");
                 setIsProductSelected(false);
               }
@@ -2040,10 +2075,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             onFocus={() => setIsFindProductFocused(true)}
             onBlur={() => {
               setIsFindProductFocused(false);
-              // Also reset hover state on blur to ensure close icon hides
               setIsFindProductHovered(false);
             }}
-            // Disable MUI's built-in clear button since we have a custom one
             disableClearable={true}
             popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             ListboxProps={{
@@ -2146,7 +2179,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                       fontSize: "14px",
                     },
                   },
-                  // Force dropdown arrow and clear button to be visible (standard MUI pattern)
                   "& .MuiAutocomplete-endAdornment": {
                     display: "flex !important",
                     visibility: "visible !important",
@@ -2180,17 +2212,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                             onClick={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
-                              // Find and remove the product from table that matches the search term
                               const productToRemove = pharmaTableData.find(row => row.productId === findProductTerm);
                               if (productToRemove && productToRemove.id) {
                                 setPharmaTableData(prev => prev.filter(row => row.id !== productToRemove.id));
-                                // Clear editing state if this row was being edited
                                 if (editingRowId === productToRemove.id) {
                                   setEditingRowId(null);
                                   setEditingData({});
                                 }
                               }
-                              // Clear the search bar
                               setFindProductTerm("");
                               setIsProductSelected(false);
                             }}
@@ -2216,7 +2245,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
           </Box>
           
-          {/* Search bar moved from below */}
           {isEditMode && (
             <TextField
               placeholder="Search for items in the table below..."
@@ -2270,7 +2298,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         </Box>
       </Box>
 
-      {/* Pharma Table */}
       <Box sx={{ 
         marginTop: "24px",
         overflowX: "auto",
@@ -2310,15 +2337,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         />
       </Box>
 
-      {/* Footer actions */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 3 }}>
-        {/* Left side buttons */}
         <Box sx={{ display: "flex", gap: "12px" }}>
           <Button
             variant="outlined"
             disableRipple
             onClick={() => {
-              // Clear all form data and table
               setPharmaTableData([]);
               setFindProductTerm("");
               setEditingRowId(null);
@@ -2330,7 +2354,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               setPaymentVendor("");
               setIsProductSelected(false);
               
-              // Navigate back to order-receive page
               navigate('/receive/order-receive');
             }}
             sx={{
@@ -2455,7 +2478,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           </Button>
         </Box>
         
-        {/* Right side - Delete button (edit mode only) */}
         {isEditMode && (
           <Button
             variant="contained"
@@ -2515,12 +2537,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         open={isNewProductModalOpen}
         onClose={() => setIsNewProductModalOpen(false)}
         onProductAdded={() => {
-          // Refresh the product list when a new product is added
           fetchAllProducts();
         }}
       />
 
-      {/* Error Snackbar */}
       <Snackbar
         open={!!saveError}
         autoHideDuration={6000}
@@ -2536,7 +2556,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         </Alert>
       </Snackbar>
 
-      {/* Success Snackbar */}
       <Snackbar
         open={saveSuccess}
         autoHideDuration={3000}

@@ -29,23 +29,33 @@ const CommonModal: React.FC<CommonModalProps> = ({
       open={open} 
       onClose={onClose} 
       maxWidth="md" 
-      fullWidth
+      fullWidth={true}
       sx={{
         '& .MuiDialog-paper': {
           maxHeight: '85vh',
           height: 'auto',
-          width: '90%',
-          maxWidth: '1000px',
+          width: '100%',
+          maxWidth: '900px',
+          borderRadius: '16px',
         },
         '& .MuiDialogContent-root': {
           overflowY: 'auto',
-          maxHeight: '70vh',
+          maxHeight: 'calc(85vh - 140px)',
+          padding: '16px',
         }
       }}
     >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto', padding: 0 }}>{content}</DialogContent>
-      <DialogActions sx={{ padding: '8px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+      <DialogTitle sx={{ 
+        fontFamily: "'Lexend', sans-serif",
+        fontWeight: 600,
+        fontSize: '20px',
+        padding: '20px 24px 16px 24px',
+        borderBottom: '1px solid #E5E7EB'
+      }}>
+        {title}
+      </DialogTitle>
+      <DialogContent dividers sx={{ maxHeight: 'calc(85vh - 140px)', overflowY: 'auto', padding: '16px' }}>{content}</DialogContent>
+      <DialogActions sx={{ padding: '12px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #E5E7EB' }}>
         {actionButtons}
         <StandardButton
           onClick={onClose}
