@@ -29,6 +29,8 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import { PharmaDatePicker } from '../Common';
+import dayjs, { Dayjs } from 'dayjs';
 
 export type FilterOption = {
     key: string;
@@ -108,12 +110,45 @@ export const ReusableTable = <T,>({
     const endIndex = startIndex + rowsPerPage;
     const paginatedData = data.slice(startIndex, endIndex);
 
+    // Get the active filter option
+    const activeFilter = searchAndFilterConfig.filterOptions.find((f: FilterOption) => f.key === currentFilterKey);
+    const isDateFilter = activeFilter?.type === 'date';
+
+    const [datePickerValue, setDatePickerValue] = useState<Dayjs | null>(null);
+
+    useEffect(() => {
+        if (isDateFilter) {
+            if (currentSearchTerm && currentSearchTerm.trim()) {
+                const parsedDate = dayjs(currentSearchTerm, 'MM/DD/YYYY', true);
+                if (parsedDate.isValid()) {
+                    setDatePickerValue(parsedDate);
+                } else {
+                    setDatePickerValue(null);
+                }
+            } else {
+                setDatePickerValue(null);
+            }
+        } else {
+            // Reset date picker when switching away from date filter
+            setDatePickerValue(null);
+        }
+    }, [currentSearchTerm, currentFilterKey]);
+
     const getPlaceholder = () => {
-        const activeFilter = searchAndFilterConfig.filterOptions.find((f: FilterOption) => f.key === currentFilterKey);
         if (activeFilter) {
             return `Search by ${activeFilter.label}...`;
         }
         return searchAndFilterConfig.defaultPlaceholder || 'Search...';
+    };
+
+    // Handle date picker change
+    const handleDateChange = (newValue: Dayjs | null) => {
+        setDatePickerValue(newValue);
+        const dateString = newValue ? newValue.format('MM/DD/YYYY') : '';
+        const syntheticEvent = {
+            target: { value: dateString }
+        } as ChangeEvent<HTMLInputElement>;
+        onSearchChange(syntheticEvent);
     };
 
     const handlePageChange = (newPage: number) => {
@@ -208,107 +243,119 @@ export const ReusableTable = <T,>({
                         height: 'auto',
                     }}
                 >
-                    <TextField
-                        className="pharma-table-search"
-                        placeholder={getPlaceholder()}
-                        value={currentSearchTerm}
-                        onChange={onSearchChange}
-                        type={searchAndFilterConfig.filterOptions.find((f: FilterOption) => f.key === currentFilterKey)?.type || 'text'}
-                        InputProps={{
-                            startAdornment: !currentSearchTerm.trim() ? (
-                                <InputAdornment position="start">
-                                    <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
-                                </InputAdornment>
-                            ) : null,
-                            endAdornment: currentSearchTerm ? (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        size="small"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const syntheticEvent = {
-                                                target: { value: '' }
-                                            } as ChangeEvent<HTMLInputElement>;
-                                            onSearchChange(syntheticEvent);
-                                        }}
-                                        sx={{
-                                            padding: '4px',
-                                            color: '#728197',
-                                            '&:hover': {
-                                                backgroundColor: 'transparent',
-                                                color: '#1A212B'
-                                            }
-                                        }}
-                                    >
-                                        <CloseIcon sx={{ fontSize: '18px' }} />
-                                    </IconButton>
-                                </InputAdornment>
-                            ) : null,
-                            sx: {
-                                height: '40px',
+                    {isDateFilter ? (
+                        <Box sx={{ width: isTabletOrMobile ? '100%' : '628.5px' }}>
+                            <PharmaDatePicker
+                                value={datePickerValue}
+                                onChange={handleDateChange}
+                                placeholder={getPlaceholder()}
+                                width="100%"
+                                height={40}
+                            />
+                        </Box>
+                    ) : (
+                        <TextField
+                            className="pharma-table-search"
+                            placeholder={getPlaceholder()}
+                            value={currentSearchTerm}
+                            onChange={onSearchChange}
+                            type={activeFilter?.type || 'text'}
+                            InputProps={{
+                                startAdornment: !currentSearchTerm.trim() ? (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
+                                    </InputAdornment>
+                                ) : null,
+                                endAdornment: currentSearchTerm ? (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            size="small"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const syntheticEvent = {
+                                                    target: { value: '' }
+                                                } as ChangeEvent<HTMLInputElement>;
+                                                onSearchChange(syntheticEvent);
+                                            }}
+                                            sx={{
+                                                padding: '4px',
+                                                color: '#728197',
+                                                '&:hover': {
+                                                    backgroundColor: 'transparent',
+                                                    color: '#1A212B'
+                                                }
+                                            }}
+                                        >
+                                            <CloseIcon sx={{ fontSize: '18px' }} />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ) : null,
+                                sx: {
+                                    height: '40px',
+                                    borderRadius: '12px',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #9AA8bc',
+                                    outline: 'none !important',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        border: 'none !important',
+                                    },
+                                    '&:hover': {
+                                        border: '1px solid #9AA8bc !important',
+                                        outline: 'none !important',
+                                        '& .MuiOutlinedInput-notchedOutline': {
+                                            border: 'none !important',
+                                        },
+                                    },
+                                    '&.Mui-focused': {
+                                        border: '1px solid #9AA8bc !important',
+                                        outline: 'none !important',
+                                        '& .MuiOutlinedInput-notchedOutline': {
+                                            border: 'none !important',
+                                        },
+                                    },
+                                    '&:focus': {
+                                        outline: 'none !important',
+                                    },
+                                    '&:focus-visible': {
+                                        outline: 'none !important',
+                                    },
+                                },
+                            }}
+                            sx={{
+                                width: isTabletOrMobile ? '100%' : '628.5px',
                                 borderRadius: '12px',
-                                backgroundColor: '#ffffff',
-                                border: '1px solid #9AA8bc',
-                                outline: 'none !important',
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                    border: 'none !important',
-                                },
-                                '&:hover': {
-                                    border: '1px solid #9AA8bc !important',
+                                border: '5px',
+                                marginBottom: isTabletOrMobile ? '12px' : 0,
+                                '& .MuiOutlinedInput-root': {
                                     outline: 'none !important',
+                                    '&:focus': {
+                                        outline: 'none !important',
+                                    },
+                                    '&:focus-visible': {
+                                        outline: 'none !important',
+                                    },
                                     '& .MuiOutlinedInput-notchedOutline': {
                                         border: 'none !important',
                                     },
-                                },
-                                '&.Mui-focused': {
-                                    border: '1px solid #9AA8bc !important',
-                                    outline: 'none !important',
-                                    '& .MuiOutlinedInput-notchedOutline': {
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                        border: 'none !important',
+                                    },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
                                         border: 'none !important',
                                     },
                                 },
-                                '&:focus': {
+                                '& .MuiInputBase-root': {
                                     outline: 'none !important',
+                                    '&:focus': {
+                                        outline: 'none !important',
+                                    },
+                                    '&:focus-visible': {
+                                        outline: 'none !important',
+                                    },
                                 },
-                                '&:focus-visible': {
-                                    outline: 'none !important',
-                                },
-                            },
-                        }}
-                        sx={{
-                            width: isTabletOrMobile ? '100%' : '628.5px',
-                            borderRadius: '12px',
-                            border: '5px',
-                            marginBottom: isTabletOrMobile ? '12px' : 0,
-                            '& .MuiOutlinedInput-root': {
-                                outline: 'none !important',
-                                '&:focus': {
-                                    outline: 'none !important',
-                                },
-                                '&:focus-visible': {
-                                    outline: 'none !important',
-                                },
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                    border: 'none !important',
-                                },
-                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    border: 'none !important',
-                                },
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    border: 'none !important',
-                                },
-                            },
-                            '& .MuiInputBase-root': {
-                                outline: 'none !important',
-                                '&:focus': {
-                                    outline: 'none !important',
-                                },
-                                '&:focus-visible': {
-                                    outline: 'none !important',
-                                },
-                            },
-                        }}
-                    />
+                            }}
+                        />
+                    )}
                     {searchAndFilterConfig.filterOptions.length > 0 && (
                         <Button
                             variant="contained"
@@ -369,9 +416,10 @@ export const ReusableTable = <T,>({
                 borderRadius: totalRows > 0 ? '12px 12px 0 0' : '12px', 
                 border: '1px solid #E5E7EB', 
                 borderBottom: totalRows > 0 ? 'none' : '1px solid #E5E7EB', 
-                overflow: 'hidden', 
+                overflow: 'auto', 
                 width: '100%',
-                overflowX: 'hidden',
+                overflowX: 'auto',
+                overflowY: 'hidden',
                 boxSizing: 'border-box',
             }}>
                 <TableContainer
@@ -384,20 +432,19 @@ export const ReusableTable = <T,>({
                         m: 0,
                         maxHeight: '350px',
                         overflowY: 'auto',
-                        overflowX: 'hidden',
+                        overflowX: 'auto',
                         width: '100%',
-                        maxWidth: '100%',
                         position: 'relative',
                         boxSizing: 'border-box',
                         '&::-webkit-scrollbar': {
                             width: '6px',
-                            height: '0px !important',
+                            height: '6px',
                             display: 'block',
                         },
                         '&::-webkit-scrollbar:horizontal': {
-                            display: 'none !important',
-                            height: '0px !important',
-                            width: '0px !important',
+                            display: 'block !important',
+                            height: '6px !important',
+                            width: 'auto !important',
                         },
                         '&::-webkit-scrollbar-track': {
                             backgroundColor: '#F3F4F6',
@@ -411,18 +458,43 @@ export const ReusableTable = <T,>({
                             },
                         },
                         '&::-webkit-scrollbar-corner': {
-                            display: 'none !important',
+                            backgroundColor: '#F3F4F6',
+                            display: 'block !important',
                         },
                         scrollbarWidth: 'thin',
                         scrollbarColor: '#D1D5DB #F3F4F6',
                         '& table': {
-                            width: '100% !important',
-                            maxWidth: '100% !important',
+                            minWidth: '100%',
                             tableLayout: 'fixed',
                         },
                         '& *': {
-                            overflowX: 'hidden !important',
-                            maxWidth: '100% !important',
+                            maxWidth: '100%',
+                            boxSizing: 'border-box',
+                        },
+                        // Allow date picker icon button to be visible (popup uses portal, so doesn't need overflow visible)
+                        '& .MuiPickersTextField-root': {
+                            width: '100%',
+                            maxWidth: '100%',
+                            '& .MuiInputAdornment-root': {
+                                overflowX: 'visible !important',
+                                '& .MuiIconButton-root': {
+                                    overflowX: 'visible !important',
+                                    '& svg': {
+                                        width: '28px !important',
+                                        height: '28px !important',
+                                        fontSize: '28px !important',
+                                    },
+                                },
+                            },
+                            '& .MuiPickersInputAdornment-root': {
+                                '& .MuiIconButton-root': {
+                                    '& svg': {
+                                        width: '28px !important',
+                                        height: '28px !important',
+                                        fontSize: '28px !important',
+                                    },
+                                },
+                            },
                         },
                     }}
                 >
@@ -445,7 +517,7 @@ export const ReusableTable = <T,>({
                                         fontSize: '14px',
                                         lineHeight: '20px',
                                         color: '#374151',
-                                        padding: '12px 16px',
+                                        padding: column.key === 'actions' ? '3px' : '12px 16px',
                                         bgcolor: '#F9FAFB',
                                         whiteSpace: 'nowrap',
                                         width: getColumnWidth(column.key as string, index, visibleColumns.length) || 'auto',
@@ -559,15 +631,16 @@ export const ReusableTable = <T,>({
                                                     fontSize: '14px',
                                                     lineHeight: '20px',
                                                     color: '#374151',
-                                                    padding: '12px 16px',
+                                                    padding: column.key === 'actions' ? '3px' : '12px 16px',
                                                     whiteSpace: 'normal',
                                                     wordBreak: 'break-word',
                                                     width: getColumnWidth(column.key as string, colIndex, visibleColumns.length) || 'auto',
                                                     maxWidth: getColumnWidth(column.key as string, colIndex, visibleColumns.length) || 'auto',
                                                     textAlign: 'left',
                                                     borderBottom: '1px solid #F3F4F6',
-                                                    overflow: column.key === 'batch' ? 'visible' : 'hidden',
+                                                    overflow: 'hidden',
                                                     textOverflow: 'ellipsis',
+                                                    position: 'relative',
                                                 }}
                                             >
                                                 {column.key === 'checkbox' && totalRows > 0 ? (

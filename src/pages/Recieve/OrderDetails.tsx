@@ -55,7 +55,8 @@ export interface PharmaTableRow {
   po_line_id?: number; 
   qtyReceived: number;
   qtyFree: number;
-  batch: string; 
+  batch: Dayjs | null;
+  expiryDate: Dayjs | null;
   pp: number;
   sp: number;
   mrp: number;
@@ -136,7 +137,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigationInvoiceDate = (location.state as any)?.invoiceDate || "";
   
   const [supplierName, setSupplierName] = useState<string>(
-    isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier
+    (isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier) || ""
   );
   const [poNumber, setPoNumber] = useState<string>(
     isEditMode && selectedOrder ? selectedOrder.poNo : selectedPO
@@ -346,26 +347,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     };
 
     const lines = pharmaTableData.map((row, index) => {
-      let expiryDate: string = '';
-      if (row.batch && row.batch.trim() !== '') {
-        try {
-          const parsedDate = dayjs(row.batch, 'DD/MM/YYYY');
-          if (parsedDate.isValid()) {
-            expiryDate = parsedDate.format('YYYY-MM-DD');
-          } else {
-            const altParsedDate = dayjs(row.batch);
-            if (altParsedDate.isValid()) {
-              expiryDate = altParsedDate.format('YYYY-MM-DD');
-            } else {
-              expiryDate = '';
-            }
-          }
-        } catch (error) {
-          expiryDate = '';
-        }
-      }
-
       const productId = getProductIdFromName(row.productId);
+      const expiryDateFormatted = row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()
+        ? row.expiryDate.format('DD/MM/YYYY')
+        : "";
 
       const line = {
         product: row.productId,
@@ -373,7 +358,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         batch_number: row.batchNumber || "",
         received_qty: Number(row.qtyReceived) || 0,
         free_qty: Number(row.qtyFree) || 0,
-        expiry_date: expiryDate,
+        expiry_date: expiryDateFormatted,
         unit_price: Number(row.pp) || 0,
         cgst: Number(row.cgst) || 0,
         sgst: Number(row.sgst) || 0,
@@ -427,19 +412,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       return product ? product.id : null;
     };
 
-    const formatExpiryDate = (batchDate: string): string => {
-      if (!batchDate || !batchDate.trim()) return '';
-      try {
-        const parsed = dayjs(batchDate, 'DD/MM/YYYY');
-        if (parsed.isValid()) {
-          return parsed.format('YYYY-MM-DD');
-        }
-        const altParsed = dayjs(batchDate);
-        if (altParsed.isValid()) {
-          return altParsed.format('YYYY-MM-DD');
-        }
-      } catch (error) {
-        // Ignore parsing errors
+    const formatExpiryDate = (row: PharmaTableRow): string => {
+      if (row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()) {
+        return row.expiryDate.format('DD/MM/YYYY');
       }
       return '';
     };
@@ -469,7 +444,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           batch_number: row.batchNumber || '', // Required by backend
           received_qty: row.qtyReceived,
           free_qty: row.qtyFree,
-          expiry_date: formatExpiryDate(row.batch),
+          expiry_date: formatExpiryDate(row),
           unit_price: row.pp,
           cgst: row.cgst,
           sgst: row.sgst,
@@ -485,16 +460,22 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
         if (!originalRow) return false;
         
+        const expiryDateChanged = 
+          (originalRow.expiryDate === null && currentRow.expiryDate !== null) ||
+          (originalRow.expiryDate !== null && currentRow.expiryDate === null) ||
+          (originalRow.expiryDate && currentRow.expiryDate && 
+           !originalRow.expiryDate.isSame(currentRow.expiryDate, 'day'));
+        
         return (
           originalRow.productId !== currentRow.productId ||
           originalRow.qtyReceived !== currentRow.qtyReceived ||
           originalRow.qtyFree !== currentRow.qtyFree ||
-          originalRow.batch !== currentRow.batch ||
           originalRow.pp !== currentRow.pp ||
           originalRow.cgst !== currentRow.cgst ||
           originalRow.sgst !== currentRow.sgst ||
           originalRow.igst !== currentRow.igst ||
-          originalRow.disc !== currentRow.disc
+          originalRow.disc !== currentRow.disc ||
+          expiryDateChanged
         );
       })
       .map(row => {
@@ -509,7 +490,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           product_name: row.productId,
           received_qty: row.qtyReceived,
           free_qty: row.qtyFree,
-          expiry_date: formatExpiryDate(row.batch),
+          expiry_date: formatExpiryDate(row),
           unit_price: row.pp.toString(),
           cgst: row.cgst.toString(),
           sgst: row.sgst.toString(),
@@ -618,7 +599,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       
       const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
       if (incompleteProducts.length > 0) {
-        setSaveError('Please complete all required fields for products (Product Name, Quantity Received, and valid Expiry Date if provided)');
+        setSaveError('Please complete all required fields for products (Product Name and Quantity Received)');
         setIsSaving(false);
         return;
       }
@@ -723,30 +704,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const resolvedProductId = getProductIdFromName(productName);
     
-    let productMRP = 0;
-    let productSellingPrice = 0;
-    
-    if (resolvedProductId) {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/inventory/get-product-details?product_id=${resolvedProductId}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-        
-        if (response.ok) {
-          const productData = await response.json();
-          productMRP = productData.mrp || 0;
-          productSellingPrice = productData.selling_price || productData.mrp || 0;
-        }
-      } catch (error) {
-        console.error('Error fetching product details:', error);
-      }
-    }
+    // Default values - user will enter MRP and selling price manually
+    const productMRP = 0;
+    const productSellingPrice = 0;
     
     const newProduct: PharmaTableRow = {
       id: Date.now().toString(),
@@ -755,7 +715,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       batchNumber: batchNumber || "",
       qtyReceived: 0,
       qtyFree: 0,
-      batch: "",
+      batch: null,
+      expiryDate: null,
       pp: 0, // Purchase price - user needs to enter
       sp: productSellingPrice || 0, // Selling price - populate from product if available
       mrp: productMRP || 0, // MRP - populate from product
@@ -766,6 +727,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       margPercent: 0,
       salesDiscPercent: 0,
       isEditing: true, // Start in editing mode
+      invoice_date: invoiceDate || '', // Inherit invoice date from form if available
+      transaction_number: transactionNumber || '',
+      payment_vendor: paymentVendor || '',
     };
 
     setPharmaTableData(prev => [...prev, newProduct]);
@@ -818,7 +782,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setRowToDeleteId(null);
   };
 
-  const updateEditingData = (field: keyof PharmaTableRow, value: string | number) => {
+  const updateEditingData = (field: keyof PharmaTableRow, value: string | number | Dayjs | null) => {
     setEditingData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -847,13 +811,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     const hasProductName = row.productId && row.productId.trim() !== '';
     const hasValidQuantity = row.qtyReceived && row.qtyReceived > 0;
     
-    let hasValidExpiryDate = true;
-    if (row.batch && row.batch.trim() !== '') {
-      const parsedDate = dayjs(row.batch, 'DD/MM/YYYY');
-      hasValidExpiryDate = parsedDate.isValid();
-    }
-    
-    return hasProductName && hasValidQuantity && hasValidExpiryDate;
+    return hasProductName && hasValidQuantity;
   };
 
   const hasFormChanges = useMemo(() => {
@@ -998,19 +956,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
       
       const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => {
-        // Parse expiry_date to DD/MM/YYYY format for display
-        let expiryDateFormatted = '';
-        if (line.expiry_date) {
-          try {
-            const parsed = dayjs(line.expiry_date);
-            if (parsed.isValid()) {
-              expiryDateFormatted = parsed.format('DD/MM/YYYY');
-            }
-          } catch (e) {
-            expiryDateFormatted = '';
-          }
-        }
-
+        const expiryDateValue = line.expiry_date 
+          ? (() => {
+              const parsed = dayjs(line.expiry_date, 'DD/MM/YYYY');
+              return parsed.isValid() ? parsed : null;
+            })()
+          : null;
+        
         return {
           id: line.receipt_line_id?.toString() || line.id?.toString() || index.toString(),
           productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
@@ -1020,7 +972,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           po_line_id: line.po_line_id ? Number(line.po_line_id) : undefined,
           qtyReceived: line.received_qty || 0,
           qtyFree: line.free_qty || 0,
-          batch: expiryDateFormatted, // Expiry date in DD/MM/YYYY format
+          batch: null,
+          expiryDate: expiryDateValue,
           pp: parseFloat(line.unit_price) || 0,
           sp: parseFloat(line.selling_price) || parseFloat(line.unit_price) || 0,
           mrp: parseFloat(line.mrp) || parseFloat(line.unit_price) || 0,
@@ -1160,102 +1113,41 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       ),
     },
     {
-      key: "batch",
-      header: orderLabels.expiryDate,
+      key: "invoiceDate",
+      header: orderLabels.invoiceDate,
       sortable: false,
-      render: (row) => {
-        const currentBatch = editingRowId === row.id ? editingData.batch : row.batch;
-        const dateValue = currentBatch 
-          ? (() => {
-              const parsed = dayjs(currentBatch, 'DD/MM/YYYY');
-              return parsed.isValid() ? parsed : null;
-            })()
-          : null;
-        
-        return (
-          <Box sx={{ 
-            position: 'relative',
-            width: '100%',
-            overflow: 'visible !important',
-            '& > *': {
-              overflow: 'visible !important',
-            },
-            '& .MuiInputBase-root': {
-              overflow: 'visible !important',
-            },
-            '& .MuiOutlinedInput-root': {
-              overflow: 'visible !important',
-              '& .MuiInputAdornment-root': {
-                display: 'flex !important',
-                visibility: 'visible !important',
-                opacity: '1 !important',
-                position: 'relative !important',
-                overflow: 'visible !important',
-                '& .MuiIconButton-root': {
-                  display: 'inline-flex !important',
-                  visibility: 'visible !important',
-                  opacity: '1 !important',
-                  '& svg': {
-                    display: 'block !important',
-                    visibility: 'visible !important',
-                    opacity: '1 !important',
-                  },
-                },
-              },
-            },
-            '& .MuiInputAdornment-root': {
-              display: 'flex !important',
-              visibility: 'visible !important',
-              opacity: '1 !important',
-              '& .MuiIconButton-root': {
-                display: 'inline-flex !important',
-                visibility: 'visible !important',
-                opacity: '1 !important',
-                '& svg': {
-                  display: 'block !important',
-                  visibility: 'visible !important',
-                  opacity: '1 !important',
-                },
-              },
-            },
-            '& .MuiPickersInputAdornment-root': {
-              display: 'flex !important',
-              visibility: 'visible !important',
-              opacity: '1 !important',
-              '& .MuiIconButton-root': {
-                display: 'inline-flex !important',
-                visibility: 'visible !important',
-                opacity: '1 !important',
-                '& svg': {
-                  display: 'block !important',
-                  visibility: 'visible !important',
-                  opacity: '1 !important',
-                },
-              },
-            },
-          }}>
+      render: (row) => (
+        editingRowId === row.id ? (
+          <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
             <PharmaDatePicker
-              value={dateValue}
+              value={
+                editingData.invoice_date !== undefined
+                  ? (editingData.invoice_date 
+                      ? (() => {
+                          const parsed = dayjs(editingData.invoice_date, 'DD/MM/YYYY');
+                          return parsed.isValid() ? parsed : null;
+                        })()
+                      : null)
+                  : row.invoice_date
+                  ? (() => {
+                      const parsed = dayjs(row.invoice_date, 'DD/MM/YYYY');
+                      return parsed.isValid() ? parsed : null;
+                    })()
+                  : null
+              }
               onChange={(newValue: Dayjs | null) => {
                 const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
-                if (editingRowId === row.id) {
-                  updateEditingData("batch", formattedDate);
-                } else {
-                  setPharmaTableData(prev => 
-                    prev.map(item => 
-                      item.id === row.id 
-                        ? { ...item, batch: formattedDate }
-                        : item
-                    )
-                  );
-                }
+                updateEditingData("invoice_date", formattedDate);
               }}
-              minDate={dayjs()}
-              width={320}
+              placeholder="MM/DD/YYYY"
+              width="100%"
+              height={32}
             />
           </Box>
-        );
-      },
+        ) : (
+          <span>{row.invoice_date ? row.invoice_date : '-'}</span>
+        )
+      ),
     },
     {
       key: "pp",
@@ -1263,15 +1155,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
-          <TextField
-            size="small"
-            type="number"
-            value={editingData.pp || ""}
-            onChange={(e) => updateEditingData("pp", Number(e.target.value))}
-            variant="outlined"
-            fullWidth
-            sx={numberInputStyles}
-          />
+          <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+            <TextField
+              size="small"
+              type="number"
+              value={editingData.pp || ""}
+              onChange={(e) => updateEditingData("pp", Number(e.target.value))}
+              variant="outlined"
+              fullWidth
+              sx={{ ...numberInputStyles, width: '100%', maxWidth: '100%' }}
+            />
+          </Box>
         ) : (
           <span>{row.pp}</span>
         )
@@ -1362,7 +1256,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       header: orderLabels.actions,
       sortable: false,
       render: (row) => (
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center',marginRight: '10px' }}>
           {editingRowId === row.id ? (
             <>
               <IconButton
@@ -1453,8 +1347,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     if (searchTerm.trim()) {
       sortableItems = sortableItems.filter(
         (item) =>
-          item.productId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.batch || '').toLowerCase().includes(searchTerm.toLowerCase())
+          item.productId.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -1755,7 +1648,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             width={274}
           />
         </Box>
-        
+
         <Box
           sx={{
             display: "flex",
@@ -2111,7 +2004,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             onInputChange={(_, v) => {
               setFindProductTerm(v);
             }}
-            value={findProductTerm ? findProductTerm : undefined}
+            value={findProductTerm || ""}
             isOptionEqualToValue={(option, value) => {
               if (!value) return false;
               return option === value;

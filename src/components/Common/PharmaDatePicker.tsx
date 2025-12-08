@@ -12,6 +12,7 @@ export interface PharmaDatePickerProps {
   minDate?: Dayjs;
   maxDate?: Dayjs;
   disabled?: boolean;
+  readOnly?: boolean;
   width?: number | string;
   height?: number | string;
   error?: boolean;
@@ -24,6 +25,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
   minDate,
   maxDate,
   disabled = false,
+  readOnly = true,
   width = 150,
   height = 44,
   error = false,
@@ -78,6 +80,44 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       const style = document.createElement('style');
       style.id = styleId;
       style.textContent = `
+        /* Ensure calendar icon is always visible */
+        .MuiPickersTextField-root .MuiInputAdornment-root,
+        .MuiPickersTextField-root .MuiPickersInputAdornment-root,
+        .MuiPickersTextField-root .MuiInputAdornment-positionEnd,
+        .MuiPickersTextField-root .MuiPickersInputAdornment-root.MuiInputAdornment-positionEnd,
+        .MuiPickersTextField-root .MuiOutlinedInput-adornedEnd .MuiInputAdornment-root,
+        .MuiPickersTextField-root .MuiOutlinedInput-adornedEnd .MuiPickersInputAdornment-root {
+          display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          position: relative !important;
+        }
+        .MuiPickersTextField-root .MuiInputAdornment-root .MuiIconButton-root,
+        .MuiPickersTextField-root .MuiPickersInputAdornment-root .MuiIconButton-root {
+          display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          color: #6B7280 !important;
+        }
+        .MuiPickersTextField-root .MuiInputAdornment-root .MuiIconButton-root svg,
+        .MuiPickersTextField-root .MuiPickersInputAdornment-root .MuiIconButton-root svg {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          width: 20px !important;
+          height: 20px !important;
+        }
+        /* Table-specific: Larger icon for date picker in table */
+        .MuiTableContainer-root .MuiPickersTextField-root .MuiInputAdornment-root .MuiIconButton-root svg,
+        .MuiTableContainer-root .MuiPickersTextField-root .MuiPickersInputAdornment-root .MuiIconButton-root svg,
+        .MuiPaper-root.MuiTableContainer-root .MuiPickersTextField-root .MuiInputAdornment-root .MuiIconButton-root svg,
+        .MuiPaper-root.MuiTableContainer-root .MuiPickersTextField-root .MuiPickersInputAdornment-root .MuiIconButton-root svg {
+          width: 28px !important;
+          height: 28px !important;
+          fontSize: 28px !important;
+        }
         .pharma-current-month {
           background-color: #5C17E5 !important;
           color: #ffffff !important;
@@ -163,12 +203,18 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           color: #728197 !important;
           -webkit-text-fill-color: #728197 !important;
         }
+        /* Reduce font size for smaller date pickers in tables */
+        .MuiPickersInputBase-root-MuiPickersOutlinedInput-root input,
+        .css-ilenfc-MuiPickersInputBase-root-MuiPickersOutlinedInput-root input {
+          font-size: 12px !important;
+        }
         /* Ensure text color is applied to the input value */
         .MuiPickersInputBase-root input::placeholder,
         .MuiPickersInputBase-root input::-webkit-input-placeholder,
         .MuiPickersInputBase-root input::-moz-placeholder {
           color: #728197 !important;
           opacity: 1;
+          font-size: 10px !important;
         }
         /* Remove outline from fieldset on hover */
         .MuiPickersInputBase-root:hover fieldset,
@@ -269,7 +315,6 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           }
         });
       });
-      // Use longer delay to ensure year calendar is fully rendered
       setTimeout(styleCurrentMonthAndYear, 200);
     });
 
@@ -290,12 +335,10 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
     
     document.addEventListener('click', handleCalendarClick);
 
-    // Initial style application with multiple attempts
     const interval = setInterval(() => {
       const dialog = document.querySelector('[role="dialog"]');
       if (dialog) {
         styleCurrentMonthAndYear();
-        // Also try again after a short delay for year view
         setTimeout(styleCurrentMonthAndYear, 300);
       }
     }, 300);
@@ -339,6 +382,15 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
             openPickerIcon: CalendarTodayIcon,
           }}
         slotProps={{
+          openPickerIcon: {
+            sx: {
+              display: 'flex !important',
+              visibility: 'visible !important',
+              opacity: '1 !important',
+              color: '#6B7280 !important',
+              fontSize: '20px !important',
+            }
+          },
           monthButton: (ownerState) => {
             // Try multiple possible property names
             const month = (ownerState as any).month || (ownerState as any).value;
@@ -421,7 +473,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
             placeholder,
             error: error,
             InputProps: {
-              readOnly: true,
+              readOnly: readOnly,
             },
             sx: {
               cursor: disabled ? 'not-allowed' : 'pointer',
@@ -432,6 +484,9 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                 minHeight: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
                 backgroundColor: "#ffffff",
                 outline: "none !important",
+                "& .MuiPickersInputBase-root": {
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                },
                 "& fieldset": { 
                   borderColor: error ? "#EF4444" : "#D1D5DB",
                   borderWidth: "1px",
@@ -530,51 +585,84 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
               "& .MuiOutlinedInput-input": {
                 padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
                 fontFamily: "'Lexend', sans-serif",
-                fontSize: typeof height === 'number' && height <= 32 ? "13px" : "16px",
-                lineHeight: typeof height === 'number' && height <= 32 ? "20px" : "24px",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                lineHeight: typeof height === 'number' && height <= 32 ? "18px !important" : "20px !important",
                 color: "#728197 !important",
                 fontWeight: "normal !important",
               },
               "& .MuiPickersInputBase-input": {
                 padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
                 fontFamily: "'Lexend', sans-serif",
-                fontSize: typeof height === 'number' && height <= 32 ? "13px" : "16px",
-                lineHeight: typeof height === 'number' && height <= 32 ? "20px" : "24px",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                lineHeight: typeof height === 'number' && height <= 32 ? "18px !important" : "20px !important",
                 color: "#728197 !important",
                 fontWeight: "normal !important",
               },
               "& input": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
               },
               "& .MuiInputBase-input": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
               },
               "& .MuiPickersInputBase-root input": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
               },
               "& .MuiOutlinedInput-root input": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
               },
               "& input[type='text']": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
               },
               "& input[readonly]": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
+                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
               },
               "& .MuiOutlinedInput-input::placeholder": {
                 color: "#728197",
                 opacity: 1,
+                fontSize: "10px !important",
+              },
+              "& input::placeholder": {
+                fontSize: "10px !important",
+                color: "#728197 !important",
+                opacity: "1 !important",
+              },
+              "& input::-webkit-input-placeholder": {
+                fontSize: "10px !important",
+                color: "#728197 !important",
+                opacity: "1 !important",
+              },
+              "& input::-moz-placeholder": {
+                fontSize: "10px !important",
+                color: "#728197 !important",
+                opacity: "1 !important",
+              },
+              "& .MuiPickersInputBase-input::placeholder": {
+                fontSize: "10px !important",
+                color: "#728197 !important",
+                opacity: "1 !important",
+              },
+              "& .MuiInputBase-input::placeholder": {
+                fontSize: "10px !important",
+                color: "#728197 !important",
+                opacity: "1 !important",
               },
               "& .MuiInputAdornment-root": {
                 display: "flex !important",
                 visibility: "visible !important",
                 opacity: "1 !important",
+                pointerEvents: "auto !important",
                 "& .MuiIconButton-root": {
                   color: "#6B7280 !important",
                   padding: "4px",
@@ -582,6 +670,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                   display: "flex !important",
                   visibility: "visible !important",
                   opacity: "1 !important",
+                  pointerEvents: disabled ? 'none' : 'auto',
                   "&:hover": {
                     backgroundColor: disabled ? "transparent" : "rgba(0, 0, 0, 0.04)",
                   },
@@ -590,6 +679,8 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                     display: "block !important",
                     visibility: "visible !important",
                     opacity: "1 !important",
+                    width: "20px !important",
+                    height: "20px !important",
                   },
                   "&:focus": {
                     outline: "none",
@@ -615,11 +706,31 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                     display: "block !important",
                     visibility: "visible !important",
                     opacity: "1 !important",
+                    width: "20px !important",
+                    height: "20px !important",
                   },
                   "&:focus": {
                     outline: "none",
                   },
                 },
+              },
+              // Ensure calendar icon button is visible
+              "& .MuiInputAdornment-positionEnd": {
+                display: "flex !important",
+                visibility: "visible !important",
+                opacity: "1 !important",
+                pointerEvents: "auto !important",
+                "& .MuiIconButton-root": {
+                  display: "flex !important",
+                  visibility: "visible !important",
+                  opacity: "1 !important",
+                },
+              },
+              "& .MuiPickersInputAdornment-root.MuiInputAdornment-positionEnd": {
+                display: "flex !important",
+                visibility: "visible !important",
+                opacity: "1 !important",
+                pointerEvents: "auto !important",
               },
               "& .MuiInputBase-inputAdornedEnd": {
                 paddingRight: "40px !important",
