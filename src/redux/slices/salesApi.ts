@@ -274,6 +274,12 @@ export const salesApi = createApi({
       providesTags: ["Sales"],
     }),
 
+    // Get invoices
+    getInvoices: builder.query<any[], void>({
+      query: () => "sales/get-invoices",
+      providesTags: ["Sales"],
+    }),
+
     // Get sales by ID
     getSalesById: builder.query<any, { id: number }>({
       query: ({ id }) => `sales/${id}`,
@@ -351,7 +357,6 @@ export const salesApi = createApi({
       },
     }),
 
-    // Submit sale - final submission endpoint
     submitSale: builder.mutation<SubmitSaleResponse, SubmitSaleRequest>({
       query: (body) => ({
         url: "sales/submit-sale",
@@ -361,31 +366,25 @@ export const salesApi = createApi({
       invalidatesTags: ["Sales"],
     }),
 
-    // Add new customer
     addCustomer: builder.mutation<AddCustomerResponse, AddCustomerRequest>({
       query: (body) => ({
         url: "sales/add-customer",
         method: "POST",
         body,
       }),
-      // Invalidate customer cache so dropdown refreshes
       invalidatesTags: ["Sales"],
     }),
 
-    // Get all customer names
     getAllCustomerNames: builder.query<string[], void>({
       query: () => "sales/get-all-customer-names",
       providesTags: ["Sales"],
     }),
 
-    // Get all customers (full objects with IDs) - similar to getDoctors
-    // Note: This endpoint may not exist on all backends - handle 404 gracefully in components
     getCustomers: builder.query<Customer[], void>({
       query: () => "sales/get-customers",
       providesTags: ["Sales"],
     }),
 
-    // Get customer phones by name
     getCustomerPhones: builder.mutation<GetCustomerPhonesResponse, GetCustomerPhonesRequest>({
       query: (body) => ({
         url: "sales/get-customer-phones/",
@@ -394,7 +393,6 @@ export const salesApi = createApi({
       }),
     }),
 
-    // Get doctor phones and emails by name
     getDoctorPhonesAndEmails: builder.mutation<GetDoctorPhonesAndEmailsResponse, GetDoctorPhonesAndEmailsRequest>({
       query: (body) => ({
         url: "sales/get-doctor-phones-and-emails/",
@@ -405,12 +403,13 @@ export const salesApi = createApi({
   }),
 });
 
-// Export hooks for usage in functional components
 export const {
   useGetProductTypeQuery,
   useLazyGetProductTypeQuery,
   useCreateSalesMutation,
   useGetSalesHistoryQuery,
+  useGetInvoicesQuery,
+  useLazyGetInvoicesQuery,
   useGetSalesByIdQuery,
   useUpdateSalesMutation,
   useDeleteSalesMutation,

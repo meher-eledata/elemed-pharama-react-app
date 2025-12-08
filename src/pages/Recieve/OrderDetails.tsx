@@ -431,17 +431,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       })
       .map(row => {
         const productId = row.product_id || getProductIdFromName(row.productId);
-        if (!productId) {
-          console.warn(`Could not find product_id for product: ${row.productId}`);
-        }
-        if (!row.batchNumber || row.batchNumber.trim() === '') {
-          console.warn(`batch_number is required for product: ${row.productId}`);
-        }
         
         return {
           product: row.productId,
-          product_id: productId || 0, // Fallback to 0 if not found, backend will reject
-          batch_number: row.batchNumber || '', // Required by backend
+          product_id: productId || 0,
+          batch_number: row.batchNumber || '',
           received_qty: row.qtyReceived,
           free_qty: row.qtyFree,
           expiry_date: formatExpiryDate(row),
@@ -485,7 +479,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         return {
           receipt_line_id: parseInt(row.id || '0'),
           po_line_id: row.po_line_id || originalRow?.po_line_id || 0,
-          batch_id: row.batch_id || originalRow?.batch_id || 0, // Backend expects batch_id from InventoryBatch
+          batch_id: row.batch_id || originalRow?.batch_id || 0,
           product_id: productId || 0,
           product_name: row.productId,
           received_qty: row.qtyReceived,
@@ -704,7 +698,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const resolvedProductId = getProductIdFromName(productName);
     
-    // Default values - user will enter MRP and selling price manually
     const productMRP = 0;
     const productSellingPrice = 0;
     
@@ -717,17 +710,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       qtyFree: 0,
       batch: null,
       expiryDate: null,
-      pp: 0, // Purchase price - user needs to enter
-      sp: productSellingPrice || 0, // Selling price - populate from product if available
-      mrp: productMRP || 0, // MRP - populate from product
+      pp: 0,
+      sp: productSellingPrice || 0,
+      mrp: productMRP || 0,
       cgst: 0,
       sgst: 0,
       igst: 0,
       disc: 0,
       margPercent: 0,
       salesDiscPercent: 0,
-      isEditing: true, // Start in editing mode
-      invoice_date: invoiceDate || '', // Inherit invoice date from form if available
+      isEditing: true,
+      invoice_date: invoiceDate || '',
       transaction_number: transactionNumber || '',
       payment_vendor: paymentVendor || '',
     };
@@ -968,7 +961,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
           product_id: line.product_id ? Number(line.product_id) : undefined,
           batchNumber: line.batch_number || '',
-          batch_id: line.batch_id || undefined, // Will need to fetch from inventory_batch if not in response
+          batch_id: line.batch_id || undefined,
           po_line_id: line.po_line_id ? Number(line.po_line_id) : undefined,
           qtyReceived: line.received_qty || 0,
           qtyFree: line.free_qty || 0,
@@ -1113,31 +1106,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       ),
     },
     {
-      key: "invoiceDate",
-      header: orderLabels.invoiceDate,
+      key: "expiryDate",
+      header: orderLabels.expiryDate,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
           <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
             <PharmaDatePicker
               value={
-                editingData.invoice_date !== undefined
-                  ? (editingData.invoice_date 
-                      ? (() => {
-                          const parsed = dayjs(editingData.invoice_date, 'DD/MM/YYYY');
-                          return parsed.isValid() ? parsed : null;
-                        })()
-                      : null)
-                  : row.invoice_date
-                  ? (() => {
-                      const parsed = dayjs(row.invoice_date, 'DD/MM/YYYY');
-                      return parsed.isValid() ? parsed : null;
-                    })()
-                  : null
+                editingData.expiryDate !== undefined
+                  ? editingData.expiryDate
+                  : row.expiryDate
               }
               onChange={(newValue: Dayjs | null) => {
-                const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
-                updateEditingData("invoice_date", formattedDate);
+                updateEditingData("expiryDate", newValue);
               }}
               placeholder="MM/DD/YYYY"
               width="100%"
@@ -1145,7 +1127,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             />
           </Box>
         ) : (
-          <span>{row.invoice_date ? row.invoice_date : '-'}</span>
+          <span>{row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid() ? row.expiryDate.format('DD/MM/YYYY') : '-'}</span>
         )
       ),
     },

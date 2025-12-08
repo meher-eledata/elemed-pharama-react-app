@@ -61,12 +61,10 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
     const timer = setTimeout(() => {
       const popper = document.querySelector('.MuiPickersPopper-root') as HTMLElement;
       if (popper) {
-        // Force popper to update its position by triggering a position update
         const popperInstance = (popper as any)._popper;
         if (popperInstance && popperInstance.update) {
           popperInstance.update();
         }
-        // Also trigger resize as fallback
         window.dispatchEvent(new Event('resize'));
       }
     }, 50);
@@ -236,12 +234,10 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-      // Remove previous classes
       document.querySelectorAll('.pharma-current-month, .pharma-current-year').forEach(el => {
         el.classList.remove('pharma-current-month', 'pharma-current-year');
       });
 
-      // Style current month buttons - search in all poppers
       const monthButtons = document.querySelectorAll('[role="dialog"] .MuiPickersMonth-root, [role="dialog"] .MuiMonthCalendar-button');
       monthButtons.forEach((button) => {
         const buttonText = button.textContent?.trim();
@@ -257,7 +253,6 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
         }
       });
 
-      // Style current year buttons - try multiple selectors
       const yearSelectors = [
         '[role="dialog"] .MuiPickersYear-root',
         '[role="dialog"] .MuiYearCalendar-root button',
@@ -272,25 +267,20 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       for (const selector of yearSelectors) {
         yearButtons = document.querySelectorAll(selector);
         if (yearButtons.length > 0) {
-          // Found year buttons, break
           break;
         }
       }
       
       if (yearButtons && yearButtons.length > 0) {
         yearButtons.forEach((button) => {
-          // Get text from button or any child element
           let buttonText = button.textContent?.trim() || '';
-          // If button has child elements, try to get text from the first text node
           if (!buttonText && button.firstChild) {
             buttonText = button.firstChild.textContent?.trim() || '';
           }
           
-          // Try to parse the year as a number (handles cases with commas, spaces, etc.)
           const cleanedText = buttonText.replace(/[,\s]/g, '');
           const yearNumber = parseInt(cleanedText, 10);
           
-          // Also try direct string comparison
           if ((yearNumber === currentYear || buttonText === currentYear.toString()) && !isNaN(yearNumber)) {
             const element = button as HTMLElement;
             if (!element.classList.contains('Mui-selected')) {
@@ -301,15 +291,12 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       }
     };
 
-    // Use MutationObserver to watch for calendar popup
     const observer = new MutationObserver((mutations) => {
-      // Check if year calendar was added
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === 1) { // Element node
+          if (node.nodeType === 1) {
             const element = node as Element;
             if (element.querySelector?.('.MuiYearCalendar-root, .MuiPickersYear-root')) {
-              // Year calendar detected, apply styles with a small delay
               setTimeout(styleCurrentMonthAndYear, 150);
             }
           }
@@ -318,13 +305,11 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       setTimeout(styleCurrentMonthAndYear, 200);
     });
 
-    // Observe the document body for popper elements
     observer.observe(document.body, {
       childList: true,
       subtree: true,
     });
     
-    // Also listen for click events on the calendar header to detect view changes
     const handleCalendarClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('.MuiPickersCalendarHeader-labelContainer') || 
@@ -392,7 +377,6 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
             }
           },
           monthButton: (ownerState) => {
-            // Try multiple possible property names
             const month = (ownerState as any).month || (ownerState as any).value;
             const currentMonth = dayjs();
             const isCurrentMonth = month && dayjs.isDayjs(month) && 
@@ -428,7 +412,6 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
             };
           },
           yearButton: (ownerState) => {
-            // Try multiple possible property names
             const year = (ownerState as any).year || (ownerState as any).value;
             const currentYear = dayjs().year();
             let isCurrentYear = false;
@@ -714,7 +697,6 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                   },
                 },
               },
-              // Ensure calendar icon button is visible
               "& .MuiInputAdornment-positionEnd": {
                 display: "flex !important",
                 visibility: "visible !important",
@@ -754,7 +736,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
               {
                 name: "offset",
                 options: {
-                  offset: [0, 8], // [horizontal, vertical] - 8px gap between input and calendar
+                  offset: [0, 8],
                 },
               },
               {

@@ -183,7 +183,6 @@ const OrderReceive: React.FC = () => {
   const [getBatchesForProduct] = useGetBatchesForProductMutation();
   const [productNameCache, setProductNameCache] = useState<{ [key: number]: string }>({});
 
-  // Fetch product names for lines where product_name is null but product_id is valid
   useEffect(() => {
     if (!receiptLines || receiptLines.length === 0) return;
 
@@ -191,22 +190,18 @@ const OrderReceive: React.FC = () => {
       const missingNames: { [key: number]: Promise<string> } = {};
       
       for (const line of receiptLines) {
-        // If product_name is null/empty but product_id is valid (> 0)
         if ((!line.product_name || line.product_name === null) && line.product_id && line.product_id > 0) {
-          // Check cache first
           if (!productNameCache[line.product_id]) {
             missingNames[line.product_id] = getBatchesForProduct({ product_id: line.product_id })
               .unwrap()
               .then((result) => result.product.product_name)
-              .catch((error) => {
-                console.error(`Error fetching product name for product_id ${line.product_id}:`, error);
+              .catch(() => {
                 return `Product ID: ${line.product_id}`;
               });
           }
         }
       }
 
-      // Fetch all missing product names
       const results = await Promise.allSettled(
         Object.entries(missingNames).map(async ([productId, promise]) => {
           const name = await promise;
@@ -214,7 +209,6 @@ const OrderReceive: React.FC = () => {
         })
       );
 
-      // Update cache with fetched names
       const newCache = { ...productNameCache };
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
@@ -235,12 +229,10 @@ const OrderReceive: React.FC = () => {
     return (receipts || [])
       .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
       .map((receipt) => {
-        // API Response Structure (from /receive/get-receipts):
-        // { id, po_id, po_number, supplier_name, received_on, received_by, receipt_status, total_amount }
         return {
           receiptId: receipt.id,
           reNo: `RA${receipt.id}`,
-          poNo: receipt.po_number || String(receipt.po_id), // Use po_number from API, fallback to po_id
+          poNo: receipt.po_number || String(receipt.po_id),
           supplier: receipt.supplier_name,
           received: (receipt as any).invoice_date 
             ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A') 
@@ -251,7 +243,7 @@ const OrderReceive: React.FC = () => {
           products: [],
           transaction_number: receipt.transaction_number || '',
           payment_vendor: receipt.payment_vendor || '',
-          invoice_date: (receipt as any).invoice_date || null, // Keep null if missing - don't auto-fill with received_on
+          invoice_date: (receipt as any).invoice_date || null,
         };
       });
   }, [receipts]);
@@ -279,24 +271,19 @@ const OrderReceive: React.FC = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
   
   const handleEditClick = (row: OrderReceiveRow) => {
-    // Navigate to Order Details page with the selected order data
-    // Use received date only if invoice_date is truly missing (null/undefined) from database
     let invoiceDateValue = '';
     if (row.invoice_date) {
-      // If invoice_date exists, use it (convert to DD/MM/YYYY format if needed)
       try {
         const date = dayjs(row.invoice_date);
         if (date.isValid()) {
           invoiceDateValue = date.format('DD/MM/YYYY');
         } else {
-          // If it's already in DD/MM/YYYY format, use as-is
           invoiceDateValue = row.invoice_date;
         }
       } catch (e) {
         invoiceDateValue = row.invoice_date;
       }
     } else if (row.received) {
-      // Only auto-fill from received date if invoice_date is missing
       try {
         const receivedDate = dayjs(row.received, 'MMM DD, YYYY h:mm A');
         if (receivedDate.isValid()) {
@@ -348,7 +335,6 @@ const OrderReceive: React.FC = () => {
     };
   };
 
-  // Use standardized error extraction utility
   const extractApiErrorMessage = (error: unknown): string => {
     return extractErrorMessage(error, 'Unexpected error occurred');
   };
@@ -484,7 +470,6 @@ const OrderReceive: React.FC = () => {
     setCurrentPage(1);
   };
 
-  // Get unique suppliers for the dropdown
   const uniqueSuppliers = useMemo(() => {
     return Array.from(new Set(tableData.map(r => r.supplier))).sort();
   }, [tableData]);
@@ -593,7 +578,6 @@ const OrderReceive: React.FC = () => {
         );
       }
 
-      // Always apply sorting - use default if sortConfig.key is empty
       const activeSortKey = sortConfig.key || 'reNo';
       const activeSortDirection = sortConfig.direction || 'desc';
       
@@ -601,7 +585,6 @@ const OrderReceive: React.FC = () => {
         const aValue = a[activeSortKey as keyof PurchaseOrderRow];
         const bValue = b[activeSortKey as keyof PurchaseOrderRow];
 
-        // Special handling for receipt numbers (reNo) - extract numeric part for proper sorting
         if (activeSortKey === 'reNo' && typeof aValue === 'string' && typeof bValue === 'string') {
           const aNum = parseInt(aValue.replace(/\D/g, ''), 10) || 0;
           const bNum = parseInt(bValue.replace(/\D/g, ''), 10) || 0;
@@ -609,7 +592,6 @@ const OrderReceive: React.FC = () => {
         }
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
-          // Use numeric-aware comparison for better sorting
           return activeSortDirection === 'asc'
             ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
             : bValue.localeCompare(aValue, undefined, { numeric: true, sensitivity: 'base' });
@@ -715,23 +697,6 @@ const OrderReceive: React.FC = () => {
         )
       )
     },
-    // {
-    //   key: "status",
-    //   header: ORDER_RECEIVE_TABLE_HEADERS.RECEIVED_STATUS,
-    //   sortable: false,
-    //   render: (row) => (
-    //     editingRowId === row.reNo ? (
-    //       <input
-    //         type="text"
-    //         value={editingDraft?.status ?? ''}
-    //         onChange={(e) => setEditingDraft((prev) => (prev ? { ...prev, status: e.target.value } : prev))}
-    //         style={{ width: '100%', boxSizing: 'border-box' }}
-    //       />
-    //     ) : (
-    //       <span>{row.status}</span>
-    //     )
-    //   )
-    // },
     {
       key: "reBy",
       header: ORDER_RECEIVE_TABLE_HEADERS.CREATED_BY,
@@ -871,7 +836,6 @@ const OrderReceive: React.FC = () => {
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
-      // Clear sorting by setting empty key
       setSortConfig({ key: "", direction: 'asc' });
       return;
     }
@@ -883,12 +847,10 @@ const OrderReceive: React.FC = () => {
     setCurrentPage(1);
   };
 
-  // ADD THIS FUNCTION: The handler for toggling filter visibility
   const handleShowFiltersToggle = () => {
     setShowFilters(prev => !prev);
   };
 
-  // Convert filters from undefined to null for PharmaTable compatibility
   const currentFilterForTable = useMemo(() => {
     return Object.fromEntries(Object.entries(filters).map(([key, value]) => [key, value || null]));
   }, [filters]);
@@ -1228,7 +1190,6 @@ const OrderReceive: React.FC = () => {
                 ? {
                   ...selectedProduct,
                   products: (receiptLines || []).map((line) => {
-                    // Use cached product name if available, otherwise use line.product_name, or fallback
                     const productName = line.product_name || 
                                       (line.product_id && line.product_id > 0 ? productNameCache[line.product_id] : null) ||
                                       (line.product_id && line.product_id > 0 ? `Product ID: ${line.product_id}` : 'Unknown Product');

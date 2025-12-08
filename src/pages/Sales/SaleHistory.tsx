@@ -19,7 +19,7 @@ import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/Sale
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
-import { SalesReceiptItem as SalesApiReceiptItem } from '../../redux/slices/salesApi';
+import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
@@ -53,36 +53,13 @@ export interface InvoiceDetails {
   totalPayableAmount: string;
 }
 
-const mockSalesHistory: SalesHistoryItem[] = [
-  {
-    id: 1,
-    invoiceNumber: 'RA7896',
-    invoiceDate: '22/05/2025',
-        customerName: 'Ramesh D',
-    customerMobile: '8888888888',
-    doctorName: 'Doctor A',
-        username: 'Username A',
-        totalAmount: 25650,
-    },
-    {
-    id: 2,
-    invoiceNumber: 'RB8896',
-    invoiceDate: '30/06/2025',
-        customerName: 'Sirish M',
-    customerMobile: '9999999999',
-    doctorName: 'Doctor B',
-        username: 'Username B',
-        totalAmount: 64650,
-    },
-];
-
 export default function SaleHistory() {
   const navigate = useNavigate();
   
-  // Get current user from auth
   const user = useSelector((state: RootState) => state.auth.user);
   
-  // State management
+  const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
+  
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -117,9 +94,30 @@ export default function SaleHistory() {
       username: item.username || 'Guest',
       totalAmount: item.totalAmount || 0,
     }));
+
+    if (!invoicesData || !Array.isArray(invoicesData)) {
+      return savedItems;
+    }
+
+    const apiItems: SalesHistoryItem[] = invoicesData.map((invoice: any, index: number) => {
+      const invoiceDate = invoice.created_at 
+        ? dayjs(invoice.created_at).format('DD/MM/YYYY')
+        : '';
+      
+      return {
+        id: parseInt(invoice.invoice_number) || index + 1000,
+        invoiceNumber: `RB${invoice.invoice_number}`,
+        invoiceDate: invoiceDate,
+        customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
+        customerMobile: 'N/A',
+        doctorName: invoice.doctor_name || (invoice.doctor_id ? `Doctor ${invoice.doctor_id}` : 'N/A'),
+        username: `User ${invoice.created_by}`,
+        totalAmount: parseFloat(invoice.total_amount) || 0,
+      };
+    });
     
-    return [...savedItems, ...mockSalesHistory];
-  }, [savedHistory]);
+    return [...savedItems, ...apiItems];
+  }, [savedHistory, invoicesData]);
   
 
   useEffect(() => {
@@ -129,52 +127,28 @@ export default function SaleHistory() {
       if (savedItem) {
         setInvoiceDetails(savedItem);
       } else {
-        const allItems = [...savedHistory.map((item: any) => ({
-          id: item.id,
-          customerName: item.customerName,
-          customerMobile: item.customerMobile,
-          doctorName: item.doctorName,
-          invoiceNumber: item.invoiceNumber,
-          invoiceDate: item.invoiceDate,
-          totalAmount: item.totalAmount
-        })), ...mockSalesHistory];
-        
-        const currentInvoice = allItems.find(item => item.id === selectedInvoiceId);
+        const currentInvoice = salesHistoryData.find(item => item.id === selectedInvoiceId);
         const mockInvoice = {
-          customerName: currentInvoice?.customerName || 'Ramesh D',
-          customerMobile: currentInvoice?.customerMobile || '8888888888',
-          customerCity: 'Mumbai',
-          doctorName: currentInvoice?.doctorName || 'Doctor A',
-          doctorMobile: '9123456789',
-          doctorEmail: 'doctor@example.com',
+          customerName: currentInvoice?.customerName || 'N/A',
+          customerMobile: currentInvoice?.customerMobile || 'N/A',
+          customerCity: '',
+          doctorName: currentInvoice?.doctorName || 'N/A',
+          doctorMobile: '',
+          doctorEmail: '',
           paymentMode: 'Cash',
-          insuranceCompany: 'ABC Insurance',
-          invoiceNumber: currentInvoice?.invoiceNumber || 'RA7896',
-          invoiceDate: currentInvoice?.invoiceDate || '22/05/2025',
-          totalValue: (currentInvoice?.totalAmount || 25650).toString(),
+          insuranceCompany: '',
+          invoiceNumber: currentInvoice?.invoiceNumber || '',
+          invoiceDate: currentInvoice?.invoiceDate || '',
+          totalValue: (currentInvoice?.totalAmount || 0).toString(),
           totalDiscount: '0',
           taxAmount: '0',
-          totalPayableAmount: (currentInvoice?.totalAmount || 25650).toString(),
-          items: [
-            {
-              id: '1',
-              productName: 'Product A',
-              batch: 'B001',
-              quantity: '10',
-              type: 'Capsule',
-              unitPrice: '100',
-              discountPercent: '0',
-              cgstPercent: '0',
-              sgstPercent: '0',
-              igstPercent: '0',
-              amount: '1000'
-            }
-          ]
+          totalPayableAmount: (currentInvoice?.totalAmount || 0).toString(),
+          items: []
         };
         setInvoiceDetails(mockInvoice);
       }
     }
-  }, [selectedInvoiceId, savedHistory]);
+  }, [selectedInvoiceId, savedHistory, salesHistoryData]);
 
   const filteredData = useMemo(() => {
     let filtered = [...salesHistoryData];
@@ -794,27 +768,56 @@ export default function SaleHistory() {
       )}
 
       {/* Table */}
-      <ReusableTable
-        data={sortedData}
-        columns={columns}
-        selectedRows={selectedRows}
-        setSelectedRows={setSelectedRows}
-        totalRows={sortedData.length}
-        rowsPerPage={SALES_HISTORY_CONSTANTS.TABLE.ROWS_PER_PAGE}
-        currentPage={currentPage}
-        onPageChange={handlePageChange}
-        onSortRequest={handleSortRequest}
-        sortConfig={sortConfig}
-        searchAndFilterConfig={{ filterOptions: [] }}
-        currentSearchTerm=""
-        onSearchChange={() => {}}
-        showFilters={false}
-        onShowFiltersToggle={() => {}}
-        currentFilterKey=""
-        onFilterSelect={() => {}}
-        currentFilter={{}}
-        emptyMessage={SALES_HISTORY_LABELS.EMPTY_MESSAGE}
-      />
+      {isLoadingInvoices ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+          <Typography variant="body2" sx={{ color: '#728197' }}>Loading invoices...</Typography>
+        </Box>
+      ) : invoicesError ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '200px', gap: 2 }}>
+          <Typography variant="body2" sx={{ color: '#EF4444' }}>
+            Error loading invoices. Please try again.
+          </Typography>
+          {(invoicesError as any)?.data && (
+            <Typography variant="body2" sx={{ color: '#728197', fontSize: '12px' }}>
+              {(invoicesError as any).data?.message || (invoicesError as any).data?.error || 'Unknown error'}
+            </Typography>
+          )}
+          <StandardButton
+            onClick={() => refetchInvoices()}
+            variant="secondary"
+            size="medium"
+            sx={{
+              minWidth: 120,
+              height: '36px',
+              mt: 1
+            }}
+          >
+            Retry
+          </StandardButton>
+        </Box>
+      ) : (
+        <ReusableTable
+          data={sortedData}
+          columns={columns}
+          selectedRows={selectedRows}
+          setSelectedRows={setSelectedRows}
+          totalRows={sortedData.length}
+          rowsPerPage={SALES_HISTORY_CONSTANTS.TABLE.ROWS_PER_PAGE}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+          onSortRequest={handleSortRequest}
+          sortConfig={sortConfig}
+          searchAndFilterConfig={{ filterOptions: [] }}
+          currentSearchTerm=""
+          onSearchChange={() => {}}
+          showFilters={false}
+          onShowFiltersToggle={() => {}}
+          currentFilterKey=""
+          onFilterSelect={() => {}}
+          currentFilter={{}}
+          emptyMessage={SALES_HISTORY_LABELS.EMPTY_MESSAGE}
+        />
+      )}
 
       {/* Invoice Preview Modal */}
       {isInvoiceModalOpen && invoiceDetails && (
