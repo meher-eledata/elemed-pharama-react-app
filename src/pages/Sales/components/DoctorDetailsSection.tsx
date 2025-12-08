@@ -155,80 +155,24 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
       </SectionRow>
 
       <SectionRow>
-        {availablePhones.length > 0 ? (
-          <Autocomplete
-            freeSolo
-            options={availablePhones}
-            value={doctorMobile || null}
-            isOptionEqualToValue={(option, value) => option === value}
-            onChange={(_, newValue) => {
-              const phoneValue = typeof newValue === 'string' ? newValue : '';
-              handlePhoneChange(phoneValue);
-            }}
-            onInputChange={(_, newInputValue) => {
-              onDoctorMobileChange(newInputValue);
-            }}
-            disableClearable={!doctorMobile}
-            forcePopupIcon
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
-            sx={{ width: `${SALES_RECEIPT_CONSTANTS.PHONE_FIELD_WIDTH}px` }}
-            renderInput={(params) => (
-              <HospitalIdField
-                {...params}
-                label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
-                variant="outlined"
-                placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
-              />
-            )}
-          />
-        ) : (
-          <HospitalIdField
-            label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
-            variant="outlined"
-            placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
-            value={doctorMobile}
-            onChange={(e) => {
-              onDoctorMobileChange(e.target.value);
-            }}
-          />
-        )}
-        {availableEmails.length > 0 ? (
-          <Autocomplete
-            freeSolo
-            options={availableEmails}
-            value={doctorEmail || null}
-            isOptionEqualToValue={(option, value) => option === value}
-            onChange={(_, newValue) => {
-              const emailValue = typeof newValue === 'string' ? newValue : '';
-              handleEmailChange(emailValue);
-            }}
-            onInputChange={(_, newInputValue) => {
-              onDoctorEmailChange(newInputValue);
-            }}
-            disableClearable={!doctorEmail}
-            forcePopupIcon
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
-            sx={{ width: `${SALES_RECEIPT_CONSTANTS.CITY_FIELD_WIDTH}px` }}
-            renderInput={(params) => (
-              <CityField
-                {...params}
-                label={SALES_RECEIPT_LABELS.EMAIL_LABEL}
-                variant="outlined"
-                placeholder={SALES_RECEIPT_LABELS.EMAIL_PLACEHOLDER}
-              />
-            )}
-          />
-        ) : (
-          <CityField
-            label={SALES_RECEIPT_LABELS.EMAIL_LABEL}
-            variant="outlined"
-            placeholder={SALES_RECEIPT_LABELS.EMAIL_PLACEHOLDER}
-            value={doctorEmail}
-            onChange={(e) => {
-              onDoctorEmailChange(e.target.value);
-            }}
-          />
-        )}
+        <HospitalIdField
+          label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
+          variant="outlined"
+          placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
+          value={doctorMobile}
+          onChange={(e) => {
+            onDoctorMobileChange(e.target.value);
+          }}
+        />
+        <CityField
+          label={SALES_RECEIPT_LABELS.EMAIL_LABEL}
+          variant="outlined"
+          placeholder={SALES_RECEIPT_LABELS.EMAIL_PLACEHOLDER}
+          value={doctorEmail}
+          onChange={(e) => {
+            onDoctorEmailChange(e.target.value);
+          }}
+        />
       </SectionRow>
     </DoctorInvoiceColumn>
   );

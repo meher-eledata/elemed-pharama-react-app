@@ -513,7 +513,20 @@ export default function SalePage() {
       <ConfirmationDialog
         open={deleteDialogOpen}
         title={SALES_PAGE_LABELS.DELETE_ITEMS_TITLE}
-        message={SALES_PAGE_LABELS.DELETE_CONFIRMATION_MESSAGE.replace('{count}', itemsToDelete.length.toString())}
+        message={(() => {
+          if (itemsToDelete.length === 0) {
+            return SALES_PAGE_LABELS.DELETE_CONFIRMATION_MESSAGE.replace('{count}', '0');
+          }
+          const itemsToShow = cartItems.filter(item => itemsToDelete.includes(item.id));
+          if (itemsToShow.length === 1) {
+            const productName = itemsToShow[0]?.name || 'this product';
+            return `Are you sure you want to delete ${productName}? This action cannot be undone.`;
+          } else if (itemsToShow.length > 1) {
+            const productNames = itemsToShow.map(item => item.name || 'Product').filter(Boolean);
+            return `Are you sure you want to delete ${itemsToShow.length} items (${productNames.join(', ')})? This action cannot be undone.`;
+          }
+          return SALES_PAGE_LABELS.DELETE_CONFIRMATION_MESSAGE.replace('{count}', itemsToDelete.length.toString());
+        })()}
         onClose={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />

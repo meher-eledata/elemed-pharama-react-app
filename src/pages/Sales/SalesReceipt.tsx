@@ -521,14 +521,34 @@ const SalesReceipt: React.FC = () => {
     dispatch(clearFormData());
   }, [dispatch]);
 
-  const handleSave = () => {
-    if (salesItems.length === 0) {
-      showToast('Cannot save: No items in the receipt', 'warning');
-      return;
+  const validateRequiredFields = useCallback(() => {
+    const missingFields: string[] = [];
+    
+    if (!customerName || !customerName.trim()) {
+      missingFields.push('Customer Name');
     }
+    if (!customerMobile || !customerMobile.trim()) {
+      missingFields.push('Customer Mobile Number');
+    }
+    if (!doctorName || !doctorName.trim()) {
+      missingFields.push('Doctor Name');
+    }
+    if (salesItems.length === 0) {
+      missingFields.push('At least one product item');
+    }
+    
+    return {
+      isValid: missingFields.length === 0,
+      missingFields,
+    };
+  }, [customerName, customerMobile, doctorName, salesItems]);
 
-    if (!customerName || !customerMobile) {
-      showToast('Please fill in customer name and mobile number', 'warning');
+  const handleSave = () => {
+    const validation = validateRequiredFields();
+    
+    if (!validation.isValid) {
+      const fieldsList = validation.missingFields.join(', ');
+      showToast(`Please fill in the required details: ${fieldsList}`, 'warning');
       return;
     }
 
@@ -770,6 +790,7 @@ const SalesReceipt: React.FC = () => {
           onCancel={handleCancel}
           onSave={handleSave}
           onPrint={handlePrint}
+          isSaveDisabled={!validateRequiredFields().isValid}
         />
 
         <CustomerModal
@@ -781,7 +802,20 @@ const SalesReceipt: React.FC = () => {
         <ConfirmationDialog
           open={deleteDialogOpen}
           title={SALES_RECEIPT_LABELS.DELETE_ITEMS_TITLE}
-          message={SALES_RECEIPT_LABELS.DELETE_ITEMS_MESSAGE.replace('{count}', String(itemsToDelete.length))}
+          message={(() => {
+            if (itemsToDelete.length === 0) {
+              return SALES_RECEIPT_LABELS.DELETE_ITEMS_MESSAGE.replace('{count}', '0');
+            }
+            const itemsToShow = salesItems.filter(item => itemsToDelete.includes(item.id));
+            if (itemsToShow.length === 1) {
+              const productName = itemsToShow[0]?.productName || 'this product';
+              return `Are you sure you want to delete ${productName}? This action cannot be undone.`;
+            } else if (itemsToShow.length > 1) {
+              const productNames = itemsToShow.map(item => item.productName || 'Product').filter(Boolean);
+              return `Are you sure you want to delete ${itemsToShow.length} items (${productNames.join(', ')})? This action cannot be undone.`;
+            }
+            return SALES_RECEIPT_LABELS.DELETE_ITEMS_MESSAGE.replace('{count}', String(itemsToDelete.length));
+          })()}
           onClose={handleCancelDelete}
           onConfirm={handleConfirmDelete}
         />

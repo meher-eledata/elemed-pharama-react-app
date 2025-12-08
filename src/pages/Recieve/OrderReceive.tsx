@@ -1166,6 +1166,7 @@ const OrderReceive: React.FC = () => {
         onConfirm={handleConfirmDelete}
         title={ORDER_RECEIVE_DIALOG.DELETE_TITLE}
         message={ORDER_RECEIVE_DIALOG.DELETE_MESSAGE}
+        itemName={rowToDeleteId ? tableData.find((r) => r.reNo === rowToDeleteId)?.reNo : undefined}
       />
 
       <Snackbar

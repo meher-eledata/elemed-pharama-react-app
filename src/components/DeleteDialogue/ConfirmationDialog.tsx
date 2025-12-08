@@ -3,14 +3,13 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
   DialogTitle,
-  Button,
   Box,
   IconButton,
   Typography
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import { StandardButton } from '../Common';
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -20,6 +19,7 @@ interface ConfirmationDialogProps {
   onConfirm: () => void;
   confirmLabel?: string;
   cancelLabel?: string;
+  itemName?: string;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -30,12 +30,23 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   onConfirm,
   confirmLabel = 'Yes',
   cancelLabel = 'Cancel',
+  itemName,
 }) => {
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      PaperProps={{ sx: { borderRadius: 3, p: 0 } }}
+      PaperProps={{
+        sx: {
+          borderRadius: '16px',
+          border: '1px solid #E5E7EB',
+          backgroundColor: '#FFFFFF',
+          padding: 0,
+          maxWidth: '500px',
+          width: '90%',
+          boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.15)',
+        },
+      }}
       aria-labelledby="alert-dialog-title"
       aria-describedby="alert-dialog-description"
     >
@@ -49,7 +60,8 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           pb: 1,
           px: 3,
           pt: 3,
-          fontWeight: 600, 
+          fontWeight: 600,
+          fontSize: '18px',
           color: '#1A212B',
           fontFamily: "'Lexend', sans-serif"
         }}
@@ -70,46 +82,66 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, pb: 2 }}>
-        <Box sx={{ bgcolor: '#ECEFF4', borderRadius: 2, p: 3, textAlign: 'center' }}>
-          <DialogContentText id="alert-dialog-description" sx={{ color: '#1A212B', textAlign: 'center', mb: 3 }}>
-            {message}
-          </DialogContentText>
-          <DialogActions sx={{ px: 0, pb: 0, justifyContent: 'center', gap: 2 }}>
-            <Button
-              variant="contained"
-              onClick={onConfirm}
-              disableRipple
-              sx={{
-                backgroundColor: "#5C17E5",
-                textTransform: 'none',
-                borderRadius: '8px',
-                boxShadow: "none",
-                "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
-                "&:focus": { backgroundColor: "#5C17E5" },
-                "&:active": { backgroundColor: "#5C17E5" },
-              }}
-            >
-              {confirmLabel}
-            </Button>
-            <Button
-              variant="contained"
-              onClick={onClose}
-              sx={{
-                textTransform: 'none',
-                backgroundColor: "#5C17E5",
-                borderRadius: '8px',
-                boxShadow: "none",
-                "&:hover": { backgroundColor: "#5C17E5", boxShadow: "none" },
-                "&:focus": { backgroundColor: "#5C17E5" },
-                "&:active": { backgroundColor: "#5C17E5" },
-              }}
-            >
-              {cancelLabel}
-            </Button>
-          </DialogActions>
-        </Box>
+      <DialogContent sx={{ px: 3, py: 3 }}>
+        <Typography 
+          id="alert-dialog-description"
+          sx={{ 
+            color: '#374151', 
+            textAlign: 'center',
+            fontSize: '15px',
+            lineHeight: 1.7,
+            fontWeight: 400,
+            fontFamily: "'Lexend', sans-serif"
+          }}
+        >
+          {message}
+        </Typography>
       </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 3, pt: 0, justifyContent: 'center', gap: 2 }}>
+        <StandardButton
+          onClick={onClose}
+          variant="secondary"
+          size="medium"
+          sx={{
+            minWidth: '100px',
+            borderRadius: '8px',
+            backgroundColor: '#F5F5F5',
+            border: '1px solid #E0E0E0',
+            color: '#616161',
+            fontWeight: 500,
+            fontSize: '14px',
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: '#E0E0E0',
+              border: '1px solid #D1D5DB',
+            },
+          }}
+        >
+          {cancelLabel}
+        </StandardButton>
+        <StandardButton
+          onClick={onConfirm}
+          variant="primary"
+          size="medium"
+          sx={{
+            minWidth: '100px',
+            borderRadius: '8px',
+            backgroundColor: '#5C17E5',
+            color: '#FFFFFF',
+            fontWeight: 600,
+            fontSize: '14px',
+            textTransform: 'none',
+            boxShadow: 'none',
+            '&:hover': {
+              backgroundColor: '#4C14CC',
+              boxShadow: 'none',
+            },
+          }}
+        >
+          {confirmLabel}
+        </StandardButton>
+      </DialogActions>
     </Dialog>
   );
 };

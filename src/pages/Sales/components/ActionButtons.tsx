@@ -7,12 +7,14 @@ interface ActionButtonsProps {
   onCancel: () => void;
   onSave: () => void;
   onPrint: () => void;
+  isSaveDisabled?: boolean;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onCancel,
   onSave,
   onPrint,
+  isSaveDisabled = false,
 }) => {
   const buttonStyles = {
     minWidth: '130px',
@@ -42,11 +44,17 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         variant="primary" 
         onClick={onSave} 
         size="large"
+        disabled={isSaveDisabled}
         sx={{
           ...buttonStyles,
-          backgroundColor: '#5C17E5',
+          backgroundColor: isSaveDisabled ? '#9CA3AF' : '#5C17E5',
           color: '#FFFFFF',
           boxShadow: 'none',
+          '&:disabled': {
+            backgroundColor: '#9CA3AF',
+            color: '#FFFFFF',
+            cursor: 'not-allowed',
+          },
         }}
       >
         {SALES_RECEIPT_LABELS.SAVE_BUTTON}

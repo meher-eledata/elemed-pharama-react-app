@@ -10,7 +10,7 @@ export const SALES_RECEIPT_LABELS = {
   
   // Customer Details
   CUSTOMER_NAME_LABEL: "customer name",
-  CUSTOMER_NAME_PLACEHOLDER: "Search by name or mobile",
+  CUSTOMER_NAME_PLACEHOLDER: "Search by name",
   MOBILE_NUMBER_LABEL: "mobile number",
   MOBILE_NUMBER_PLACEHOLDER: "mobile number",
   CITY_LABEL: "City",

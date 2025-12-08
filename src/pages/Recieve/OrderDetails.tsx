@@ -2559,6 +2559,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onConfirm={handleConfirmDelete}
         title="Delete Product"
         message="Are you sure you want to delete this product from the table?"
+        itemName={rowToDeleteId ? pharmaTableData.find(row => row.id === rowToDeleteId)?.productId : undefined}
       />
 
       <ConfirmationDialog
@@ -2567,6 +2568,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onConfirm={handleConfirmReceiptDelete}
         title="Delete Receipt"
         message="Are you sure you want to delete the entire receipt? This action cannot be undone."
+        itemName={receiptNumber ? `Receipt ${receiptNumber}` : undefined}
       />
     </>
   );

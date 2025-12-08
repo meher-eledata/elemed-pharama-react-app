@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Box, Typography, Snackbar, Alert } from "@mui/material";
+import { Box, Typography, Snackbar, Alert, Tooltip } from "@mui/material";
 import { OrderReceiveRow, ProductItem } from "./OrderReceive"; 
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import { PRODUCT_DETAILS_MODAL_CONSTANTS } from "../../config/constants/ProductDetailsModal.constants";
@@ -95,6 +95,11 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.HSN_CODE,
       sortable: true,
       columnWidth: '23%',
+      render: (item) => (
+        <Tooltip title="Harmonized System of Nomenclature (HSN) Code" arrow placement="top">
+          <span style={{ cursor: 'help' }}>{item.hsnCode || '-'}</span>
+        </Tooltip>
+      ),
     },
     {
       key: 'amount',

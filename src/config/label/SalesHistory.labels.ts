@@ -14,7 +14,7 @@ export const SALES_HISTORY_LABELS = {
     MOBILE_NUMBER: 'Mobile number',
     DOCTOR: 'Doctor',
     USERNAME: 'Username',
-    TOTAL_AMOUNT: 'Total amount',
+    TOTAL_AMOUNT: 'Total amount (₹)',
   },
   EMPTY_MESSAGE: 'No sales history found',
   MODAL_TITLE: 'Invoice Preview',

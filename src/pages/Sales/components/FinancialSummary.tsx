@@ -44,6 +44,12 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({
             <SummaryInput 
               value={totalValue} 
               onChange={(e) => onTotalValueChange(e.target.value)}
+              style={{ 
+                width: '100px',
+                minWidth: '100px',
+                textOverflow: 'visible',
+                overflow: 'visible'
+              }}
             />
           </SummaryField>
           <SummaryField>

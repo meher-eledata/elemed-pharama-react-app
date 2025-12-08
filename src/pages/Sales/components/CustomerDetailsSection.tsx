@@ -189,100 +189,21 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
       </SectionRow>
 
       <SectionRow>
-        {availablePhones.length > 0 ? (
-          <Autocomplete
-            freeSolo
-            options={availablePhones}
-            value={customerMobile || null}
-            isOptionEqualToValue={(option, value) => option === value}
-            onChange={(_, newValue) => {
-              const phoneValue = typeof newValue === 'string' ? newValue : '';
-              onCustomerMobileChange(phoneValue);
-              // Create Customer object when both name and phone are selected
-              if (customerName && phoneValue) {
-                const customer: Customer = {
-                  id: 0, // We'll need to get this from API later
-                  name: customerName,
-                  mobile: phoneValue,
-                  city: customerCity || '',
-                };
-                onCustomerSelect(customer);
-              } else {
-                onCustomerSelect(null);
-              }
-            }}
-            onInputChange={(_, newInputValue) => {
-              onCustomerMobileChange(newInputValue);
-              if (selectedCustomer && newInputValue !== selectedCustomer.mobile) {
-                onCustomerSelect(null);
-              }
-            }}
-            disableClearable={!customerMobile}
-            forcePopupIcon
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
-            sx={{ width: '165px' }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
-                variant="outlined"
-                placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    height: '48px',
-                    borderRadius: '8px',
-                    backgroundColor: '#FFFFFF',
-                    '& fieldset': {
-                      borderColor: '#9AA8BC',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#9AA8BC',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#5C17E5',
-                    },
-                  },
-                  '& .MuiOutlinedInput-input': {
-                    padding: '12px 16px',
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: '16px',
-                    color: '#1A212B',
-                    '&::placeholder': {
-                      color: '#728197',
-                      fontSize: '16px',
-                      fontFamily: "'Lexend', sans-serif",
-                      opacity: 1,
-                    },
-                  },
-                '& .MuiInputLabel-root': {
-                  fontFamily: "'Lexend', sans-serif",
-                  fontSize: '16px',
-                  color: '#1A212B',
-                  '&.Mui-focused': {
-                    color: '#5C17E5',
-                  },
-                },
-                }}
-              />
-            )}
-          />
-        ) : (
-          <PhoneNoField
-            className="phone-no-field"
-            label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
-            variant="outlined"
-            placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
-            value={customerMobile}
-            onChange={(e) => {
-              const newMobile = e.target.value;
-              onCustomerMobileChange(newMobile);
-              // Only clear selected customer if the new value doesn't match the selected customer's mobile
-              if (selectedCustomer && newMobile !== selectedCustomer.mobile) {
-                onCustomerSelect(null);
-              }
-            }}
-          />
-        )}
+        <PhoneNoField
+          className="phone-no-field"
+          label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
+          variant="outlined"
+          placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
+          value={customerMobile}
+          onChange={(e) => {
+            const newMobile = e.target.value;
+            onCustomerMobileChange(newMobile);
+            // Only clear selected customer if the new value doesn't match the selected customer's mobile
+            if (selectedCustomer && newMobile !== selectedCustomer.mobile) {
+              onCustomerSelect(null);
+            }
+          }}
+        />
         <Autocomplete
           options={cityOptions}
           value={customerCity ? customerCity : undefined}
@@ -297,7 +218,6 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           onInputChange={(_, newInputValue) => {
             onCustomerCityChange(newInputValue);
           }}
-          // Only show clear button when value is selected
           {...(!customerCity ? { disableClearable: true } : {})}
           forcePopupIcon
           popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
