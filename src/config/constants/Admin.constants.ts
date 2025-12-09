@@ -16,6 +16,7 @@ export const ADMIN_CONSTANTS = {
     RIGHT_COLUMN_MARGIN_LEFT: '30px',
     },
   ICON_COLORS: {
+    DASHBOARD: '#E1F5FE', // Light cyan
     USER_MGMT: '#E3F2FD', // Light blue
     REPORTS: '#E8F5E9', // Light green
     AUDIT: '#FFF3E0', // Light orange/peach

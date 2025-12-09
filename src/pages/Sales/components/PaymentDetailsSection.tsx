@@ -61,7 +61,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
 
   return (
     <PaymentDetailsContainer>
-      <Box sx={{ marginBottom: '8px' }}>
+      <Box sx={{ marginBottom: '8px', }}>
         <Typography sx={{ 
           fontFamily: "'Lexend', sans-serif", 
           fontWeight: 600, 
@@ -73,7 +73,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
         </Typography>
       </Box>
 
-      <SectionRow sx={{ gap: '20px', marginBottom: '0px' }}>
+      <SectionRow sx={{ gap: '20px', marginBottom: '0px', marginLeft: '-10px' }}>
         <Autocomplete
           options={paymentMethods}
           value={paymentMode || (paymentMethods.length > 0 ? paymentMethods[0] : '')}
@@ -181,7 +181,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
         />
       </SectionRow>
 
-      <SectionRow sx={{ gap: '16px', marginTop: '-15px' }}>
+      <SectionRow sx={{ gap: '16px', marginTop: '5px', marginLeft:"-10px" }}>
         <TextField
           label={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_LABEL}
           variant="outlined"
@@ -189,7 +189,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
           value={insuranceCompany}
           onChange={(e) => onInsuranceCompanyChange(e.target.value)}
           sx={{
-            width: '165px',
+            width: '200px',
             '& .MuiOutlinedInput-root': {
               height: '48px',
               borderRadius: '12px',
@@ -227,38 +227,39 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
             },
           }}
         />
-        <Box sx={{ width: '200px', display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '30px' }}>
-          <Typography sx={{ 
-            fontFamily: "'Lexend', sans-serif", 
-            fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_LABEL, 
-            fontWeight: 500, 
-            color: SALES_RECEIPT_CONSTANTS.TEXT_SECONDARY 
-          }}>
-            {SALES_RECEIPT_LABELS.INVOICE_DATE_LABEL}
-          </Typography>
+        <Box sx={{ width: '200px', marginLeft: '6px',marginBottom: '-8px' }}>
           <Box sx={{
             '& .MuiPickersInputBase-root, & .MuiOutlinedInput-root': {
-              borderRadius: '8px !important',
+              borderRadius: '12px !important',
               '& fieldset': {
                 borderColor: '#9AA8BC !important',
                 borderWidth: '1px !important',
-                borderRadius: '8px !important',
+                borderRadius: '20px !important',
               },
               '&:hover fieldset': {
                 borderColor: '#9AA8BC !important',
                 borderWidth: '1px !important',
-                borderRadius: '8px !important',
+                borderRadius: '20px !important',
               },
               '&.Mui-focused fieldset': {
                 borderColor: '#5C17E5 !important',
                 borderWidth: '1px !important',
-                borderRadius: '8px !important',
+                borderRadius: '20px !important',
+              },
+              '& .MuiInputLabel-root': {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '16px',
+                color: '#1A212B',
+                '&.Mui-focused': {
+                  color: '#5C17E5',
+                },
               },
             },
           }}>
             <PharmaDatePicker
               value={parseInvoiceDate(invoiceDate)}
               onChange={handleDateChange}
+              label={SALES_RECEIPT_LABELS.INVOICE_DATE_LABEL}
               placeholder="MM/DD/YYYY"
               width="200px"
               height="48px"

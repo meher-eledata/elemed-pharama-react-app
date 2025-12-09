@@ -2,6 +2,11 @@ export const ADMIN_LABELS = {
   PAGE_TITLE: 'Hello, Guest!',
   SUBTITLE: 'Access key administrative functions and system insights..',
   SECTIONS: {
+    DASHBOARD: {
+      TITLE: 'Main Dashboard',
+      DESC: 'Access the overall application dashboard with comprehensive insights and metrics.',
+      ACTION: 'Go to Dashboard',
+    },
     USER_MGMT: {
       TITLE: 'User Account Management',
       DESC: 'Oversee user profiles, roles, permissions, s controls within the system.',

@@ -1,7 +1,4 @@
 export const SALES_RECEIPT_CONSTANTS = {
-  // Default Values
-  DEFAULT_INVOICE_NUMBER: "982349827364",
-  
   // Payment Methods
   PAYMENT_METHOD_CASH: 'cash' as const,
   PAYMENT_METHOD_CREDIT: 'credit' as const,

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { StandardButton } from '../../components/Common';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
@@ -119,15 +120,23 @@ const AdminDashboard: React.FC = () => {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
           gap: { xs: 2, md: 3 },
           rowGap: { xs: 2, md: 3 },
           alignItems: 'stretch',
-          maxWidth: { xs: '100%', md: '1050px' },
+          maxWidth: { xs: '100%', md: '1050px', lg: '1600px' },
           marginLeft: 0,
           marginRight: 'auto',
         }}
       >
+        <Card
+          icon={<DashboardIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title={ADMIN_LABELS.SECTIONS.DASHBOARD.TITLE}
+          desc={ADMIN_LABELS.SECTIONS.DASHBOARD.DESC}
+          action={ADMIN_LABELS.SECTIONS.DASHBOARD.ACTION}
+          onAction={() => navigate('/dashboard')}
+          iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.DASHBOARD}
+        />
         <Card
           icon={<PeopleAltOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.USER_MGMT.TITLE}

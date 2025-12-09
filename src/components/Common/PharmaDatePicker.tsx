@@ -9,6 +9,7 @@ export interface PharmaDatePickerProps {
   value: Dayjs | null;
   onChange: (newValue: Dayjs | null) => void;
   placeholder?: string;
+  label?: string;
   minDate?: Dayjs;
   maxDate?: Dayjs;
   disabled?: boolean;
@@ -22,6 +23,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
   value,
   onChange,
   placeholder = "MM/DD/YYYY",
+  label,
   minDate,
   maxDate,
   disabled = false,
@@ -223,6 +225,53 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           outline-width: 0 !important;
           outline-style: none !important;
           box-shadow: none !important;
+        }
+        /* Override label color to purple */
+        .MuiPickersTextField-root .MuiInputLabel-root {
+          color: #1A212B !important;
+        }
+        .MuiPickersTextField-root .MuiInputLabel-root.Mui-focused {
+          color: #5C17E5 !important;
+        }
+        .MuiFormControl-root.MuiPickersTextField-root .MuiInputLabel-root {
+          color: #1A212B !important;
+        }
+        .MuiFormControl-root.MuiPickersTextField-root .MuiInputLabel-root.Mui-focused {
+          color: #5C17E5 !important;
+        }
+        /* Style today's date with border (not selected) */
+        .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected) {
+          background-color: transparent !important;
+          color: #5C17E5 !important;
+          border: 2px solid #5C17E5 !important;
+          font-weight: 600 !important;
+        }
+        .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected):hover {
+          background-color: #F3E8FF !important;
+          color: #5C17E5 !important;
+          border: 2px solid #5C17E5 !important;
+        }
+        /* When today's date is also selected, show as selected */
+        .MuiPickersDay-root.MuiPickersDay-today.Mui-selected {
+          background-color: #5C17E5 !important;
+          color: #ffffff !important;
+          border: 2px solid #5C17E5 !important;
+        }
+        .MuiPickersDay-root.MuiPickersDay-today.Mui-selected:hover {
+          background-color: #4A14C7 !important;
+          border: 2px solid #4A14C7 !important;
+        }
+        /* Override text selection color to purple */
+        .MuiPickersInputBase-root input::selection,
+        .MuiPickersInputBase-root .MuiInputBase-input::selection,
+        .MuiPickersInputBase-root .MuiPickersInputBase-input::selection,
+        .MuiPickersInputBase-root .MuiOutlinedInput-input::selection,
+        .MuiPickersInputBase-root input::-moz-selection,
+        .MuiPickersInputBase-root .MuiInputBase-input::-moz-selection,
+        .MuiPickersInputBase-root .MuiPickersInputBase-input::-moz-selection,
+        .MuiPickersInputBase-root .MuiOutlinedInput-input::-moz-selection {
+          background-color: #5C17E5 !important;
+          color: #ffffff !important;
         }
       `;
       document.head.appendChild(style);
@@ -454,6 +503,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           textField: {
             size: "small",
             placeholder,
+            label,
             error: error,
             InputProps: {
               readOnly: readOnly,
@@ -585,31 +635,79 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
                 fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                "&::selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
+                "&::-moz-selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
               },
               "& .MuiInputBase-input": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
                 fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                "&::selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
+                "&::-moz-selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
               },
               "& .MuiPickersInputBase-root input": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
                 fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                "&::selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
+                "&::-moz-selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
               },
               "& .MuiOutlinedInput-root input": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
                 fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                "&::selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
+                "&::-moz-selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
               },
               "& input[type='text']": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
                 fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                "&::selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
+                "&::-moz-selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
               },
               "& input[readonly]": {
                 color: "#728197 !important",
                 WebkitTextFillColor: "#728197 !important",
                 fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                "&::selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
+                "&::-moz-selection": {
+                  backgroundColor: "#5C17E5 !important",
+                  color: "#ffffff !important",
+                },
               },
               "& .MuiOutlinedInput-input::placeholder": {
                 color: "#728197",
@@ -640,6 +738,14 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                 fontSize: "10px !important",
                 color: "#728197 !important",
                 opacity: "1 !important",
+              },
+              "& .MuiInputLabel-root": {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: "16px",
+                color: "#1A212B",
+                "&.Mui-focused": {
+                  color: "#5C17E5 !important",
+                },
               },
               "& .MuiInputAdornment-root": {
                 display: "flex !important",
@@ -904,19 +1010,22 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                   },
                 },
                 "&.MuiPickersDay-today": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  border: "none",
+                  backgroundColor: "transparent !important",
+                  color: "#5C17E5 !important",
+                  border: "2px solid #5C17E5 !important",
+                  fontWeight: 600,
                   "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                    color: "#ffffff !important",
+                    backgroundColor: "#F3E8FF !important",
+                    color: "#5C17E5 !important",
+                    border: "2px solid #5C17E5 !important",
                   },
                   "&.Mui-selected": {
                     backgroundColor: "#5C17E5 !important",
                     color: "#ffffff !important",
-                    border: "none",
+                    border: "2px solid #5C17E5 !important",
                     "&:hover": {
                       backgroundColor: "#4A14C7 !important",
+                      border: "2px solid #4A14C7 !important",
                     },
                   },
                 },

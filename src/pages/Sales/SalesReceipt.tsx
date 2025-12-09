@@ -117,7 +117,7 @@ const SalesReceipt: React.FC = () => {
   
   const [paymentMode, setPaymentMode] = useState('');
   const [insuranceCompany, setInsuranceCompany] = useState('');
-  const [invoiceNumber, setInvoiceNumber] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_INVOICE_NUMBER);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => getTodayDate());
   
   const [totalValue, setTotalValue] = useState('');

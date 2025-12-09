@@ -154,7 +154,7 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
         />
       </SectionRow>
 
-      <SectionRow>
+      <SectionRow sx={{ marginTop: '5px' }}>
         <HospitalIdField
           label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
           variant="outlined"
