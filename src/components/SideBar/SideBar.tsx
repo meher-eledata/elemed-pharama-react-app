@@ -34,11 +34,11 @@ const baseItems: SidebarItem[] = [
   { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' },
   { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: "Sales", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales/sale-history' },
   { id: 'box', icon: BoxIcon, alt: 'Box', label: "Inventory", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
-  { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
+  // { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
   { id: 'mail', icon: MailIcon, alt: 'Mail', label: "Order Receive", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive/order-receive' },
-  { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', label: "Tasks", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  { id: 'gear', icon: GearIcon, alt: 'Gear', label: "Tools", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
+  // { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', label: "Tasks", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  // { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  // { id: 'gear', icon: GearIcon, alt: 'Gear', label: "Tools", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
 ];
 interface SidebarProps {
   onOpenChange?: (isOpen: boolean) => void;
@@ -265,7 +265,7 @@ return (
               )}
             </ListItem>
 
-            {(item.id === 'vector' || item.id === 'human' || item.id === 'arrow') && (
+            {(item.id === 'vector') && (
               <Divider
                 sx={{
                   width: "100%",
