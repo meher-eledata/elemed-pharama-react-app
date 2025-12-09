@@ -525,13 +525,36 @@ const InventoryModule: React.FC = () => {
 
         {/* Summary Cards */}
         <Box className="summary-cards">
-          <Box className="summary-card1">
+          <Box 
+            className="summary-card1"
+            sx={{
+              position: 'relative',
+              transition: 'all 0.3s ease-in-out',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: selectedStockType === 'low' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
+                borderRadius: '16px',
+                transition: 'background-color 0.3s ease-in-out',
+                pointerEvents: 'none',
+                zIndex: 1,
+              },
+              '& > *': {
+                position: 'relative',
+                zIndex: 2,
+              }
+            }}
+          >
             <Typography variant="subtitle2" className="text">
               {INVENTORY_LABELS.totalLowStock}
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.belowMinCount ?? 0}
+                {isLowStockLoading ? <CircularProgress size={24} /> : lowStockItems.length}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="error" className="percentage">
@@ -541,13 +564,36 @@ const InventoryModule: React.FC = () => {
             <img src={ASSET_PATHS.Chart1} alt="icon" className="card-icon1" />
           </Box>
 
-          <Box className="summary-card2">
+          <Box 
+            className="summary-card2"
+            sx={{
+              position: 'relative',
+              transition: 'all 0.3s ease-in-out',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: selectedStockType === 'excess' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
+                borderRadius: '16px',
+                transition: 'background-color 0.3s ease-in-out',
+                pointerEvents: 'none',
+                zIndex: 1,
+              },
+              '& > *': {
+                position: 'relative',
+                zIndex: 2,
+              }
+            }}
+          >
             <Typography variant="subtitle2" className="text">
               {INVENTORY_LABELS.totalExcessStock}
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.aboveMaxCount ?? 0}
+                {isExcessStockLoading ? <CircularProgress size={24} /> : excessStockItems.length}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendDown} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="success.main" className="percentage">
@@ -557,13 +603,36 @@ const InventoryModule: React.FC = () => {
             <img src={ASSET_PATHS.Chart2} alt="icon" className="card-icon2" />
           </Box>
 
-          <Box className="summary-card3">
+          <Box 
+            className="summary-card3"
+            sx={{
+              position: 'relative',
+              transition: 'all 0.3s ease-in-out',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: selectedStockType === 'expired' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
+                borderRadius: '16px',
+                transition: 'background-color 0.3s ease-in-out',
+                pointerEvents: 'none',
+                zIndex: 1,
+              },
+              '& > *': {
+                position: 'relative',
+                zIndex: 2,
+              }
+            }}
+          >
             <Typography variant="subtitle2" className="text">
               {INVENTORY_LABELS.totalExpiredStock}
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? <CircularProgress size={24} /> : (inventorySummary?.pastExpiryCount ?? 0)}
+                {isExpiredStockLoading ? <CircularProgress size={24} /> : expiredStockItems.length}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography

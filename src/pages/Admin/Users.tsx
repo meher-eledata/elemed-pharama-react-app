@@ -269,8 +269,9 @@ const Users: React.FC = () => {
       key: 'actions',
       header: USERS_LABELS.TABLE.ACTIONS,
       sortable: false,
+      columnWidth: '140px',
       render: (user) => (
-        <Box sx={{ display: 'flex', gap: USERS_CONSTANTS.ACTIONS.GAP }}>
+        <Box sx={{ display: 'flex', gap: USERS_CONSTANTS.ACTIONS.GAP, marginLeft: '8px' }}>
           <IconButton 
             size="small" 
             onClick={() => {
@@ -331,6 +332,13 @@ const Users: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: USERS_CONSTANTS.LAYOUT.PAGE_GAP, p: USERS_CONSTANTS.LAYOUT.PAGE_PADDING }}>
+      <style>
+        {`
+          .css-1utx3w7 {
+            margin-left: -11px !important;
+          }
+        `}
+      </style>
       {/* Page Title Section */}
       <Box>
         <Typography variant={USERS_CONSTANTS.TYPOGRAPHY.TITLE_VARIANT} fontWeight={USERS_CONSTANTS.TYPOGRAPHY.TITLE_FONT_WEIGHT} sx={{ mb: USERS_CONSTANTS.LAYOUT.TITLE_MARGIN_BOTTOM }}>
@@ -439,9 +447,9 @@ const Users: React.FC = () => {
         overflowX: 'auto',
         backgroundColor: USERS_CONSTANTS.TABLE.CONTAINER_BACKGROUND,
         borderRadius: USERS_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
-        border: USERS_CONSTANTS.TABLE.CONTAINER_BORDER,
+        border: 'none',
         fontFamily: USERS_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
-        padding: '1px',
+        padding: 0,
         '& .MuiTableContainer-root': {
           boxShadow: 'none',
           borderRadius: USERS_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
@@ -456,6 +464,7 @@ const Users: React.FC = () => {
           padding: `${USERS_CONSTANTS.TABLE.CELL_PADDING} !important`,
           border: USERS_CONSTANTS.TABLE.CELL_BORDER,
           borderBottom: USERS_CONSTANTS.TABLE.ROW_BORDER,
+          textAlign: 'left !important',
         },
         '& .MuiTableHead .MuiTableCell-root, & .MuiTableHead .MuiTableCell-root[class*="MuiTableCell-root"]': {
           fontFamily: USERS_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
@@ -469,8 +478,41 @@ const Users: React.FC = () => {
           height: 'auto !important',
           borderRight: USERS_CONSTANTS.TABLE.HEADER_CELL_BORDER_RIGHT,
           borderBottom: USERS_CONSTANTS.TABLE.ROW_BORDER,
+          textAlign: 'left !important',
+          '&:first-of-type': {
+            paddingLeft: '20px !important',
+            '& > *': {
+              marginLeft: '8px !important',
+            },
+            '& .MuiBox-root': {
+              marginLeft: '8px !important',
+            },
+          },
+          '&:last-child': {
+            textAlign: 'center !important',
+          },
           '&:last-child': {
             borderRight: 'none',
+            minWidth: '140px !important',
+            width: '140px !important',
+            maxWidth: '140px !important',
+            overflow: 'visible !important',
+            textOverflow: 'clip !important',
+            whiteSpace: 'nowrap !important',
+            marginLeft: '-11px !important',
+            textAlign: 'left !important',
+            paddingLeft: '12px !important',
+            justifyContent: 'flex-start !important',
+            '& > *': {
+              marginLeft: '0px !important',
+              textAlign: 'left !important',
+              justifyContent: 'flex-start !important',
+            },
+            '& .MuiBox-root': {
+              justifyContent: 'flex-start !important',
+              marginLeft: '0px !important',
+              width: '100%',
+            },
           },
         },
         '& .MuiTableBody .MuiTableRow:nth-of-type(odd)': {
@@ -496,6 +538,13 @@ const Users: React.FC = () => {
         },
         '& .MuiTableBody .MuiTableCell-root': {
           borderRight: 'none',
+        },
+        '& .MuiTableBody .MuiTableCell-root:last-child': {
+          minWidth: '140px !important',
+          width: '140px !important',
+          maxWidth: '140px !important',
+          marginLeft: '-11px !important',
+          textAlign: 'center !important',
         },
         '&::-webkit-scrollbar': {
           height: USERS_CONSTANTS.SCROLLBAR.HEIGHT,

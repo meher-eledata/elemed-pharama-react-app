@@ -162,12 +162,14 @@ export const ReusableTable = <T,>({
     };
 
     const getColumnWidth = (columnKey: string, index: number, totalColumns: number) => {
-        if (columnKey === 'checkbox' || columnKey === 'actions') {
-            return '60px';
-        }
         const column = visibleColumns[index];
+        // Check if column has a custom width first
         if (column?.columnWidth) {
             return column.columnWidth;
+        }
+        // Default widths for special columns if no custom width is specified
+        if (columnKey === 'checkbox' || columnKey === 'actions') {
+            return '60px';
         }
         const specialColumns = visibleColumns.filter(col => col.key === 'checkbox' || col.key === 'actions').length;
         const regularColumns = visibleColumns.length - specialColumns;

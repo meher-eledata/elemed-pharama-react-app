@@ -33,14 +33,14 @@ export const SALES_RECEIPT_LABELS = {
   // Table Headers
   TABLE_HEADER_PRODUCT: "Product",
   TABLE_HEADER_QUANTITY: "Quantity",
-  TABLE_HEADER_TYPE: "Type",
+  TABLE_HEADER_TYPE: "Unit",
   TABLE_HEADER_BATCH: "Batch",
   TABLE_HEADER_UNIT_PRICE: "Unit price",
-  TABLE_HEADER_DISC: "Disc",
+  TABLE_HEADER_DISC: "Disc (%)",
   TABLE_HEADER_CGST: "CGST",
   TABLE_HEADER_SGST: "SGST",
   TABLE_HEADER_IGST: "IGST",
-  TABLE_HEADER_AMOUNT: "Amount",
+  TABLE_HEADER_AMOUNT: "Amount (₹)",
   TABLE_HEADER_ACTIONS: "Actions",
   
   // Empty State

@@ -88,6 +88,10 @@ const DetailedSalesTable: React.FC = () => {
     return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const formatNumber = (amount: number) => {
+    return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   const filteredData = useMemo(() => {
     let filtered = [...mockData];
 
@@ -109,6 +113,14 @@ const DetailedSalesTable: React.FC = () => {
     return [...filteredData].sort((a, b) => {
       const aValue = a[activeSortKey as keyof SalesData];
       const bValue = b[activeSortKey as keyof SalesData];
+
+      // Special handling for transactionDate - parse as date for proper sorting
+      if (activeSortKey === 'transactionDate' && typeof aValue === 'string' && typeof bValue === 'string') {
+        const aDate = new Date(aValue.split(' ')[0].split('/').reverse().join('-') + ' ' + aValue.split(' ')[1]);
+        const bDate = new Date(bValue.split(' ')[0].split('/').reverse().join('-') + ' ' + bValue.split(' ')[1]);
+        const compareResult = aDate.getTime() - bDate.getTime();
+        return activeSortDirection === 'asc' ? compareResult : -compareResult;
+      }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         const compareResult = aValue.localeCompare(bValue, undefined, {
@@ -196,7 +208,7 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatCurrency(item.saleAmount)}
+          {formatNumber(item.saleAmount)}
         </Typography>
       ),
     },
@@ -210,7 +222,7 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatCurrency(item.discount)}
+          {formatNumber(item.discount)}
         </Typography>
       ),
     },
@@ -224,7 +236,7 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatCurrency(item.cgst)}
+          {formatNumber(item.cgst)}
         </Typography>
       ),
     },
@@ -238,7 +250,7 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatCurrency(item.gst)}
+          {formatNumber(item.gst)}
         </Typography>
       ),
     },
@@ -252,7 +264,7 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatCurrency(item.igst)}
+          {formatNumber(item.igst)}
         </Typography>
       ),
     },
@@ -398,9 +410,9 @@ const DetailedSalesTable: React.FC = () => {
         overflowX: 'auto',
         backgroundColor: DETAILED_SALES_TABLE_CONSTANTS.TABLE.CONTAINER_BACKGROUND,
         borderRadius: DETAILED_SALES_TABLE_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
-        border: DETAILED_SALES_TABLE_CONSTANTS.TABLE.CONTAINER_BORDER,
+        border: 'none',
         fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
-        padding: '1px',
+        padding: 0,
         '& .MuiTableContainer-root': {
           boxShadow: 'none',
           borderRadius: DETAILED_SALES_TABLE_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,

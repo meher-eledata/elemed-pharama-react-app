@@ -725,8 +725,8 @@ const InventoryAdjustment: React.FC = () => {
                     padding: '4px',
                     color: '#728197',
                     '&:hover': {
-                      color: '#EF4444',
-                      backgroundColor: '#FEF2F2'
+                      color: '#728197',
+                      backgroundColor: 'transparent'
                     }
                   }}
                 >

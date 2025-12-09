@@ -309,22 +309,25 @@ const AuditLog: React.FC = () => {
       key: 'role',
       header: AUDIT_LOG_LABELS.TABLE.ROLE,
       sortable: true,
-      render: (entry) => (
-        <Chip
-          label={entry.role || entry.accessLevel}
-          size="small"
-          sx={{
-            backgroundColor: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.BACKGROUND_COLOR,
-            color: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.COLOR,
-            fontWeight: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.FONT_WEIGHT,
-            height: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.HEIGHT,
-            fontSize: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.FONT_SIZE,
-            '& .MuiChip-label': {
-              padding: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.LABEL_PADDING,
-            },
-          }}
-        />
-      ),
+      render: (entry) => {
+        const roleValue = entry.role || entry.accessLevel || 'N/A';
+        return (
+          <Chip
+            label={roleValue}
+            size="small"
+            sx={{
+              backgroundColor: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.BACKGROUND_COLOR,
+              color: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.COLOR,
+              fontWeight: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.FONT_WEIGHT,
+              height: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.HEIGHT,
+              fontSize: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.FONT_SIZE,
+              '& .MuiChip-label': {
+                padding: AUDIT_LOG_CONSTANTS.CHIP.ACCESS_LEVEL.LABEL_PADDING,
+              },
+            }}
+          />
+        );
+      },
     },
   ];
 
@@ -801,9 +804,9 @@ const AuditLog: React.FC = () => {
         overflowX: 'auto',
         backgroundColor: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BACKGROUND,
         borderRadius: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
-        border: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BORDER,
+        border: 'none',
         fontFamily: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
-        padding: '1px',
+        padding: 0,
         '& .MuiTableContainer-root': {
           boxShadow: 'none',
           borderRadius: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,

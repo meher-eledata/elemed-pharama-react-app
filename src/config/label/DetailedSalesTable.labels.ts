@@ -6,11 +6,11 @@ export const DETAILED_SALES_TABLE_LABELS = {
     INVOICE_NUMBER: 'Invoice #',
     CUSTOMER_NAME: 'Customer name',
     PAYMENT_TYPE: 'Payment type',
-    SALE_AMOUNT: 'Sale amount',
-    DISCOUNT: 'Discount',
-    CGST: 'CGST',
-    GST: 'GST',
-    IGST: 'IGST',
+    SALE_AMOUNT: 'Sale amount (₹)',
+    DISCOUNT: 'Discount (₹)',
+    CGST: 'CGST (₹)',
+    GST: 'GST (₹)',
+    IGST: 'IGST (₹)',
   },
 } as const;
 

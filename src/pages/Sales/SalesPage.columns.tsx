@@ -269,18 +269,12 @@ export const getTableColumns = ({
                 onClick={() => handleDeleteClick(item.id)}
                 sx={{ 
                   padding: '4px',
-                  color: selectedItems.includes(item.id) && selectedItems.length > 1 
-                    ? '#EF4444' 
-                    : SALES_PAGE_CONSTANTS.GRAY_TEXT_COLOR,
-                  backgroundColor: selectedItems.includes(item.id) && selectedItems.length > 1 
-                    ? '#FEF2F2' 
-                    : 'transparent',
+                  color: SALES_PAGE_CONSTANTS.GRAY_TEXT_COLOR,
+                  backgroundColor: 'transparent',
                   borderRadius: '4px',
                   '&:hover': {
-                    backgroundColor: selectedItems.includes(item.id) && selectedItems.length > 1 
-                      ? '#FEE2E2' 
-                      : 'transparent',
-                    color: '#EF4444'
+                    backgroundColor: 'transparent',
+                    color: SALES_PAGE_CONSTANTS.GRAY_TEXT_COLOR
                   }
                 }}
               >

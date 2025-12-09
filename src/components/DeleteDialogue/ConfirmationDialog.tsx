@@ -44,6 +44,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           padding: 0,
           maxWidth: '500px',
           width: '90%',
+          minHeight: '180px',
           boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.15)',
         },
       }}
@@ -82,7 +83,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3, py: 3 }}>
+      <DialogContent sx={{ px: 3, py: 3, minHeight: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Typography 
           id="alert-dialog-description"
           sx={{ 

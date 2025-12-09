@@ -13,6 +13,7 @@ import {
   RadioGroup,
   Stack,
   Divider,
+  Alert,
 } from '@mui/material';
 import { StandardButton } from '../../Common';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
@@ -20,6 +21,7 @@ import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CloseIcon from '@mui/icons-material/Close';
 import { CUSTOMER_MODAL_LABELS } from '../../../config/label/CustomerModal.labels';
 import { CUSTOMER_MODAL_CONSTANTS } from '../../../config/constants/CustomerModal.constants';
+import { validateCustomerData } from '../../../pages/Sales/SalesReceipt.handlers';
 
 interface CustomerData {
   customerName: string;
@@ -101,11 +103,13 @@ const inputStyle = {
 
 const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [customerData, setCustomerData] = useState<CustomerData>(initialCustomerState);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setCustomerData(initialCustomerState);
+      setErrorMessage('');
     }
   }, [isOpen]);
 
@@ -137,10 +141,40 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
     setCustomerData(prev => ({ ...prev, shippingAddressSameAsBilling: e.target.checked }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    onSubmit(customerData);
-    onClose();
+    setErrorMessage('');
+    
+    // Validate all required fields before submitting
+    const missingFields: string[] = [];
+    
+    if (!customerData.customerName || !customerData.customerName.trim()) {
+      missingFields.push('Customer name');
+    }
+    if (!customerData.mobileNumber || !customerData.mobileNumber.trim()) {
+      missingFields.push('Mobile number');
+    }
+    if (!customerData.billingAddress || !customerData.billingAddress.trim()) {
+      missingFields.push('Billing address');
+    }
+    
+    if (missingFields.length > 0) {
+      setErrorMessage(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+    
+    // Validate customer data (format validation for optional fields)
+    const validation = validateCustomerData(customerData);
+    if (!validation.isValid) {
+      setErrorMessage(validation.error || 'Validation failed. Please check your input.');
+      return;
+    }
+
+    try {
+      await onSubmit(customerData);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to add customer. Please try again.');
+    }
   };
 
   return (
@@ -214,6 +248,22 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
 
         {/* Content Area - Scrollable */}
         <Box sx={{ flex: 1, overflow: 'auto', px: 1 }}>
+          {errorMessage && (
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 2,
+                borderRadius: '8px',
+                '& .MuiAlert-message': {
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: '14px',
+                }
+              }}
+              onClose={() => setErrorMessage('')}
+            >
+              {errorMessage}
+            </Alert>
+          )}
           <Grid container spacing={5}>
           <Grid item xs={12} md={4}>
             <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 3 }}>

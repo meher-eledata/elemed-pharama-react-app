@@ -676,145 +676,167 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
             </Grid>
 
             {showAddressFields && (
-              <>
-                <Grid item xs={12} sm={6} component="div">
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      mb: 0.5, 
-                      color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      fontFamily: "'Lexend', sans-serif"
-                    }}
-                  >
-                    Street address, house/building number
-                  </Typography>
-                  <StyledTextField 
-                    fullWidth 
-                    variant="outlined" 
-                    placeholder="Enter street address"
-                    name="address_line1"
-                    value={formData.address_line1}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
+              <Grid item xs={12} component="div">
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: '8px',
+                    border: '1px solid rgba(92, 23, 229, 0.2)',
+                    transition: 'all 0.3s ease-in-out',
+                    animation: 'fadeIn 0.3s ease-in-out',
+                    '@keyframes fadeIn': {
+                      from: {
+                        opacity: 0,
+                        transform: 'translateY(-10px)',
+                      },
+                      to: {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+                >
+                  <Grid container spacing={ADD_USER_MODAL_CONSTANTS.GRID.SPACING} rowSpacing={ADD_USER_MODAL_CONSTANTS.GRID.ROW_SPACING}>
+                    <Grid item xs={12} sm={6} component="div">
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: "'Lexend', sans-serif"
+                        }}
+                      >
+                        Street address, house/building number
+                      </Typography>
+                      <StyledTextField 
+                        fullWidth 
+                        variant="outlined" 
+                        placeholder="Enter street address"
+                        name="address_line1"
+                        value={formData.address_line1}
+                        onChange={handleInputChange}
+                      />
+                    </Grid>
 
-                <Grid item xs={12} sm={6} component="div">
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      mb: 0.5, 
-                      color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      fontFamily: "'Lexend', sans-serif"
-                    }}
-                  >
-                    Optional unit/suite/floor
-                  </Typography>
-                  <StyledTextField 
-                    fullWidth 
-                    variant="outlined" 
-                    placeholder="Enter unit/suite/floor"
-                    name="address_line2"
-                    value={formData.address_line2}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
+                    <Grid item xs={12} sm={6} component="div">
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: "'Lexend', sans-serif"
+                        }}
+                      >
+                        Optional unit/suite/floor
+                      </Typography>
+                      <StyledTextField 
+                        fullWidth 
+                        variant="outlined" 
+                        placeholder="Enter unit/suite/floor"
+                        name="address_line2"
+                        value={formData.address_line2}
+                        onChange={handleInputChange}
+                      />
+                    </Grid>
 
-                <Grid item xs={12} sm={6} component="div">
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      mb: 0.5, 
-                      color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      fontFamily: "'Lexend', sans-serif"
-                    }}
-                  >
-                    City
-                  </Typography>
-                  <StyledTextField 
-                    fullWidth 
-                    variant="outlined" 
-                    placeholder="Enter city"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
+                    <Grid item xs={12} sm={6} component="div">
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: "'Lexend', sans-serif"
+                        }}
+                      >
+                        City
+                      </Typography>
+                      <StyledTextField 
+                        fullWidth 
+                        variant="outlined" 
+                        placeholder="Enter city"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                      />
+                    </Grid>
 
-                <Grid item xs={12} sm={6} component="div">
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      mb: 0.5, 
-                      color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      fontFamily: "'Lexend', sans-serif"
-                    }}
-                  >
-                    State
-                  </Typography>
-                  <StyledTextField 
-                    fullWidth 
-                    variant="outlined" 
-                    placeholder="Enter state"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
+                    <Grid item xs={12} sm={6} component="div">
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: "'Lexend', sans-serif"
+                        }}
+                      >
+                        State
+                      </Typography>
+                      <StyledTextField 
+                        fullWidth 
+                        variant="outlined" 
+                        placeholder="Enter state"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                      />
+                    </Grid>
 
-                <Grid item xs={12} sm={6} component="div">
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      mb: 0.5, 
-                      color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      fontFamily: "'Lexend', sans-serif"
-                    }}
-                  >
-                    Postal Code
-                  </Typography>
-                  <StyledTextField 
-                    fullWidth 
-                    variant="outlined" 
-                    placeholder="Enter postal code"
-                    name="postal_code"
-                    value={formData.postal_code}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
+                    <Grid item xs={12} sm={6} component="div">
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: "'Lexend', sans-serif"
+                        }}
+                      >
+                        Postal Code
+                      </Typography>
+                      <StyledTextField 
+                        fullWidth 
+                        variant="outlined" 
+                        placeholder="Enter postal code"
+                        name="postal_code"
+                        value={formData.postal_code}
+                        onChange={handleInputChange}
+                      />
+                    </Grid>
 
-                <Grid item xs={12} sm={6} component="div">
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      mb: 0.5, 
-                      color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      fontFamily: "'Lexend', sans-serif"
-                    }}
-                  >
-                    Country
-                  </Typography>
-                  <StyledTextField 
-                    fullWidth 
-                    variant="outlined" 
-                    placeholder="Enter country"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
-              </>
+                    <Grid item xs={12} sm={6} component="div">
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 0.5, 
+                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          fontFamily: "'Lexend', sans-serif"
+                        }}
+                      >
+                        Country
+                      </Typography>
+                      <StyledTextField 
+                        fullWidth 
+                        variant="outlined" 
+                        placeholder="Enter country"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleInputChange}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Grid>
             )}
 
             {/* Identity Document Dropdown */}

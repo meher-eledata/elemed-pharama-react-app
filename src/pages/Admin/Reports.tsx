@@ -1,5 +1,5 @@
 import React, { useState, Suspense, lazy } from 'react';
-import { Box, Typography, Card, Grid, Stack, CircularProgress } from '@mui/material';
+import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate } from 'react-router-dom';
@@ -53,7 +53,7 @@ const DailySalesReport: React.FC = () => {
       { id: 0, value: 4993, label: 'Cash', color: '#3B82F6' },
       { id: 1, value: 3000, label: 'Card', color: '#EF4444' },
       { id: 2, value: 2500, label: 'UPI', color: '#F59E0B' },
-      { id: 3, value: 6514, label: 'X%', color: '#60A5FA' },
+      { id: 3, value: 6514, label: 'Insurance', color: '#60A5FA' },
       { id: 4, value: 1000, label: 'Credit', color: '#9CA3AF' },
     ],
     taxSummary: {
@@ -617,15 +617,18 @@ const DailySalesReport: React.FC = () => {
                   borderBottom: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.BORDER_BOTTOM_LIGHT,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.CGST}
-                </Typography>
+                <Tooltip title="Central Goods and Services Tax - Tax collected by the central government" arrow placement="top">
+                  <Typography
+                    sx={{
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
+                      color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+                      fontFamily: "'Lexend', sans-serif",
+                      cursor: 'help',
+                    }}
+                  >
+                    {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.CGST}
+                  </Typography>
+                </Tooltip>
                 <Typography
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_FONT_SIZE,
@@ -646,15 +649,18 @@ const DailySalesReport: React.FC = () => {
                   borderBottom: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.BORDER_BOTTOM_LIGHT,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.SGST}
-                </Typography>
+                <Tooltip title="State Goods and Services Tax - Tax collected by the state government" arrow placement="top">
+                  <Typography
+                    sx={{
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
+                      color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+                      fontFamily: "'Lexend', sans-serif",
+                      cursor: 'help',
+                    }}
+                  >
+                    {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.SGST}
+                  </Typography>
+                </Tooltip>
                 <Typography
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_FONT_SIZE,
@@ -674,15 +680,18 @@ const DailySalesReport: React.FC = () => {
                   pt: 0.75,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.IGST}
-                </Typography>
+                <Tooltip title="Integrated Goods and Services Tax - Tax collected on inter-state transactions" arrow placement="top">
+                  <Typography
+                    sx={{
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
+                      color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+                      fontFamily: "'Lexend', sans-serif",
+                      cursor: 'help',
+                    }}
+                  >
+                    {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.IGST}
+                  </Typography>
+                </Tooltip>
                 <Typography
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_FONT_SIZE,

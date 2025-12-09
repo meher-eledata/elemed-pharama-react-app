@@ -98,40 +98,6 @@ export const getTableColumns = ({
     )
   },
   {
-    key: 'type',
-    header: SALES_RECEIPT_LABELS.TABLE_HEADER_TYPE,
-    render: (item) => (
-      editingRowId === item.id ? (
-        <TextField
-          value={item.type}
-          onChange={(e) => {
-            setSalesItems(prev => prev.map(product => 
-              product.id === item.id ? { ...product, type: e.target.value } : product
-            ));
-          }}
-          size="small"
-          sx={{ 
-            width: 100,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '8px',
-              height: '32px',
-              '&:hover fieldset': {
-                borderColor: '#5C17E5',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#5C17E5',
-              },
-            },
-          }}
-        />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.type}
-        </Typography>
-      )
-    )
-  },
-  {
     key: 'batch',
     header: SALES_RECEIPT_LABELS.TABLE_HEADER_BATCH,
     render: (item) => (
@@ -439,7 +405,7 @@ export const getTableColumns = ({
         />
       ) : (
         <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.amount}
+          ₹{item.amount}
         </Typography>
       )
     )
@@ -505,7 +471,7 @@ export const getTableColumns = ({
                 color: '#6B7280',
                 '&:hover': {
                   backgroundColor: 'transparent',
-                  color: '#EF4444'
+                  color: '#6B7280'
                 }
               }}
             >

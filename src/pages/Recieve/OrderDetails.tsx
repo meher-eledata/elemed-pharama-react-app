@@ -368,6 +368,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       return line;
     });
 
+    // Format invoice_date to ISO string if provided, otherwise omit it
+    let formattedInvoiceDate: string | undefined;
+    if (invoiceDate && invoiceDate.trim()) {
+      const parsedDate = dayjs(invoiceDate, 'DD/MM/YYYY');
+      if (parsedDate.isValid()) {
+        formattedInvoiceDate = parsedDate.toISOString();
+      }
+    }
+
     const payload = {
       supplier_name: supplierName.trim(),
       ...(isExistingSupplier && { supplier_id: selectedSupplierData.supplier_id }),
@@ -375,6 +384,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       payment_method: paymentMethod || 'Cash',
       payment_vendor: paymentVendor.trim(),
       transaction_number: transactionNumber.trim(),
+      ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
       notes: "",
       created_by: "meher",
       lines: lines
@@ -502,6 +512,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const { deleted, added, edited } = detectChanges();
 
+    // Format invoice_date to ISO string if provided, otherwise omit it
+    let formattedInvoiceDate: string | undefined;
+    if (invoiceDate && invoiceDate.trim()) {
+      const parsedDate = dayjs(invoiceDate, 'DD/MM/YYYY');
+      if (parsedDate.isValid()) {
+        formattedInvoiceDate = parsedDate.toISOString();
+      }
+    }
+
     const payload = {
       receipt_id: receiptId,
       po_id: parseInt(poNumber) || 1,
@@ -511,6 +530,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       payment_method: paymentMethod,
       payment_vendor: paymentVendor,
       transaction_number: transactionNumber,
+      ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
       notes: "",
       created_by: "meher",
       Deleted: deleted,
@@ -733,7 +753,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const startEditing = (row: PharmaTableRow) => {
     setEditingRowId(row.id!);
-    setEditingData({ ...row });
+    setEditingData({ 
+      ...row,
+      batchNumber: row.batchNumber || '', // Ensure batchNumber is included
+    });
   };
 
   const saveRow = () => {
@@ -934,6 +957,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           setPaymentVendor(firstLine.payment_vendor);
         } else if (navigationPaymentVendor) {
           setPaymentVendor(navigationPaymentVendor);
+        }
+        // Auto-populate batch number form field from first receipt line
+        if (firstLine.batch_number) {
+          setBatchNumber(firstLine.batch_number);
         }
       } else {
         if (navigationTransactionNumber) {
@@ -1291,10 +1318,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 onClick={() => deleteRow(row.id!)}
                 sx={{ 
                   padding: '4px',
-                  color: '#EF4444',
+                  color: '#6B7280',
                   '&:hover': {
                     backgroundColor: 'transparent',
-                    color: '#DC2626'
+                    color: '#374151'
                   }
                 }}
               >
@@ -2558,7 +2585,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Delete Product"
-        message="Are you sure you want to delete this product from the table?"
+        message={
+          rowToDeleteId 
+            ? `Are you sure you want to delete "${pharmaTableData.find(row => row.id === rowToDeleteId)?.productId || 'this product'}" from the table?`
+            : "Are you sure you want to delete this product from the table?"
+        }
         itemName={rowToDeleteId ? pharmaTableData.find(row => row.id === rowToDeleteId)?.productId : undefined}
       />
 

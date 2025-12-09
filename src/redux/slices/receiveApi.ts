@@ -267,6 +267,7 @@ export const receiveApi = createApi({
         payment_method: string;
         payment_vendor: string;
         transaction_number: string;
+        invoice_date?: string; // Invoice date in ISO format
         notes: string;
         created_by: string;
         lines: Array<{
