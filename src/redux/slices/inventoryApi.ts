@@ -11,12 +11,17 @@ export interface InventoryItem {
   batchNumber?: string;
   expiryDate?: string;
   daysPastExpiry?: number;
+  daysToExpiry?: number;
+  brand?: string;
+  type?: string;
 }
 
 export interface InventorySummary {
   belowMinCount: number;
   aboveMaxCount: number;
   pastExpiryCount: number;
+  withinThreeMonthsCount: number;
+  withinOneMonthCount: number;
 }
 
 // Add Product interfaces
@@ -150,6 +155,8 @@ export const inventoryApi = createApi({
           name: item.name || '',
           currentQuantity: item.current_qty ?? 0,
           minQuantity: item.min_qty ?? undefined,
+          brand: item.brand_name || item.brand,
+          type: item.type || item.product_type,
         }));
       },
     }),
@@ -163,12 +170,53 @@ export const inventoryApi = createApi({
           name: item.name || '',
           currentQuantity: item.current_qty ?? 0,
           maxQuantity: item.max_qty ?? undefined,
+          brand: item.brand_name || item.brand,
+          type: item.type || item.product_type,
         }));
       },
     }),
     getExpiredStock: builder.query<InventoryItem[], void>({
       query: () => "inventory/expiry",
       providesTags: ["Inventory"],
+      transformResponse: (response: any[]): InventoryItem[] => {
+        if (!Array.isArray(response)) return [];
+        return response.map((item: any) => ({
+          id: item.product_id?.toString() || item.id?.toString(),
+          name: item.name || '',
+          currentQuantity: item.current_qty ?? item.currentQuantity ?? 0,
+          batchNumber: item.batch_number || item.batchNumber,
+          expiryDate: item.expiry_date || item.expiryDate,
+          daysPastExpiry: item.days_past_expiry ?? item.daysPastExpiry,
+          brand: item.brand_name || item.brand,
+          type: item.type || item.product_type,
+        }));
+      },
+    }),
+    getNearExpiryStock: builder.query<InventoryItem[], { months: number }>({
+      query: () => `inventory/near-expiry`,
+      providesTags: ["Inventory"],
+      transformResponse: (response: any, meta, arg): InventoryItem[] => {
+        if (!response || typeof response !== 'object') return [];
+        
+        const itemsArray = arg.months === 1 
+          ? (response.withinOneMonth || [])
+          : (response.withinThreeMonths || []);
+        
+        if (!Array.isArray(itemsArray)) return [];
+        
+        return itemsArray.map((item: any) => ({
+          id: item.product_id?.toString() || item.id?.toString() || `${item.name}-${item.batchNumber}`,
+          name: item.name || '',
+          currentQuantity: typeof item.currentQuantity === 'string' 
+            ? parseFloat(item.currentQuantity) 
+            : (item.current_qty ?? item.currentQuantity ?? 0),
+          batchNumber: item.batchNumber || item.batch_number,
+          expiryDate: item.expiryDate || item.expiry_date,
+          daysToExpiry: item.daysUntilExpiry ?? item.days_to_expiry ?? item.daysToExpiry,
+          brand: item.brand_name || item.brand,
+          type: item.type || item.product_type,
+        }));
+      },
     }),
     getInventorySummary: builder.query<InventorySummary, void>({
       query: () => "inventory/get-alert-counts",
@@ -223,6 +271,7 @@ export const {
   useGetLowStockQuery,
   useGetExcessStockQuery,
   useGetExpiredStockQuery,
+  useGetNearExpiryStockQuery,
   useGetInventorySummaryQuery,
   useAddProductMutation,
   useGetBatchesForProductMutation,

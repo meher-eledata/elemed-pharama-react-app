@@ -1,5 +1,5 @@
 import React, { useState, Suspense, lazy } from 'react';
-import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip } from '@mui/material';
+import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip, Button } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate } from 'react-router-dom';
@@ -8,14 +8,154 @@ import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
 import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
+import DashboardMain from '../DashboardMain/DashboardMain';
 
 // Lazy-loaded Pie Chart Component
 const PaymentTypePieChart = lazy(() => import('../../components/Charts/PaymentTypePieChart'));
 
+type ReportTab = 'kpis' | 'detailed';
+
 const Reports: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<ReportTab>('kpis');
+
   return (
     <Box sx={{ paddingBottom: REPORTS_CONSTANTS.PAGE.PADDING_BOTTOM }}>
-      <DailySalesReport />
+      <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
+        <Button
+          onClick={() => setActiveTab('kpis')}
+          sx={{
+            backgroundColor: activeTab === 'kpis' ? '#5C17E5' : 'transparent',
+            color: activeTab === 'kpis' ? '#FFFFFF' : '#1A212B',
+            border: activeTab === 'kpis' ? 'none' : '1px solid #D1D5DB',
+            borderRadius: '0.5rem',
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '14px',
+            padding: '8px 16px',
+            minWidth: '120px',
+            '&:hover': {
+              backgroundColor: activeTab === 'kpis' ? '#4C14C7' : 'transparent',
+            },
+          }}
+        >
+          KPI's
+        </Button>
+        <Button
+          onClick={() => setActiveTab('detailed')}
+          sx={{
+            backgroundColor: activeTab === 'detailed' ? '#5C17E5' : 'transparent',
+            color: activeTab === 'detailed' ? '#FFFFFF' : '#1A212B',
+            border: activeTab === 'detailed' ? 'none' : '1px solid #D1D5DB',
+            borderRadius: '0.5rem',
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '14px',
+            padding: '8px 16px',
+            minWidth: '120px',
+            '&:hover': {
+              backgroundColor: activeTab === 'detailed' ? '#4C14C7' : 'transparent',
+            },
+          }}
+        >
+          Detailed Reports
+        </Button>
+      </Box>
+
+      {activeTab === 'kpis' ? (
+        <DashboardMain hideButtons={true} />
+      ) : (
+        <DetailedReportsView />
+      )}
+    </Box>
+  );
+};
+
+const DetailedReportsView: React.FC = () => {
+  const [selectedReport, setSelectedReport] = useState<string | null>(null);
+
+  const reportCards = [
+    {
+      id: 'daily-sales',
+      title: 'Daily Sales Report',
+      description: 'View detailed daily sales information including payment methods, taxes, and trends',
+    },
+  ];
+
+  if (selectedReport === 'daily-sales') {
+    return (
+      <Box>
+        <Button
+          onClick={() => setSelectedReport(null)}
+          sx={{
+            mb: 2,
+            textTransform: 'none',
+            color: '#5C17E5',
+          }}
+        >
+          ← Back to Reports
+        </Button>
+        <DailySalesReport />
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <Grid container spacing={3}>
+        {reportCards.map((report) => (
+          <Grid item xs={12} sm={6} md={4} key={report.id}>
+            <Card
+              sx={{
+                p: 3,
+                borderRadius: '16px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
+                border: '1px solid #E5E7EB',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: 'pointer',
+                '&:hover': {
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                },
+              }}
+              onClick={() => setSelectedReport(report.id)}
+            >
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  color: '#1A212B',
+                  fontSize: '18px',
+                  fontFamily: "'Lexend', sans-serif",
+                  mb: 1,
+                }}
+              >
+                {report.title}
+              </Typography>
+              <Typography
+                sx={{
+                  color: '#728197',
+                  fontSize: '14px',
+                  lineHeight: 1.5,
+                  fontFamily: "'Lexend', sans-serif",
+                  mb: 2,
+                  flexGrow: 1,
+                }}
+              >
+                {report.description}
+              </Typography>
+              <StandardButton
+                variant="primary"
+                size="medium"
+                sx={{
+                  alignSelf: 'flex-start',
+                }}
+              >
+                View Report
+              </StandardButton>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
     </Box>
   );
 };

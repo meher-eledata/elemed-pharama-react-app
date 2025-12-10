@@ -63,6 +63,7 @@ export const Pages = () => {
         <Route path="users" element={<Users />} />
         <Route path="reports" element={<Reports />} />
         <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
+        <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="audit" element={<AuditLog />} />
       </Route>

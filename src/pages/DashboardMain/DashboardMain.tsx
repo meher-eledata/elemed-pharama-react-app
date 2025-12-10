@@ -21,7 +21,11 @@ interface RootState {
   };
 }
 
-const DashboardMain: React.FC = () => {
+interface DashboardMainProps {
+  hideButtons?: boolean;
+}
+
+const DashboardMain: React.FC<DashboardMainProps> = ({ hideButtons = false }) => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const displayName = user ? (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username) : "Guest";
@@ -50,58 +54,61 @@ const DashboardMain: React.FC = () => {
   return (
     <Box sx={{ minHeight: DASHBOARD_MAIN_CONSTANTS.PAGE.MIN_HEIGHT, paddingBottom: DASHBOARD_MAIN_CONSTANTS.PAGE.PADDING_BOTTOM }}>
 
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: 'wrap',
-          columnGap: '12px',
-          rowGap: '12px',
-          mb: 1,
-          minWidth: 0,
-        }}
-      >
-        <Typography
+      {!hideButtons && (
+        <Box
           sx={{
-            fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
-            fontWeight: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_WEIGHT,
-            fontSize: {
-              xs: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_XS,
-              sm: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_SM,
-              md: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_MD,
-              lg: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_LG,
-            },
-            lineHeight: DASHBOARD_MAIN_CONSTANTS.HEADER.LINE_HEIGHT,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: 'wrap',
+            columnGap: '12px',
+            rowGap: '12px',
+            mb: 1,
+            minWidth: 0,
           }}
         >
-          {DASHBOARD_MAIN_LABELS.WELCOME_PREFIX} {displayName}
-        </Typography>
-
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: DASHBOARD_MAIN_CONSTANTS.TOOLBAR.GAP }}>
-          <StandardButton
-            variant="secondary"
-            size="large"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/sales')}
+          <Typography
+            sx={{
+              fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
+              fontWeight: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_WEIGHT,
+              fontSize: {
+                xs: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_XS,
+                sm: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_SM,
+                md: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_MD,
+                lg: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_SIZE_LG,
+              },
+              lineHeight: DASHBOARD_MAIN_CONSTANTS.HEADER.LINE_HEIGHT,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
           >
-            {DASHBOARD_MAIN_LABELS.CREATE_INVOICE}
-          </StandardButton>
+            {DASHBOARD_MAIN_LABELS.WELCOME_PREFIX} {displayName}
+          </Typography>
 
-          <StandardButton
-            variant="primary"
-            size="large"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/receive/order-details')}
-          >
-            {DASHBOARD_MAIN_LABELS.ADD_RECEIVE}
-          </StandardButton>
+        {!hideButtons && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: DASHBOARD_MAIN_CONSTANTS.TOOLBAR.GAP }}>
+            <StandardButton
+              variant="secondary"
+              size="large"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/sales')}
+            >
+              {DASHBOARD_MAIN_LABELS.CREATE_INVOICE}
+            </StandardButton>
 
-        </Box>
+            <StandardButton
+              variant="primary"
+              size="large"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/receive/order-details')}
+            >
+              {DASHBOARD_MAIN_LABELS.ADD_RECEIVE}
+            </StandardButton>
+          </Box>
+        )}
       </Box>
+      )}
        <Box sx={{ mb: '24px' }}>
         <DateRangeFilter
           dateRange={dateRange}

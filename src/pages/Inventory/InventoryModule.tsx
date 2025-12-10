@@ -14,12 +14,14 @@ import PlusIcon from "../../assets/PlusIcon.svg";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { SerializedError } from "@reduxjs/toolkit";
 import AddIcon from "@mui/icons-material/Add";
+import WarningIcon from '@mui/icons-material/Warning';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal"; 
 
 import {
   useGetLowStockQuery,
   useGetExcessStockQuery,
   useGetExpiredStockQuery,
+  useGetNearExpiryStockQuery,
   useGetInventorySummaryQuery,
 } from '../../redux/slices/inventoryApi';
 import { extractErrorMessage } from '../../utils/errorUtils';
@@ -57,7 +59,7 @@ function isErrorWithMessage(error: unknown): error is { message: string } {
     typeof (error as any).message === "string"
   );
 } 
-type StockType = 'low' | 'excess' | 'expired';
+type StockType = 'low' | 'excess' | 'expired' | 'nearExpiry';
 type InventoryItem = RTKInventoryItem;
 type FilterKey =
   | 'name'
@@ -67,6 +69,9 @@ type FilterKey =
   | 'maxQuantity'
   | 'expiryDate'
   | 'daysPastExpiry'
+  | 'daysToExpiry'
+  | 'brand'
+  | 'type'
   | '';
 
 const InventoryModule: React.FC = () => {
@@ -76,6 +81,7 @@ const InventoryModule: React.FC = () => {
   const [filterType, setFilterType] = useState<FilterKey>('name');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [nearExpiryMonths, setNearExpiryMonths] = useState<number>(3);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -95,6 +101,9 @@ const InventoryModule: React.FC = () => {
   const { data: expiredStockItems = [], isLoading: isExpiredStockLoading, error: expiredStockError } =
     useGetExpiredStockQuery(undefined, { skip: selectedStockType !== 'expired' });
 
+  const { data: nearExpiryStockItems = [], isLoading: isNearExpiryStockLoading, error: nearExpiryStockError } =
+    useGetNearExpiryStockQuery({ months: nearExpiryMonths }, { skip: selectedStockType !== 'nearExpiry' });
+
   const { data: inventorySummary, isLoading: isSummaryLoading, error: summaryError } =
     useGetInventorySummaryQuery();
 
@@ -106,10 +115,12 @@ const InventoryModule: React.FC = () => {
         return excessStockItems as InventoryItem[];
       case 'expired':
         return expiredStockItems as InventoryItem[];
+      case 'nearExpiry':
+        return nearExpiryStockItems as InventoryItem[];
       default:
         return [];
     }
-  }, [selectedStockType, lowStockItems, excessStockItems, expiredStockItems]);
+  }, [selectedStockType, lowStockItems, excessStockItems, expiredStockItems, nearExpiryStockItems]);
 
   const isLoading = useMemo(() => {
     switch (selectedStockType) {
@@ -119,10 +130,12 @@ const InventoryModule: React.FC = () => {
         return isExcessStockLoading;
       case 'expired':
         return isExpiredStockLoading;
+      case 'nearExpiry':
+        return isNearExpiryStockLoading;
       default:
         return false;
     }
-  }, [selectedStockType, isLowStockLoading, isExcessStockLoading, isExpiredStockLoading]);
+  }, [selectedStockType, isLowStockLoading, isExcessStockLoading, isExpiredStockLoading, isNearExpiryStockLoading]);
 
   const error = useMemo(() => {
     switch (selectedStockType) {
@@ -132,10 +145,12 @@ const InventoryModule: React.FC = () => {
         return excessStockError;
       case 'expired':
         return expiredStockError;
+      case 'nearExpiry':
+        return nearExpiryStockError;
       default:
         return null;
     }
-  }, [selectedStockType, lowStockError, excessStockError, expiredStockError]);
+  }, [selectedStockType, lowStockError, excessStockError, expiredStockError, nearExpiryStockError]);
 
   useEffect(() => {
     setPage(1);
@@ -144,7 +159,7 @@ const InventoryModule: React.FC = () => {
     setSearchQuery('');
     setShowFilters(false);
     setSortConfig({ key: 'name', direction: 'asc' });
-  }, [selectedStockType]);
+  }, [selectedStockType, nearExpiryMonths]);
 
   const handleTabClick = (tab: StockType) => {
     setSelectedStockType(tab); 
@@ -194,6 +209,14 @@ const InventoryModule: React.FC = () => {
             return isNumericFilter
               ? 'daysPastExpiry' in item && (item.daysPastExpiry ?? 0) >= parseFloat(searchQuery)
               : false;
+          case 'daysToExpiry':
+            return isNumericFilter
+              ? 'daysToExpiry' in item && (item.daysToExpiry ?? 0) >= parseFloat(searchQuery)
+              : false;
+          case 'brand':
+            return 'brand' in item && item.brand?.toLowerCase().includes(lowerCaseQuery);
+          case 'type':
+            return 'type' in item && item.type?.toLowerCase().includes(lowerCaseQuery);
           default:
             return true;
         }
@@ -235,6 +258,18 @@ const InventoryModule: React.FC = () => {
         case 'daysPastExpiry':
           aValue = a.daysPastExpiry ?? 0;
           bValue = b.daysPastExpiry ?? 0;
+          break;
+        case 'daysToExpiry':
+          aValue = a.daysToExpiry ?? 0;
+          bValue = b.daysToExpiry ?? 0;
+          break;
+        case 'brand':
+          aValue = a.brand?.toLowerCase() ?? '';
+          bValue = b.brand?.toLowerCase() ?? '';
+          break;
+        case 'type':
+          aValue = a.type?.toLowerCase() ?? '';
+          bValue = b.type?.toLowerCase() ?? '';
           break;
         default:
           aValue = a.name.toLowerCase();
@@ -356,16 +391,6 @@ const InventoryModule: React.FC = () => {
     );
   };
 
-  const renderActionsCell = () => (
-    <Box display="flex" gap={1} alignItems="center">
-      <IconButton sx={{ color: '#728197' }} size="small">
-        <img src={ASSET_PATHS.Cart} alt={INVENTORY_LABELS.addToCartAltText} style={{ width: 20, height: 20 }} />
-      </IconButton>
-      <IconButton sx={{ color: '#728197' }} size="small">
-        <MoreHorizIcon fontSize="small" />
-      </IconButton>
-    </Box>
-  );
 
   const getTableProps = () => {
     let columns: TableColumn<any>[] = [];
@@ -376,13 +401,16 @@ const InventoryModule: React.FC = () => {
         columns = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
+          { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
+          { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: renderCurrentQtyCell },
           { key: 'minQuantity', header: INVENTORY_LABELS.minimumQuantityHeader, render: (item) => (item as InventoryItem).minQuantity },
-          { key: 'actions', header: '', render: renderActionsCell, sortable: false },
         ];
         searchAndFilterConfig = {
           filterOptions: [
             { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
+            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
+            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
             { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
             { key: 'minQuantity', label: FILTER_OPTIONS.minQuantity, type: 'number' },
           ],
@@ -393,13 +421,16 @@ const InventoryModule: React.FC = () => {
         columns = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
+          { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
+          { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: renderCurrentQtyCell },
           { key: 'maxQuantity', header: INVENTORY_LABELS.maximumQuantityHeader, render: (item) => (item as InventoryItem).maxQuantity },
-          { key: 'actions', header: '', render: renderActionsCell, sortable: false },
         ];
         searchAndFilterConfig = {
           filterOptions: [
             { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
+            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
+            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
             { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
             { key: 'maxQuantity', label: FILTER_OPTIONS.maxQuantity, type: 'number' },
           ],
@@ -410,19 +441,46 @@ const InventoryModule: React.FC = () => {
         columns = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
+          { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
+          { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
           { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate },
           { key: 'daysPastExpiry', header: INVENTORY_LABELS.daysPastExpiryHeader, render: (item) => (item as InventoryItem).daysPastExpiry },
-          { key: 'actions', header: '', render: renderActionsCell, sortable: false },
         ];
         searchAndFilterConfig = {
           filterOptions: [
             { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
+            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
+            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
             { key: 'batchNumber', label: FILTER_OPTIONS.batchNumber, type: 'text' },
             { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
             { key: 'expiryDate', label: FILTER_OPTIONS.expiryDate, type: 'date' },
             { key: 'daysPastExpiry', label: FILTER_OPTIONS.daysPastExpiry, type: 'number' },
+          ],
+        };
+        break;
+
+      case 'nearExpiry':
+        columns = [
+          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
+          { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
+          { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
+          { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
+          { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
+          { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate },
+          { key: 'daysToExpiry', header: INVENTORY_LABELS.daysToExpiryHeader, render: (item) => (item as InventoryItem).daysToExpiry },
+        ];
+        searchAndFilterConfig = {
+          filterOptions: [
+            { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
+            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
+            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
+            { key: 'batchNumber', label: FILTER_OPTIONS.batchNumber, type: 'text' },
+            { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
+            { key: 'expiryDate', label: FILTER_OPTIONS.expiryDate, type: 'date' },
+            { key: 'daysToExpiry', label: FILTER_OPTIONS.daysToExpiry, type: 'number' },
           ],
         };
         break;
@@ -433,7 +491,7 @@ const InventoryModule: React.FC = () => {
     return { columns, searchAndFilterConfig };
   };
 
-  const { columns, searchAndFilterConfig } = useMemo(() => getTableProps(), [selectedStockType]);
+  const { columns, searchAndFilterConfig } = useMemo(() => getTableProps(), [selectedStockType, nearExpiryMonths]);
 
   return (
     <Container maxWidth="xl" disableGutters sx={{mb: 0, px: { xs: 2, sm: 3, md: 1 } }}>
@@ -521,6 +579,25 @@ const InventoryModule: React.FC = () => {
           >
             {INVENTORY_LABELS.expiredStockTab}
           </Button>
+          <Button
+            onClick={() => handleTabClick('nearExpiry')}
+            sx={{
+              backgroundColor: selectedStockType === 'nearExpiry' ? '#5C17E5' : 'transparent',
+              color: selectedStockType === 'nearExpiry' ? '#FFFFFF' : '#1A212B',
+              border: selectedStockType === 'nearExpiry' ? 'none' : '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '14px',
+              padding: '8px 16px',
+              minWidth: '120px',
+              '&:hover': {
+                backgroundColor: selectedStockType === 'nearExpiry' ? '#4C14C7' : 'transparent',
+              },
+            }}
+          >
+            {INVENTORY_LABELS.nearExpiryStockTab}
+          </Button>
         </Box>
 
         {/* Summary Cards */}
@@ -554,7 +631,7 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isLowStockLoading ? <CircularProgress size={24} /> : lowStockItems.length}
+                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.belowMinCount ?? 0}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="error" className="percentage">
@@ -593,7 +670,7 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isExcessStockLoading ? <CircularProgress size={24} /> : excessStockItems.length}
+                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.aboveMaxCount ?? 0}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendDown} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="success.main" className="percentage">
@@ -632,7 +709,7 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isExpiredStockLoading ? <CircularProgress size={24} /> : expiredStockItems.length}
+                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.pastExpiryCount ?? 0}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography
@@ -643,7 +720,51 @@ const InventoryModule: React.FC = () => {
                 {/* 8% */}
               </Typography>
             </Box>
-            <img src={ASSET_PATHS.Chart3} alt="icon" className="card-icon3" />
+            <WarningIcon sx={{ position: 'absolute', bottom: 16, right: 16, fontSize: 80, color: '#EF4444', opacity: 0.2 }} />
+          </Box>
+
+          <Box 
+            className="summary-card4"
+            sx={{
+              position: 'relative',
+              transition: 'all 0.3s ease-in-out',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: selectedStockType === 'nearExpiry' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
+                borderRadius: '16px',
+                transition: 'background-color 0.3s ease-in-out',
+                pointerEvents: 'none',
+                zIndex: 1,
+              },
+              '& > *': {
+                position: 'relative',
+                zIndex: 2,
+              }
+            }}
+          >
+            <Typography variant="subtitle2" className="text">
+              {INVENTORY_LABELS.totalNearExpiryStock}
+            </Typography>
+            <Box className="number">
+              <Typography variant="h3" className="big-number">
+                {isSummaryLoading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  nearExpiryMonths === 3
+                    ? inventorySummary?.withinThreeMonthsCount ?? 0
+                    : inventorySummary?.withinOneMonthCount ?? 0
+                )}
+              </Typography>
+              <Typography variant="caption" color="success.main" className="percentage">
+                {/* 8% */}
+              </Typography>
+            </Box>
+            <img src={ASSET_PATHS.Chart3} alt="icon" className="card-icon4" />
           </Box>
         </Box>
       </Box>
@@ -660,25 +781,71 @@ const InventoryModule: React.FC = () => {
           </Typography>
         </Box>
       ) : (
-        <ReusableTable
-          data={filteredData as InventoryItem[]}
-          columns={columns}
-          selectedRows={selectedRows}
-  setSelectedRows={setSelectedRows}
-          searchAndFilterConfig={searchAndFilterConfig}
-          currentSearchTerm={searchQuery}
-          onSearchChange={(e) => setSearchQuery(e.target.value)}
-          showFilters={showFilters}
-          onShowFiltersToggle={() => setShowFilters(!showFilters)}
-          currentFilterKey={filterType}
-          onFilterSelect={(key, value) => setFilterType(key as FilterKey)}
-          totalRows={filteredData.length}
-          rowsPerPage={ROWS_PER_PAGE}
-          currentPage={page}
-          onPageChange={handlePageChange}
-          onSortRequest={handleSortRequest}
-          sortConfig={sortConfig}
-        />
+          <ReusableTable
+            data={filteredData as InventoryItem[]}
+            columns={columns}
+            selectedRows={selectedRows}
+            setSelectedRows={setSelectedRows}
+            searchAndFilterConfig={searchAndFilterConfig}
+            currentSearchTerm={searchQuery}
+            onSearchChange={(e) => setSearchQuery(e.target.value)}
+            showFilters={showFilters}
+            onShowFiltersToggle={() => setShowFilters(!showFilters)}
+            currentFilterKey={filterType}
+            onFilterSelect={(key, value) => setFilterType(key as FilterKey)}
+            totalRows={filteredData.length}
+            rowsPerPage={ROWS_PER_PAGE}
+            currentPage={page}
+            onPageChange={handlePageChange}
+            onSortRequest={handleSortRequest}
+            sortConfig={sortConfig}
+            customSearchBarContent={
+              selectedStockType === 'nearExpiry' ? (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    onClick={() => setNearExpiryMonths(3)}
+                    sx={{
+                      backgroundColor: nearExpiryMonths === 3 ? '#5C17E5' : 'transparent',
+                      color: nearExpiryMonths === 3 ? '#FFFFFF' : '#1A212B',
+                      border: nearExpiryMonths === 3 ? 'none' : '1px solid #D1D5DB',
+                      borderRadius: '0.5rem',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      padding: '8px 16px',
+                      minWidth: '100px',
+                      height: '38px',
+                      '&:hover': {
+                        backgroundColor: nearExpiryMonths === 3 ? '#4C14C7' : 'transparent',
+                      },
+                    }}
+                  >
+                    {INVENTORY_LABELS.threeMonths}
+                  </Button>
+                  <Button
+                    onClick={() => setNearExpiryMonths(1)}
+                    sx={{
+                      backgroundColor: nearExpiryMonths === 1 ? '#5C17E5' : 'transparent',
+                      color: nearExpiryMonths === 1 ? '#FFFFFF' : '#1A212B',
+                      border: nearExpiryMonths === 1 ? 'none' : '1px solid #D1D5DB',
+                      borderRadius: '0.5rem',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      padding: '8px 16px',
+                      minWidth: '100px',
+                      height: '38px',
+                      '&:hover': {
+                        backgroundColor: nearExpiryMonths === 1 ? '#4C14C7' : 'transparent',
+                      },
+                    }}
+                  >
+                    {INVENTORY_LABELS.oneMonth}
+                  </Button>
+                </Box>
+              ) : undefined
+            }
+          />
       )}
     </Container>
   );

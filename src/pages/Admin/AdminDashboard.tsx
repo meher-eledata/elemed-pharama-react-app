@@ -6,6 +6,7 @@ import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import InventoryIcon from '@mui/icons-material/Inventory';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
 import { ADMIN_CONSTANTS } from '../../config/constants/Admin.constants';
@@ -152,6 +153,14 @@ const AdminDashboard: React.FC = () => {
           action={ADMIN_LABELS.SECTIONS.REPORTS.ACTION}
           onAction={() => navigate('/admin/reports')}
           iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.REPORTS}
+        />
+        <Card
+          icon={<InventoryIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title="Inventory Adjustment"
+          desc="Adjust inventory quantities for products and batches"
+          action="Adjust Inventory"
+          onAction={() => navigate('/admin/inventory-adjustment')}
+          iconBgColor="#E0E7FF"
         />
         <Card
           icon={<AssignmentOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}

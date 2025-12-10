@@ -167,6 +167,53 @@
       height: 141px;
     }
   }
+
+  .summary-card4 {
+    background: #eceff4;
+    padding: 16px;
+    border-radius: 16px;
+    flex: 1;
+    position: relative;
+
+    .big-number {
+      font-weight: 600;
+      font-size: 32px;
+      line-height: 36px;
+      font-family: 'Lexend', sans-serif;
+      margin-top: 28px;
+      color: #000000;
+    }
+
+    .number {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: flex-start;
+    }
+
+    .percentage {
+      margin-top: 45px;
+      color: #22c55e;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 16px;
+      font-family: 'Lexend', sans-serif;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .icon {
+      margin-top: 45px;
+    }
+
+    .card-icon4 {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 141px;
+      height: 141px;
+    }
+  }
 }
 
 .search-filters {
@@ -227,7 +274,7 @@
     }
     
     // Resize the chart images for smaller screens
-    .card-icon1, .card-icon2, .card-icon3 {
+    .card-icon1, .card-icon2, .card-icon3, .card-icon4 {
       width: 100px;
       height: 100px;
     }

@@ -3,9 +3,11 @@ export const INVENTORY_LABELS = {
   lowStockTab: "Low Stock",
   excessStockTab: "Excess Stock",
   expiredStockTab: "Expired Stock",
+  nearExpiryStockTab: "Near Expiry Stock",
   totalLowStock:"Total Low Stock",
   totalExcessStock: "Total Excess Stock",
   totalExpiredStock: "Total Expired Stock",
+  totalNearExpiryStock: "Total Near Expiry Stock",
   loadingData: "Loading data...",
   error: "Error:",
   productNameHeader: "Product Name",
@@ -15,7 +17,12 @@ export const INVENTORY_LABELS = {
   batchNoHeader: "Batch No",
   expiryDateHeader: "Expiry Date",
   daysPastExpiryHeader: "No Days Past",
+  daysToExpiryHeader: "No of days to expiry",
+  brandHeader: "Brand",
+  typeHeader: "Type",
   addToCartAltText: "Add to cart",
+  threeMonths: "3 months",
+  oneMonth: "1 month",
 };
 
 export const FILTER_OPTIONS = {
@@ -25,5 +32,8 @@ export const FILTER_OPTIONS = {
   maxQuantity: "Maximum Quantity",
   batchNumber: "Batch No",
   expiryDate: "Expiry Date",
-  daysPastExpiry: "No Days Past"
+  daysPastExpiry: "No Days Past",
+  daysToExpiry: "No of days to expiry",
+  brand: "Brand",
+  type: "Type"
 };
