@@ -1,7 +1,6 @@
 import React from "react";
 import { Card, CardContent, Typography, Box, Link } from "@mui/material";
-// import TrendUpIcon from "../../../assets/trend-up.svg";
-// import TrendDownIcon from "../../../assets/trend-down.svg";
+
 import { SUMMARY_CARD_CONSTANTS } from "../../../config/constants/SummaryCard.constants";
 import { SUMMARY_CARD_LABELS } from "../../../config/label/SummaryCard.labels";
 
@@ -103,7 +102,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
           </Box>
 
           <Box display="flex" alignItems="center">
-            {/* Action */}
             {actionText && (
               <Link
                 component="button"

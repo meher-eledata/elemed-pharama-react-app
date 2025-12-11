@@ -226,23 +226,25 @@
     min-height: 200px; 
 
     .MuiTableRow-root {
-      height: 64px;
+      height: auto;
+      min-height: 48px;
     }
 
     .MuiTableCell-root {
-      padding-top: 8px;
-      padding-bottom: 8px;
-      // padding-left: 56px;
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+      padding-left: 16px !important;
+      padding-right: 16px !important;
     }
 
     // Reduce gap between header and body - make headers closer to content
     .MuiTableHead-root {
       .MuiTableRow-root {
         .MuiTableCell-root {
-          padding-bottom: 0px !important;
-          padding-left: 36px !important;
-          padding-right: 8px !important;
-          padding-top: 8px !important;
+          padding-bottom: 8px !important;
+          padding-left: 16px !important;
+          padding-right: 16px !important;
+          padding-top: 12px !important;
         }
       }
     }
@@ -250,8 +252,68 @@
     .MuiTableBody-root {
       .MuiTableRow-root:first-child {
         .MuiTableCell-root {
-          padding-top: 0px !important;
-          // padding-left: 56px;
+          padding-top: 8px !important;
+        }
+      }
+    }
+
+    // Current Qty column (2nd column) - move left
+    .MuiTableContainer-root {
+      .MuiTable-root {
+        .MuiTableHead-root {
+          .MuiTableRow-root {
+            .MuiTableCell-root {
+              &:nth-child(2) {
+                padding: 12px 16px 8px 8px !important;
+              }
+            }
+          }
+        }
+        .MuiTableBody-root {
+          .MuiTableRow-root {
+            .MuiTableCell-root {
+              &:nth-child(2) {
+                padding: 8px 16px 8px 8px !important;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Expiry date column (3rd column) - move left
+    .MuiTableContainer-root {
+      .MuiTable-root {
+        .MuiTableHead-root {
+          .MuiTableRow-root {
+            .MuiTableCell-root {
+              &:nth-child(3) {
+                padding: 12px 16px 8px 8px !important;
+              }
+            }
+          }
+        }
+        .MuiTableBody-root {
+          .MuiTableRow-root {
+            .MuiTableCell-root {
+              &:nth-child(3) {
+                padding: 8px 16px 8px 8px !important;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Actions column - more compact padding
+    .MuiTableHead-root,
+    .MuiTableBody-root {
+      .MuiTableRow-root {
+        .MuiTableCell-root {
+          &:nth-child(4) {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
         }
       }
     }
@@ -269,53 +331,6 @@
       margin-top: 0 !important;
     }
 
-    // Left align Current Qty column
-    .MuiTableHead-root,
-    .MuiTableBody-root {
-      .MuiTableRow-root {
-        .MuiTableCell-root {
-          // Target the quantity column (2nd column)
-          &:nth-child(2) {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            padding-left: 6px !important;
-            margin-right: 20px;
-            .MuiBox-root {
-              justify-content: flex-start !important;
-            }
-          }
-        }
-      }
-    }
-
-    // Target each header TableCell individually
-    .MuiTableHead-root {
-      .MuiTableRow-root {
-        .MuiTableCell-root {
-          // 1st column - Batch Number
-          &:nth-child(1) {
-            padding-left: 36px !important;
-          }
-
-          // 2nd column - Current Qty
-          &:nth-child(2) {
-            padding-left: 6px !important;
-            margin-right: 20px;
-          }
-
-          // 3rd column - Expiry date
-          &:nth-child(3) {
-            padding-left: 0px !important;
-          }
-
-          // 4th column - Actions
-          &:nth-child(4) {
-            padding-left: 20px !important;
-            // margin-left: 20px;
-          }
-        }
-      }
-    }
   }
 
   .section-title {

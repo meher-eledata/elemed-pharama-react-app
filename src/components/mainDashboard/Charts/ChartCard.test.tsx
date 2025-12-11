@@ -9,7 +9,6 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 const theme = createTheme();
 
-// Mock the CSVLink component correctly by explicitly typing props as 'any'
 jest.mock('react-csv', () => ({
   CSVLink: React.forwardRef((props: any, ref) => {
     const { data, filename, children } = props;
@@ -27,27 +26,25 @@ jest.mock('react-csv', () => ({
   }),
 }));
 
-// Define mock props for the component
 const mockProps = {
   title: 'Test Title',
   metric: '100',
   chartData: {
     xAxis: ['2025-01-01', '2025-01-02'],
     series1: [10, 20],
-    series2: [], // Required by ChartData type
+    series2: [], 
   },
   colors: { main: '#000', area: '#ccc', percentBg: '#eee', percentText: '#111' },
   yAxisConfig: {
     min: 0,
     max: 50,
-    tickInterval: [10], // Required by YAxisConfig type
+    tickInterval: [10], 
   },
   csvData: [{ date: '2025-01-01', value: 10 }],
   filename: 'test_report.csv',
 };
 
 describe('ChartsCard', () => {
-  // Test Case 1: Renders correctly with given props
   it('renders the title, metric, and download button', () => {
     render(
       <ThemeProvider theme={theme}>
@@ -60,7 +57,6 @@ describe('ChartsCard', () => {
     expect(screen.getByLabelText('download')).toBeInTheDocument();
   });
 
-  // Test Case 2: Handles the download button click
   it('triggers a download when the download button is clicked', async () => {
     render(
       <ThemeProvider theme={theme}>
@@ -77,7 +73,6 @@ describe('ChartsCard', () => {
     });
   });
 
-  // Test Case 3: Renders with different metric formats
   it('renders metric with currency symbol', () => {
     const currencyProps = {
       ...mockProps,
@@ -113,7 +108,6 @@ describe('ChartsCard', () => {
     expect(screen.getByText('100')).toBeInTheDocument();
   });
 
-  // Test Case 5: Handles large datasets
   it('handles large datasets efficiently', () => {
     const largeDataProps = {
       ...mockProps,
@@ -134,7 +128,6 @@ describe('ChartsCard', () => {
     expect(screen.getByText('100')).toBeInTheDocument();
   });
 
-  // Test Case 6: Applies correct styling
   it('applies correct card styling', () => {
     render(
       <ThemeProvider theme={theme}>
@@ -146,7 +139,6 @@ describe('ChartsCard', () => {
     expect(card).toBeInTheDocument();
   });
 
-  // Test Case 7: Handles different color schemes
   it('renders with different color schemes', () => {
     const colorProps = {
       ...mockProps,

@@ -78,7 +78,6 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
   ) => {
     const dailyData = (kpis[dataKey] as DailyData[]) ?? [];
     
-    // Add safety check for dailyData
     if (!Array.isArray(dailyData)) {
       return {
         title,
@@ -197,7 +196,6 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
   );
 };
 
-// Custom comparison function for React.memo
 const arePropsEqual = (prevProps: ThreeChartsComponentProps, nextProps: ThreeChartsComponentProps) => {
   return (
     prevProps.dateRange.startDate === nextProps.dateRange.startDate &&
@@ -205,7 +203,6 @@ const arePropsEqual = (prevProps: ThreeChartsComponentProps, nextProps: ThreeCha
   );
 };
 
-// Memoize the component with custom comparison
 const MemoizedThreeChartsComponent = React.memo(ThreeChartsComponent, arePropsEqual);
 MemoizedThreeChartsComponent.displayName = 'ThreeChartsComponent';
 

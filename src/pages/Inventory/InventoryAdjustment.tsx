@@ -43,9 +43,12 @@ import {
 
 type BatchRow = {
   id: string;
+  batchNumber: string | number; // Store the batch_number from API (can be string or number)
   quantity: number;
-  oldQuantity: number; // Original quantity when batch was loaded
+  oldQuantity: number; 
   expiryDate: string;
+  oldExpiryDate: string;
+  quantityInput?: string; // Temporary string value for input during editing
 };
 
 type SelectedBrand = Brand | null;
@@ -153,7 +156,6 @@ const InventoryAdjustment: React.FC = () => {
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [originalValues, setOriginalValues] = useState<{ quantity: number; expiryDate: string } | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [pendingBatchId, setPendingBatchId] = useState<string | null>(null);
 
   // Ensure consistent border radius from the start
   useEffect(() => {
@@ -243,12 +245,21 @@ const InventoryAdjustment: React.FC = () => {
       const result = await getBatchesForProduct({ product_id: productId }).unwrap();
       
       // Transform API batches to BatchRow format
-      const transformedBatches: BatchRow[] = result.batches.map((batch) => ({
-        id: batch.batch_number.toString(),
-        quantity: batch.current_qty,
-        oldQuantity: batch.current_qty, // Store original quantity
-        expiryDate: batch.expiry_date ? dayjs(batch.expiry_date).format('YYYY-MM-DD') : ''
-      }));
+      const transformedBatches: BatchRow[] = result.batches.map((batch: any) => {
+        const expiryDateStr = batch.expiry_date ? dayjs(batch.expiry_date).format('YYYY-MM-DD') : '';
+        // batch_number from API can be string (like "CTZ-2026-06-A") or number
+        // We'll use it as-is for the API call
+        const batchNumber = batch.batch_number || batch.batchNumber;
+        
+        return {
+          id: String(batchNumber), // Use batch_number as the id for display
+          batchNumber: batchNumber, // Store batch_number for API calls
+          quantity: batch.current_qty,
+          oldQuantity: batch.current_qty, // Store original quantity
+          expiryDate: expiryDateStr,
+          oldExpiryDate: expiryDateStr // Store original expiry date
+        };
+      });
       
       startTransition(() => {
         setProductInfo(result.product);
@@ -408,9 +419,24 @@ const InventoryAdjustment: React.FC = () => {
   };
 
   const handleQuantityChange = (batchId: string, value: string) => {
-    const parsed = Number(value.replace(/[^0-9]/g, ''));
+    // Only allow numeric input
+    const numericValue = value.replace(/[^0-9]/g, '');
+    
     setBatchRows((prev) =>
-      prev.map((batch) => (batch.id === batchId ? { ...batch, quantity: Number.isNaN(parsed) ? 0 : parsed } : batch))
+      prev.map((batch) => {
+        if (batch.id === batchId) {
+          // Store the raw input string for display
+          const inputValue = numericValue === '' ? '' : numericValue;
+          // Parse to number for storage (remove leading zeros)
+          const parsed = numericValue === '' ? 0 : parseInt(numericValue, 10);
+          return { 
+            ...batch, 
+            quantity: Number.isNaN(parsed) ? 0 : parsed,
+            quantityInput: inputValue
+          };
+        }
+        return batch;
+      })
     );
   };
 
@@ -418,18 +444,27 @@ const InventoryAdjustment: React.FC = () => {
     const batch = batchRows.find(b => b.id === batchId);
     if (batch) {
       setEditingRowId(batchId);
-      // Store original values to restore if user cancels
+      // Store the committed values (oldQuantity/oldExpiryDate) to restore if user cancels
+      // This way cancel restores to the last "checked" state, not the current edited state
       setOriginalValues({
-        quantity: batch.quantity,
-        expiryDate: batch.expiryDate
+        quantity: batch.oldQuantity,
+        expiryDate: batch.oldExpiryDate
       });
+      // Initialize quantityInput with current quantity for editing
+      setBatchRows((prev) =>
+        prev.map((b) =>
+          b.id === batchId
+            ? { ...b, quantityInput: b.quantity === 0 ? '' : b.quantity.toString() }
+            : b
+        )
+      );
     }
   };
 
   const handleCancelEdit = (batchId?: string) => {
     const rowToCancel = batchId || editingRowId;
     if (rowToCancel && originalValues) {
-      // Restore original values
+      // Restore to the last committed values (when check was last clicked)
       setBatchRows((prev) =>
         prev.map((b) =>
           b.id === rowToCancel
@@ -437,6 +472,7 @@ const InventoryAdjustment: React.FC = () => {
                 ...b,
                 quantity: originalValues.quantity,
                 expiryDate: originalValues.expiryDate,
+                quantityInput: undefined, // Clear input value
               }
             : b
         )
@@ -447,33 +483,73 @@ const InventoryAdjustment: React.FC = () => {
   };
 
   const handleConfirmEdit = (batchId: string) => {
-    setPendingBatchId(batchId);
-    setConfirmDialogOpen(true);
+    // Just update the frontend display - exit edit mode
+    // DO NOT update oldQuantity/oldExpiryDate here - keep them as original values
+    // They will be updated only after successful save
+    setBatchRows((prev) =>
+      prev.map((b) => {
+        if (b.id === batchId) {
+          // If quantityInput exists, use it to update quantity (convert string to number)
+          let finalQuantity = b.quantity;
+          if (b.quantityInput !== undefined && b.quantityInput !== '') {
+            const parsed = parseInt(b.quantityInput, 10);
+            finalQuantity = Number.isNaN(parsed) ? 0 : parsed;
+          }
+          
+          return {
+            ...b,
+            quantity: finalQuantity, // Ensure quantity is set from quantityInput if it exists
+            // Keep oldQuantity and oldExpiryDate unchanged - they represent the original loaded values
+            quantityInput: undefined, // Clear input value
+          };
+        }
+        return b;
+      })
+    );
+    
+    // Exit edit mode
+    setEditingRowId(null);
+    setOriginalValues(null);
   };
 
   const handleConfirmAdjustment = async () => {
-    if (!pendingBatchId || !productInfo || !selectedType) {
+    if (!productInfo || !selectedType || batchRows.length === 0) {
       setConfirmDialogOpen(false);
-      setPendingBatchId(null);
-      return;
-    }
-
-    const batch = batchRows.find(b => b.id === pendingBatchId);
-    if (!batch) {
-      setConfirmDialogOpen(false);
-      setPendingBatchId(null);
       return;
     }
 
     try {
       const username = user?.username || 'admin';
       
-      const lines = [{
-        batch_number: parseInt(pendingBatchId),
-        old_qty: batch.oldQuantity,
-        new_qty: batch.quantity,
-        expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
-      }];
+      // Get all batches that have been modified (quantity or expiry date changed)
+      const modifiedBatches = batchRows.filter((batch) => {
+        const quantityChanged = batch.quantity !== batch.oldQuantity;
+        const expiryDateChanged = batch.expiryDate !== batch.oldExpiryDate;
+        return quantityChanged || expiryDateChanged;
+      });
+
+      if (modifiedBatches.length === 0) {
+        setConfirmDialogOpen(false);
+        return;
+      }
+
+      const lines = modifiedBatches.map((batch) => {
+        // Use batch.id (which is the batch_number string) for the API
+        // The backend expects batch_number, not batch_id
+        const batchNumber = batch.id; // This is the batch_number string like "CTZ-2026-06-A"
+        
+        if (!batchNumber) {
+          console.error('Invalid batchNumber for batch:', batch);
+          throw new Error(`Invalid batch_number for batch ${batch.id}`);
+        }
+        
+        return {
+          batch_number: batchNumber, // Use batch_number (string) for API as backend expects
+          old_qty: batch.oldQuantity,
+          new_qty: batch.quantity,
+          expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
+        };
+      });
 
       await adjustInventoryBatches({
         user: username,
@@ -481,45 +557,30 @@ const InventoryAdjustment: React.FC = () => {
         lines,
       }).unwrap();
 
-      // Update oldQuantity to reflect the new quantity after successful save
+      // Update oldQuantity and oldExpiryDate for all modified batches to reflect the new values after successful save
       setBatchRows((prev) =>
-        prev.map((b) =>
-          b.id === pendingBatchId
+        prev.map((b) => {
+          const modified = modifiedBatches.find(mb => mb.id === b.id);
+          return modified
             ? {
                 ...b,
                 oldQuantity: b.quantity, // Update old quantity to current quantity
+                oldExpiryDate: b.expiryDate, // Update old expiry date to current expiry date
               }
-            : b
-        )
+            : b;
+        })
       );
 
-      // Exit edit mode
-      setEditingRowId(null);
-      setOriginalValues(null);
       setConfirmDialogOpen(false);
-      setPendingBatchId(null);
       
-      // Optionally refresh batches to get latest data
+      // Refresh batches to get latest data
       if (selectedType) {
         fetchBatchesForProduct(selectedType.product_id);
       }
     } catch (error) {
       console.error('Error adjusting inventory:', error);
       // TODO: Show error toast/notification
-      // On error, restore original values
-      if (originalValues) {
-    setBatchRows((prev) =>
-          prev.map((b) =>
-            b.id === pendingBatchId
-              ? {
-                  ...b,
-                  quantity: originalValues.quantity,
-                  expiryDate: originalValues.expiryDate,
-                }
-              : b
-          )
-        );
-      }
+      setConfirmDialogOpen(false);
     }
   };
 
@@ -543,35 +604,24 @@ const InventoryAdjustment: React.FC = () => {
     setSelectedProductById(null);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!productInfo || !selectedType || batchRows.length === 0) {
       return;
     }
     
-    try {
-      // Get user from auth state
-      const username = user?.username || 'admin';
-      
-      // Transform batch rows to API format
-      const lines = batchRows.map((batch) => ({
-        batch_number: parseInt(batch.id),
-        old_qty: batch.oldQuantity,
-        new_qty: batch.quantity,
-        expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
-      }));
+    const modifiedBatches = batchRows.filter((batch) => {
+      const quantityChanged = batch.quantity !== batch.oldQuantity;
+      const expiryDateChanged = batch.expiryDate !== batch.oldExpiryDate;
+      return quantityChanged || expiryDateChanged;
+    });
 
-      const result = await adjustInventoryBatches({
-        user: username,
-        product_id: selectedType.product_id,
-        lines,
-      }).unwrap();
-
-      console.log('Inventory adjusted successfully:', result);
-      // TODO: Show success toast/notification
-    } catch (error) {
-      console.error('Error adjusting inventory:', error);
-      // TODO: Show error toast/notification
+    if (modifiedBatches.length === 0) {
+      // No changes to save
+      return;
     }
+
+    // Show confirmation modal
+    setConfirmDialogOpen(true);
   };
 
   const handleSortRequest = (key: string) => {
@@ -603,15 +653,46 @@ const InventoryAdjustment: React.FC = () => {
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
         
+        // Use quantityInput if available (during editing), otherwise use quantity
+        const displayValue = isEditing && batch.quantityInput !== undefined 
+          ? batch.quantityInput 
+          : (batch.quantity === 0 ? '' : batch.quantity.toString());
+        
         return (
         <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
           <TextField
-            value={batch.quantity}
+            value={displayValue}
             size="small"
-            type="number"
+            type="text"
             onChange={(event) => handleQuantityChange(batch.id, event.target.value)}
-            InputProps={{ inputProps: { min: 0 } }}
+            onBlur={(event) => {
+              // On blur, ensure we have a valid number, default to 0 if empty
+              const value = event.target.value.trim();
+              if (value === '') {
+                setBatchRows((prev) =>
+                  prev.map((b) => 
+                    b.id === batch.id 
+                      ? { ...b, quantity: 0, quantityInput: '' } 
+                      : b
+                  )
+                );
+              } else {
+                // Clear quantityInput so it uses the parsed number
+                setBatchRows((prev) =>
+                  prev.map((b) => 
+                    b.id === batch.id 
+                      ? { ...b, quantityInput: undefined } 
+                      : b
+                  )
+                );
+              }
+            }}
+            inputProps={{ 
+              inputMode: 'numeric',
+              pattern: '[0-9]*'
+            }}
             disabled={!isEditing}
+            placeholder="0"
             sx={{ 
               ...inputFieldStyles, 
               width: 120,
@@ -661,6 +742,10 @@ const InventoryAdjustment: React.FC = () => {
       key: 'actions',
       header: 'Actions',
       sortable: false,
+      columnWidth: '120px',
+      headerRender: () => (
+        <Box sx={{ textAlign: 'center', width: '100%' }}>Actions</Box>
+      ),
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
         
@@ -1055,10 +1140,9 @@ const InventoryAdjustment: React.FC = () => {
       <ConfirmationDialog
         open={confirmDialogOpen}
         title="Confirm Inventory Adjustment"
-        message={`Are you sure you want to adjust the inventory for Batch Number ${pendingBatchId}? This action cannot be undone.`}
+        message={`Are you sure you want to save all inventory adjustments? This action cannot be undone.`}
         onClose={() => {
           setConfirmDialogOpen(false);
-          setPendingBatchId(null);
         }}
         onConfirm={handleConfirmAdjustment}
         confirmLabel="Confirm"

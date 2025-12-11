@@ -217,7 +217,6 @@ const {
         return activeSortDirection === "asc" ? aValue - bValue : bValue - aValue;
       }
       
-      // Fallback: if types don't match, convert to string and compare
       return activeSortDirection === "asc"
         ? String(aValue).localeCompare(String(bValue))
         : String(bValue).localeCompare(String(aValue));

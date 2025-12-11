@@ -75,7 +75,6 @@ const ChartCard: React.FC<ChartCardProps> = ({
   return (
     <Card sx={{ 
       width: DASHBOARD_CONSTANTS.CARD.WIDTH,
-      // maxWidth: DASHBOARD_CONSTANTS.CARD.MAX_WIDTH,
       flex: DASHBOARD_CONSTANTS.CARD.FLEX,
       borderRadius: DASHBOARD_CONSTANTS.CARD.BORDER_RADIUS, 
       p: 0, 
@@ -101,7 +100,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
               tickInterval: yAxisConfig.tickInterval,
               disableLine: true,
               disableTicks: true,
-              tickLabelStyle: { fill: '#000', fontSize: 12 },
+              tickLabelStyle: { fill: '#000', fontSize: 8, fontWeight: 900 },
             }]}
             series={[{
               data: chartData.series1,

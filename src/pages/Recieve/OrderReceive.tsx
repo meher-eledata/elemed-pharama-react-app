@@ -1184,6 +1184,7 @@ const OrderReceive: React.FC = () => {
         open={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         title={ORDER_RECEIVE_MODAL.DETAILS_TITLE}
+        maxWidth="900px"
         content={
           <ProductDetailsModalContent
             productData={

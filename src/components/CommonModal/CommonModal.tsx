@@ -14,7 +14,8 @@ interface CommonModalProps {
   title: string;
   content: React.ReactNode;
   onClose: () => void;
-  actionButtons?: React.ReactNode; // Optional action buttons to display alongside Close button
+  actionButtons?: React.ReactNode;
+  maxWidth?: string;
 }
 
 const CommonModal: React.FC<CommonModalProps> = ({
@@ -23,6 +24,7 @@ const CommonModal: React.FC<CommonModalProps> = ({
   content,
   onClose,
   actionButtons,
+  maxWidth = '600px',
 }) => {
   return (
     <Dialog 
@@ -35,7 +37,7 @@ const CommonModal: React.FC<CommonModalProps> = ({
           maxHeight: '85vh',
           height: 'auto',
           width: '100%',
-          maxWidth: '600px',
+          maxWidth: maxWidth,
           borderRadius: '16px',
         },
         '& .MuiDialogContent-root': {

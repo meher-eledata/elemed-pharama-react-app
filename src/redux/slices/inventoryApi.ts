@@ -71,7 +71,8 @@ export interface GetBatchesForProductRequest {
 }
 
 export interface Batch {
-  batch_number: number;
+  batch_id?: number; // Numeric batch ID (required for API calls)
+  batch_number: number | string; // Batch number (can be string like "CTZ-2026-06-A")
   current_qty: number;
   expiry_date: string;
 }
@@ -122,7 +123,7 @@ export interface GetTypesForBrandAndProductRequest {
 
 // Adjust Inventory Batches interfaces
 export interface AdjustInventoryBatchLine {
-  batch_number: number;
+  batch_number: string | number; // API expects batch_number (can be string like "CTZ-2026-06-A" or numeric)
   old_qty: number;
   new_qty: number;
   expiry_date: string;

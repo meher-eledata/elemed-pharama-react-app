@@ -24,7 +24,6 @@ import { useCreateUserMutation, CreateUserRequest, IdentityDocumentType, UserRol
 import { extractErrorMessage, logError } from '../../../utils/errorUtils';
 import { RootState } from '../../../redux/store';
 
-// Constants for styling
 export const ADD_USER_MODAL_CONSTANTS = {
   MODAL: {
     WIDTH: '90%',
@@ -60,7 +59,6 @@ export const ADD_USER_MODAL_CONSTANTS = {
   }
 };
 
-// Styled TextField component
 const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     height: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
@@ -169,7 +167,6 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
   },
 }));
 
-// Styled FormControl for Select
 const StyledFormControl = styled(FormControl)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     height: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
@@ -279,39 +276,31 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   
-  // Get current user from Redux store
   const currentUser = useSelector((state: RootState) => state.auth.user);
   
-  // API hooks
   const [createUser] = useCreateUserMutation();
   
-  // Toast notification state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
 
-  // Helper function to show toast
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
 
-  // Transform UserData from modal to CreateUserRequest for API
   const transformUserDataToRequest = (userData: UserData): CreateUserRequest => {
-    // Map identity document string to number: 0 = Aadhar Card, 1 = Driver's License
     const identityDocumentMap: Record<string, IdentityDocumentType> = {
       'Aadhar Card': 0,
       'Driving Licence': 1,
     };
 
-    // Map role string to number: 0 = Admin, 1 = Pharmacist
     const roleMap: Record<string, UserRole> = {
       'Admin': 0,
       'Pharmacist': 1,
     };
 
-    // Generate username from email (take part before @) or use firstname+lastname
     const username = userData.emailId.split('@')[0] || 
                      `${userData.firstName.toLowerCase()}_${userData.lastName.toLowerCase()}`;
 
@@ -350,7 +339,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
     const value = e.target.value as string;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear ID document number when identity document changes
     if (name === 'identityDocument') {
       setFormData(prev => ({ ...prev, idDocumentNumber: '' }));
     }
@@ -379,7 +367,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
 
       showToast('User created successfully! Password setup link has been sent to the email.', 'success',);
       
-      // Close dialogs
       setShowPasswordConfirmation(false);
       
       if (onSuccess) {
@@ -388,7 +375,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
       
       setTimeout(() => {
         onClose();
-        // Reset form
         setFormData(initialUserState);
       }, 1500);
       
@@ -439,7 +425,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
         overflowY: 'auto',
         border: '1px solid rgba(255, 255, 255, 0.2)',
       }}>
-        {/* Enhanced Header */}
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -494,7 +479,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
           </IconButton>
         </Box>
 
-        {/* Form Fields */}
         <Box sx={{ flex: 1 }}>
           <Grid 
             container 
@@ -502,7 +486,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
             rowSpacing={ADD_USER_MODAL_CONSTANTS.GRID.ROW_SPACING}
             sx={{ mb: 2 }}
           >
-            {/* First Name */}
             <Grid item xs={12} sm={6} component="div">
               <Typography 
                 variant="body2" 
@@ -526,7 +509,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
               />
             </Grid>
 
-            {/* Last Name */}
             <Grid item xs={12} sm={6} component="div">
               <Typography 
                 variant="body2" 
@@ -574,7 +556,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
               />
             </Grid>
 
-            {/* Mobile Number */}
             <Grid item xs={12} sm={6} component="div">
               <Typography 
                 variant="body2" 
@@ -598,7 +579,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
               />
             </Grid>
 
-            {/* Address Field - Trigger */}
             <Grid item xs={12} component="div">
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography 
@@ -839,7 +819,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
               </Grid>
             )}
 
-            {/* Identity Document Dropdown */}
             <Grid item xs={12} sm={6} component="div">
               <Typography 
                 variant="body2" 
@@ -869,7 +848,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
               </StyledFormControl>
             </Grid>
 
-            {/* ID Document Number */}
             <Grid item xs={12} sm={6} component="div">
               <Typography 
                 variant="body2" 
@@ -894,7 +872,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
               />
             </Grid>
 
-            {/* Role Dropdown */}
             <Grid item xs={12} sm={6} component="div">
               <Typography 
                 variant="body2" 
@@ -926,7 +903,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
           </Grid>
         </Box>
 
-        {/* Enhanced Action Buttons */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'flex-end', 
@@ -959,7 +935,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
       isLoading={isCreatingUser}
     />
     
-    {/* Toast Notification */}
     <Snackbar
       open={snackbarOpen}
       autoHideDuration={4000}
