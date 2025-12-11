@@ -238,6 +238,7 @@ export const ReusableTable = <T,>({
                         display: 'flex',
                         alignItems: isTabletOrMobile ? 'stretch' : 'center',
                         flexDirection: isTabletOrMobile ? 'column' : 'row',
+                        justifyContent: isTabletOrMobile ? 'flex-start' : 'space-between',
                         bgcolor: '#F6F8FB',
                         borderRadius: '16px',
                         border: '1px solid #9AABB',
@@ -362,36 +363,38 @@ export const ReusableTable = <T,>({
                             />
                         </Box>
                     )}
-                    {customSearchBarContent && (
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {customSearchBarContent}
-                        </Box>
-                    )}
-                    {searchAndFilterConfig.filterOptions.length > 0 && (
-                        <Button
-                            variant="contained"
-                            startIcon={
-                                showFilters
-                                    ? <FilterListOffIcon />
-                                    : <FilterAltIcon />
-                            }
-                            onClick={onShowFiltersToggle}
-                            sx={{
-                                minWidth: 151,
-                                height: 38,
-                                borderRadius: '12px',
-                                bgcolor: '#ECEFF4',
-                                color: '#1A212B',
-                                textTransform: 'none',
-                                padding: '12px 16px',
-                                marginLeft: isTabletOrMobile ? 0 : '45%',
-                                width: isTabletOrMobile ? '100%' : 'auto',
-                                '&:hover': { bgcolor: '#E0E5EA', },
-                            }}
-                        >
-                            {showFilters ? 'Hide filters' : 'Show filters'}
-                        </Button>
-                    )}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, justifyContent: isTabletOrMobile ? 'flex-start' : 'flex-end' }}>
+                        {customSearchBarContent && (
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                {customSearchBarContent}
+                            </Box>
+                        )}
+                        {searchAndFilterConfig.filterOptions.length > 0 && (
+                            <Button
+                                variant="contained"
+                                startIcon={
+                                    showFilters
+                                        ? <FilterListOffIcon />
+                                        : <FilterAltIcon />
+                                }
+                                onClick={onShowFiltersToggle}
+                                sx={{
+                                    minWidth: 151,
+                                    height: 38,
+                                    borderRadius: '12px',
+                                    bgcolor: '#ECEFF4',
+                                    color: '#1A212B',
+                                    textTransform: 'none',
+                                    padding: '12px 16px',
+                                    width: isTabletOrMobile ? '100%' : 'auto',
+                                    flexShrink: 0,
+                                    '&:hover': { bgcolor: '#E0E5EA', },
+                                }}
+                            >
+                                {showFilters ? 'Hide filters' : 'Show filters'}
+                            </Button>
+                        )}
+                    </Box>
                 </Box>
             )}
 

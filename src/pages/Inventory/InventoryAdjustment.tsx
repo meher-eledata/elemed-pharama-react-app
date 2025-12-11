@@ -52,7 +52,7 @@ type SelectedBrand = Brand | null;
 type SelectedProduct = ProductForBrand | null;
 type SelectedType = TypeForBrandAndProduct | null;
 
-type SearchType = 'product' | 'id' | 'code';
+type SearchType = 'product' | 'id';
 
 
 const inputFieldStyles = {
@@ -147,12 +147,9 @@ const InventoryAdjustment: React.FC = () => {
   });
   const [searchType, setSearchType] = useState<SearchType>('product');
   const [productIdSearch, setProductIdSearch] = useState<string>('');
-  const [productCodeSearch, setProductCodeSearch] = useState<string>('');
   const [productIdOptions, setProductIdOptions] = useState<Array<{ id: number; name: string }>>([]);
-  const [productCodeOptions, setProductCodeOptions] = useState<Array<{ code: string; name: string; id: number }>>([]);
   const [isLoadingProductOptions, setIsLoadingProductOptions] = useState(false);
   const [selectedProductById, setSelectedProductById] = useState<{ id: number; name: string } | null>(null);
-  const [selectedProductByCode, setSelectedProductByCode] = useState<{ code: string; name: string; id: number } | null>(null);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [originalValues, setOriginalValues] = useState<{ quantity: number; expiryDate: string } | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -241,20 +238,18 @@ const InventoryAdjustment: React.FC = () => {
     }
   }, [getTypesForBrandAndProduct]);
 
-  // Fetch batches when type is selected
   const fetchBatchesForProduct = useCallback(async (productId: number) => {
     try {
       const result = await getBatchesForProduct({ product_id: productId }).unwrap();
       
       // Transform API batches to BatchRow format
       const transformedBatches: BatchRow[] = result.batches.map((batch) => ({
-        id: batch.batch_id.toString(),
+        id: batch.batch_number.toString(),
         quantity: batch.current_qty,
         oldQuantity: batch.current_qty, // Store original quantity
         expiryDate: batch.expiry_date ? dayjs(batch.expiry_date).format('YYYY-MM-DD') : ''
       }));
       
-      // Batch state updates together to prevent blinking
       startTransition(() => {
         setProductInfo(result.product);
       setBatchRows(transformedBatches);
@@ -268,12 +263,11 @@ const InventoryAdjustment: React.FC = () => {
     }
   }, [getBatchesForProduct]);
 
-  // Fetch all product IDs and codes for dropdown options
+  // Fetch all product IDs for dropdown options
   const fetchProductOptions = useCallback(async () => {
     setIsLoadingProductOptions(true);
     try {
       const productIds: Array<{ id: number; name: string }> = [];
-      const productCodes: Array<{ code: string; name: string; id: number }> = [];
 
       for (const brand of brands) {
         try {
@@ -295,16 +289,7 @@ const InventoryAdjustment: React.FC = () => {
                   if (!productIds.find(p => p.id === productInfo.product_id)) {
                     productIds.push({
                       id: productInfo.product_id,
-                      name: `${productInfo.product_name} (${productInfo.type})`
-                    });
-                  }
-                  
-                  // Add to product code options
-                  if (productInfo.product_code && !productCodes.find(p => p.code === productInfo.product_code)) {
-                    productCodes.push({
-                      code: productInfo.product_code,
-                      name: `${productInfo.product_name} (${productInfo.type})`,
-                      id: productInfo.product_id
+                      name: `${productInfo.product_id}`
                     });
                   }
                 } catch (e) {
@@ -321,7 +306,6 @@ const InventoryAdjustment: React.FC = () => {
       }
 
       setProductIdOptions(productIds);
-      setProductCodeOptions(productCodes);
     } catch (error) {
       console.error('Error fetching product options:', error);
     } finally {
@@ -330,7 +314,7 @@ const InventoryAdjustment: React.FC = () => {
   }, [brands, getProductsForBrand, getTypesForBrandAndProduct, getBatchesForProduct]);
 
   useEffect(() => {
-    if ((searchType === 'id' || searchType === 'code') && brands.length > 0) {
+    if (searchType === 'id' && brands.length > 0) {
       fetchProductOptions();
     }
   }, [searchType, brands.length, fetchProductOptions]);
@@ -485,7 +469,7 @@ const InventoryAdjustment: React.FC = () => {
       const username = user?.username || 'admin';
       
       const lines = [{
-        batch_id: parseInt(pendingBatchId),
+        batch_number: parseInt(pendingBatchId),
         old_qty: batch.oldQuantity,
         new_qty: batch.quantity,
         expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
@@ -556,9 +540,7 @@ const InventoryAdjustment: React.FC = () => {
     setSearchTerm('');
     setSortConfig({ key: 'id', direction: 'asc' });
     setProductIdSearch('');
-    setProductCodeSearch('');
     setSelectedProductById(null);
-    setSelectedProductByCode(null);
   };
 
   const handleSave = async () => {
@@ -572,7 +554,7 @@ const InventoryAdjustment: React.FC = () => {
       
       // Transform batch rows to API format
       const lines = batchRows.map((batch) => ({
-        batch_id: parseInt(batch.id),
+        batch_number: parseInt(batch.id),
         old_qty: batch.oldQuantity,
         new_qty: batch.quantity,
         expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
@@ -603,7 +585,7 @@ const InventoryAdjustment: React.FC = () => {
   const batchColumns: TableColumn<BatchRow>[] = [
     {
       key: 'id',
-      header: 'Batch ID',
+      header: 'Batch Number',
       sortable: true,
       render: (batch) => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -615,26 +597,36 @@ const InventoryAdjustment: React.FC = () => {
       key: 'quantity',
       header: 'Current Qty',
       sortable: true,
+      headerRender: () => (
+        <Box sx={{ textAlign: 'left', width: '100%' }}>Current Qty</Box>
+      ),
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
         
         return (
-        <TextField
-          value={batch.quantity}
-          size="small"
-          type="number"
-          onChange={(event) => handleQuantityChange(batch.id, event.target.value)}
-          InputProps={{ inputProps: { min: 0 } }}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <TextField
+            value={batch.quantity}
+            size="small"
+            type="number"
+            onChange={(event) => handleQuantityChange(batch.id, event.target.value)}
+            InputProps={{ inputProps: { min: 0 } }}
             disabled={!isEditing}
             sx={{ 
               ...inputFieldStyles, 
               width: 120,
+              textAlign: 'left',
+              '& .MuiInputBase-input': {
+                textAlign: 'left',
+              },
               '& .MuiInputBase-input.Mui-disabled': {
                 WebkitTextFillColor: '#1f2937',
-                backgroundColor: 'transparent'
+                backgroundColor: 'transparent',
+                textAlign: 'left',
               }
             }}
           />
+        </Box>
         );
       }
     },
@@ -642,23 +634,26 @@ const InventoryAdjustment: React.FC = () => {
       key: 'expiryDate',
       header: 'Expiry date',
       sortable: true,
+      columnWidth: '180px',
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
         
         return (
-        <PharmaDatePicker
-          value={batch.expiryDate ? dayjs(batch.expiryDate) : null}
+        <Box sx={{ width: 150, maxWidth: 150 }}>
+          <PharmaDatePicker
+            value={batch.expiryDate ? dayjs(batch.expiryDate) : null}
             onChange={(newValue) => {
-            setBatchRows((prev) =>
-              prev.map((row) =>
-                row.id === batch.id ? { ...row, expiryDate: newValue ? newValue.format('YYYY-MM-DD') : '' } : row
-              )
+              setBatchRows((prev) =>
+                prev.map((row) =>
+                  row.id === batch.id ? { ...row, expiryDate: newValue ? newValue.format('YYYY-MM-DD') : '' } : row
+                )
               );
             }}
             disabled={!isEditing}
-          width={220}
-          height={36}
-        />
+            width={150}
+            height={36}
+          />
+        </Box>
         );
       }
     },
@@ -774,7 +769,19 @@ const InventoryAdjustment: React.FC = () => {
                 <RadioGroup
                   row
                   value={searchType}
-                  onChange={(e) => setSearchType(e.target.value as SearchType)}
+                  onChange={(e) => {
+                    const newSearchType = e.target.value as SearchType;
+                    setSearchType(newSearchType);
+                    // Reset all state when switching search types
+                    setSelectedBrand(null);
+                    setSelectedProduct(null);
+                    setSelectedType(null);
+                    setProductsForBrand([]);
+                    setTypesForProduct([]);
+                    setProductInfo(null);
+                    setBatchRows([]);
+                    setSelectedProductById(null);
+                  }}
                   className="search-type-radio-group"
                 >
                   <FormControlLabel
@@ -787,52 +794,114 @@ const InventoryAdjustment: React.FC = () => {
                     control={<Radio />}
                     label="Search by Product ID"
                   />
-                  <FormControlLabel
-                    value="code"
-                    control={<Radio />}
-                    label="Search by Product Code"
-                  />
                 </RadioGroup>
               </FormControl>
             </Box>
             <Box className="product-selection-fields">
-              <Box className="selection-field-group">
-                <Typography variant="body2" className="field-label">
-                  {searchType === 'product' ? 'Brand' : searchType === 'id' ? 'Product ID' : 'Product Code'}
-                </Typography>
-                {searchType === 'product' ? (
-                  <Autocomplete
-                    options={brands}
-                    getOptionLabel={(option) => option.brand_name}
-                    value={selectedBrand}
-                    onChange={(_, newValue) => {
-                      setSelectedBrand(newValue);
-                      if (newValue) {
-                        fetchProductsForBrand(newValue.id);
-                      } else {
-                        setProductsForBrand([]);
-                        setSelectedProduct(null);
-                        setSelectedType(null);
-                        setTypesForProduct([]);
-                        setProductInfo(null);
-                        setBatchRows([]);
-                      }
-                    }}
-                    disabled={isLoadingBrands}
-                    renderInput={(params) => (
-                    <TextField
-                        {...params}
-                      size="small"
-                        placeholder="Select Brand"
-                      sx={inputFieldStyles}
+              {searchType === 'product' ? (
+                <>
+                  <Box className="selection-field-group">
+                    <Typography variant="body2" className="field-label">
+                      Brand
+                    </Typography>
+                    <Autocomplete
+                      options={brands}
+                      getOptionLabel={(option) => option.brand_name}
+                      value={selectedBrand}
+                      onChange={(_, newValue) => {
+                        setSelectedBrand(newValue);
+                        if (newValue) {
+                          fetchProductsForBrand(newValue.id);
+                        } else {
+                          setProductsForBrand([]);
+                          setSelectedProduct(null);
+                          setSelectedType(null);
+                          setTypesForProduct([]);
+                          setProductInfo(null);
+                          setBatchRows([]);
+                        }
+                      }}
+                      disabled={isLoadingBrands}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          size="small"
+                          placeholder="Select Brand"
+                          sx={inputFieldStyles}
+                        />
+                      )}
+                      sx={{ width: '100%' }}
                     />
-                    )}
-                    sx={{ width: '100%' }}
-                  />
-                ) : searchType === 'id' ? (
+                  </Box>
+                  <Box className="selection-field-group">
+                    <Typography variant="body2" className="field-label">
+                      Medicine Name
+                    </Typography>
+                    <Autocomplete
+                      options={productsForBrand}
+                      getOptionLabel={(option) => option.name}
+                      value={selectedProduct}
+                      onChange={(_, newValue) => {
+                        setSelectedProduct(newValue);
+                        if (newValue && selectedBrand) {
+                          fetchTypesForProduct(selectedBrand.id, selectedBrand.brand_name, newValue.name);
+                        } else {
+                          setTypesForProduct([]);
+                          setSelectedType(null);
+                          setProductInfo(null);
+                          setBatchRows([]);
+                        }
+                      }}
+                      disabled={!selectedBrand || isLoadingProducts}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          size="small"
+                          placeholder="Select Medicine"
+                          sx={inputFieldStyles}
+                        />
+                      )}
+                      sx={{ width: '100%' }}
+                    />
+                  </Box>
+                  <Box className="selection-field-group">
+                    <Typography variant="body2" className="field-label">
+                      Type
+                    </Typography>
+                    <Autocomplete
+                      options={typesForProduct}
+                      getOptionLabel={(option) => option.type}
+                      value={selectedType}
+                      onChange={(_, newValue) => {
+                        setSelectedType(newValue);
+                        if (newValue) {
+                          fetchBatchesForProduct(newValue.product_id);
+                        } else {
+                          setProductInfo(null);
+                          setBatchRows([]);
+                        }
+                      }}
+                      disabled={!selectedProduct || isLoadingTypes}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          size="small"
+                          placeholder="Select Type"
+                          sx={inputFieldStyles}
+                        />
+                      )}
+                      sx={{ width: '100%' }}
+                    />
+                  </Box>
+                </>
+              ) : (
+                <Box className="selection-field-group">
+                  <Typography variant="body2" className="field-label">
+                    Product ID
+                  </Typography>
                   <Autocomplete
                     options={productIdOptions}
-                    getOptionLabel={(option) => typeof option === 'string' ? option : `${option.id} - ${option.name}`}
+                    getOptionLabel={(option) => typeof option === 'string' ? option : option.id.toString()}
                     value={selectedProductById}
                     onChange={(_, newValue) => {
                       setSelectedProductById(newValue);
@@ -847,45 +916,7 @@ const InventoryAdjustment: React.FC = () => {
                     filterOptions={(options, params) => {
                       const filtered = options.filter((option) => {
                         const searchValue = params.inputValue.toLowerCase();
-                        return (
-                          option.id.toString().includes(searchValue) ||
-                          option.name.toLowerCase().includes(searchValue)
-                        );
-                      });
-                      return filtered;
-                    }}
-                    renderInput={(params) => (
-                    <TextField
-                        {...params}
-                      size="small"
-                        placeholder="Select Product ID"
-                        sx={inputFieldStyles}
-                      />
-                    )}
-                    sx={{ width: '100%' }}
-                  />
-                ) : (
-                  <Autocomplete
-                    options={productCodeOptions}
-                    getOptionLabel={(option) => typeof option === 'string' ? option : `${option.code} - ${option.name}`}
-                    value={selectedProductByCode}
-                    onChange={(_, newValue) => {
-                      setSelectedProductByCode(newValue);
-                      if (newValue) {
-                        fetchBatchesForProduct(newValue.id);
-                      } else {
-                        setProductInfo(null);
-                        setBatchRows([]);
-                      }
-                    }}
-                    loading={isLoadingProductOptions}
-                    filterOptions={(options, params) => {
-                      const filtered = options.filter((option) => {
-                        const searchValue = params.inputValue.toLowerCase();
-                        return (
-                          option.code.toLowerCase().includes(searchValue) ||
-                          option.name.toLowerCase().includes(searchValue)
-                        );
+                        return option.id.toString().includes(searchValue);
                       });
                       return filtered;
                     }}
@@ -893,74 +924,14 @@ const InventoryAdjustment: React.FC = () => {
                       <TextField
                         {...params}
                         size="small"
-                        placeholder="Select Product Code"
-                      sx={inputFieldStyles}
-                    />
+                        placeholder="Select Product ID"
+                        sx={inputFieldStyles}
+                      />
                     )}
                     sx={{ width: '100%' }}
                   />
-                )}
-              </Box>
-              <Box className="selection-field-group">
-                <Typography variant="body2" className="field-label">
-                  Medicine Name
-                </Typography>
-                <Autocomplete
-                  options={productsForBrand}
-                  getOptionLabel={(option) => option.name}
-                  value={selectedProduct}
-                  onChange={(_, newValue) => {
-                    setSelectedProduct(newValue);
-                    if (newValue && selectedBrand) {
-                      fetchTypesForProduct(selectedBrand.id, selectedBrand.brand_name, newValue.name);
-                    } else {
-                      setTypesForProduct([]);
-                      setSelectedType(null);
-                      setProductInfo(null);
-                      setBatchRows([]);
-                    }
-                  }}
-                  disabled={!selectedBrand || isLoadingProducts}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      placeholder="Select Medicine"
-                      sx={inputFieldStyles}
-                    />
-                  )}
-                  sx={{ width: '100%' }}
-                />
-              </Box>
-              <Box className="selection-field-group">
-                <Typography variant="body2" className="field-label">
-                  Type
-                </Typography>
-                <Autocomplete
-                  options={typesForProduct}
-                  getOptionLabel={(option) => option.type}
-                  value={selectedType}
-                  onChange={(_, newValue) => {
-                    setSelectedType(newValue);
-                    if (newValue) {
-                      fetchBatchesForProduct(newValue.product_id);
-                    } else {
-                      setProductInfo(null);
-                      setBatchRows([]);
-                    }
-                  }}
-                  disabled={!selectedProduct || isLoadingTypes}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      placeholder="Select Type"
-                      sx={inputFieldStyles}
-                    />
-                  )}
-                  sx={{ width: '100%' }}
-                />
-              </Box>
+                </Box>
+              )}
               <Box className="product-details-wrapper">
                 <Card variant="outlined" className="product-details-card">
                   <CardContent>
@@ -970,17 +941,24 @@ const InventoryAdjustment: React.FC = () => {
                     {productInfo ? (
                     <Box className="product-details-grid">
                         <Typography variant="body2" className="detail-label">
-                          Product ID
+                          Product Name
                       </Typography>
                         <Typography variant="body2" className="detail-value">
-                          {productInfo.product_id}
+                          {productInfo.product_name}
                       </Typography>
 
                         <Typography variant="body2" className="detail-label">
-                          Product Code
+                          Type
                       </Typography>
                         <Typography variant="body2" className="detail-value">
-                          {productInfo.product_code}
+                          {productInfo.type}
+                      </Typography>
+
+                        <Typography variant="body2" className="detail-label">
+                          Brand Name
+                      </Typography>
+                        <Typography variant="body2" className="detail-value">
+                          {productInfo.brand_name || (brands.find(b => b.id.toString() === productInfo.brand_id)?.brand_name || productInfo.brand_id)}
                       </Typography>
 
                         <Typography variant="body2" className="detail-label">
@@ -994,7 +972,7 @@ const InventoryAdjustment: React.FC = () => {
                           Total Quantity
                       </Typography>
                         <Typography variant="body2" className="detail-value">
-                          {totalQuantity}
+                          {productInfo.total_quantity ?? totalQuantity}
                         </Typography>
                     </Box>
                     ) : (
@@ -1077,7 +1055,7 @@ const InventoryAdjustment: React.FC = () => {
       <ConfirmationDialog
         open={confirmDialogOpen}
         title="Confirm Inventory Adjustment"
-        message={`Are you sure you want to adjust the inventory for Batch ID ${pendingBatchId}? This action cannot be undone.`}
+        message={`Are you sure you want to adjust the inventory for Batch Number ${pendingBatchId}? This action cannot be undone.`}
         onClose={() => {
           setConfirmDialogOpen(false);
           setPendingBatchId(null);

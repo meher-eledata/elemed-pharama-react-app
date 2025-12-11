@@ -232,6 +232,89 @@
     .MuiTableCell-root {
       padding-top: 8px;
       padding-bottom: 8px;
+      // padding-left: 56px;
+    }
+
+    // Reduce gap between header and body - make headers closer to content
+    .MuiTableHead-root {
+      .MuiTableRow-root {
+        .MuiTableCell-root {
+          padding-bottom: 0px !important;
+          padding-left: 36px !important;
+          padding-right: 8px !important;
+          padding-top: 8px !important;
+        }
+      }
+    }
+
+    .MuiTableBody-root {
+      .MuiTableRow-root:first-child {
+        .MuiTableCell-root {
+          padding-top: 0px !important;
+          // padding-left: 56px;
+        }
+      }
+    }
+
+    // Remove any extra spacing from table structure
+    .MuiTable-root {
+      border-collapse: collapse;
+    }
+
+    .MuiTableHead-root {
+      margin-bottom: 0 !important;
+    }
+
+    .MuiTableBody-root {
+      margin-top: 0 !important;
+    }
+
+    // Left align Current Qty column
+    .MuiTableHead-root,
+    .MuiTableBody-root {
+      .MuiTableRow-root {
+        .MuiTableCell-root {
+          // Target the quantity column (2nd column)
+          &:nth-child(2) {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            padding-left: 6px !important;
+            margin-right: 20px;
+            .MuiBox-root {
+              justify-content: flex-start !important;
+            }
+          }
+        }
+      }
+    }
+
+    // Target each header TableCell individually
+    .MuiTableHead-root {
+      .MuiTableRow-root {
+        .MuiTableCell-root {
+          // 1st column - Batch Number
+          &:nth-child(1) {
+            padding-left: 36px !important;
+          }
+
+          // 2nd column - Current Qty
+          &:nth-child(2) {
+            padding-left: 6px !important;
+            margin-right: 20px;
+          }
+
+          // 3rd column - Expiry date
+          &:nth-child(3) {
+            padding-left: 0px !important;
+          }
+
+          // 4th column - Actions
+          &:nth-child(4) {
+            padding-left: 20px !important;
+            // margin-left: 20px;
+          }
+        }
+      }
     }
   }
 

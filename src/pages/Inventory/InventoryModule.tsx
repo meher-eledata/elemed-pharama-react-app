@@ -561,25 +561,6 @@ const InventoryModule: React.FC = () => {
             {INVENTORY_LABELS.excessStockTab}
           </Button>
           <Button
-            onClick={() => handleTabClick('expired')}
-            sx={{
-              backgroundColor: selectedStockType === 'expired' ? '#5C17E5' : 'transparent',
-              color: selectedStockType === 'expired' ? '#FFFFFF' : '#1A212B',
-              border: selectedStockType === 'expired' ? 'none' : '1px solid #D1D5DB',
-              borderRadius: '0.5rem',
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '14px',
-              padding: '8px 16px',
-              minWidth: '120px',
-              '&:hover': {
-                backgroundColor: selectedStockType === 'expired' ? '#4C14C7' : 'transparent',
-              },
-            }}
-          >
-            {INVENTORY_LABELS.expiredStockTab}
-          </Button>
-          <Button
             onClick={() => handleTabClick('nearExpiry')}
             sx={{
               backgroundColor: selectedStockType === 'nearExpiry' ? '#5C17E5' : 'transparent',
@@ -597,6 +578,25 @@ const InventoryModule: React.FC = () => {
             }}
           >
             {INVENTORY_LABELS.nearExpiryStockTab}
+          </Button>
+          <Button
+            onClick={() => handleTabClick('expired')}
+            sx={{
+              backgroundColor: selectedStockType === 'expired' ? '#5C17E5' : 'transparent',
+              color: selectedStockType === 'expired' ? '#FFFFFF' : '#1A212B',
+              border: selectedStockType === 'expired' ? 'none' : '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '14px',
+              padding: '8px 16px',
+              minWidth: '120px',
+              '&:hover': {
+                backgroundColor: selectedStockType === 'expired' ? '#4C14C7' : 'transparent',
+              },
+            }}
+          >
+            {INVENTORY_LABELS.expiredStockTab}
           </Button>
         </Box>
 
@@ -692,49 +692,6 @@ const InventoryModule: React.FC = () => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: selectedStockType === 'expired' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
-                borderRadius: '16px',
-                transition: 'background-color 0.3s ease-in-out',
-                pointerEvents: 'none',
-                zIndex: 1,
-              },
-              '& > *': {
-                position: 'relative',
-                zIndex: 2,
-              }
-            }}
-          >
-            <Typography variant="subtitle2" className="text">
-              {INVENTORY_LABELS.totalExpiredStock}
-            </Typography>
-            <Box className="number">
-              <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.pastExpiryCount ?? 0}
-              </Typography>
-              {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
-              <Typography
-                variant="caption"
-                color="success.main"
-                className="percentage"
-              >
-                {/* 8% */}
-              </Typography>
-            </Box>
-            <WarningIcon sx={{ position: 'absolute', bottom: 16, right: 16, fontSize: 80, color: '#EF4444', opacity: 0.2 }} />
-          </Box>
-
-          <Box 
-            className="summary-card4"
-            sx={{
-              position: 'relative',
-              transition: 'all 0.3s ease-in-out',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
                 backgroundColor: selectedStockType === 'nearExpiry' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
                 borderRadius: '16px',
                 transition: 'background-color 0.3s ease-in-out',
@@ -764,7 +721,50 @@ const InventoryModule: React.FC = () => {
                 {/* 8% */}
               </Typography>
             </Box>
-            <img src={ASSET_PATHS.Chart3} alt="icon" className="card-icon4" />
+            <img src={ASSET_PATHS.Chart3} alt="icon" className="card-icon3" />
+          </Box>
+
+          <Box 
+            className="summary-card4"
+            sx={{
+              position: 'relative',
+              transition: 'all 0.3s ease-in-out',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: selectedStockType === 'expired' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
+                borderRadius: '16px',
+                transition: 'background-color 0.3s ease-in-out',
+                pointerEvents: 'none',
+                zIndex: 1,
+              },
+              '& > *': {
+                position: 'relative',
+                zIndex: 2,
+              }
+            }}
+          >
+            <Typography variant="subtitle2" className="text">
+              {INVENTORY_LABELS.totalExpiredStock}
+            </Typography>
+            <Box className="number">
+              <Typography variant="h3" className="big-number">
+                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.pastExpiryCount ?? 0}
+              </Typography>
+              {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
+              <Typography
+                variant="caption"
+                color="success.main"
+                className="percentage"
+              >
+                {/* 8% */}
+              </Typography>
+            </Box>
+            <WarningIcon sx={{ position: 'absolute', bottom: 16, right: 16, fontSize: 80, color: '#EF4444', opacity: 0.2 }} />
           </Box>
         </Box>
       </Box>

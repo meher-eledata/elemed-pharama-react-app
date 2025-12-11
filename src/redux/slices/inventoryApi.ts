@@ -71,7 +71,7 @@ export interface GetBatchesForProductRequest {
 }
 
 export interface Batch {
-  batch_id: number;
+  batch_number: number;
   current_qty: number;
   expiry_date: string;
 }
@@ -81,7 +81,8 @@ export interface ProductInfo {
   product_name: string;
   type: string;
   brand_id: string;
-  product_code: string;
+  brand_name?: string;
+  product_code?: string;
   hsn_id: string;
   total_quantity: number;
 }
@@ -121,7 +122,7 @@ export interface GetTypesForBrandAndProductRequest {
 
 // Adjust Inventory Batches interfaces
 export interface AdjustInventoryBatchLine {
-  batch_id: number;
+  batch_number: number;
   old_qty: number;
   new_qty: number;
   expiry_date: string;
