@@ -11,6 +11,8 @@ export interface Product {
   quantity: number;
   type: string;
   discount: number;
+  product_id?: number; // Product ID for fetching batches
+  discountAuthorizedBy?: string; // Name of person authorizing the discount
   // GST fields (optional - only populated when coming back from Receipt page)
   cgst?: string;
   cgstPercent?: string;

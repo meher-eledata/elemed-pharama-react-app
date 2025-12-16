@@ -1,5 +1,5 @@
-import React, { Dispatch, SetStateAction } from 'react';
-import { Box, TextField, IconButton, Tooltip, Select, MenuItem, FormControl } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, TextField, IconButton, Tooltip, Select, MenuItem, FormControl, CircularProgress } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
@@ -9,6 +9,9 @@ import { SALES_PAGE_CONSTANTS } from '../../config/constants/SalesPage.constants
 import DeleteNewIcon from '../../assets/DeleteNew.svg';
 import { AppDispatch } from '../../redux/store';
 import { updateItemDetails } from '../../redux/slices/cartSlice';
+import { useGetBatchesForProductMutation } from '../../redux/slices/inventoryApi';
+import { extractProductId } from './SalesPage.utils';
+import { useGetDoctorNamesQuery } from '../../redux/slices/salesApi';
 
 interface GetTableColumnsParams {
   editingRowId: string | null;
@@ -18,7 +21,248 @@ interface GetTableColumnsParams {
   handleSaveClick: () => void;
   handleCancelClick: () => void;
   handleDeleteClick: (productId?: string) => void;
+  apiProducts: any[];
 }
+
+// Discount Field Component with Authorization
+const DiscountField: React.FC<{
+  item: Product;
+  dispatch: AppDispatch;
+  isEditing: boolean;
+}> = ({ item, dispatch, isEditing }) => {
+  const { data: doctorNames = [], isLoading: isLoadingDoctors } = useGetDoctorNamesQuery();
+
+  if (!isEditing) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <span>{item.discount}%</span>
+        {item.discount >= 1 && item.discountAuthorizedBy && (
+          <span style={{ fontSize: '11px', color: '#728197' }}>
+            Auth: {item.discountAuthorizedBy}
+          </span>
+        )}
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center' }}>
+      <TextField
+        value={item.discount}
+        onChange={(e) => {
+          const value = parseInt(e.target.value) || 0;
+          dispatch(updateItemDetails({
+            id: item.id,
+            updates: { 
+              discount: Math.max(0, Math.min(100, value)),
+              // Clear discountAuthorizedBy if discount is set to 0
+              ...(value < 1 && { discountAuthorizedBy: undefined })
+            }
+          }));
+        }}
+        size="small"
+        type="number"
+        inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
+        sx={{ 
+          width: 80,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '8px',
+            height: '32px',
+            '&:hover fieldset': {
+              borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+            },
+          },
+        }}
+      />
+      {item.discount >= 1 && (
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <Select
+            value={item.discountAuthorizedBy || ""}
+            onChange={(e) => {
+              dispatch(updateItemDetails({
+                id: item.id,
+                updates: { discountAuthorizedBy: e.target.value }
+              }));
+            }}
+            displayEmpty
+            sx={{ 
+              height: '32px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#D1D5DB',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+              },
+            }}
+          >
+            <MenuItem value="">
+              <em>Discount Authorized by</em>
+            </MenuItem>
+            {isLoadingDoctors ? (
+              <MenuItem disabled>
+                <CircularProgress size={16} sx={{ mr: 1 }} />
+                Loading doctors...
+              </MenuItem>
+            ) : (
+              doctorNames.map((doctorName, index) => (
+                <MenuItem key={index} value={doctorName}>
+                  {doctorName}
+                </MenuItem>
+              ))
+            )}
+          </Select>
+        </FormControl>
+      )}
+    </Box>
+  );
+};
+
+// Batch Dropdown Component
+const BatchDropdown: React.FC<{
+  item: Product;
+  dispatch: AppDispatch;
+  apiProducts: any[];
+  isEditing: boolean;
+}> = ({ item, dispatch, apiProducts, isEditing }) => {
+  const [batches, setBatches] = useState<Array<{ batch_number: string | number; current_qty: number; expiry_date: string }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
+  const [getBatchesForProduct] = useGetBatchesForProductMutation();
+
+  const fetchBatches = async () => {
+    if (hasFetched) return;
+    
+    const productId = item.product_id || extractProductId(apiProducts, item.name);
+    if (productId) {
+      const numericId = parseInt(String(productId));
+      if (numericId > 0) {
+        setIsLoading(true);
+        setHasFetched(true);
+        try {
+          const result = await getBatchesForProduct({ product_id: numericId }).unwrap();
+          if (result && result.batches) {
+            setBatches(result.batches);
+          }
+        } catch (error) {
+          console.error('Error fetching batches:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    }
+  };
+
+  const handleChange = (value: string) => {
+    dispatch(updateItemDetails({
+      id: item.id,
+      updates: { batch: value }
+    }));
+  };
+
+  // Include current batch in the list if it's not already there
+  const allBatches = React.useMemo(() => {
+    const batchNumbers = batches.map(b => String(b.batch_number || ''));
+    if (item.batch && !batchNumbers.includes(item.batch)) {
+      return [{ batch_number: item.batch, current_qty: 0, expiry_date: '' }, ...batches];
+    }
+    return batches;
+  }, [batches, item.batch]);
+
+  if (!isEditing) {
+    return <span>{item.batch || '-'}</span>;
+  }
+
+  return (
+    <FormControl size="small" sx={{ minWidth: 200, width: 'auto', maxWidth: 300 }}>
+      <Select
+        value={item.batch || ""}
+        onChange={(e) => handleChange(e.target.value)}
+        onOpen={fetchBatches}
+        displayEmpty
+        renderValue={(selected) => {
+          if (!selected) return <em>Select Batch</em>;
+          return <span style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{selected}</span>;
+        }}
+        MenuProps={{
+          PaperProps: {
+            style: {
+              maxHeight: 300,
+            },
+          },
+        }}
+        sx={{ 
+          height: '32px',
+          borderRadius: '8px',
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#D1D5DB',
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+          },
+          '& .MuiSelect-select': {
+            whiteSpace: 'nowrap',
+            overflow: 'visible',
+            textOverflow: 'clip',
+            paddingRight: '32px !important',
+          },
+        }}
+      >
+        {isLoading ? (
+          <MenuItem disabled>
+            <CircularProgress size={16} sx={{ mr: 1 }} />
+            Loading batches...
+          </MenuItem>
+        ) : allBatches.length > 0 ? (
+          allBatches.map((batch, index) => {
+            const batchNumber = String(batch.batch_number || '');
+            return (
+              <MenuItem 
+                key={`${batchNumber}-${index}`} 
+                value={batchNumber}
+                sx={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'visible',
+                  textOverflow: 'clip',
+                }}
+              >
+                {batchNumber} {batch.current_qty > 0 ? `(Qty: ${batch.current_qty})` : ''}
+              </MenuItem>
+            );
+          })
+        ) : (
+          <>
+            {item.batch && (
+              <MenuItem 
+                value={item.batch}
+                sx={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'visible',
+                  textOverflow: 'clip',
+                }}
+              >
+                {item.batch}
+              </MenuItem>
+            )}
+            <MenuItem value="">
+              <em>No batches available</em>
+            </MenuItem>
+          </>
+        )}
+      </Select>
+    </FormControl>
+  );
+};
 
 export const getTableColumns = ({
   editingRowId,
@@ -28,6 +272,7 @@ export const getTableColumns = ({
   handleSaveClick,
   handleCancelClick,
   handleDeleteClick,
+  apiProducts,
 }: GetTableColumnsParams): TableColumn<Product>[] => [
   {
     key: "checkbox",
@@ -76,47 +321,12 @@ export const getTableColumns = ({
     key: "batch", 
     header: "Batch Number", 
     render: (item) => (
-      editingRowId === item.id ? (
-        <FormControl size="small" sx={{ width: 150 }}>
-          <Select
-            value={item.batch || ""}
-            onChange={(e) => {
-              const value = e.target.value;
-              // Only allow alphanumeric characters and limit to 8 characters
-              const alphanumericValue = value.replace(/[^A-Za-z0-9]/g, '');
-              if (alphanumericValue.length <= 8) {
-                dispatch(updateItemDetails({
-                  id: item.id,
-                  updates: { batch: alphanumericValue }
-                }));
-              }
-            }}
-            displayEmpty
-            sx={{ 
-              height: '32px',
-              borderRadius: '8px',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#D1D5DB',
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-              },
-            }}
-          >
-            <MenuItem value={item.batch || ""}>
-              {item.batch || "Select Batch"}
-            </MenuItem>
-            <MenuItem value="">
-              <em>None</em>
-            </MenuItem>
-          </Select>
-        </FormControl>
-      ) : (
-        <span>{item.batch || '-'}</span>
-      )
+      <BatchDropdown 
+        item={item} 
+        dispatch={dispatch} 
+        apiProducts={apiProducts} 
+        isEditing={editingRowId === item.id}
+      />
     )
   },
   { 
@@ -171,36 +381,11 @@ export const getTableColumns = ({
     key: "discount", 
     header: "Disc %", 
     render: (item) => (
-      editingRowId === item.id ? (
-        <TextField
-          value={item.discount}
-          onChange={(e) => {
-            const value = parseInt(e.target.value) || 0;
-            dispatch(updateItemDetails({
-              id: item.id,
-              updates: { discount: Math.max(0, Math.min(100, value)) }
-            }));
-          }}
-          size="small"
-          type="number"
-          inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
-          sx={{ 
-            width: 80,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '8px',
-              height: '32px',
-              '&:hover fieldset': {
-                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-              },
-            },
-          }}
-        />
-      ) : (
-        item.discount
-      )
+      <DiscountField 
+        item={item} 
+        dispatch={dispatch} 
+        isEditing={editingRowId === item.id}
+      />
     )
   },
   {

@@ -43,12 +43,12 @@ import {
 
 type BatchRow = {
   id: string;
-  batchNumber: string | number; // Store the batch_number from API (can be string or number)
+  batchNumber: string | number; 
   quantity: number;
   oldQuantity: number; 
   expiryDate: string;
   oldExpiryDate: string;
-  quantityInput?: string; // Temporary string value for input during editing
+  quantityInput?: string; 
 };
 
 type SelectedBrand = Brand | null;

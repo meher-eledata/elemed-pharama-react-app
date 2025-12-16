@@ -120,7 +120,9 @@ export const createCartItem = (
   availableTypes: string[],
   discount: number,
   validatedData: any,
-  defaultExpiry: string
+  defaultExpiry: string,
+  productId?: string | number,
+  discountAuthorizedBy?: string
 ): Product => {
   const finalProductType = productType || (availableTypes.length > 0 ? availableTypes[0] : 'UNKNOWN');
 
@@ -135,6 +137,8 @@ export const createCartItem = (
     quantity: qty,
     type: finalProductType,
     discount: discount,
+    product_id: productId ? (typeof productId === 'string' ? parseInt(productId) : productId) : undefined,
+    discountAuthorizedBy: discountAuthorizedBy || undefined,
   };
 };
 

@@ -121,9 +121,8 @@ export interface GetTypesForBrandAndProductRequest {
   product_name: string;
 }
 
-// Adjust Inventory Batches interfaces
 export interface AdjustInventoryBatchLine {
-  batch_number: string | number; // API expects batch_number (can be string like "CTZ-2026-06-A" or numeric)
+  batch_number: string | number; 
   old_qty: number;
   new_qty: number;
   expiry_date: string;

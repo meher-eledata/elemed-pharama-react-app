@@ -13,6 +13,8 @@ export interface CartItem {
   type: string;
   discount: number;
   totalPrice: number;
+  product_id?: number; // Product ID for fetching batches
+  discountAuthorizedBy?: string; // Name of person authorizing the discount
   cgst?: string;
   cgstPercent?: string;
   sgst?: string;

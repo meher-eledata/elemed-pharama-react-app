@@ -20,6 +20,7 @@ import AddCartIcon from '../../../assets/AddCart.svg';
 import { ProductSelectionContainer, FormFieldsContainer } from '../SalesPage.styles';
 import { SALES_PAGE_LABELS } from '../../../config/label/SalesPage.labels';
 import { SALES_PAGE_CONSTANTS } from '../../../config/constants/SalesPage.constants';
+import { useGetDoctorNamesQuery } from '../../../redux/slices/salesApi';
 
 interface ProductSelectionFormProps {
   // Product Search
@@ -45,6 +46,10 @@ interface ProductSelectionFormProps {
   discount: number;
   onDiscountChange: (value: number) => void;
   
+  // Discount Authorized By
+  discountAuthorizedBy?: string;
+  onDiscountAuthorizedByChange: (value: string) => void;
+  
   // Add to Cart
   onAddToCart: () => void;
   isValidating: boolean;
@@ -68,11 +73,14 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
   onTypeChange,
   discount,
   onDiscountChange,
+  discountAuthorizedBy,
+  onDiscountAuthorizedByChange,
   onAddToCart,
   isValidating,
   validationError,
   validatedData,
 }) => {
+  const { data: doctorNames = [], isLoading: isLoadingDoctors } = useGetDoctorNamesQuery();
   return (
     <ProductSelectionContainer>
       <FormFieldsContainer>
@@ -334,10 +342,14 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
               // Allow empty string or valid number
               if (inputValue === '') {
                 onDiscountChange(0);
+                onDiscountAuthorizedByChange(''); // Clear authorization when discount is 0
               } else {
                 const numValue = parseInt(inputValue);
                 if (!isNaN(numValue)) {
                   onDiscountChange(Math.max(SALES_PAGE_CONSTANTS.MIN_DISCOUNT, Math.min(SALES_PAGE_CONSTANTS.MAX_DISCOUNT, numValue)));
+                  if (numValue === 0) {
+                    onDiscountAuthorizedByChange(''); // Clear authorization when discount is 0
+                  }
                 }
               }
             }}
@@ -372,6 +384,92 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             inputProps={{ style: { textAlign: 'center' } }}
           />
         </Box>
+
+        {/* Discount Authorized By - appears when discount > 0 */}
+        {discount > 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>Discount Authorized by</Typography>
+            <Autocomplete
+              freeSolo
+              forcePopupIcon
+              openOnFocus
+              options={isLoadingDoctors ? ["Loading doctors..."] : doctorNames}
+              value={discountAuthorizedBy || ''}
+              onChange={(_, newValue) => {
+                onDiscountAuthorizedByChange(newValue || '');
+              }}
+              onInputChange={(_, newInputValue) => {
+                onDiscountAuthorizedByChange(newInputValue);
+              }}
+              disabled={!isProductSelected}
+              loading={isLoadingDoctors}
+              noOptionsText="No doctors found"
+              popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+              ListboxProps={{
+                style: {
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search doctor name..."
+                  variant="outlined"
+                  sx={{
+                    width: "280px",
+                    "& .MuiOutlinedInput-root": {
+                      height: "40px",
+                      borderRadius: "18px",
+                      backgroundColor: "#FFFFFF",
+                      border: "1px solid #D1D5DB",
+                      "& fieldset": { 
+                        borderColor: "transparent",
+                        display: "none",
+                      },
+                      "&:hover fieldset": { 
+                        borderColor: "transparent",
+                      },
+                      "&.Mui-focused fieldset": { 
+                        borderColor: "transparent",
+                        outline: "none",
+                      },
+                      "&.Mui-focused": {
+                        outline: "none",
+                        border: "1px solid #D1D5DB",
+                      },
+                      "&:hover": {
+                        border: "1px solid #D1D5DB",
+                      },
+                    },
+                    "& .MuiInputBase-input": {
+                      padding: "8px 12px",
+                      paddingLeft: "6px",
+                      fontFamily: "'Lexend', sans-serif",
+                      fontSize: "14px",
+                      fontWeight: 400,
+                      lineHeight: "20px",
+                      color: "#6B7280",
+                      "&::placeholder": {
+                        color: "#9CA3AF",
+                        opacity: 1,
+                        fontSize: "14px",
+                      },
+                    },
+                  }}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start" sx={{ marginLeft: "12px", marginRight: "8px" }}>
+                        <SearchIcon sx={{ color: "#9CA3AF", width: "16px", height: "16px" }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </Box>
+        )}
       </FormFieldsContainer>
 
       {/* Add to Cart Button */}

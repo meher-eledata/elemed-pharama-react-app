@@ -97,6 +97,7 @@ export default function SalePage() {
   const [brand, setBrand] = useState(SALES_PAGE_CONSTANTS.BRANDS[0]);
   const [qty, setQty] = useState(SALES_PAGE_CONSTANTS.DEFAULT_QUANTITY);
   const [discount, setDiscount] = useState(SALES_PAGE_CONSTANTS.DEFAULT_DISCOUNT);
+  const [discountAuthorizedBy, setDiscountAuthorizedBy] = useState<string>("");
   const [findProduct, setFindProduct] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [productsData, setProductsData] = useState<Product[]>(products);
@@ -279,6 +280,7 @@ export default function SalePage() {
     setFindProduct(initialState.findProduct);
     setQty(initialState.qty);
     setDiscount(initialState.discount);
+    setDiscountAuthorizedBy("");
     setProductType(initialState.productType);
     setAvailableTypes(initialState.availableTypes);
     setShowTypeDropdown(initialState.showTypeDropdown);
@@ -311,7 +313,9 @@ export default function SalePage() {
       availableTypes,
       discount,
       validatedData,
-      SALES_PAGE_CONSTANTS.DEFAULT_PRODUCT_STRUCTURE.expiry
+      SALES_PAGE_CONSTANTS.DEFAULT_PRODUCT_STRUCTURE.expiry,
+      productId,
+      discountAuthorizedBy
     );
 
     // Dispatch to Redux instead of local state
@@ -417,6 +421,7 @@ export default function SalePage() {
     handleSaveClick,
     handleCancelClick,
     handleDeleteClick,
+    apiProducts,
   });
 
   const totalAmount = cartTotal; // Use Redux selector instead of calculation
@@ -445,6 +450,8 @@ export default function SalePage() {
           onTypeChange={setProductType}
           discount={discount}
           onDiscountChange={setDiscount}
+          discountAuthorizedBy={discountAuthorizedBy}
+          onDiscountAuthorizedByChange={setDiscountAuthorizedBy}
           onAddToCart={handleAddToCart}
           isValidating={isValidating}
           validationError={validationError}
