@@ -20,6 +20,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import StorageIcon from '@mui/icons-material/Storage';
 interface SidebarItem {
   id: string;
   icon: string | React.ReactNode;
@@ -30,20 +31,6 @@ interface SidebarItem {
   label: string;
   route?: string;
   isComponent?: boolean;
-}
-const baseItems: SidebarItem[] = [
-  { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' },
-  { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: "Sales", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales/sale-history' },
-  { id: 'box', icon: BoxIcon, alt: 'Box', label: "Inventory", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
-  // { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
-  { id: 'mail', icon: MailIcon, alt: 'Mail', label: "Order Receive", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive/order-receive' },
-  // { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', label: "Tasks", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  // { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  // { id: 'gear', icon: GearIcon, alt: 'Gear', label: "Tools", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
-];
-interface SidebarProps {
-  onOpenChange?: (isOpen: boolean) => void;
-  isOpen?: boolean; 
 }
 
 const WhiteIcon: React.FC<{ children: React.ReactElement }> = ({ children }) => (
@@ -66,6 +53,22 @@ const WhiteIcon: React.FC<{ children: React.ReactElement }> = ({ children }) => 
     {children}
   </Box>
 );
+
+const baseItems: SidebarItem[] = [
+  { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' },
+  { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: "Sales", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales/sale-history' },
+  { id: 'box', icon: BoxIcon, alt: 'Box', label: "Inventory", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
+  // { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
+  { id: 'mail', icon: MailIcon, alt: 'Mail', label: "Order Receive", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive/order-receive' },
+  { id: 'master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: "Master", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/master', isComponent: true },
+  // { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', label: "Tasks", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  // { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
+  // { id: 'gear', icon: GearIcon, alt: 'Gear', label: "Tools", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
+];
+interface SidebarProps {
+  onOpenChange?: (isOpen: boolean) => void;
+  isOpen?: boolean; 
+}
 
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const [activeItemId, setActiveItemId] = useState<string>('vector');

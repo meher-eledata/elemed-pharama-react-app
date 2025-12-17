@@ -1,159 +1,279 @@
-import React, { useState, useMemo } from "react";
-import { Box, Tabs, Tab, Typography } from "@mui/material";
+import React, { useState } from "react";
+import { Box, Typography } from "@mui/material";
 import { StandardButton } from "../../components/Common";
-import AddIcon from "@mui/icons-material/Add";
+import InventoryIcon from '@mui/icons-material/Inventory';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
+import CustomerModal from "../../components/Modal/NewCustomer/CustomerModal";
+import { MASTER_DATA_CONSTANTS } from "../../config/constants/MasterData.constants";
+import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
 import {
-  ADD_BUTTON_COLOR,
-  ADD_BUTTON_HOVER_COLOR,
-  TAB_INDICATOR_STYLE,
-} from "../../config/constants/OrderReceive.constants";
-import {
-  ReusableTable,
-  TableColumn,
-  FilterOption,
-} from "../../components/PharmaTable";
+  useGetSalesProductsQuery,
+  useGetCustomersQuery,
+  useGetDoctorNamesQuery,
+  useAddCustomerMutation
+} from "../../redux/slices/salesApi";
+import { useGetUniqueSupplierNamesQuery } from "../../redux/slices/receiveApi";
 
-
-interface OrderReceiveRow {
-  poNo: string;
-  date: string;
-  supplier: string;
-  product: string;
-  minimumQty: number;
+interface CardProps {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  action: string;
+  onAction: () => void;
+  iconBgColor: string;
+  count: number;
+  badgeLabel: string;
 }
 
+const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBgColor, count, badgeLabel }) => (
+  <Box
+    sx={{
+      borderRadius: MASTER_DATA_CONSTANTS.CARDS.RADIUS,
+      border: MASTER_DATA_CONSTANTS.CARDS.BORDER,
+      backgroundColor: MASTER_DATA_CONSTANTS.CARDS.BG,
+      padding: MASTER_DATA_CONSTANTS.CARDS.PADDING,
+      boxShadow: MASTER_DATA_CONSTANTS.CARDS.SHADOW,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: MASTER_DATA_CONSTANTS.CARDS.GAP,
+      flex: 1,
+      minWidth: MASTER_DATA_CONSTANTS.CARDS.MIN_WIDTH,
+      maxWidth: MASTER_DATA_CONSTANTS.CARDS.MAX_WIDTH,
+      position: 'relative',
+    }}
+  >
+    
+    <Box
+      sx={{
+        position: 'absolute',
+        top: '16px',
+        right: '16px',
+        borderRadius: MASTER_DATA_CONSTANTS.BADGE.RADIUS,
+        padding: MASTER_DATA_CONSTANTS.BADGE.PADDING,
+        backgroundColor: MASTER_DATA_CONSTANTS.BADGE.BG,
+        color: MASTER_DATA_CONSTANTS.BADGE.TEXT_COLOR,
+        fontSize: MASTER_DATA_CONSTANTS.BADGE.FONT_SIZE,
+        fontWeight: MASTER_DATA_CONSTANTS.BADGE.FONT_WEIGHT,
+        fontFamily: "'Lexend', sans-serif",
+      }}
+    >
+      {count} {badgeLabel}
+    </Box>
+
+    <Box
+      sx={{
+        width: MASTER_DATA_CONSTANTS.CARDS.ICON_CIRCLE_SIZE,
+        height: MASTER_DATA_CONSTANTS.CARDS.ICON_CIRCLE_SIZE,
+        borderRadius: '50%',
+        backgroundColor: iconBgColor,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        mb: 1,
+      }}
+    >
+      <Box sx={{ color: '#5C17E5' }}>
+        {icon}
+      </Box>
+    </Box>
+
+    <Typography 
+      sx={{ 
+        fontWeight: 700, 
+        color: MASTER_DATA_CONSTANTS.CARDS.TITLE_COLOR, 
+        fontSize: '18px', 
+        fontFamily: "'Lexend', sans-serif",
+        pr: 8, 
+      }}
+    >
+      {title}
+    </Typography>
+
+    <Typography 
+      sx={{ 
+        color: MASTER_DATA_CONSTANTS.CARDS.DESC_COLOR, 
+        fontSize: '14px', 
+        lineHeight: 1.5, 
+        fontFamily: "'Lexend', sans-serif",
+        pr: 8,
+      }}
+    >
+      {desc}
+    </Typography>
+
+    <Box sx={{ mt: 'auto', pt: 1 }}>
+      <StandardButton
+        onClick={onAction}
+        variant="primary"
+        size="medium"
+        sx={{
+          height: MASTER_DATA_CONSTANTS.ACTION_BUTTON.HEIGHT,
+          minWidth: MASTER_DATA_CONSTANTS.ACTION_BUTTON.MIN_WIDTH,
+          borderRadius: MASTER_DATA_CONSTANTS.ACTION_BUTTON.RADIUS,
+          backgroundColor: MASTER_DATA_CONSTANTS.ACTION_BUTTON.BG,
+          color: MASTER_DATA_CONSTANTS.ACTION_BUTTON.COLOR,
+          fontWeight: MASTER_DATA_CONSTANTS.ACTION_BUTTON.FONT_WEIGHT,
+          fontSize: MASTER_DATA_CONSTANTS.ACTION_BUTTON.FONT_SIZE,
+          '&:hover': { backgroundColor: MASTER_DATA_CONSTANTS.ACTION_BUTTON.HOVER_BG },
+        }}
+      >
+        {action}
+      </StandardButton>
+    </Box>
+  </Box>
+);
+
 const Masterpage: React.FC = () => {
-  const [open, setOpen] = useState<boolean>(false);
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
 
-//   const [activeTab, setActiveTab] = useState<number>(0);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [filterKey, setFilterKey] = useState<string>("poNo");
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: "asc" | "desc";
-  }>({ key: "poNo", direction: "asc" });
+  const { data: products = [], isLoading: loadingProducts } = useGetSalesProductsQuery();
+  const { data: customers = [], isLoading: loadingCustomers } = useGetCustomersQuery();
+  const { data: doctorNames = [], isLoading: loadingDoctors } = useGetDoctorNamesQuery();
+  const { data: supplierNames = [], isLoading: loadingSuppliers } = useGetUniqueSupplierNamesQuery();
 
-  const columns: TableColumn<OrderReceiveRow>[] = [
-    { key: "poNo", header: "PO No" },
-    { key: "date", header: "Date" },
-    { key: "supplier", header: "Supplier" },
-    { key: "product", header: "Product" },
-    { key: "minimumQty", header: "Minimum Qty" },
-  ];
+  const [addCustomer] = useAddCustomerMutation();
 
-  const handleSortRequest = (key: string) => {
-    let direction: "asc" | "desc" = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    } else if (sortConfig.key === key && sortConfig.direction === "desc") {
-      // Revert to default sorting instead of clearing
-      setSortConfig({ key: "poNo", direction: "asc" });
-      return;
+  const productCount = products.length;
+  const customerCount = customers.length;
+  const doctorCount = doctorNames.length;
+  const supplierCount = supplierNames.length;
+
+  const handleCustomerSubmit = async (customerData: any) => {
+    try {
+      await addCustomer({
+        name: customerData.customerName,
+        email: customerData.emailId || null,
+        phone: customerData.mobileNumber,
+        billing_address: customerData.billingAddress,
+        shipping_address: customerData.shippingAddress || null,
+        gstin: customerData.gstin || null,
+        pancard_num: customerData.pancardNum || null,
+        drug_license: customerData.drugLicense || null,
+        gender: customerData.gender === 'Male' ? 0 : customerData.gender === 'Female' ? 1 : null,
+      }).unwrap();
+      setCustomerModalOpen(false);
+    } catch (error) {
+      console.error('Error adding customer:', error);
+      throw error;
     }
-    setSortConfig({ key, direction });
   };
 
-  const data: OrderReceiveRow[] = [
-    {
-      poNo: "2897655790...",
-      date: "21 May, 2025",
-      supplier: "2-0 Mersilk Syringe",
-      product: "2-0 Mersilk Syringe",
-      minimumQty: 5,
-    },
-    {
-      poNo: "3289765764...",
-      date: "2 Jun, 2025",
-      supplier: "3-0 Mersilk 90cm NW 5...",
-      product: "3-0 Mersilk 90cm NW 5...",
-      minimumQty: 50,
-    },
-  ];
-
-  // Apply sorting to data
-  const sortedData = useMemo(() => {
-    // Always apply sorting - if no specific sort, use default
-    const currentSort = sortConfig.key || 'poNo';
-    const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
-    
-    return [...data].sort((a, b) => {
-      const aValue = a[currentSort as keyof OrderReceiveRow];
-      const bValue = b[currentSort as keyof OrderReceiveRow];
-
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return currentDirection === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      } else if (typeof aValue === "number" && typeof bValue === "number") {
-        return currentDirection === "asc"
-          ? aValue - bValue
-          : bValue - aValue;
-      }
-      return 0;
-    });
-  }, [data, sortConfig]);
-
-  const filterOptions: FilterOption[] = [
-    { key: "poNo", label: "PO No" },
-    { key: "date", label: "Date", type: "date" },
-    { key: "supplier", label: "Supplier" },
-    { key: "product", label: "Product" },
-    { key: "minimumQty", label: "Minimum Qty", type: "number" },
-  ];
-
   return (
-    <Box sx={{fontFamily: "'Lexend', sans-serif"}}>
-      <Box
-        className="header"
-        sx={{ display: "flex", justifyContent: "space-between", padding:'0px 18px', }}
-      >
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: 2, 
+      padding: '24px',
+      paddingTop: '12px',
+      overflow: 'hidden',
+      fontFamily: "'Lexend', sans-serif",
+      '&::-webkit-scrollbar': {
+        display: 'none',
+      },
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
+    }}>
+      <Box sx={{ mb: -1, mt: -1 }}>
         <Typography
-          variant="h5"
-          sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: "600", fontSize: "36px" }}
+          variant="h4" 
+          sx={{ 
+            fontWeight: 700, 
+            fontSize: '32px',
+            color: '#1A212B',
+            fontFamily: "'Lexend', sans-serif",
+            mb: 1
+          }}
         >
-          Products
+          {MASTER_DATA_LABELS.PAGE_TITLE}
         </Typography>
-
-        <StandardButton
-          startIcon={<AddIcon />}
-          onClick={() => setOpen(true)}
-          variant="primary"
-          size="large"
+        <Typography 
+          sx={{ 
+            color: '#1A212B', 
+            fontSize: '16px',
+            fontFamily: "'Lexend', sans-serif",
+            fontWeight: 400
+          }}
         >
-          Add Product
-        </StandardButton>
+          {MASTER_DATA_LABELS.SUBTITLE}
+        </Typography>
       </Box>
-      <Box className="tab-content" sx={{
-          fontFamily: "'Lexend', sans-serif",
-          "& .MuiTableCell-root": {
-            fontFamily: "'Lexend', sans-serif", // ✅ force table cells to use Lexend
-          },
-        }}>
-        <ReusableTable<OrderReceiveRow > 
-          columns={columns}
-          data={sortedData}
-          searchAndFilterConfig={{ filterOptions }}
-          currentSearchTerm={searchTerm}
-          onSearchChange={(e) => setSearchTerm(e.target.value)}
-          showFilters={showFilters}
-          onShowFiltersToggle={() => setShowFilters((prev) => !prev)}
-          currentFilterKey={filterKey}
-          onFilterSelect={setFilterKey}
-          totalRows={sortedData.length}
-          rowsPerPage={5}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-          onSortRequest={handleSortRequest}
-          sortConfig={sortConfig}
-          selectedRows={selectedRows}         
-      setSelectedRows={setSelectedRows}
 
-          
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+          gap: { xs: 2, md: 3 },
+          rowGap: { xs: 2, md: 3 },
+          alignItems: 'stretch',
+          maxWidth: { xs: '100%', md: '1050px', lg: '1600px' },
+          marginLeft: 0,
+          marginRight: 'auto',
+        }}
+      >
+        <Card
+          icon={<InventoryIcon />}
+          title={MASTER_DATA_LABELS.CARDS.PRODUCT.TITLE}
+          desc={MASTER_DATA_LABELS.CARDS.PRODUCT.DESC}
+          action={MASTER_DATA_LABELS.CARDS.PRODUCT.ACTION}
+          onAction={() => setProductModalOpen(true)}
+          iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.PRODUCT}
+          count={loadingProducts ? 0 : productCount}
+          badgeLabel={MASTER_DATA_LABELS.CARDS.PRODUCT.BADGE_LABEL}
+        />
+
+        <Card
+          icon={<PersonAddIcon />}
+          title={MASTER_DATA_LABELS.CARDS.CUSTOMER.TITLE}
+          desc={MASTER_DATA_LABELS.CARDS.CUSTOMER.DESC}
+          action={MASTER_DATA_LABELS.CARDS.CUSTOMER.ACTION}
+          onAction={() => setCustomerModalOpen(true)}
+          iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.CUSTOMER}
+          count={loadingCustomers ? 0 : customerCount}
+          badgeLabel={MASTER_DATA_LABELS.CARDS.CUSTOMER.BADGE_LABEL}
+        />
+
+        <Card
+          icon={<LocalShippingIcon />}
+          title={MASTER_DATA_LABELS.CARDS.SUPPLIER.TITLE}
+          desc={MASTER_DATA_LABELS.CARDS.SUPPLIER.DESC}
+          action={MASTER_DATA_LABELS.CARDS.SUPPLIER.ACTION}
+          onAction={() => {
+          }}
+          iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.SUPPLIER}
+          count={loadingSuppliers ? 0 : supplierCount}
+          badgeLabel={MASTER_DATA_LABELS.CARDS.SUPPLIER.BADGE_LABEL}
+        />
+
+        <Card
+          icon={<MedicalServicesIcon />}
+          title={MASTER_DATA_LABELS.CARDS.DOCTOR.TITLE}
+          desc={MASTER_DATA_LABELS.CARDS.DOCTOR.DESC}
+          action={MASTER_DATA_LABELS.CARDS.DOCTOR.ACTION}
+          onAction={() => {
+          }}
+          iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.DOCTOR}
+          count={loadingDoctors ? 0 : doctorCount}
+          badgeLabel={MASTER_DATA_LABELS.CARDS.DOCTOR.BADGE_LABEL}
         />
       </Box>
+
+      <NewProductModal
+        open={productModalOpen}
+        onClose={() => setProductModalOpen(false)}
+        onProductAdded={() => {
+          setProductModalOpen(false);
+        }}
+      />
+
+      <CustomerModal
+        isOpen={customerModalOpen}
+        onClose={() => setCustomerModalOpen(false)}
+        onSubmit={handleCustomerSubmit}
+      />
     </Box>
   );
 };
