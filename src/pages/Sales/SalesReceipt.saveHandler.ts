@@ -118,9 +118,11 @@ export const executeSave = async ({
       const lineItem = {
         product_id: productId,
         quantity: parseFloat(item.quantity || '0'),
+        batch_number: item.batch || undefined,
         mrp: parseFloat(item.mrp || '0'),
         sp: parseFloat(item.unitPrice || '0'),
         discount: parseFloat(item.discountPercent || '0') / 100,
+        discount_authority: item.discountAuthorizedBy || undefined, // Send name instead of ID
       };
       
       return lineItem;
@@ -135,12 +137,18 @@ export const executeSave = async ({
       customer_id: customerId,
       customer_name: customerName.trim(),
       customer_mobile: customerMobile.trim(),
+      invoice_number: invoiceNumber && invoiceNumber.trim() ? invoiceNumber.trim() : null,
       lines: lines,
     };
+    
+    // Debug: Log the payload to verify discount_authority is being sent
+    console.log('Submitting sale with payload:', JSON.stringify(submitSalePayload, null, 2));
     
     let result;
     try {
       result = await submitSale(submitSalePayload).unwrap();
+      // Debug: Log the response to see what backend returns
+      console.log('Sale submission response:', JSON.stringify(result, null, 2));
     } catch (submitError: any) {
       logError(submitError, 'SalesReceipt.submitSale');
       throw submitError;

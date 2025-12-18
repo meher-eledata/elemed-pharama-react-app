@@ -9,9 +9,7 @@ import { SALES_PAGE_CONSTANTS } from '../../config/constants/SalesPage.constants
 import DeleteNewIcon from '../../assets/DeleteNew.svg';
 import { AppDispatch } from '../../redux/store';
 import { updateItemDetails } from '../../redux/slices/cartSlice';
-import { useGetBatchesForProductMutation } from '../../redux/slices/inventoryApi';
-import { extractProductId } from './SalesPage.utils';
-import { useGetDoctorNamesQuery } from '../../redux/slices/salesApi';
+import { useGetDoctorsQuery } from '../../redux/slices/salesApi';
 
 interface GetTableColumnsParams {
   editingRowId: string | null;
@@ -30,7 +28,9 @@ const DiscountField: React.FC<{
   dispatch: AppDispatch;
   isEditing: boolean;
 }> = ({ item, dispatch, isEditing }) => {
-  const { data: doctorNames = [], isLoading: isLoadingDoctors } = useGetDoctorNamesQuery();
+  // Note: get-doctors endpoint returns 404, so we skip this query
+  // For now, we'll work with doctor names only - ID will be undefined
+  const { data: doctors = [], isLoading: isLoadingDoctors } = useGetDoctorsQuery(undefined, { skip: true });
 
   if (!isEditing) {
     return (
@@ -51,14 +51,17 @@ const DiscountField: React.FC<{
         value={item.discount}
         onChange={(e) => {
           const value = parseInt(e.target.value) || 0;
-          dispatch(updateItemDetails({
-            id: item.id,
-            updates: { 
-              discount: Math.max(0, Math.min(100, value)),
-              // Clear discountAuthorizedBy if discount is set to 0
-              ...(value < 1 && { discountAuthorizedBy: undefined })
-            }
-          }));
+              dispatch(updateItemDetails({
+                id: item.id,
+                updates: { 
+                  discount: Math.max(0, Math.min(100, value)),
+                  // Clear discountAuthorizedBy and discountAuthorizedById if discount is set to 0
+                  ...(value < 1 && { 
+                    discountAuthorizedBy: undefined,
+                    discountAuthorizedById: undefined
+                  })
+                }
+              }));
         }}
         size="small"
         type="number"
@@ -80,11 +83,15 @@ const DiscountField: React.FC<{
       {item.discount >= 1 && (
         <FormControl size="small" sx={{ minWidth: 200 }}>
           <Select
-            value={item.discountAuthorizedBy || ""}
+            value={item.discountAuthorizedById || ""}
             onChange={(e) => {
+              const selectedDoctor = doctors.find(d => d.id === Number(e.target.value));
               dispatch(updateItemDetails({
                 id: item.id,
-                updates: { discountAuthorizedBy: e.target.value }
+                updates: { 
+                  discountAuthorizedBy: selectedDoctor?.name || '',
+                  discountAuthorizedById: selectedDoctor?.id
+                }
               }));
             }}
             displayEmpty
@@ -112,9 +119,9 @@ const DiscountField: React.FC<{
                 Loading doctors...
               </MenuItem>
             ) : (
-              doctorNames.map((doctorName, index) => (
-                <MenuItem key={index} value={doctorName}>
-                  {doctorName}
+              doctors.map((doctor) => (
+                <MenuItem key={doctor.id} value={doctor.id}>
+                  {doctor.name}
                 </MenuItem>
               ))
             )}
@@ -122,145 +129,6 @@ const DiscountField: React.FC<{
         </FormControl>
       )}
     </Box>
-  );
-};
-
-// Batch Dropdown Component
-const BatchDropdown: React.FC<{
-  item: Product;
-  dispatch: AppDispatch;
-  apiProducts: any[];
-  isEditing: boolean;
-}> = ({ item, dispatch, apiProducts, isEditing }) => {
-  const [batches, setBatches] = useState<Array<{ batch_number: string | number; current_qty: number; expiry_date: string }>>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
-  const [getBatchesForProduct] = useGetBatchesForProductMutation();
-
-  const fetchBatches = async () => {
-    if (hasFetched) return;
-    
-    const productId = item.product_id || extractProductId(apiProducts, item.name);
-    if (productId) {
-      const numericId = parseInt(String(productId));
-      if (numericId > 0) {
-        setIsLoading(true);
-        setHasFetched(true);
-        try {
-          const result = await getBatchesForProduct({ product_id: numericId }).unwrap();
-          if (result && result.batches) {
-            setBatches(result.batches);
-          }
-        } catch (error) {
-          console.error('Error fetching batches:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    }
-  };
-
-  const handleChange = (value: string) => {
-    dispatch(updateItemDetails({
-      id: item.id,
-      updates: { batch: value }
-    }));
-  };
-
-  // Include current batch in the list if it's not already there
-  const allBatches = React.useMemo(() => {
-    const batchNumbers = batches.map(b => String(b.batch_number || ''));
-    if (item.batch && !batchNumbers.includes(item.batch)) {
-      return [{ batch_number: item.batch, current_qty: 0, expiry_date: '' }, ...batches];
-    }
-    return batches;
-  }, [batches, item.batch]);
-
-  if (!isEditing) {
-    return <span>{item.batch || '-'}</span>;
-  }
-
-  return (
-    <FormControl size="small" sx={{ minWidth: 200, width: 'auto', maxWidth: 300 }}>
-      <Select
-        value={item.batch || ""}
-        onChange={(e) => handleChange(e.target.value)}
-        onOpen={fetchBatches}
-        displayEmpty
-        renderValue={(selected) => {
-          if (!selected) return <em>Select Batch</em>;
-          return <span style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{selected}</span>;
-        }}
-        MenuProps={{
-          PaperProps: {
-            style: {
-              maxHeight: 300,
-            },
-          },
-        }}
-        sx={{ 
-          height: '32px',
-          borderRadius: '8px',
-          '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#D1D5DB',
-          },
-          '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-          },
-          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-          },
-          '& .MuiSelect-select': {
-            whiteSpace: 'nowrap',
-            overflow: 'visible',
-            textOverflow: 'clip',
-            paddingRight: '32px !important',
-          },
-        }}
-      >
-        {isLoading ? (
-          <MenuItem disabled>
-            <CircularProgress size={16} sx={{ mr: 1 }} />
-            Loading batches...
-          </MenuItem>
-        ) : allBatches.length > 0 ? (
-          allBatches.map((batch, index) => {
-            const batchNumber = String(batch.batch_number || '');
-            return (
-              <MenuItem 
-                key={`${batchNumber}-${index}`} 
-                value={batchNumber}
-                sx={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                }}
-              >
-                {batchNumber} {batch.current_qty > 0 ? `(Qty: ${batch.current_qty})` : ''}
-              </MenuItem>
-            );
-          })
-        ) : (
-          <>
-            {item.batch && (
-              <MenuItem 
-                value={item.batch}
-                sx={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                }}
-              >
-                {item.batch}
-              </MenuItem>
-            )}
-            <MenuItem value="">
-              <em>No batches available</em>
-            </MenuItem>
-          </>
-        )}
-      </Select>
-    </FormControl>
   );
 };
 
@@ -315,18 +183,6 @@ export const getTableColumns = ({
       ) : (
         item.avlQty
       )
-    )
-  },
-  { 
-    key: "batch", 
-    header: "Batch Number", 
-    render: (item) => (
-      <BatchDropdown 
-        item={item} 
-        dispatch={dispatch} 
-        apiProducts={apiProducts} 
-        isEditing={editingRowId === item.id}
-      />
     )
   },
   { 

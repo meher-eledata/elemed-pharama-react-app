@@ -90,16 +90,25 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
         <Autocomplete<string, false, boolean, true>
           freeSolo
           options={customerNames} // Customer names from /sales/get-all-customer-names endpoint
-          getOptionLabel={(option) => option}
+          getOptionLabel={(option: string | { name: string } | null) => {
+            // Handle both string and object formats
+            if (typeof option === 'string') return option;
+            if (option && typeof option === 'object' && 'name' in option) return (option as { name: string }).name;
+            return String(option || '');
+          }}
           value={customerName || ''}
-          isOptionEqualToValue={(option, value) => option === value}
+          isOptionEqualToValue={(option, value) => {
+            const optionValue = typeof option === 'string' ? option : (option && typeof option === 'object' && 'name' in option ? (option as { name: string }).name : '');
+            return optionValue === value;
+          }}
           onChange={(_, newValue) => {
             // Handle string (customer name) - this fires when selecting from dropdown
             const nameValue = typeof newValue === 'string' ? newValue : '';
             if (nameValue) {
               // Clear the selected customer first - let the hook fetch phone and set it properly
               onCustomerSelect(null);
-              // Clear mobile to trigger phone fetch from API
+              // Clear mobile to ensure auto-fill works when selecting from dropdown
+              // The hook will fetch phones and auto-fill if there's exactly one phone
               onCustomerMobileChange('');
               // Update the name - this will trigger useCustomerPhones hook to fetch phone from /sales/get-customer-phones/
               onCustomerNameChange(nameValue);
@@ -174,12 +183,18 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           )}
           renderOption={(props, option, index) => {
             const { key, ...otherProps } = props;
-            // Use combination of option and index to ensure unique keys
+            // Get the label string using the same logic as getOptionLabel
+            const optionLabel = typeof option === 'string' 
+              ? option 
+              : (option && typeof option === 'object' && 'name' in option 
+                  ? (option as { name: string }).name 
+                  : String(option));
+            // Use index as the key to ensure uniqueness (even if names are duplicated)
             return (
-              <li key={`${option}-${index}`} {...otherProps}>
+              <li key={`customer-name-${index}`} {...otherProps}>
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {option}
+                    {optionLabel}
                   </Typography>
                 </Box>
               </li>

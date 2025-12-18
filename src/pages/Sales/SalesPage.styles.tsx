@@ -40,7 +40,7 @@ export const ProductSelectionContainer = styled(Box)({
 export const FormFieldsContainer = styled(Box)({
   display: 'flex',
   alignItems: 'flex-end',
-  gap: '32px',
+  gap: '16px',
 });
 
 // Container for bulk actions bar

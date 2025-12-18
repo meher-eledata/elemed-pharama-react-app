@@ -86,17 +86,34 @@ export const calculateCartTotal = (cartItems: Product[]): number => {
 export const canAddToCart = (
   findProduct: string,
   qty: number,
-  availableTypes: string[],
+  availableTypes: Array<{ type: string; product_id: number }> | string[],
   productType: string,
   validationError: string,
-  validatedData: any
+  validatedData: any,
+  batch?: string,
+  discount?: number,
+  discountAuthorizedBy?: string // Changed to check name instead of ID since get-doctors endpoint may not exist
 ): { canAdd: boolean; message?: string } => {
   if (!findProduct || qty <= 0) {
     return { canAdd: false, message: 'Please select a product and quantity' };
   }
 
-  if (availableTypes.length > 1 && !productType) {
+  const typesArray = Array.isArray(availableTypes) && availableTypes.length > 0 
+    ? (typeof availableTypes[0] === 'string' ? availableTypes : availableTypes.map(t => (t as any).type))
+    : [];
+  
+  if (typesArray.length > 1 && !productType) {
     return { canAdd: false, message: 'Please select a product type' };
+  }
+
+  if (!batch) {
+    return { canAdd: false, message: 'Please select a batch number' };
+  }
+
+  // Mandatory discount authority when discount > 0 - check for doctor name
+  // Note: Doctor ID is optional since get-doctors endpoint may return 404
+  if (discount && discount > 0 && !discountAuthorizedBy) {
+    return { canAdd: false, message: 'Please select a doctor to authorize the discount' };
   }
 
   if (validationError) {
@@ -117,19 +134,24 @@ export const createCartItem = (
   findProduct: string,
   qty: number,
   productType: string,
-  availableTypes: string[],
+  availableTypes: Array<{ type: string; product_id: number }> | string[],
   discount: number,
   validatedData: any,
   defaultExpiry: string,
   productId?: string | number,
-  discountAuthorizedBy?: string
+  discountAuthorizedBy?: string,
+  batch?: string,
+  discountAuthorizedById?: number
 ): Product => {
-  const finalProductType = productType || (availableTypes.length > 0 ? availableTypes[0] : 'UNKNOWN');
+  const typesArray = Array.isArray(availableTypes) && availableTypes.length > 0 
+    ? (typeof availableTypes[0] === 'string' ? availableTypes : availableTypes.map(t => (t as any).type))
+    : [];
+  const finalProductType = productType || (typesArray.length > 0 ? typesArray[0] : 'UNKNOWN');
 
   return {
     id: Date.now().toString(),
     name: findProduct,
-    batch: `BATCH-${Date.now()}`,
+    batch: batch || `BATCH-${Date.now()}`,
     avlQty: qty.toString(),
     mrp: validatedData.mrp,
     sp: validatedData.selling_price,
@@ -139,6 +161,7 @@ export const createCartItem = (
     discount: discount,
     product_id: productId ? (typeof productId === 'string' ? parseInt(productId) : productId) : undefined,
     discountAuthorizedBy: discountAuthorizedBy || undefined,
+    discountAuthorizedById: discountAuthorizedById,
   };
 };
 

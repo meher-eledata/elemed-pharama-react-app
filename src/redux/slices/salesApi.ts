@@ -185,9 +185,11 @@ export interface ValidateSaleError {
 export interface SubmitSaleLine {
   product_id: number;
   quantity: number;
+  batch_number?: string;
   mrp: number;
   sp: number;
   discount: number;
+  discount_authority?: string; // Doctor name who authorized the discount
 }
 
 export interface SubmitSaleRequest {
@@ -199,6 +201,7 @@ export interface SubmitSaleRequest {
   customer_id?: number; // Optional - backend may accept name/mobile instead
   customer_name?: string; // Send name if ID not available
   customer_mobile?: string; // Send mobile if ID not available
+  invoice_number?: string | null; // Invoice number entered by user
   lines: SubmitSaleLine[];
 }
 
@@ -211,13 +214,13 @@ export interface SubmitSaleLineResponse {
   mrp: string;
   discount: string;
   selling_price: string;
-  created_at: string;
+  discount_authority?: string;
   updated_at: string;
 }
 
 export interface SubmitSaleResponse {
   message: string;
-  invoice_id: number;
+  invoice_number: number | null;
   lines: SubmitSaleLineResponse[];
 }
 
@@ -317,12 +320,35 @@ export const salesApi = createApi({
     // Get all doctors
     getDoctors: builder.query<Doctor[], void>({
       query: () => "sales/get-doctors",
+      transformResponse: (response: any): Doctor[] => {
+        // Handle different response formats
+        if (Array.isArray(response)) {
+          return response;
+        } else if (response && Array.isArray(response.doctors)) {
+          return response.doctors;
+        }
+        return [];
+      },
     }),
 
     // Get doctor names (simple array of strings)
     getDoctorNames: builder.query<string[], void>({
       query: () => "sales/get-doctor-names",
       providesTags: ["Sales"],
+      transformResponse: (response: any): string[] => {
+        // Handle different response formats
+        if (Array.isArray(response)) {
+          // If it's an array of strings, return as is
+          if (response.length === 0 || typeof response[0] === 'string') {
+            return response;
+          }
+          // If it's an array of objects with {id, name}, extract names
+          if (typeof response[0] === 'object' && response[0].name) {
+            return response.map((doctor: any) => doctor.name);
+          }
+        }
+        return [];
+      },
     }),
 
     // Get doctor by ID
@@ -400,6 +426,15 @@ export const salesApi = createApi({
         body,
       }),
     }),
+
+    // Get batch numbers by product ID
+    getBatchNumbersByProductId: builder.mutation<string[], { product_id: number }>({
+      query: (body) => ({
+        url: "sales/get-batch-numbers-by-product-id",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -430,4 +465,5 @@ export const {
   useLazyGetCustomersQuery,
   useGetCustomerPhonesMutation,
   useGetDoctorPhonesAndEmailsMutation,
+  useGetBatchNumbersByProductIdMutation,
 } = salesApi;

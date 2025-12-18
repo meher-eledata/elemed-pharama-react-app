@@ -15,7 +15,6 @@ import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import "./OrderReceive.scss";
 import { ReusableTable, TableColumn, FilterOption } from "../../components/PharmaTable";
-import ReceiveSupplierModal from "../../components/Modal/ReceiveSupplier/ReceiveSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
 import CommonModal from "../../components/CommonModal/CommonModal";
 import ProductDetailsModalContent from "./ProductDetailsModalContent";
@@ -126,7 +125,6 @@ export interface PurchaseOrderRow {
 
 const OrderReceive: React.FC = () => {
   const navigate = useNavigate();
-  const [open, setOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(2);
   
   const capitalizeFirstLetter = (str: string): string => {
@@ -153,7 +151,6 @@ const OrderReceive: React.FC = () => {
   const [currentReceiptsOverride, setCurrentReceiptsOverride] = useState<OrderReceiveRow[]>([]);
   const [tableData, setTableData] = useState<OrderReceiveRow[]>([]);
   const [purchaseOrderData, setPurchaseOrderData] = useState<PurchaseOrderRow[]>([]);
-  const [supplier, setSupplier] = useState("");
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<OrderReceiveRow | null>(null);
   const [isLastModalOpen, setIsLastModalOpen] = useState<boolean>(false);
@@ -1143,22 +1140,6 @@ const OrderReceive: React.FC = () => {
           </>
         )}
       </Box>
-      <ReceiveSupplierModal
-        open={open}
-        onClose={() => setOpen(false)}
-        supplier={supplier}
-        setSupplier={setSupplier}
-        onNext={async () => {
-          try {
-            navigate('/receive/order-details', {
-              state: { selectedSupplier: supplier }
-            });
-          } catch (e) {
-          } finally {
-            setOpen(false);
-          }
-        }}
-      />
 
       <ConfirmationDialog
         open={isDeleteDialogOpen}

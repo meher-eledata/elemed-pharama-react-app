@@ -8,8 +8,14 @@ import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDial
 import { 
   useGetProductTypeQuery, 
   useLazyGetProductTypeQuery, 
-  useValidateSaleMutation
+  useValidateSaleMutation,
+  useGetBatchNumbersByProductIdMutation
 } from "../../redux/slices/salesApi";
+import {
+  useGetBrandsFromProductIdMutation,
+  useGetTypesForBrandAndProductMutation
+} from "../../redux/slices/inventoryApi";
+import { useGetDoctorsQuery } from "../../redux/slices/salesApi";
 import { useGetProductsQuery } from "../../redux/slices/receiveApi";
 import { 
   addToCart,
@@ -93,16 +99,29 @@ export default function SalePage() {
   
   // Form State
   const [productType, setProductType] = useState("");
-  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
-  const [brand, setBrand] = useState(SALES_PAGE_CONSTANTS.BRANDS[0]);
+  const [availableTypes, setAvailableTypes] = useState<Array<{ type: string; product_id: number }>>([]);
+  const [brand, setBrand] = useState("");
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const [availableBrands, setAvailableBrands] = useState<Array<{ id: number; brand_name: string }>>([]);
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const [qty, setQty] = useState(SALES_PAGE_CONSTANTS.DEFAULT_QUANTITY);
   const [discount, setDiscount] = useState(SALES_PAGE_CONSTANTS.DEFAULT_DISCOUNT);
   const [discountAuthorizedBy, setDiscountAuthorizedBy] = useState<string>("");
+  const [discountAuthorizedById, setDiscountAuthorizedById] = useState<number | undefined>(undefined);
+  
+  // Note: get-doctors endpoint returns 404, so we'll work with doctor names only
+  // Doctor ID lookup is optional - we'll try to find it but won't block if not found
+  // Using skipToken to prevent the query from running since the endpoint doesn't exist
+  const { data: doctors = [] } = useGetDoctorsQuery(undefined, { skip: true });
   const [findProduct, setFindProduct] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [productsData, setProductsData] = useState<Product[]>(products);
   const [isProductSelected, setIsProductSelected] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [showBatchDropdown, setShowBatchDropdown] = useState(false);
+  const [availableBatches, setAvailableBatches] = useState<string[]>([]);
+  const [batch, setBatch] = useState("");
+  const [selectedTypeProductId, setSelectedTypeProductId] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string>("");
   const [validatedData, setValidatedData] = useState<any>(null);
   const [productId, setProductId] = useState<string>("");
@@ -132,6 +151,31 @@ export default function SalePage() {
   } = useGetProductsQuery();
   const [getProductType, { isLoading: isProductTypeLoading }] = useLazyGetProductTypeQuery();
   const [validateSale, { isLoading: isValidating }] = useValidateSaleMutation();
+  const [getBrandsFromProductId, { isLoading: isBrandsLoading }] = useGetBrandsFromProductIdMutation();
+  const [getTypesForBrandAndProduct, { isLoading: isTypesLoading }] = useGetTypesForBrandAndProductMutation();
+  const [getBatchNumbersByProductId, { isLoading: isBatchesLoading }] = useGetBatchNumbersByProductIdMutation();
+  
+  // Effect to find doctor ID when doctors list loads or name changes
+  useEffect(() => {
+    if (discountAuthorizedBy && !discountAuthorizedById && doctors.length > 0) {
+      // Try exact match first
+      let foundDoctor = doctors.find(d => 
+        d.name.toLowerCase().trim() === discountAuthorizedBy.toLowerCase().trim()
+      );
+      
+      // If exact match not found, try partial match
+      if (!foundDoctor) {
+        foundDoctor = doctors.find(d => 
+          d.name.toLowerCase().trim().includes(discountAuthorizedBy.toLowerCase().trim()) ||
+          discountAuthorizedBy.toLowerCase().trim().includes(d.name.toLowerCase().trim())
+        );
+      }
+      
+      if (foundDoctor) {
+        setDiscountAuthorizedById(foundDoctor.id);
+      }
+    }
+  }, [discountAuthorizedBy, discountAuthorizedById, doctors]);
   
   // Cart is managed by Redux - no need for session storage
   // Removed verbose logging for cleaner test output
@@ -169,7 +213,10 @@ export default function SalePage() {
   // Validate sale with debouncing
   useEffect(() => {
     const validateProduct = async () => {
-      if (!findProduct || !productId || debouncedQty <= 0 || !debouncedProductType) {
+      // Use selectedTypeProductId if available, otherwise fall back to productId
+      const productIdToUse = selectedTypeProductId ? String(selectedTypeProductId) : productId;
+      
+      if (!findProduct || !productIdToUse || debouncedQty <= 0 || !debouncedProductType) {
         setValidationError("");
         setValidatedData(null);
         return;
@@ -178,7 +225,7 @@ export default function SalePage() {
       try {
         const requestPayload = {
           product_name: findProduct,
-          product_id: productId,
+          product_id: productIdToUse,
           quantity: debouncedQty,
           type: debouncedProductType,
           disc: debouncedDiscount / 100,
@@ -214,7 +261,7 @@ export default function SalePage() {
     };
 
     validateProduct();
-  }, [findProduct, productId, debouncedQty, debouncedProductType, debouncedDiscount, validateSale]);
+  }, [findProduct, productId, selectedTypeProductId, debouncedQty, debouncedProductType, debouncedDiscount, validateSale]);
 
   // Product Selection Handlers
   const handleProductInputChange = (value: string) => {
@@ -232,14 +279,22 @@ export default function SalePage() {
       setFindProduct(value);
       setIsProductSelected(true);
       
+      // Reset all dependent fields
       setProductType("");
       setAvailableTypes([]);
       setShowTypeDropdown(false);
+      setBrand("");
+      setBrandId(null);
+      setAvailableBrands([]);
+      setShowBrandDropdown(false);
+      setBatch("");
+      setAvailableBatches([]);
+      setShowBatchDropdown(false);
+      setSelectedTypeProductId(null);
       setValidationError("");
       setValidatedData(null);
       
       const productID = extractProductId(apiProducts, value);
-      
       
       if (productID) {
         setProductId(productID);
@@ -247,28 +302,107 @@ export default function SalePage() {
         const numericId = parseInt(productID);
         if (numericId > 0) {
           try {
-            const result = await getProductType({ productID: numericId }).unwrap();
+            // Fetch brands for the selected product
+            // Note: API returns a single brand object, not an array
+            const brandsResult = await getBrandsFromProductId({ product_id: numericId }).unwrap();
             
-            if (result && result.length > 0) {
-              const types = result.map(item => item.type).filter(type => type && type.trim() !== '');
-              setAvailableTypes(types);
-              setShowTypeDropdown(true);
+            if (brandsResult && brandsResult.id && brandsResult.brand_name) {
+              // Convert single brand object to array format for consistency
+              setAvailableBrands([{ id: brandsResult.id, brand_name: brandsResult.brand_name }]);
+              setShowBrandDropdown(true);
               
-              if (types.length === 1) {
-                setProductType(types[0]);
-              } else if (types.length > 1) {
-              }
+              // Auto-select the brand (since API returns single brand)
+              setBrandId(brandsResult.id);
+              setBrand(brandsResult.brand_name);
+              
+              // Automatically fetch types for the brand
+              await handleBrandChange(brandsResult.id, brandsResult.brand_name, value);
             } else {
-              setShowTypeDropdown(false);
+              setShowBrandDropdown(false);
             }
           } catch (error) {
-            setShowTypeDropdown(false);
+            console.error('Error fetching brands:', error);
+            setShowBrandDropdown(false);
           }
         }
-      } else {
       }
     } else {
       handleClearProduct();
+    }
+  };
+
+  const handleBrandChange = async (newBrandId: number, newBrandName: string, productName?: string) => {
+    setBrandId(newBrandId);
+    setBrand(newBrandName);
+    
+    // Reset dependent fields
+    setProductType("");
+    setAvailableTypes([]);
+    setShowTypeDropdown(false);
+    setBatch("");
+    setAvailableBatches([]);
+    setShowBatchDropdown(false);
+    setSelectedTypeProductId(null);
+    setValidationError("");
+    setValidatedData(null);
+    
+    const productNameToUse = productName || findProduct;
+    
+    if (productNameToUse) {
+      try {
+        // Fetch types for the selected brand and product
+        const typesResult = await getTypesForBrandAndProduct({
+          brand_id: newBrandId,
+          product_name: productNameToUse
+        }).unwrap();
+        
+        if (typesResult && Array.isArray(typesResult) && typesResult.length > 0) {
+          setAvailableTypes(typesResult);
+          setShowTypeDropdown(true);
+          
+          // Auto-select if only one type
+          if (typesResult.length === 1) {
+            await handleTypeChange(typesResult[0].type, typesResult[0].product_id);
+          }
+        } else {
+          setShowTypeDropdown(false);
+        }
+      } catch (error) {
+        console.error('Error fetching types:', error);
+        setShowTypeDropdown(false);
+      }
+    }
+  };
+
+  const handleTypeChange = async (newType: string, typeProductId: number) => {
+    setProductType(newType);
+    setSelectedTypeProductId(typeProductId);
+    
+    // Reset batch field
+    setBatch("");
+    setAvailableBatches([]);
+    setShowBatchDropdown(false);
+    setValidationError("");
+    setValidatedData(null);
+    
+    try {
+      // Fetch batch numbers for the selected product_id from the type response
+      const batchesResult = await getBatchNumbersByProductId({ product_id: typeProductId }).unwrap();
+      
+      if (batchesResult && Array.isArray(batchesResult) && batchesResult.length > 0) {
+        setAvailableBatches(batchesResult);
+        setShowBatchDropdown(true);
+        
+        // Auto-select if only one batch
+        if (batchesResult.length === 1) {
+          setBatch(batchesResult[0]);
+        }
+      } else {
+        setShowBatchDropdown(false);
+      }
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+      setShowBatchDropdown(false);
     }
   };
 
@@ -281,9 +415,18 @@ export default function SalePage() {
     setQty(initialState.qty);
     setDiscount(initialState.discount);
     setDiscountAuthorizedBy("");
+    setDiscountAuthorizedById(undefined);
     setProductType(initialState.productType);
-    setAvailableTypes(initialState.availableTypes);
-    setShowTypeDropdown(initialState.showTypeDropdown);
+    setAvailableTypes([]);
+    setShowTypeDropdown(false);
+    setBrand("");
+    setBrandId(null);
+    setAvailableBrands([]);
+    setShowBrandDropdown(false);
+    setBatch("");
+    setAvailableBatches([]);
+    setShowBatchDropdown(false);
+    setSelectedTypeProductId(null);
     setIsProductSelected(initialState.isProductSelected);
     setProductId(initialState.productId);
     setValidationError(initialState.validationError);
@@ -292,13 +435,38 @@ export default function SalePage() {
 
   // Add to Cart Handler
   const handleAddToCart = async () => {
+    // Try to find doctor ID if name exists but ID is missing (optional - get-doctors endpoint may return 404)
+    let finalDoctorId = discountAuthorizedById;
+    if (!finalDoctorId && discountAuthorizedBy && doctors.length > 0) {
+      // Try exact match first
+      let foundDoctor = doctors.find(d => 
+        d.name.toLowerCase().trim() === discountAuthorizedBy.toLowerCase().trim()
+      );
+      
+      // If exact match not found, try partial match
+      if (!foundDoctor) {
+        foundDoctor = doctors.find(d => 
+          d.name.toLowerCase().trim().includes(discountAuthorizedBy.toLowerCase().trim()) ||
+          discountAuthorizedBy.toLowerCase().trim().includes(d.name.toLowerCase().trim())
+        );
+      }
+      
+      if (foundDoctor) {
+        finalDoctorId = foundDoctor.id;
+        setDiscountAuthorizedById(foundDoctor.id);
+      }
+    }
+    
     const validation = canAddToCart(
       findProduct,
       qty,
       availableTypes,
       productType,
       validationError,
-      validatedData
+      validatedData,
+      batch,
+      discount,
+      discountAuthorizedBy // Check for doctor name instead of ID
     );
 
     if (!validation.canAdd) {
@@ -314,8 +482,10 @@ export default function SalePage() {
       discount,
       validatedData,
       SALES_PAGE_CONSTANTS.DEFAULT_PRODUCT_STRUCTURE.expiry,
-      productId,
-      discountAuthorizedBy
+      selectedTypeProductId || productId,
+      discountAuthorizedBy,
+      batch,
+      finalDoctorId || discountAuthorizedById // Include ID if found, otherwise undefined
     );
 
     // Dispatch to Redux instead of local state
@@ -442,16 +612,42 @@ export default function SalePage() {
           onProductInputChange={handleProductInputChange}
           onProductChange={handleProductChange}
           onClearProduct={handleClearProduct}
-          qty={qty}
-          onQtyChange={setQty}
+          showBrandDropdown={showBrandDropdown}
+          availableBrands={availableBrands}
+          brand={brand}
+          brandId={brandId}
+          onBrandChange={(brandId, brandName) => handleBrandChange(brandId, brandName)}
+          isBrandsLoading={isBrandsLoading}
           showTypeDropdown={showTypeDropdown}
           availableTypes={availableTypes}
           productType={productType}
-          onTypeChange={setProductType}
+          selectedTypeProductId={selectedTypeProductId}
+          onTypeChange={(type, productId) => handleTypeChange(type, productId)}
+          isTypesLoading={isTypesLoading}
+          showBatchDropdown={showBatchDropdown}
+          availableBatches={availableBatches}
+          batch={batch}
+          onBatchChange={setBatch}
+          isBatchesLoading={isBatchesLoading}
+          qty={qty}
+          onQtyChange={setQty}
           discount={discount}
           onDiscountChange={setDiscount}
           discountAuthorizedBy={discountAuthorizedBy}
-          onDiscountAuthorizedByChange={setDiscountAuthorizedBy}
+          discountAuthorizedById={discountAuthorizedById}
+          onDiscountAuthorizedByChange={(name, doctorId) => {
+            setDiscountAuthorizedBy(name || '');
+            setDiscountAuthorizedById(doctorId);
+            // If ID not found but name exists, try to find it from doctors list
+            if (!doctorId && name && doctors.length > 0) {
+              const foundDoctor = doctors.find(d => 
+                d.name.toLowerCase().trim() === name.toLowerCase().trim()
+              );
+              if (foundDoctor) {
+                setDiscountAuthorizedById(foundDoctor.id);
+              }
+            }
+          }}
           onAddToCart={handleAddToCart}
           isValidating={isValidating}
           validationError={validationError}

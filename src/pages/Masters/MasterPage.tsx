@@ -7,6 +7,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import CustomerModal from "../../components/Modal/NewCustomer/CustomerModal";
+import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import { MASTER_DATA_CONSTANTS } from "../../config/constants/MasterData.constants";
 import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
 import {
@@ -129,6 +130,7 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
 const Masterpage: React.FC = () => {
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
 
   const { data: products = [], isLoading: loadingProducts } = useGetSalesProductsQuery();
   const { data: customers = [], isLoading: loadingCustomers } = useGetCustomersQuery();
@@ -241,8 +243,7 @@ const Masterpage: React.FC = () => {
           title={MASTER_DATA_LABELS.CARDS.SUPPLIER.TITLE}
           desc={MASTER_DATA_LABELS.CARDS.SUPPLIER.DESC}
           action={MASTER_DATA_LABELS.CARDS.SUPPLIER.ACTION}
-          onAction={() => {
-          }}
+          onAction={() => setSupplierModalOpen(true)}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.SUPPLIER}
           count={loadingSuppliers ? 0 : supplierCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.SUPPLIER.BADGE_LABEL}
@@ -273,6 +274,21 @@ const Masterpage: React.FC = () => {
         isOpen={customerModalOpen}
         onClose={() => setCustomerModalOpen(false)}
         onSubmit={handleCustomerSubmit}
+      />
+
+      <NewSupplierModal
+        isOpen={supplierModalOpen}
+        onClose={() => setSupplierModalOpen(false)}
+        onSubmit={async (supplierData) => {
+          try {
+            // TODO: Add API call to add supplier
+            // await addSupplier({ ... }).unwrap();
+            setSupplierModalOpen(false);
+          } catch (error) {
+            console.error('Error adding supplier:', error);
+            throw error;
+          }
+        }}
       />
     </Box>
   );

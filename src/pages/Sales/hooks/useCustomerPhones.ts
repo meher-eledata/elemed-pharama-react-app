@@ -65,8 +65,9 @@ export const useCustomerPhones = ({
                 };
                 onCustomerAutoFill(autoFilledCustomer);
               }
-            } catch (searchError) {
-              // If search fails, fall back to phone-only approach
+            } catch (searchError: any) {
+              // If search fails (e.g., 404), silently fall back to phone-only approach
+              // Auto-fill phone if available, even if search endpoint doesn't exist
               if (phones.length === 1) {
                 const autoFilledCustomer: Customer = {
                   id: 0,

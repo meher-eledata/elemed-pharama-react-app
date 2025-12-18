@@ -13,6 +13,7 @@ export interface Product {
   discount: number;
   product_id?: number; // Product ID for fetching batches
   discountAuthorizedBy?: string; // Name of person authorizing the discount
+  discountAuthorizedById?: number; // ID of doctor authorizing the discount
   // GST fields (optional - only populated when coming back from Receipt page)
   cgst?: string;
   cgstPercent?: string;

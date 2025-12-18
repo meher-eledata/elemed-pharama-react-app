@@ -82,8 +82,18 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
           value={selectedDoctor || null}
           inputValue={doctorName}
           loading={isLoadingDoctorNames}
+          getOptionLabel={(option: string | { name: string } | null) => {
+            // Handle both string and object formats
+            if (typeof option === 'string') return option;
+            if (option && typeof option === 'object' && 'name' in option) return option.name;
+            return '';
+          }}
           onChange={(_, newValue) => {
-            onDoctorSelect(newValue);
+            // Extract name if it's an object, otherwise use the string value
+            const doctorNameValue = typeof newValue === 'string' 
+              ? newValue 
+              : (newValue && typeof newValue === 'object' && 'name' in newValue ? (newValue as { name: string }).name : null);
+            onDoctorSelect(doctorNameValue);
           }}
           onInputChange={(_, newInputValue) => {
             // Update doctor name when user types (for freeSolo)

@@ -12,6 +12,8 @@ export interface SalesReceiptItem {
   mrp: string;
   discount: string;
   discountPercent: string;
+  discountAuthorizedBy?: string; // Doctor name who authorized the discount
+  discountAuthorizedById?: number; // Doctor ID who authorized the discount (for API/database)
   cgst: string;
   cgstPercent: string;
   sgst: string;

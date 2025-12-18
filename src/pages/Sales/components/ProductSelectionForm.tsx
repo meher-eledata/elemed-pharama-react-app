@@ -20,7 +20,8 @@ import AddCartIcon from '../../../assets/AddCart.svg';
 import { ProductSelectionContainer, FormFieldsContainer } from '../SalesPage.styles';
 import { SALES_PAGE_LABELS } from '../../../config/label/SalesPage.labels';
 import { SALES_PAGE_CONSTANTS } from '../../../config/constants/SalesPage.constants';
-import { useGetDoctorNamesQuery } from '../../../redux/slices/salesApi';
+import { useGetDoctorNamesQuery, useGetDoctorsQuery } from '../../../redux/slices/salesApi';
+import { CircularProgress } from '@mui/material';
 
 interface ProductSelectionFormProps {
   // Product Search
@@ -32,15 +33,32 @@ interface ProductSelectionFormProps {
   onProductChange: (value: string | null) => void;
   onClearProduct: () => void;
   
-  // Quantity
-  qty: number;
-  onQtyChange: (value: number) => void;
+  // Brand
+  showBrandDropdown: boolean;
+  availableBrands: Array<{ id: number; brand_name: string }>;
+  brand: string;
+  brandId: number | null;
+  onBrandChange: (brandId: number, brandName: string) => void;
+  isBrandsLoading: boolean;
   
   // Type
   showTypeDropdown: boolean;
-  availableTypes: string[];
+  availableTypes: Array<{ type: string; product_id: number }>;
   productType: string;
-  onTypeChange: (value: string) => void;
+  selectedTypeProductId: number | null;
+  onTypeChange: (type: string, productId: number) => void;
+  isTypesLoading: boolean;
+  
+  // Batch
+  showBatchDropdown: boolean;
+  availableBatches: string[];
+  batch: string;
+  onBatchChange: (value: string) => void;
+  isBatchesLoading: boolean;
+  
+  // Quantity
+  qty: number;
+  onQtyChange: (value: number) => void;
   
   // Discount
   discount: number;
@@ -48,7 +66,8 @@ interface ProductSelectionFormProps {
   
   // Discount Authorized By
   discountAuthorizedBy?: string;
-  onDiscountAuthorizedByChange: (value: string) => void;
+  discountAuthorizedById?: number;
+  onDiscountAuthorizedByChange: (value: string, doctorId?: number) => void;
   
   // Add to Cart
   onAddToCart: () => void;
@@ -65,22 +84,39 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
   onProductInputChange,
   onProductChange,
   onClearProduct,
-  qty,
-  onQtyChange,
+  showBrandDropdown,
+  availableBrands,
+  brand,
+  brandId,
+  onBrandChange,
+  isBrandsLoading,
   showTypeDropdown,
   availableTypes,
   productType,
+  selectedTypeProductId,
   onTypeChange,
+  isTypesLoading,
+  showBatchDropdown,
+  availableBatches,
+  batch,
+  onBatchChange,
+  isBatchesLoading,
+  qty,
+  onQtyChange,
   discount,
   onDiscountChange,
   discountAuthorizedBy,
+  discountAuthorizedById,
   onDiscountAuthorizedByChange,
   onAddToCart,
   isValidating,
   validationError,
   validatedData,
 }) => {
-  const { data: doctorNames = [], isLoading: isLoadingDoctors } = useGetDoctorNamesQuery();
+  const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
+  // Note: get-doctors endpoint returns 404, so we skip this query
+  // Doctor ID will be undefined until a proper endpoint is available
+  const { data: doctors = [] } = useGetDoctorsQuery(undefined, { skip: true });
   return (
     <ProductSelectionContainer>
       <FormFieldsContainer>
@@ -138,7 +174,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 }
                 variant="outlined"
                 sx={{
-                  width: "344px",
+                  width: "200px",
                   "& .MuiOutlinedInput-root": {
                     height: "40px",
                     borderRadius: "18px",
@@ -162,6 +198,16 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                     "&:hover": {
                       border: "1px solid #D1D5DB",
                     },
+                    "& .MuiInputAdornment-root": {
+                      opacity: 0,
+                      transition: "opacity 0.2s ease-in-out",
+                    },
+                    "&:hover .MuiInputAdornment-root": {
+                      opacity: 1,
+                    },
+                    "&.Mui-focused .MuiInputAdornment-root": {
+                      opacity: 1,
+                    },
                   },
                   "& .MuiInputBase-input": {
                     padding: "8px 12px",
@@ -174,6 +220,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                     "&::placeholder": {
                       color: "#9CA3AF",
                       opacity: 1,
+                      fontSize: "12px",
                     },
                   },
                 }}
@@ -187,7 +234,22 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   endAdornment: (
                     <>
                       {isProductSelected && (
-                        <InputAdornment position="end">
+                        <InputAdornment 
+                          position="end"
+                          sx={{
+                            opacity: 0,
+                            transition: 'opacity 0.2s',
+                            '&:hover': {
+                              opacity: 1,
+                            },
+                            '.MuiOutlinedInput-root:hover &': {
+                              opacity: 1,
+                            },
+                            '.MuiOutlinedInput-root.Mui-focused &': {
+                              opacity: 1,
+                            },
+                          }}
+                        >
                           <IconButton 
                             size="small" 
                             onClick={(e) => { 
@@ -289,15 +351,77 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
           </Box>
         </Box>
 
+        {/* Brand Dropdown */}
+        {showBrandDropdown && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>Brand</Typography>
+            <FormControl size="small" sx={{ minWidth: '140px', width: '140px', height: '40px' }}>
+              <Select
+                value={brandId || ""}
+                onChange={(e) => {
+                  const selectedBrand = availableBrands.find(b => b.id === Number(e.target.value));
+                  if (selectedBrand) {
+                    onBrandChange(selectedBrand.id, selectedBrand.brand_name);
+                  }
+                }}
+                displayEmpty
+                disabled={isBrandsLoading}
+                sx={{
+                  borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
+                  height: '40px',
+                  outline: 'none',
+                  '& .MuiSelect-icon': {
+                    fontSize: '24px',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&.Mui-focused': {
+                    outline: 'none',
+                  },
+                }}
+              >
+                <MenuItem value="" disabled>
+                  <em>Select Brand</em>
+                </MenuItem>
+                {isBrandsLoading ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    Loading brands...
+                  </MenuItem>
+                ) : (
+                  availableBrands.map((brandItem) => (
+                    <MenuItem key={brandItem.id} value={brandItem.id}>
+                      {brandItem.brand_name}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+
         {/* Type Dropdown */}
-        {showTypeDropdown && availableTypes.length > 0 && (
+        {showTypeDropdown && (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>{SALES_PAGE_LABELS.TYPE_LABEL}</Typography>
-            <FormControl size="small" sx={{ minWidth: SALES_PAGE_CONSTANTS.TYPE_DROPDOWN_MIN_WIDTH, height: '40px' }}>
+            <FormControl size="small" sx={{ minWidth: '140px', width: '140px', height: '40px' }}>
               <Select
-                value={productType}
-                onChange={(e) => onTypeChange(e.target.value)}
+                value={productType || ""}
+                onChange={(e) => {
+                  const selectedType = availableTypes.find(t => t.type === e.target.value);
+                  if (selectedType) {
+                    onTypeChange(selectedType.type, selectedType.product_id);
+                  }
+                }}
                 displayEmpty
+                disabled={isTypesLoading}
                 sx={{
                   borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
                   height: '40px',
@@ -322,11 +446,83 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 <MenuItem value="" disabled>
                   <em>{SALES_PAGE_LABELS.TYPE_PLACEHOLDER}</em>
                 </MenuItem>
-                {availableTypes.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
+                {isTypesLoading ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    Loading types...
                   </MenuItem>
-                ))}
+                ) : (
+                  availableTypes.map((typeItem) => (
+                    <MenuItem key={`${typeItem.type}-${typeItem.product_id}`} value={typeItem.type}>
+                      {typeItem.type}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+
+        {/* Batch Dropdown */}
+        {showBatchDropdown && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>Batch Number</Typography>
+            <FormControl size="small" sx={{ minWidth: '180px', width: '180px', height: '40px' }}>
+              <Select
+                value={batch || ""}
+                onChange={(e) => onBatchChange(e.target.value)}
+                displayEmpty
+                disabled={isBatchesLoading}
+                sx={{
+                  borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
+                  height: '40px',
+                  outline: 'none',
+                  '& .MuiSelect-icon': {
+                    fontSize: '24px',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&.Mui-focused': {
+                    outline: 'none',
+                  },
+                  '& .MuiSelect-select': {
+                    whiteSpace: 'nowrap',
+                    overflow: 'visible',
+                    textOverflow: 'clip',
+                    paddingRight: '32px !important',
+                  },
+                }}
+              >
+                <MenuItem value="" disabled>
+                  <em>Select Batch</em>
+                </MenuItem>
+                {isBatchesLoading ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    Loading batches...
+                  </MenuItem>
+                ) : (
+                  availableBatches.map((batchNumber) => (
+                    <MenuItem 
+                      key={batchNumber} 
+                      value={batchNumber}
+                      sx={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'visible',
+                        textOverflow: 'clip',
+                      }}
+                    >
+                      {batchNumber}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </Box>
@@ -360,7 +556,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             disabled={!isProductSelected}
             size="small"
             sx={{ 
-              width: SALES_PAGE_CONSTANTS.DISCOUNT_FIELD_WIDTH,
+              width: '80px',
               height: '40px',
               outline: 'none',
               '& .MuiOutlinedInput-root': {
@@ -385,24 +581,78 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
           />
         </Box>
 
-        {/* Discount Authorized By - appears when discount > 0 */}
+        {/* Discount Authorized By - appears when discount > 0 (mandatory) */}
         {discount > 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>Discount Authorized by</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+              Discount Authorized by <span style={{ color: 'red' }}>*</span>
+            </Typography>
             <Autocomplete
               freeSolo
               forcePopupIcon
               openOnFocus
-              options={isLoadingDoctors ? ["Loading doctors..."] : doctorNames}
+              options={isLoadingDoctorNames ? ["Loading doctors..."] : doctorNames}
               value={discountAuthorizedBy || ''}
-              onChange={(_, newValue) => {
-                onDiscountAuthorizedByChange(newValue || '');
+              getOptionLabel={(option: string | { name: string } | null) => {
+                if (typeof option === 'string') return option;
+                if (option && typeof option === 'object' && option !== null && 'name' in option) {
+                  return (option as { name: string }).name;
+                }
+                return '';
+              }}
+              onChange={(_, newValue: string | { name: string } | null) => {
+                // Extract name if it's an object
+                let doctorName = '';
+                if (typeof newValue === 'string') {
+                  doctorName = newValue;
+                } else if (newValue && typeof newValue === 'object' && 'name' in newValue) {
+                  doctorName = (newValue as { name: string }).name;
+                }
+                
+                if (!doctorName) {
+                  onDiscountAuthorizedByChange('', undefined);
+                  return;
+                }
+                
+                // Find the doctor ID from the doctors list (case-insensitive match)
+                // Try exact match first, then partial match
+                let selectedDoctor = doctors.find(d => 
+                  d.name.toLowerCase().trim() === doctorName.toLowerCase().trim()
+                );
+                
+                // If exact match not found, try partial match (in case of autocomplete)
+                if (!selectedDoctor) {
+                  selectedDoctor = doctors.find(d => 
+                    d.name.toLowerCase().trim().includes(doctorName.toLowerCase().trim()) ||
+                    doctorName.toLowerCase().trim().includes(d.name.toLowerCase().trim())
+                  );
+                }
+                
+                onDiscountAuthorizedByChange(doctorName, selectedDoctor?.id);
               }}
               onInputChange={(_, newInputValue) => {
-                onDiscountAuthorizedByChange(newInputValue);
+                // When typing, try to find matching doctor (case-insensitive)
+                if (!newInputValue) {
+                  onDiscountAuthorizedByChange('', undefined);
+                  return;
+                }
+                // Try exact match first
+                let matchingDoctor = doctors.find(d => 
+                  d.name.toLowerCase().trim() === newInputValue.toLowerCase().trim()
+                );
+                
+                // If exact match not found, try partial match
+                if (!matchingDoctor && newInputValue.length > 2) {
+                  matchingDoctor = doctors.find(d => 
+                    d.name.toLowerCase().trim().startsWith(newInputValue.toLowerCase().trim()) ||
+                    newInputValue.toLowerCase().trim().startsWith(d.name.toLowerCase().trim())
+                  );
+                }
+                
+                onDiscountAuthorizedByChange(newInputValue, matchingDoctor?.id);
               }}
               disabled={!isProductSelected}
-              loading={isLoadingDoctors}
+              loading={isLoadingDoctorNames}
               noOptionsText="No doctors found"
               popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
               ListboxProps={{
@@ -417,7 +667,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   placeholder="Search doctor name..."
                   variant="outlined"
                   sx={{
-                    width: "280px",
+                    width: "240px",
                     "& .MuiOutlinedInput-root": {
                       height: "40px",
                       borderRadius: "18px",
@@ -459,11 +709,11 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   }}
                   InputProps={{
                     ...params.InputProps,
-                    startAdornment: (
+                    startAdornment: !discountAuthorizedBy ? (
                       <InputAdornment position="start" sx={{ marginLeft: "12px", marginRight: "8px" }}>
                         <SearchIcon sx={{ color: "#9CA3AF", width: "16px", height: "16px" }} />
                       </InputAdornment>
-                    ),
+                    ) : null,
                   }}
                 />
               )}

@@ -30,6 +30,8 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       mrp: item.mrp.toString(),
       discount: (item.sp * item.discount / 100).toFixed(2),
       discountPercent: item.discount.toString(),
+      discountAuthorizedBy: item.discountAuthorizedBy, // Preserve doctor name
+      discountAuthorizedById: item.discountAuthorizedById, // Preserve doctor ID (important for API)
       cgst: item.cgst || '0',
       cgstPercent: item.cgstPercent || '0',
       sgst: item.sgst || '0',
