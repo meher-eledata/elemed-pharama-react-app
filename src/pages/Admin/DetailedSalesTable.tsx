@@ -1,12 +1,15 @@
-import React, { useState, useMemo, ChangeEvent } from 'react';
+import React, { useState, useMemo, ChangeEvent, useRef } from 'react';
 import { Box, Typography, TextField, InputAdornment, IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+import DownloadIcon from '@mui/icons-material/Download';
+import { CSVLink } from 'react-csv';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { DETAILED_SALES_TABLE_CONSTANTS } from '../../config/constants/DetailedSalesTable.constants';
 import { DETAILED_SALES_TABLE_LABELS } from '../../config/label/DetailedSalesTable.labels';
+import { StandardButton } from '../../components/Common';
 
 interface SalesData {
   id: number;
@@ -23,6 +26,7 @@ interface SalesData {
 
 const DetailedSalesTable: React.FC = () => {
   const navigate = useNavigate();
+  const csvLinkRef = useRef<any>(null);
 
   const mockData: SalesData[] = [
     {
@@ -282,6 +286,28 @@ const DetailedSalesTable: React.FC = () => {
     }));
   };
 
+  const handleDownloadCSV = () => {
+    csvLinkRef.current?.link?.click();
+  };
+
+  // Prepare CSV data
+  const csvData = useMemo(() => {
+    return sortedData.map(item => ({
+      'Transaction Date': item.transactionDate,
+      'Invoice Number': item.invoiceNumber,
+      'Customer Name': item.customerName,
+      'Payment Type': item.paymentType,
+      'Sale Amount (₹)': item.saleAmount.toFixed(2),
+      'Discount (₹)': item.discount.toFixed(2),
+      'CGST (₹)': item.cgst.toFixed(2),
+      'GST (₹)': item.gst.toFixed(2),
+      'IGST (₹)': item.igst.toFixed(2),
+    }));
+  }, [sortedData]);
+
+  // Generate filename with current date
+  const csvFilename = `detailed_sales_table_${new Date().toISOString().split('T')[0]}.csv`;
+
   return (
     <Box sx={{ padding: 3 }}>
       {/* Header with Back Button */}
@@ -312,17 +338,23 @@ const DetailedSalesTable: React.FC = () => {
         </Typography>
       </Box>
 
-      {/* Search Bar */}
+      {/* Search Bar and Download Button */}
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center', 
+        justifyContent: 'space-between',
         mb: 3,
-        bgcolor: '#F6F8FB',
-        borderRadius: '16px',
-        border: '1px solid #9AABB',
-        p: '12px',
-        width: 'fit-content',
+        gap: 2,
       }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          bgcolor: '#F6F8FB',
+          borderRadius: '16px',
+          border: '1px solid #9AABB',
+          p: '12px',
+          width: 'fit-content',
+        }}>
         <TextField
           placeholder={DETAILED_SALES_TABLE_LABELS.SEARCH_PLACEHOLDER}
           value={currentSearchTerm}
@@ -402,6 +434,18 @@ const DetailedSalesTable: React.FC = () => {
             },
           }}
         />
+        </Box>
+        <StandardButton
+          variant="primary"
+          size="medium"
+          startIcon={<DownloadIcon />}
+          onClick={handleDownloadCSV}
+          sx={{
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Download CSV
+        </StandardButton>
       </Box>
 
       {/* Table */}
@@ -505,6 +549,14 @@ const DetailedSalesTable: React.FC = () => {
           sortConfig={sortConfig}
         />
       </Box>
+
+      {/* Hidden CSV Link */}
+      <CSVLink
+        data={csvData}
+        filename={csvFilename}
+        ref={csvLinkRef}
+        style={{ display: 'none' }}
+      />
     </Box>
   );
 };

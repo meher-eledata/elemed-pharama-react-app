@@ -1,8 +1,10 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, Suspense, lazy, useRef, useMemo } from 'react';
 import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip, Button } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate } from 'react-router-dom';
+import DownloadIcon from '@mui/icons-material/Download';
+import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
 import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
 import { PharmaDatePicker } from '../../components/Common';
@@ -163,6 +165,7 @@ const DetailedReportsView: React.FC = () => {
 const DailySalesReport: React.FC = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
+  const csvLinkRef = useRef<any>(null);
 
   const reportData = {
     totalBills: 24,
@@ -215,6 +218,64 @@ const DailySalesReport: React.FC = () => {
   // Calculate total for percentage calculation
   const totalPaymentValue = reportData.paymentTypeData.reduce((sum, item) => sum + item.value, 0);
 
+  // Prepare CSV data
+  const csvData = useMemo(() => {
+    const dateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
+    
+    const csvRows = [
+      // Summary Section
+      { Section: 'Summary', Metric: 'Total Bills', Value: reportData.totalBills.toString(), Details: '' },
+      { Section: 'Summary', Metric: 'Total Sales (₹)', Value: reportData.totalSales.toFixed(2), Details: '' },
+      { Section: 'Summary', Metric: 'Total Discount (₹)', Value: reportData.totalDiscount.toFixed(2), Details: '' },
+      { Section: 'Summary', Metric: 'Total Tax Collected (₹)', Value: reportData.totalTaxCollected.toFixed(2), Details: '' },
+      { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
+      
+      // Sales Breakdown Section
+      { Section: 'Sales Breakdown', Metric: 'Cash Sales (₹)', Value: reportData.cashSales.amount.toFixed(2), Details: `From ${reportData.cashSales.bills} bills` },
+      { Section: 'Sales Breakdown', Metric: 'Other Sales (₹)', Value: reportData.otherSales.amount.toFixed(2), Details: `From ${reportData.otherSales.bills} bills` },
+      { Section: 'Sales Breakdown', Metric: 'Card Sales (₹)', Value: reportData.cardSales.amount.toFixed(2), Details: `From ${reportData.cardSales.bills} bills` },
+      { Section: 'Sales Breakdown', Metric: 'UPI Sales (₹)', Value: reportData.upiSales.amount.toFixed(2), Details: `From ${reportData.upiSales.bills} bills` },
+      { Section: 'Sales Breakdown', Metric: 'Insurance Sales (₹)', Value: reportData.insuranceSales.amount.toFixed(2), Details: `From ${reportData.insuranceSales.bills} bills` },
+      { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
+      
+      // Payment Type Breakdown
+      ...reportData.paymentTypeData.map(item => ({
+        Section: 'Payment Type Breakdown',
+        Metric: item.label,
+        Value: item.value.toFixed(2),
+        Details: `${((item.value / totalPaymentValue) * 100).toFixed(2)}%`
+      })),
+      { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
+      
+      // Tax Summary
+      { Section: 'Tax Summary', Metric: 'Total Tax (₹)', Value: reportData.taxSummary.totalTax.toFixed(2), Details: '' },
+      { Section: 'Tax Summary', Metric: 'CGST (₹)', Value: reportData.taxSummary.cgst.toFixed(2), Details: '' },
+      { Section: 'Tax Summary', Metric: 'SGST (₹)', Value: reportData.taxSummary.sgst.toFixed(2), Details: '' },
+      { Section: 'Tax Summary', Metric: 'IGST (₹)', Value: reportData.taxSummary.igst.toFixed(2), Details: '' },
+      { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
+      
+      // Weekly Trend
+      ...reportData.weeklyTrend.days.map((day, index) => ({
+        Section: 'Weekly Sales Trend',
+        Metric: day,
+        Value: reportData.weeklyTrend.values[index].toString(),
+        Details: 'Sales count'
+      })),
+    ];
+    
+    return csvRows;
+  }, [reportData, selectedDate, totalPaymentValue]);
+
+  // Generate filename with selected date
+  const csvFilename = useMemo(() => {
+    const dateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
+    return `daily_sales_report_${dateStr}.csv`;
+  }, [selectedDate]);
+
+  const handleDownloadCSV = () => {
+    csvLinkRef.current?.link?.click();
+  };
+
   return (
     <Box>
       {/* Header */}
@@ -245,6 +306,17 @@ const DailySalesReport: React.FC = () => {
             width={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.WIDTH}
             height={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.HEIGHT}
           />
+          <StandardButton
+            variant="primary"
+            size="medium"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadCSV}
+            sx={{
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Download CSV
+          </StandardButton>
         </Box>
       </Box>
 
@@ -960,6 +1032,13 @@ const DailySalesReport: React.FC = () => {
         </Grid>
       </Grid>
 
+      {/* Hidden CSV Link */}
+      <CSVLink
+        data={csvData}
+        filename={csvFilename}
+        ref={csvLinkRef}
+        style={{ display: 'none' }}
+      />
     </Box>
   );
 };

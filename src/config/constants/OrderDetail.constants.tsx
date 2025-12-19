@@ -31,6 +31,9 @@ export const paymentMethods = [
   "Bank Transfer",
   "Cheque",
   "UPI",
+  "Insurance",
+  "Government Schemes",
+  "Credit",
 ];
 
 export const paymentVendors = [

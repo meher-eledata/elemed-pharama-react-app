@@ -182,52 +182,101 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
       </SectionRow>
 
       <SectionRow sx={{ gap: '16px', marginTop: '5px', marginLeft:"-10px" }}>
-        <TextField
-          label={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_LABEL}
-          variant="outlined"
-          placeholder={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_PLACEHOLDER}
-          value={insuranceCompany}
-          onChange={(e) => onInsuranceCompanyChange(e.target.value)}
-          sx={{
-            width: '200px',
-            '& .MuiOutlinedInput-root': {
-              height: '48px',
-              borderRadius: '12px',
-              backgroundColor: '#FFFFFF',
-              '& fieldset': {
-                borderColor: '#9AA8BC',
+        {paymentMode === 'Insurance' ? (
+          <TextField
+            label={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_LABEL}
+            variant="outlined"
+            placeholder={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_PLACEHOLDER}
+            value={insuranceCompany}
+            onChange={(e) => onInsuranceCompanyChange(e.target.value)}
+            required
+            sx={{
+              width: '200px',
+              '& .MuiOutlinedInput-root': {
+                height: '48px',
+                borderRadius: '12px',
+                backgroundColor: '#FFFFFF',
+                '& fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#5C17E5',
+                },
               },
-              '&:hover fieldset': {
-                borderColor: '#9AA8BC',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#5C17E5',
-              },
-            },
-            '& .MuiOutlinedInput-input': {
-              padding: '12px 16px',
-              fontFamily: "'Lexend', sans-serif",
-              fontSize: '16px',
-              color: '#1A212B',
-              textAlign: 'center',
-              '&::placeholder': {
-                color: '#728197',
-                fontSize: '16px',
+              '& .MuiOutlinedInput-input': {
+                padding: '12px 16px',
                 fontFamily: "'Lexend', sans-serif",
-                opacity: 1,
+                fontSize: '16px',
+                color: '#1A212B',
+                textAlign: 'center',
+                '&::placeholder': {
+                  color: '#728197',
+                  fontSize: '16px',
+                  fontFamily: "'Lexend', sans-serif",
+                  opacity: 1,
+                },
               },
-            },
-            '& .MuiInputLabel-root': {
-              fontFamily: "'Lexend', sans-serif",
-              fontSize: '16px',
-              color: '#1A212B',
-              '&.Mui-focused': {
-                color: '#5C17E5',
+              '& .MuiInputLabel-root': {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '16px',
+                color: '#1A212B',
+                '&.Mui-focused': {
+                  color: '#5C17E5',
+                },
               },
-            },
-          }}
-        />
-        <Box sx={{ width: '200px', marginLeft: '6px',marginBottom: '-8px' }}>
+            }}
+          />
+        ) : (
+          <TextField
+            label={SALES_RECEIPT_LABELS.DETAILS_LABEL}
+            variant="outlined"
+            placeholder={SALES_RECEIPT_LABELS.DETAILS_PLACEHOLDER}
+            value={insuranceCompany}
+            onChange={(e) => onInsuranceCompanyChange(e.target.value)}
+            sx={{
+              width: '200px',
+              '& .MuiOutlinedInput-root': {
+                height: '48px',
+                borderRadius: '12px',
+                backgroundColor: '#FFFFFF',
+                '& fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#5C17E5',
+                },
+              },
+              '& .MuiOutlinedInput-input': {
+                padding: '12px 16px',
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '16px',
+                color: '#1A212B',
+                textAlign: 'center',
+                '&::placeholder': {
+                  color: '#728197',
+                  fontSize: '16px',
+                  fontFamily: "'Lexend', sans-serif",
+                  opacity: 1,
+                },
+              },
+              '& .MuiInputLabel-root': {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '16px',
+                color: '#1A212B',
+                '&.Mui-focused': {
+                  color: '#5C17E5',
+                },
+              },
+            }}
+          />
+        )}
+        <Box sx={{ width: '200px', marginLeft: '6px', marginBottom: '-8px' }}>
           <Box sx={{
             '& .MuiPickersInputBase-root, & .MuiOutlinedInput-root': {
               borderRadius: '12px !important',

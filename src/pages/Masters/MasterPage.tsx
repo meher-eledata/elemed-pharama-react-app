@@ -8,6 +8,7 @@ import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import CustomerModal from "../../components/Modal/NewCustomer/CustomerModal";
 import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
+import NewDoctorModal from "../../components/Modal/NewDoctor/NewDoctorModal";
 import { MASTER_DATA_CONSTANTS } from "../../config/constants/MasterData.constants";
 import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
 import {
@@ -131,6 +132,7 @@ const Masterpage: React.FC = () => {
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [doctorModalOpen, setDoctorModalOpen] = useState(false);
 
   const { data: products = [], isLoading: loadingProducts } = useGetSalesProductsQuery();
   const { data: customers = [], isLoading: loadingCustomers } = useGetCustomersQuery();
@@ -254,8 +256,7 @@ const Masterpage: React.FC = () => {
           title={MASTER_DATA_LABELS.CARDS.DOCTOR.TITLE}
           desc={MASTER_DATA_LABELS.CARDS.DOCTOR.DESC}
           action={MASTER_DATA_LABELS.CARDS.DOCTOR.ACTION}
-          onAction={() => {
-          }}
+          onAction={() => setDoctorModalOpen(true)}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.DOCTOR}
           count={loadingDoctors ? 0 : doctorCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.DOCTOR.BADGE_LABEL}
@@ -286,6 +287,21 @@ const Masterpage: React.FC = () => {
             setSupplierModalOpen(false);
           } catch (error) {
             console.error('Error adding supplier:', error);
+            throw error;
+          }
+        }}
+      />
+
+      <NewDoctorModal
+        isOpen={doctorModalOpen}
+        onClose={() => setDoctorModalOpen(false)}
+        onSubmit={async (doctorData) => {
+          try {
+            // TODO: Add API call to add doctor
+            // await addDoctor({ ... }).unwrap();
+            setDoctorModalOpen(false);
+          } catch (error) {
+            console.error('Error adding doctor:', error);
             throw error;
           }
         }}

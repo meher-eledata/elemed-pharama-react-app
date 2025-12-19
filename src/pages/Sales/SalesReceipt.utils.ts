@@ -280,7 +280,12 @@ export const generatePrintHTML = (data: {
           <div class="detail-section">
             <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
             <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', (paymentMode || '').trim())}</div>
-            <div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}</div>
+            ${paymentMode === 'Insurance' 
+              ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}</div>`
+              : insuranceCompany && insuranceCompany.trim() 
+                ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
+                : ''
+            }
           </div>
           <div class="detail-section">
             <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>

@@ -9,8 +9,9 @@ import {
   Grid,
   IconButton,
   Checkbox,
-  Radio,
-  RadioGroup,
+  Select,
+  MenuItem,
+  InputLabel,
   Stack,
   Divider,
   Alert,
@@ -118,7 +119,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
     setCustomerData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleGenderChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleGenderChange = (e: any) => {
     const genderType = e.target.value;
     setCustomerData(prev => ({
       ...prev,
@@ -300,118 +301,82 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                 onChange={handleInputChange}
                 sx={inputStyle}
               />
-            </Stack>
 
-            <Box sx={{ mt: 4 }}>
-              <Typography sx={{ 
-                fontSize: '14px', 
-                fontWeight: 500, 
-                mb: 2
-              }}>
-                Gender
-              </Typography>
-              <FormControl component="fieldset" sx={{ width: '100%' }}>
-                <RadioGroup
-                  row
-                  value={getCurrentGenderValue()}
-                  onChange={handleGenderChange}
+              <FormControl fullWidth sx={inputStyle}>
+                <InputLabel 
+                  id="gender-select-label"
                   sx={{
-                    gap: 4,
-                    '& .MuiFormControlLabel-root': {
-                      marginRight: 0,
+                    color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.LABEL_COLOR,
+                    fontSize: '14px',
+                    '&.Mui-focused': {
+                      color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
+                    },
+                    '&.MuiInputLabel-shrink': {
+                      color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
                     }
                   }}
                 >
-                  <FormControlLabel
-                    value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.MALE}
-                    control={
-                      <Radio
-                        size="small"
-                        sx={{
-                          color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          '&.Mui-checked': {
-                            color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          },
-                          '&:hover': {
-                            backgroundColor: 'transparent',
-                          },
-                          padding: '4px 9px',
-                        }}
-                      />
-                    }
-                    label={CUSTOMER_MODAL_LABELS.GENDER_MALE}
-                    sx={{
-                      margin: 0,
-                      '& .MuiFormControlLabel-label': {
-                        fontSize: '14px',
-                        fontWeight: 400,
-                        marginLeft: '8px',
+                  Gender
+                </InputLabel>
+                <Select
+                  labelId="gender-select-label"
+                  id="gender-select"
+                  value={getCurrentGenderValue()}
+                  label="Gender"
+                  onChange={handleGenderChange}
+                  sx={{
+                    borderRadius: CUSTOMER_MODAL_CONSTANTS.INPUT_BORDER_RADIUS,
+                    fontSize: '14px',
+                    fontFamily: "'Lexend', sans-serif",
+                    color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.OUTLINE_COLOR,
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.OUTLINE_COLOR,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.FOCUSED_COLOR,
+                    },
+                    '& .MuiSelect-icon': {
+                      color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
+                    },
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        borderRadius: CUSTOMER_MODAL_CONSTANTS.INPUT_BORDER_RADIUS,
                         fontFamily: "'Lexend', sans-serif",
-                        color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
-                      },
-                    }}
-                  />
-                  <FormControlLabel
-                    value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.FEMALE}
-                    control={
-                      <Radio
-                        size="small"
-                        sx={{
-                          color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          '&.Mui-checked': {
-                            color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          },
+                        '& .MuiMenuItem-root': {
+                          fontSize: '14px',
+                          fontFamily: "'Lexend', sans-serif",
                           '&:hover': {
-                            backgroundColor: 'transparent',
+                            backgroundColor: '#f5f5f5',
                           },
-                          padding: '4px 9px',
-                        }}
-                      />
-                    }
-                    label={CUSTOMER_MODAL_LABELS.GENDER_FEMALE}
-                    sx={{
-                      margin: 0,
-                      '& .MuiFormControlLabel-label': {
-                        fontSize: '14px',
-                        fontWeight: 400,
-                        marginLeft: '8px',
-                        fontFamily: "'Lexend', sans-serif",
-                        color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
-                      },
-                    }}
-                  />
-                  <FormControlLabel
-                    value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.OTHER}
-                    control={
-                      <Radio
-                        size="small"
-                        sx={{
-                          color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
-                          '&.Mui-checked': {
+                          '&.Mui-selected': {
+                            backgroundColor: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR + '15',
                             color: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR,
+                            '&:hover': {
+                              backgroundColor: CUSTOMER_MODAL_CONSTANTS.PRIMARY_COLOR + '25',
+                            },
                           },
-                          '&:hover': {
-                            backgroundColor: 'transparent',
-                          },
-                          padding: '4px 9px',
-                        }}
-                      />
-                    }
-                    label={CUSTOMER_MODAL_LABELS.GENDER_OTHER}
-                    sx={{
-                      margin: 0,
-                      '& .MuiFormControlLabel-label': {
-                        fontSize: '14px',
-                        fontWeight: 400,
-                        marginLeft: '8px',
-                        fontFamily: "'Lexend', sans-serif",
-                        color: CUSTOMER_MODAL_CONSTANTS.INPUT_STYLE.TEXT_COLOR,
+                        },
                       },
-                    }}
-                  />
-                </RadioGroup>
+                    },
+                  }}
+                >
+                  <MenuItem value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.MALE}>
+                    {CUSTOMER_MODAL_LABELS.GENDER_MALE}
+                  </MenuItem>
+                  <MenuItem value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.FEMALE}>
+                    {CUSTOMER_MODAL_LABELS.GENDER_FEMALE}
+                  </MenuItem>
+                  <MenuItem value={CUSTOMER_MODAL_CONSTANTS.GENDER_TYPES.OTHER}>
+                    {CUSTOMER_MODAL_LABELS.GENDER_OTHER}
+                  </MenuItem>
+                </Select>
               </FormControl>
-            </Box>
+            </Stack>
           </Grid>
 
           <Grid item xs={12} md={4}>

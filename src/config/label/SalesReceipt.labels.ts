@@ -27,6 +27,8 @@ export const SALES_RECEIPT_LABELS = {
   PAYMENT_MODE_PLACEHOLDER: "Cash",
   INSURANCE_COMPANY_LABEL: "Insurance company",
   INSURANCE_COMPANY_PLACEHOLDER: "Insurance company",
+  DETAILS_LABEL: "Details",
+  DETAILS_PLACEHOLDER: "Enter comments (optional)",
   INVOICE_NUMBER_LABEL: "Invoice number",
   INVOICE_DATE_LABEL: "Invoice date",
   
@@ -76,6 +78,7 @@ export const SALES_RECEIPT_LABELS = {
   EMAIL_PRINT: "Email id : {email}",
   PAYMENT_MODE_PRINT: "Payment mode : {mode}",
   INSURANCE_PRINT: "Insurance company : {company}",
+  DETAILS_PRINT: "Details : {details}",
   INVOICE_NUMBER_PRINT: "Invoice number : {number}",
   INVOICE_DATE_PRINT: "Invoice date : {date}",
   
