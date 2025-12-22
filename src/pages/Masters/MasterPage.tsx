@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Typography } from "@mui/material";
+import React, { useState, useCallback } from "react";
+import { Box, Typography, Snackbar, Alert } from "@mui/material";
 import { StandardButton } from "../../components/Common";
 import InventoryIcon from '@mui/icons-material/Inventory';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -12,12 +12,13 @@ import NewDoctorModal from "../../components/Modal/NewDoctor/NewDoctorModal";
 import { MASTER_DATA_CONSTANTS } from "../../config/constants/MasterData.constants";
 import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
 import {
-  useGetSalesProductsQuery,
-  useGetCustomersQuery,
-  useGetDoctorNamesQuery,
   useAddCustomerMutation
 } from "../../redux/slices/salesApi";
-import { useGetUniqueSupplierNamesQuery } from "../../redux/slices/receiveApi";
+import { 
+  useGetMasterCountsQuery,
+  useAddSupplierMutation,
+  useAddDoctorMutation
+} from "../../redux/slices/masterApi";
 
 interface CardProps {
   icon: React.ReactNode;
@@ -133,20 +134,22 @@ const Masterpage: React.FC = () => {
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [doctorModalOpen, setDoctorModalOpen] = useState(false);
+  
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
 
-  const { data: products = [], isLoading: loadingProducts } = useGetSalesProductsQuery();
-  const { data: customers = [], isLoading: loadingCustomers } = useGetCustomersQuery();
-  const { data: doctorNames = [], isLoading: loadingDoctors } = useGetDoctorNamesQuery();
-  const { data: supplierNames = [], isLoading: loadingSuppliers } = useGetUniqueSupplierNamesQuery();
-
+  const { data: masterCounts, isLoading: loadingCounts } = useGetMasterCountsQuery();
   const [addCustomer] = useAddCustomerMutation();
+  const [addSupplier] = useAddSupplierMutation();
+  const [addDoctor] = useAddDoctorMutation();
 
-  const productCount = products.length;
-  const customerCount = customers.length;
-  const doctorCount = doctorNames.length;
-  const supplierCount = supplierNames.length;
+  const productCount = masterCounts?.products ?? 0;
+  const customerCount = masterCounts?.customers ?? 0;
+  const doctorCount = masterCounts?.doctors ?? 0;
+  const supplierCount = masterCounts?.suppliers ?? 0;
 
-  const handleCustomerSubmit = async (customerData: any) => {
+  const handleCustomerSubmit = useCallback(async (customerData: any) => {
     try {
       await addCustomer({
         name: customerData.customerName,
@@ -160,11 +163,81 @@ const Masterpage: React.FC = () => {
         gender: customerData.gender === 'Male' ? 0 : customerData.gender === 'Female' ? 1 : null,
       }).unwrap();
       setCustomerModalOpen(false);
+      setSnackbarMessage('Customer added successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
     } catch (error) {
       console.error('Error adding customer:', error);
+      setSnackbarMessage('Failed to add customer. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
       throw error;
     }
-  };
+  }, [addCustomer]);
+
+  const handleSupplierSubmit = useCallback(async (supplierData: any) => {
+    try {
+      await addSupplier({
+        supplier_name: supplierData.supplierName,
+        supplier_code: supplierData.supplierCode,
+        contact_name: supplierData.contactName,
+        address: supplierData.address,
+        city: supplierData.city,
+        state: supplierData.state,
+        pin: supplierData.pin,
+        country: supplierData.country,
+        phone_number: supplierData.phoneNumber,
+        gst_number: supplierData.gstin || '',
+        cst_number: supplierData.cstNumber || '',
+        notes: supplierData.tinNumber || '',
+      }).unwrap();
+      setSupplierModalOpen(false);
+      setSnackbarMessage('Supplier added successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Error adding supplier:', error);
+      setSnackbarMessage('Failed to add supplier. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      throw error;
+    }
+  }, [addSupplier]);
+
+  const handleDoctorSubmit = useCallback(async (doctorData: any) => {
+    try {
+      const doctorPayload: any = {
+        doctor_name: doctorData.doctorName,
+        contact_name: doctorData.doctorName, // Using doctor name as contact name
+        address: doctorData.branch || '',
+        city: '',
+        state: '',
+        pin: '',
+        country: '',
+        phone_number: doctorData.mobileNumber || '',
+        gst_number: '',
+        cst_number: '',
+        notes: doctorData.role || '',
+      };
+      
+      // Only include email if it has a value
+      if (doctorData.email && doctorData.email.trim()) {
+        doctorPayload.email = doctorData.email.trim();
+      }
+      
+      await addDoctor(doctorPayload).unwrap();
+      setDoctorModalOpen(false);
+      setSnackbarMessage('Doctor added successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Error adding doctor:', error);
+      setSnackbarMessage('Failed to add doctor. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      throw error;
+    }
+  }, [addDoctor]);
 
   return (
     <Box sx={{ 
@@ -225,7 +298,7 @@ const Masterpage: React.FC = () => {
           action={MASTER_DATA_LABELS.CARDS.PRODUCT.ACTION}
           onAction={() => setProductModalOpen(true)}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.PRODUCT}
-          count={loadingProducts ? 0 : productCount}
+          count={loadingCounts ? 0 : productCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.PRODUCT.BADGE_LABEL}
         />
 
@@ -236,7 +309,7 @@ const Masterpage: React.FC = () => {
           action={MASTER_DATA_LABELS.CARDS.CUSTOMER.ACTION}
           onAction={() => setCustomerModalOpen(true)}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.CUSTOMER}
-          count={loadingCustomers ? 0 : customerCount}
+          count={loadingCounts ? 0 : customerCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.CUSTOMER.BADGE_LABEL}
         />
 
@@ -247,7 +320,7 @@ const Masterpage: React.FC = () => {
           action={MASTER_DATA_LABELS.CARDS.SUPPLIER.ACTION}
           onAction={() => setSupplierModalOpen(true)}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.SUPPLIER}
-          count={loadingSuppliers ? 0 : supplierCount}
+          count={loadingCounts ? 0 : supplierCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.SUPPLIER.BADGE_LABEL}
         />
 
@@ -258,7 +331,7 @@ const Masterpage: React.FC = () => {
           action={MASTER_DATA_LABELS.CARDS.DOCTOR.ACTION}
           onAction={() => setDoctorModalOpen(true)}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.DOCTOR}
-          count={loadingDoctors ? 0 : doctorCount}
+          count={loadingCounts ? 0 : doctorCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.DOCTOR.BADGE_LABEL}
         />
       </Box>
@@ -268,6 +341,9 @@ const Masterpage: React.FC = () => {
         onClose={() => setProductModalOpen(false)}
         onProductAdded={() => {
           setProductModalOpen(false);
+          setSnackbarMessage('Product added successfully!');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
         }}
       />
 
@@ -280,32 +356,29 @@ const Masterpage: React.FC = () => {
       <NewSupplierModal
         isOpen={supplierModalOpen}
         onClose={() => setSupplierModalOpen(false)}
-        onSubmit={async (supplierData) => {
-          try {
-            // TODO: Add API call to add supplier
-            // await addSupplier({ ... }).unwrap();
-            setSupplierModalOpen(false);
-          } catch (error) {
-            console.error('Error adding supplier:', error);
-            throw error;
-          }
-        }}
+        onSubmit={handleSupplierSubmit}
       />
 
       <NewDoctorModal
         isOpen={doctorModalOpen}
         onClose={() => setDoctorModalOpen(false)}
-        onSubmit={async (doctorData) => {
-          try {
-            // TODO: Add API call to add doctor
-            // await addDoctor({ ... }).unwrap();
-            setDoctorModalOpen(false);
-          } catch (error) {
-            console.error('Error adding doctor:', error);
-            throw error;
-          }
-        }}
+        onSubmit={handleDoctorSubmit}
       />
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity} 
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

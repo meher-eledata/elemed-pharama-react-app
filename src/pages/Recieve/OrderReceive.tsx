@@ -876,9 +876,16 @@ const OrderReceive: React.FC = () => {
         ) : loadingPurchaseOrders && activeTab === 1 ? (
           <Typography variant="body2">{ORDER_RECEIVE_MESSAGES.LOADING_ORDERS}</Typography>
         ) : receiptsError && activeTab === 2 ? (
-          <Box>
-            <Typography variant="body2" color="error">{ORDER_RECEIVE_MESSAGES.LOAD_RECEIPTS_FAILED}</Typography>
-            <StandardButton size="small" onClick={() => refetchReceipts()} variant="outline">Retry</StandardButton>
+          <Box sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+              {ORDER_RECEIVE_MESSAGES.LOAD_RECEIPTS_FAILED}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+              {extractApiErrorMessage(receiptsError)}
+            </Typography>
+            <StandardButton size="small" onClick={() => refetchReceipts()} variant="outline">
+              Retry
+            </StandardButton>
           </Box>
         ) : purchaseOrdersError && activeTab === 1 ? (
           <Box>
