@@ -7,6 +7,7 @@ import { TableColumn } from '../../components/PharmaTable';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import DeleteNewIcon from '../../assets/DeleteNew.svg';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
+import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 
 interface GetTableColumnsParams {
   editingRowId: string | null;
@@ -70,9 +71,13 @@ export const getTableColumns = ({
         <TextField
           value={item.quantity}
           onChange={(e) => {
-            setSalesItems(prev => prev.map(product => 
-              product.id === item.id ? { ...product, quantity: e.target.value } : product
-            ));
+            setSalesItems(prev => prev.map(product => {
+              if (product.id === item.id) {
+                const updated = { ...product, quantity: e.target.value };
+                return recalculateSalesItemAmount(updated);
+              }
+              return product;
+            }));
           }}
           disabled={!item.productName || item.productName.trim() === ''}
           size="small"
@@ -139,9 +144,13 @@ export const getTableColumns = ({
         <TextField
           value={item.unitPrice}
           onChange={(e) => {
-            setSalesItems(prev => prev.map(product => 
-              product.id === item.id ? { ...product, unitPrice: e.target.value } : product
-            ));
+            setSalesItems(prev => prev.map(product => {
+              if (product.id === item.id) {
+                const updated = { ...product, unitPrice: e.target.value };
+                return recalculateSalesItemAmount(updated);
+              }
+              return product;
+            }));
           }}
           size="small"
           type="number"
@@ -175,12 +184,16 @@ export const getTableColumns = ({
           value={item.discountPercent}
           onChange={(e) => {
             const value = parseInt(e.target.value) || 0;
-            setSalesItems(prev => prev.map(product => 
-              product.id === item.id ? { 
-                ...product, 
-                discountPercent: Math.max(0, Math.min(100, value)).toString() 
-              } : product
-            ));
+            setSalesItems(prev => prev.map(product => {
+              if (product.id === item.id) {
+                const updated = { 
+                  ...product, 
+                  discountPercent: Math.max(0, Math.min(100, value)).toString() 
+                };
+                return recalculateSalesItemAmount(updated);
+              }
+              return product;
+            }));
           }}
           disabled={!item.productName || item.productName.trim() === ''}
           size="small"
@@ -220,23 +233,20 @@ export const getTableColumns = ({
             if (applyGstToAll) {
               // Update first row and apply to ALL products at once
               setSalesItems(prev => {
-                const updated = [...prev];
-                // Update the first row's value
-                if (updated.length > 0) {
-                  updated[0] = { ...updated[0], cgstPercent: newCgstPercent };
-                }
-                // Apply first row's value to all products
-                return updated.map(product => ({
-                  ...product,
-                  cgstPercent: newCgstPercent,
-                  cgst: (parseFloat(product.amount) * parseFloat(newCgstPercent || '0') / 100).toFixed(2),
-                }));
+                return prev.map(product => {
+                  const updated = { ...product, cgstPercent: newCgstPercent };
+                  return recalculateSalesItemAmount(updated);
+                });
               });
             } else {
               // Only update the current item
-              setSalesItems(prev => prev.map(product => 
-                product.id === item.id ? { ...product, cgstPercent: newCgstPercent } : product
-              ));
+              setSalesItems(prev => prev.map(product => {
+                if (product.id === item.id) {
+                  const updated = { ...product, cgstPercent: newCgstPercent };
+                  return recalculateSalesItemAmount(updated);
+                }
+                return product;
+              }));
             }
           }}
           size="small"
@@ -276,23 +286,20 @@ export const getTableColumns = ({
             if (applyGstToAll) {
               // Update first row and apply to ALL products at once
               setSalesItems(prev => {
-                const updated = [...prev];
-                // Update the first row's value
-                if (updated.length > 0) {
-                  updated[0] = { ...updated[0], sgstPercent: newSgstPercent };
-                }
-                // Apply first row's value to all products
-                return updated.map(product => ({
-                  ...product,
-                  sgstPercent: newSgstPercent,
-                  sgst: (parseFloat(product.amount) * parseFloat(newSgstPercent || '0') / 100).toFixed(2),
-                }));
+                return prev.map(product => {
+                  const updated = { ...product, sgstPercent: newSgstPercent };
+                  return recalculateSalesItemAmount(updated);
+                });
               });
             } else {
               // Only update the current item
-              setSalesItems(prev => prev.map(product => 
-                product.id === item.id ? { ...product, sgstPercent: newSgstPercent } : product
-              ));
+              setSalesItems(prev => prev.map(product => {
+                if (product.id === item.id) {
+                  const updated = { ...product, sgstPercent: newSgstPercent };
+                  return recalculateSalesItemAmount(updated);
+                }
+                return product;
+              }));
             }
           }}
           size="small"
@@ -332,23 +339,20 @@ export const getTableColumns = ({
             if (applyGstToAll) {
               // Update first row and apply to ALL products at once
               setSalesItems(prev => {
-                const updated = [...prev];
-                // Update the first row's value
-                if (updated.length > 0) {
-                  updated[0] = { ...updated[0], igstPercent: newIgstPercent };
-                }
-                // Apply first row's value to all products
-                return updated.map(product => ({
-                  ...product,
-                  igstPercent: newIgstPercent,
-                  igst: (parseFloat(product.amount) * parseFloat(newIgstPercent || '0') / 100).toFixed(2),
-                }));
+                return prev.map(product => {
+                  const updated = { ...product, igstPercent: newIgstPercent };
+                  return recalculateSalesItemAmount(updated);
+                });
               });
             } else {
               // Only update the current item
-              setSalesItems(prev => prev.map(product => 
-                product.id === item.id ? { ...product, igstPercent: newIgstPercent } : product
-              ));
+              setSalesItems(prev => prev.map(product => {
+                if (product.id === item.id) {
+                  const updated = { ...product, igstPercent: newIgstPercent };
+                  return recalculateSalesItemAmount(updated);
+                }
+                return product;
+              }));
             }
           }}
           size="small"

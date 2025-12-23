@@ -17,14 +17,29 @@ export const Toast: React.FC<ToastProps> = ({
   return (
     <Snackbar
       open={open}
-      autoHideDuration={4000}
+      autoHideDuration={6000}
       onClose={onClose}
       anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      sx={{
+        zIndex: 9999,
+        '& .MuiSnackbar-root': {
+          zIndex: 9999,
+        },
+      }}
     >
       <Alert 
         onClose={onClose} 
         severity={severity} 
-        sx={{ width: '100%' }}
+        sx={{ 
+          width: '100%',
+          fontSize: '14px',
+          fontWeight: 500,
+          '& .MuiAlert-message': {
+            display: 'flex',
+            alignItems: 'center',
+          },
+        }}
+        variant="filled"
       >
         {message}
       </Alert>

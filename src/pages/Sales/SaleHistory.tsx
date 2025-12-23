@@ -12,7 +12,6 @@ import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
@@ -322,20 +321,32 @@ export default function SaleHistory() {
         header: '',
         sortable: false,
       render: (item) => (
-        <IconButton 
-          size="small" 
-          onClick={() => handleEditInvoice(item.id)}
-          sx={{ p: 0.5 }}
+        <StandardButton
+          onClick={() => handleReturnInvoice(item.id)}
+          variant="primary"
+          size="small"
+          sx={{
+            minWidth: '100px',
+            height: '32px',
+            borderRadius: '8px',
+            backgroundColor: '#5c17e5',
+            color: '#FFFFFF',
+            fontWeight: 600,
+            fontSize: '14px',
+            textTransform: 'none',
+            boxShadow: 'none',
+      
+          }}
         >
-          <EditIcon sx={{ fontSize: 16, color: '#5C17E5' }} />
-            </IconButton>
-        ),
+          Return
+        </StandardButton>
+      ),
     },
 ];
 
   // Event handlers
   const handleStartNewSale = () => {
-    navigate('/sales');
+    navigate('/sales/new');
   };
 
   const handleViewInvoice = (invoiceId: number) => {
@@ -423,9 +434,28 @@ export default function SaleHistory() {
     setSelectedInvoiceId(null);
   };
 
-  const handleEditInvoice = (invoiceId: number) => {
-    // Navigate to edit invoice or open edit modal
-    // navigate(`/sales/edit/${invoiceId}`);
+  const handleReturnInvoice = (invoiceId: number) => {
+    const invoice = salesHistoryData.find(item => item.id === invoiceId);
+    if (invoice) {
+      // Get invoice details from storage
+      const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
+      const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
+      
+      navigate('/sales/sale-return', { 
+        state: { 
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          customerName: invoice.customerName,
+          customerMobile: invoice.customerMobile,
+          doctorName: invoice.doctorName,
+          username: invoice.username,
+          totalAmount: invoice.totalAmount,
+          items: invoiceItems, // Pass the invoice items
+          paymentMode: savedItem?.paymentMode || 'Cash'
+        } 
+      });
+    }
   };
 
     const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {

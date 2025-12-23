@@ -16,15 +16,18 @@ const ValidationErrorAlert: React.FC<ValidationErrorAlertProps> = ({ error }) =>
           variant="body2" 
           sx={{ 
             color: '#EF4444',
-            fontSize: '12px',
-            fontWeight: 500,
+            fontSize: '13px',
+            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
             gap: 0.5,
-            whiteSpace: 'nowrap',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            maxWidth: '400px',
+            lineHeight: 1.5,
           }}
         >
-          <span style={{ fontSize: '14px' }}>⚠</span>
+          <span style={{ fontSize: '16px' }}>⚠️</span>
           {error}
         </Typography>
       </ValidationErrorBox>

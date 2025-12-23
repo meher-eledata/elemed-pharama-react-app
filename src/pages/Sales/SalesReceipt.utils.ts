@@ -28,7 +28,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       type: item.type || 'N/A',
       unitPrice: item.sp.toString(),
       mrp: item.mrp.toString(),
-      discount: (item.sp * item.discount / 100).toFixed(2),
+      discount: (item.sp * item.discount / 100 * item.quantity).toFixed(2),
       discountPercent: item.discount.toString(),
       discountAuthorizedBy: item.discountAuthorizedBy, // Preserve doctor name
       discountAuthorizedById: item.discountAuthorizedById, // Preserve doctor ID (important for API)
@@ -44,9 +44,13 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
 };
 
 export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
-  const totalValue = salesItems.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-  const totalDiscount = salesItems.reduce((sum, item) => sum + parseFloat(item.discount), 0);
-  const taxAmount = 0; 
+  const totalValue = salesItems.reduce((sum, item) => sum + parseFloat(item.amount || '0'), 0);
+  const totalDiscount = salesItems.reduce((sum, item) => sum + parseFloat(item.discount || '0'), 0);
+  // Calculate total tax amount from CGST, SGST, and IGST
+  const taxAmount = salesItems.reduce((sum, item) => 
+    sum + parseFloat(item.cgst || '0') + parseFloat(item.sgst || '0') + parseFloat(item.igst || '0'), 0
+  );
+  // Total payable amount is the sum of all item amounts (which already includes taxes)
   const totalPayableAmount = totalValue;
 
   return {

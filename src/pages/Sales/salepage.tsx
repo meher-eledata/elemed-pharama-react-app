@@ -244,18 +244,26 @@ export default function SalePage() {
         setValidatedData(null);
         
         let errorMessage = "";
-        if (error.data && error.data.message) {
-          errorMessage = error.data.message;
-        } else if (error.data && error.data.error) {
-          errorMessage = error.data.error;
-        } else if (error.message) {
+        // Check for error in different formats
+        if (error?.data) {
+          if (typeof error.data === 'string') {
+            errorMessage = error.data;
+          } else if (error.data.error) {
+            errorMessage = error.data.error;
+          } else if (error.data.message) {
+            errorMessage = error.data.message;
+          } else if (error.data.detail) {
+            errorMessage = error.data.detail;
+          }
+        } else if (error?.message) {
           errorMessage = error.message;
-        } else if (typeof error.data === 'string') {
-          errorMessage = error.data;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
         } else {
           errorMessage = "Unable to validate product availability";
         }
         
+        // Ensure we show the error message clearly
         setValidationError(errorMessage);
       }
     };

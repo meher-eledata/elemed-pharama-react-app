@@ -13,6 +13,7 @@ import Masterpage from "./Masters/MasterPage";
 import Sale from "./Sales/salepage";
 import SalesReceipt from "./Sales/SalesReceipt";
 import SaleHistory from "./Sales/SaleHistory";
+import SaleReturn from "./Sales/SaleReturn";
 import AdminDashboard from "./Admin/AdminDashboard";
 import Users from "./Admin/Users";
 import Reports from "./Admin/Reports";
@@ -53,9 +54,10 @@ export const Pages = () => {
       </Route>
 
       <Route path="/sales" element={<DashboardLayout />}>
-        <Route index element={<Sale />} />
+        <Route index element={<SaleHistory />} />
+        <Route path="new" element={<Sale />} />
         <Route path="receipt" element={<SalesReceipt />} />
-        <Route path="sale-history" element={<SaleHistory />} />
+        <Route path="sale-return" element={<SaleReturn />} />
       </Route>
 
       <Route path={ADMIN_CONSTANTS.ROUTE_BASE} element={<DashboardLayout />}>

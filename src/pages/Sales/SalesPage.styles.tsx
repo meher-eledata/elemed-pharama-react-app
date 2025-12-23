@@ -70,9 +70,10 @@ export const ValidationErrorContainer = styled(Box)({
 export const ValidationErrorBox = styled(Box)({
   backgroundColor: '#FEE2E2',
   border: '1px solid #EF4444',
-  borderRadius: '6px',
-  padding: '6px 12px',
+  borderRadius: '8px',
+  padding: '10px 16px',
   display: 'inline-block',
-  maxWidth: 'fit-content',
+  maxWidth: '500px',
+  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.15)',
 });
 

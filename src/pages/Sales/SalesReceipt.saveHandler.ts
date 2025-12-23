@@ -147,11 +147,25 @@ export const executeSave = async ({
     let result;
     try {
       result = await submitSale(submitSalePayload).unwrap();
-      // Debug: Log the response to see what backend returns
       console.log('Sale submission response:', JSON.stringify(result, null, 2));
     } catch (submitError: any) {
       logError(submitError, 'SalesReceipt.submitSale');
-      throw submitError;
+      
+      let errorMessage = 'Failed to submit sale. Please try again.';
+      
+      if (submitError?.data) {
+        if (typeof submitError.data === 'string') {
+          errorMessage = submitError.data;
+        } else if (submitError.data.error) {
+          errorMessage = submitError.data.error;
+        } else if (submitError.data.message) {
+          errorMessage = submitError.data.message;
+        }
+      } else if (submitError?.message) {
+        errorMessage = submitError.message;
+      }
+      
+      throw new Error(errorMessage);
     }
     
     const historyItem = {
@@ -175,13 +189,19 @@ export const executeSave = async ({
     };
     saveSalesHistoryToStorage(historyItem);
     
+    // Show success toast first
     showToast('Sale submitted successfully!', 'success');
-    resetForm();
-    clearCart();
     
+    // Wait longer to ensure toast is visible before resetting and navigating
     setTimeout(() => {
-      navigate('/sales/sale-history');
-    }, 1500);
+      resetForm();
+      clearCart();
+      
+      // Navigate after form is reset, giving more time for toast to be seen
+      setTimeout(() => {
+        navigate('/sales/sale-history');
+      }, 1000);
+    }, 3000);
   } catch (error: unknown) {
     logError(error, 'SalesReceipt.executeSave');
     

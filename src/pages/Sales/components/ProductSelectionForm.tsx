@@ -199,13 +199,6 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                       border: "1px solid #D1D5DB",
                     },
                     "& .MuiInputAdornment-root": {
-                      opacity: 0,
-                      transition: "opacity 0.2s ease-in-out",
-                    },
-                    "&:hover .MuiInputAdornment-root": {
-                      opacity: 1,
-                    },
-                    "&.Mui-focused .MuiInputAdornment-root": {
                       opacity: 1,
                     },
                   },

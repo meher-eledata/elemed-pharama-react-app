@@ -38,7 +38,8 @@ import { ApplyGstCheckbox } from './components/ApplyGstCheckbox';
 import { ActionButtons } from './components/ActionButtons';
 import { Toast } from './components/Toast';
 import { SalesReceiptItem } from './SalesReceipt.types';
-import { getTodayDate, generatePrintHTML } from './SalesReceipt.utils';
+import { getTodayDate, generatePrintHTML, calculateFinancialSummary } from './SalesReceipt.utils';
+import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 import { transformCartItemsForEdit } from './SalesReceipt.handlers';
 import { getTableColumns } from './SalesReceipt.columns';
 import { useCartLoader } from './hooks/useCartLoader';
@@ -134,13 +135,29 @@ const SalesReceipt: React.FC = () => {
   // Load cart items
   useCartLoader({
     onCartLoaded: useCallback((items, summary) => {
-      setSalesItems(items);
+      // Recalculate all items to ensure discount amounts are correct
+      const recalculatedItems = items.map(item => recalculateSalesItemAmount(item));
+      setSalesItems(recalculatedItems);
+      
+      // Recalculate summary with corrected items
+      const correctedSummary = calculateFinancialSummary(recalculatedItems);
+      setTotalValue(correctedSummary.totalValue);
+      setTotalDiscount(correctedSummary.totalDiscount);
+      setTaxAmount(correctedSummary.taxAmount);
+      setTotalPayableAmount(correctedSummary.totalPayableAmount);
+    }, [])
+  });
+
+  // Recalculate totals whenever salesItems change (e.g., when discount or taxes are updated)
+  useEffect(() => {
+    if (salesItems.length > 0) {
+      const summary = calculateFinancialSummary(salesItems);
       setTotalValue(summary.totalValue);
       setTotalDiscount(summary.totalDiscount);
       setTaxAmount(summary.taxAmount);
       setTotalPayableAmount(summary.totalPayableAmount);
-    }, [])
-  });
+    }
+  }, [salesItems]);
 
   // Handle customer phone fetching
   const handleCustomerAutoFill = useCallback((customer: Customer) => {
