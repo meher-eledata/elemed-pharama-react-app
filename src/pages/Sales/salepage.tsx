@@ -216,7 +216,7 @@ export default function SalePage() {
       // Use selectedTypeProductId if available, otherwise fall back to productId
       const productIdToUse = selectedTypeProductId ? String(selectedTypeProductId) : productId;
       
-      if (!findProduct || !productIdToUse || debouncedQty <= 0 || !debouncedProductType) {
+      if (!findProduct || !productIdToUse || debouncedQty <= 0 || !debouncedProductType || !batch) {
         setValidationError("");
         setValidatedData(null);
         return;
@@ -229,6 +229,7 @@ export default function SalePage() {
           quantity: debouncedQty,
           type: debouncedProductType,
           disc: debouncedDiscount / 100,
+          batch_number: batch || undefined, // Include batch number for stock validation
         };
         
         const response = await validateSale(requestPayload).unwrap();
@@ -269,7 +270,7 @@ export default function SalePage() {
     };
 
     validateProduct();
-  }, [findProduct, productId, selectedTypeProductId, debouncedQty, debouncedProductType, debouncedDiscount, validateSale]);
+  }, [findProduct, productId, selectedTypeProductId, debouncedQty, debouncedProductType, debouncedDiscount, batch, validateSale]);
 
   // Product Selection Handlers
   const handleProductInputChange = (value: string) => {

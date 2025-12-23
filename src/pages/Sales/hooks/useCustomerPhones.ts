@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useGetCustomerPhonesMutation, useSearchCustomersMutation } from '../../../redux/slices/salesApi';
+import { useGetCustomerPhonesMutation } from '../../../redux/slices/salesApi';
 import { Customer } from '../../../redux/slices/salesApi';
 
 interface UseCustomerPhonesParams {
@@ -22,7 +22,6 @@ export const useCustomerPhones = ({
   onPhoneClear,
 }: UseCustomerPhonesParams) => {
   const [getCustomerPhones] = useGetCustomerPhonesMutation();
-  const [searchCustomers] = useSearchCustomersMutation();
   const shouldFetchImmediatelyRef = useRef(false);
 
   useEffect(() => {
@@ -37,49 +36,11 @@ export const useCustomerPhones = ({
           const phones = result.phones || [];
           onPhoneFetched(phones);
           
-          // If it's an exact match, also search for the customer to get the ID
-          if (isExactMatch) {
-            try {
-              const customers = await searchCustomers({ searchTerm: customerName.trim() }).unwrap();
-              // Find the customer that matches the name exactly
-              const matchedCustomer = customers.find(c => c.name.toLowerCase() === normalizedCustomerName);
-              
-              if (matchedCustomer && phones.length === 1) {
-                // Use the customer from search (which has the ID) and update with phone
-                const autoFilledCustomer: Customer = {
-                  id: matchedCustomer.id,
-                  name: matchedCustomer.name,
-                  mobile: phones[0],
-                  city: matchedCustomer.city || customerCity || '',
-                  email: matchedCustomer.email,
-                  address: matchedCustomer.address,
-                };
-                onCustomerAutoFill(autoFilledCustomer);
-              } else if (phones.length === 1) {
-                // If we found a phone but no customer match, use phone with ID 0
-                const autoFilledCustomer: Customer = {
-                  id: 0,
-                  name: customerName.trim(),
-                  mobile: phones[0],
-                  city: customerCity || '',
-                };
-                onCustomerAutoFill(autoFilledCustomer);
-              }
-            } catch (searchError: any) {
-              // If search fails (e.g., 404), silently fall back to phone-only approach
-              // Auto-fill phone if available, even if search endpoint doesn't exist
-              if (phones.length === 1) {
-                const autoFilledCustomer: Customer = {
-                  id: 0,
-                  name: customerName.trim(),
-                  mobile: phones[0],
-                  city: customerCity || '',
-                };
-                onCustomerAutoFill(autoFilledCustomer);
-              }
-            }
-          } else if (phones.length === 1 && (!customerMobile || customerMobile.trim() === '')) {
-            // Not an exact match but we have a phone, use it with ID 0
+          // Auto-fill customer if we have a phone number
+          // Note: We skip the search-customers endpoint call since it returns 404
+          // The customer ID is not critical - we can use ID 0 as per the comment in SalesReceipt
+          if (phones.length === 1 && (!customerMobile || customerMobile.trim() === '')) {
+            // Auto-fill with phone number, using ID 0 since we don't have the actual customer ID
             const autoFilledCustomer: Customer = {
               id: 0,
               name: customerName.trim(),
@@ -92,6 +53,10 @@ export const useCustomerPhones = ({
               onPhoneClear();
             }
           }
+          
+          // Note: We intentionally skip calling searchCustomers endpoint
+          // because it returns 404. The customer ID is not critical for the sales flow,
+          // and we can use ID 0 as documented in SalesReceipt.tsx
         } catch (error) {
           onPhoneFetched([]);
         }
@@ -115,7 +80,7 @@ export const useCustomerPhones = ({
 
       return () => clearTimeout(timeoutId);
     }
-  }, [customerName, getCustomerPhones, searchCustomers, customerNames, customerMobile, customerCity, onPhoneFetched, onCustomerAutoFill, onPhoneClear]);
+  }, [customerName, getCustomerPhones, customerNames, customerMobile, customerCity, onPhoneFetched, onCustomerAutoFill, onPhoneClear]);
 
   return { shouldFetchImmediatelyRef };
 };

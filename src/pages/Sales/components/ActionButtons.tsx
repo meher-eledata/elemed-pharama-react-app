@@ -8,6 +8,7 @@ interface ActionButtonsProps {
   onSave: () => void;
   onPrint: () => void;
   isSaveDisabled?: boolean;
+  hidePrintButton?: boolean;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -15,6 +16,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onSave,
   onPrint,
   isSaveDisabled = false,
+  hidePrintButton = false,
 }) => {
   const buttonStyles = {
     minWidth: '130px',
@@ -59,19 +61,21 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       >
         {SALES_RECEIPT_LABELS.SAVE_BUTTON}
       </StandardButton>
-      <StandardButton 
-        variant="primary" 
-        onClick={onPrint} 
-        size="large"
-        sx={{
-          ...buttonStyles,
-          backgroundColor: '#5C17E5',
-          color: '#FFFFFF',
-          boxShadow: 'none',
-        }}
-      >
-        {SALES_RECEIPT_LABELS.PRINT_BUTTON}
-      </StandardButton>
+      {!hidePrintButton && (
+        <StandardButton 
+          variant="primary" 
+          onClick={onPrint} 
+          size="large"
+          sx={{
+            ...buttonStyles,
+            backgroundColor: '#5C17E5',
+            color: '#FFFFFF',
+            boxShadow: 'none',
+          }}
+        >
+          {SALES_RECEIPT_LABELS.PRINT_BUTTON}
+        </StandardButton>
+      )}
     </Box>
   );
 };

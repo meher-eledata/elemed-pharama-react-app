@@ -122,16 +122,104 @@ export const clearFormDataFromStorage = (): void => {
   }
 };
 
-export const saveSalesHistoryToStorage = (historyItem: any): void => {
+export const saveSalesHistoryToStorage = (historyItem: any, invoiceId?: number): void => {
   try {
     const existingHistory = getSalesHistoryFromStorage();
-    const newHistory = [...existingHistory, {
-      ...historyItem,
-      id: Date.now(),
-      savedAt: new Date().toISOString()
-    }];
     
-    localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
+    // If invoiceId is provided (edit mode), update the existing entry
+    if (invoiceId !== undefined && invoiceId !== null) {
+      // First, find the entry by invoiceId
+      const existingIndex = existingHistory.findIndex((item: any) => 
+        item.id === invoiceId
+      );
+      
+      if (existingIndex >= 0) {
+        // Get the old invoice number before updating
+        const oldInvoiceNumber = existingHistory[existingIndex].invoiceNumber;
+        
+        // Remove ALL entries with the same invoiceId OR same invoice number (old or new)
+        // This ensures we only keep one entry - the updated one
+        const filteredHistory = existingHistory.filter((item: any) => {
+          // Remove if it matches the invoiceId (we'll add the updated one)
+          if (item.id === invoiceId) return false;
+          // Remove if it has the same old invoice number
+          if (item.invoiceNumber === oldInvoiceNumber) return false;
+          // Remove if it has the same new invoice number
+          if (item.invoiceNumber === historyItem.invoiceNumber) return false;
+          // Keep everything else
+          return true;
+        });
+        
+        // Add the updated entry with the original ID
+        filteredHistory.push({
+          ...historyItem,
+          id: existingHistory[existingIndex].id, // Keep the original ID
+          savedAt: existingHistory[existingIndex].savedAt, // Keep original savedAt
+          updatedAt: new Date().toISOString()
+        });
+        
+        localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(filteredHistory));
+      } else {
+        // If not found by ID, try to find by invoice number and update
+        const invoiceNumberIndex = existingHistory.findIndex((item: any) => 
+          item.invoiceNumber === historyItem.invoiceNumber
+        );
+        
+        if (invoiceNumberIndex >= 0) {
+          // Remove any other entries with the same invoice number
+          const filteredHistory = existingHistory.filter((item: any, index: number) => {
+            if (index === invoiceNumberIndex) return true;
+            return item.invoiceNumber !== historyItem.invoiceNumber;
+          });
+          
+          filteredHistory[invoiceNumberIndex >= filteredHistory.length ? filteredHistory.length - 1 : invoiceNumberIndex] = {
+            ...historyItem,
+            id: existingHistory[invoiceNumberIndex].id,
+            savedAt: existingHistory[invoiceNumberIndex].savedAt,
+            updatedAt: new Date().toISOString()
+          };
+          localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(filteredHistory));
+        } else {
+          // If not found at all, add as new with the provided invoiceId
+          existingHistory.push({
+            ...historyItem,
+            id: invoiceId,
+            savedAt: new Date().toISOString()
+          });
+          localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(existingHistory));
+        }
+      }
+    } else {
+      // For new invoices, check if invoice number already exists and update it
+      const existingIndex = existingHistory.findIndex((item: any) => 
+        item.invoiceNumber === historyItem.invoiceNumber
+      );
+      
+      if (existingIndex >= 0) {
+        // Remove any duplicates with the same invoice number
+        const filteredHistory = existingHistory.filter((item: any, index: number) => {
+          if (index === existingIndex) return true;
+          return item.invoiceNumber !== historyItem.invoiceNumber;
+        });
+        
+        // Update existing entry
+        filteredHistory[existingIndex >= filteredHistory.length ? filteredHistory.length - 1 : existingIndex] = {
+          ...historyItem,
+          id: existingHistory[existingIndex].id, // Keep the original ID
+          savedAt: existingHistory[existingIndex].savedAt, // Keep original savedAt
+          updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(filteredHistory));
+      } else {
+        // Add new entry
+        const newHistory = [...existingHistory, {
+          ...historyItem,
+          id: Date.now(),
+          savedAt: new Date().toISOString()
+        }];
+        localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
+      }
+    }
   } catch (error) {
   }
 };

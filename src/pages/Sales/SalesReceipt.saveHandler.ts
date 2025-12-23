@@ -27,10 +27,13 @@ interface ExecuteSaveParams {
   productsError: any;
   user: any;
   submitSale: (payload: any) => any;
+  updateSales?: (payload: { id: number; data: any }) => any; // Update sales mutation for edit mode
   showToast: (message: string, severity: 'success' | 'error' | 'warning' | 'info') => void;
   resetForm: () => void;
   clearCart: () => void;
   navigate: (path: string) => void;
+  invoiceId?: number; // Invoice ID for edit mode
+  isEditMode?: boolean; // Flag to indicate edit mode
 }
 
 export const executeSave = async ({
@@ -56,10 +59,13 @@ export const executeSave = async ({
   productsError,
   user,
   submitSale,
+  updateSales,
   showToast,
   resetForm,
   clearCart,
   navigate,
+  invoiceId,
+  isEditMode,
 }: ExecuteSaveParams): Promise<void> => {
   try {
     if (!customerName || !customerName.trim()) {
@@ -141,31 +147,39 @@ export const executeSave = async ({
       lines: lines,
     };
     
-    // Debug: Log the payload to verify discount_authority is being sent
-    console.log('Submitting sale with payload:', JSON.stringify(submitSalePayload, null, 2));
-    
-    let result;
-    try {
-      result = await submitSale(submitSalePayload).unwrap();
-      console.log('Sale submission response:', JSON.stringify(result, null, 2));
-    } catch (submitError: any) {
-      logError(submitError, 'SalesReceipt.submitSale');
+    // In edit mode, skip API call and just update localStorage (no backend endpoint)
+    if (isEditMode && invoiceId) {
+      // Edit mode: Just update localStorage, skip all API calls
+      // No submitSale or updateSales endpoint will be called
+      console.log('Edit mode: Updating sale in localStorage only (no API call) with invoiceId:', invoiceId);
+    } else {
+      // New sale mode: Call the submitSale API endpoint
+      // Debug: Log the payload to verify discount_authority is being sent
+      console.log('New sale: Submitting sale with payload:', JSON.stringify(submitSalePayload, null, 2));
       
-      let errorMessage = 'Failed to submit sale. Please try again.';
-      
-      if (submitError?.data) {
-        if (typeof submitError.data === 'string') {
-          errorMessage = submitError.data;
-        } else if (submitError.data.error) {
-          errorMessage = submitError.data.error;
-        } else if (submitError.data.message) {
-          errorMessage = submitError.data.message;
+      let result;
+      try {
+        result = await submitSale(submitSalePayload).unwrap();
+        console.log('Sale submission response:', JSON.stringify(result, null, 2));
+      } catch (submitError: any) {
+        logError(submitError, 'SalesReceipt.submitSale');
+        
+        let errorMessage = 'Failed to submit sale. Please try again.';
+        
+        if (submitError?.data) {
+          if (typeof submitError.data === 'string') {
+            errorMessage = submitError.data;
+          } else if (submitError.data.error) {
+            errorMessage = submitError.data.error;
+          } else if (submitError.data.message) {
+            errorMessage = submitError.data.message;
+          }
+        } else if (submitError?.message) {
+          errorMessage = submitError.message;
         }
-      } else if (submitError?.message) {
-        errorMessage = submitError.message;
+        
+        throw new Error(errorMessage);
       }
-      
-      throw new Error(errorMessage);
     }
     
     const historyItem = {
@@ -187,10 +201,14 @@ export const executeSave = async ({
       taxAmount,
       totalPayableAmount,
     };
-    saveSalesHistoryToStorage(historyItem);
+    // Pass invoiceId to update existing entry instead of creating duplicate
+    saveSalesHistoryToStorage(historyItem, invoiceId);
     
     // Show success toast first
-    showToast('Sale submitted successfully!', 'success');
+    const successMessage = isEditMode 
+      ? 'Sale updated successfully!' 
+      : 'Sale submitted successfully!';
+    showToast(successMessage, 'success');
     
     // Wait longer to ensure toast is visible before resetting and navigating
     setTimeout(() => {
@@ -199,7 +217,7 @@ export const executeSave = async ({
       
       // Navigate after form is reset, giving more time for toast to be seen
       setTimeout(() => {
-        navigate('/sales/sale-history');
+        navigate('/sales');
       }, 1000);
     }, 3000);
   } catch (error: unknown) {

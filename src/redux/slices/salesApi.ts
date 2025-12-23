@@ -162,6 +162,7 @@ export interface ValidateSaleRequest {
   quantity: number;
   type: string;
   disc: number;
+  batch_number?: string; // Add batch number for stock validation
 }
 
 export interface ValidateSaleResponse {

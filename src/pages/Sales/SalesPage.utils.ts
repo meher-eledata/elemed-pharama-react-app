@@ -117,7 +117,8 @@ export const canAddToCart = (
   }
 
   if (validationError) {
-    return { canAdd: false, message: 'Validation error exists' };
+    // Show the actual validation error message (e.g., stock errors)
+    return { canAdd: false, message: validationError };
   }
 
   if (!validatedData) {

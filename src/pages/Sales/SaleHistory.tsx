@@ -1,5 +1,5 @@
-import React, { useState, useMemo, ChangeEvent, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, ChangeEvent, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography, IconButton, Autocomplete, TextField, InputAdornment } from '@mui/material';
 import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import dayjs, { Dayjs } from 'dayjs';
@@ -12,6 +12,7 @@ import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
@@ -54,6 +55,7 @@ export interface InvoiceDetails {
 
 export default function SaleHistory() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   const user = useSelector((state: RootState) => state.auth.user);
   
@@ -79,8 +81,16 @@ export default function SaleHistory() {
   const [invoiceDetails, setInvoiceDetails] = useState<any>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
+  
+  // Force refresh of saved history when location changes (e.g., after edit)
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  useEffect(() => {
+    // Reload saved history when component mounts or when navigating back
+    setRefreshKey(prev => prev + 1);
+  }, [location.pathname]);
 
-  const savedHistory = useMemo(() => getSalesHistoryFromStorage(), []);
+  const savedHistory = useMemo(() => getSalesHistoryFromStorage(), [refreshKey]);
   
   const salesHistoryData: SalesHistoryItem[] = useMemo(() => {
     const savedItems: SalesHistoryItem[] = savedHistory.map((item: any, index: number) => ({
@@ -94,8 +104,18 @@ export default function SaleHistory() {
       totalAmount: item.totalAmount || 0,
     }));
 
+    // Remove duplicates from savedItems based on invoice number (keep the most recent one)
+    // Use Map for O(1) lookup instead of findIndex which is O(n)
+    const savedItemsMap = new Map<string, SalesHistoryItem>();
+    savedItems.forEach(item => {
+      if (item.invoiceNumber) {
+        savedItemsMap.set(item.invoiceNumber, item);
+      }
+    });
+    const uniqueSavedItems = Array.from(savedItemsMap.values());
+
     if (!invoicesData || !Array.isArray(invoicesData)) {
-      return savedItems;
+      return uniqueSavedItems;
     }
 
     const apiItems: SalesHistoryItem[] = invoicesData.map((invoice: any, index: number) => {
@@ -115,7 +135,25 @@ export default function SaleHistory() {
       };
     });
     
-    return [...savedItems, ...apiItems];
+    // Combine and remove duplicates (prefer savedItems over apiItems for same invoice number)
+    // Use Map for efficient O(1) lookup instead of Set + array iteration
+    const resultMap = new Map<string, SalesHistoryItem>();
+    
+    // First add all saved items (these take priority)
+    uniqueSavedItems.forEach(item => {
+      if (item.invoiceNumber) {
+        resultMap.set(item.invoiceNumber, item);
+      }
+    });
+    
+    // Then add api items that don't have duplicates in saved items
+    apiItems.forEach(item => {
+      if (item.invoiceNumber && !resultMap.has(item.invoiceNumber)) {
+        resultMap.set(item.invoiceNumber, item);
+      }
+    });
+    
+    return Array.from(resultMap.values());
   }, [savedHistory, invoicesData]);
   
 
@@ -321,25 +359,46 @@ export default function SaleHistory() {
         header: '',
         sortable: false,
       render: (item) => (
-        <StandardButton
-          onClick={() => handleReturnInvoice(item.id)}
-          variant="primary"
-          size="small"
-          sx={{
-            minWidth: '100px',
-            height: '32px',
-            borderRadius: '8px',
-            backgroundColor: '#5c17e5',
-            color: '#FFFFFF',
-            fontWeight: 600,
-            fontSize: '14px',
-            textTransform: 'none',
-            boxShadow: 'none',
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'row', 
+          alignItems: 'center', 
+          gap: '8px' 
+        }}>
+          <EditIcon
+            sx={{ 
+              fontSize: '20px', 
+              color: '#5C17E5', 
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                color: '#4a12c4'
+              }
+            }}
+            onClick={() => handleEditInvoice(item.id)}
+          />
+          <StandardButton
+            onClick={() => handleReturnInvoice(item.id)}
+            variant="primary"
+            size="small"
+            sx={{
+              minWidth: '100px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: '#5c17e5',
+              color: '#FFFFFF',
+              fontWeight: 600,
+              fontSize: '14px',
+              textTransform: 'none',
+              boxShadow: 'none',
       
-          }}
-        >
-          Return
-        </StandardButton>
+            }}
+          >
+            Return
+          </StandardButton>
+        </Box>
       ),
     },
 ];
@@ -434,13 +493,78 @@ export default function SaleHistory() {
     setSelectedInvoiceId(null);
   };
 
-  const handleReturnInvoice = (invoiceId: number) => {
+  const handleEditInvoice = (invoiceId: number) => {
     const invoice = salesHistoryData.find(item => item.id === invoiceId);
     if (invoice) {
       // Get invoice details from storage
       const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
+      
+      if (savedItem) {
+        // Use saved invoice details
+        const invoiceData = {
+          customerName: savedItem.customerName || invoice.customerName,
+          customerMobile: savedItem.customerMobile || invoice.customerMobile,
+          customerCity: savedItem.customerCity || '',
+          doctorName: savedItem.doctorName || invoice.doctorName,
+          doctorMobile: savedItem.doctorMobile || '',
+          doctorEmail: savedItem.doctorEmail || '',
+          paymentMode: savedItem.paymentMode || 'Cash',
+          insuranceCompany: savedItem.insuranceCompany || '',
+          invoiceNumber: savedItem.invoiceNumber || invoice.invoiceNumber,
+          invoiceDate: savedItem.invoiceDate || invoice.invoiceDate,
+          salesItems: savedItem.items || savedItem.salesItems || [],
+          totalValue: savedItem.totalValue || savedItem.totalPayableAmount || invoice.totalAmount.toString(),
+          totalDiscount: savedItem.totalDiscount || '0',
+          taxAmount: savedItem.taxAmount || '0',
+          totalPayableAmount: savedItem.totalPayableAmount || invoice.totalAmount.toString(),
+        };
+        
+        navigate('/sales/receipt', { 
+          state: { 
+            isEditMode: true,
+            invoiceId: invoice.id,
+            ...invoiceData
+          } 
+        });
+      } else {
+        // Construct from basic invoice data
+        const invoiceData = {
+          customerName: invoice.customerName,
+          customerMobile: invoice.customerMobile,
+          customerCity: '',
+          doctorName: invoice.doctorName,
+          doctorMobile: '',
+          doctorEmail: '',
+          paymentMode: 'Cash',
+          insuranceCompany: '',
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          salesItems: [],
+          totalValue: invoice.totalAmount.toString(),
+          totalDiscount: '0',
+          taxAmount: '0',
+          totalPayableAmount: invoice.totalAmount.toString(),
+        };
+        
+        navigate('/sales/receipt', { 
+          state: { 
+            isEditMode: true,
+            invoiceId: invoice.id,
+            ...invoiceData
+          } 
+        });
+      }
+    }
+  };
+
+  const handleReturnInvoice = useCallback((invoiceId: number) => {
+    const invoice = salesHistoryData.find(item => item.id === invoiceId);
+    if (invoice) {
+      // Get invoice details from storage - use memoized savedHistory instead of calling storage again
+      const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
       const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
       
+      // Navigate immediately without blocking
       navigate('/sales/sale-return', { 
         state: { 
           invoiceId: invoice.id,
@@ -456,7 +580,7 @@ export default function SaleHistory() {
         } 
       });
     }
-  };
+  }, [salesHistoryData, savedHistory, navigate]);
 
     const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setCurrentSearchTerm(event.target.value);

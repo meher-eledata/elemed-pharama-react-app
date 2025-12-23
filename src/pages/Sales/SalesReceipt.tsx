@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,6 +13,7 @@ import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewM
 import { 
   useGetDoctorNamesQuery,
   useSubmitSaleMutation,
+  useUpdateSalesMutation,
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
   Customer,
@@ -61,12 +62,14 @@ import { printStyles, fieldStyles } from './SalesReceipt.printStyles';
 
 const SalesReceipt: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   
   const cartTotal = useSelector(selectCartTotal);
   const user = useSelector((state: RootState) => state.auth.user);
   
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
+  const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
   const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
@@ -132,20 +135,121 @@ const SalesReceipt: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
 
-  // Load cart items
+  // Check if we're in edit mode from location state
+  const editModeData = (location.state as any) || null;
+  const isEditMode = editModeData?.isEditMode || false;
+
+  // Store original invoice data for comparison
+  const [originalInvoiceData, setOriginalInvoiceData] = useState<{
+    customerName: string;
+    customerMobile: string;
+    customerCity: string;
+    doctorName: string;
+    doctorMobile: string;
+    doctorEmail: string;
+    paymentMode: string;
+    insuranceCompany: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    salesItems: SalesReceiptItem[];
+    totalValue: string;
+    totalDiscount: string;
+    taxAmount: string;
+    totalPayableAmount: string;
+  } | null>(null);
+
+  // Load invoice data when in edit mode
+  useEffect(() => {
+    if (isEditMode && editModeData) {
+      // Pre-populate form fields
+      if (editModeData.customerName) setCustomerName(editModeData.customerName);
+      if (editModeData.customerMobile) setCustomerMobile(editModeData.customerMobile);
+      if (editModeData.customerCity) setCustomerCity(editModeData.customerCity);
+      if (editModeData.doctorName) {
+        setDoctorName(editModeData.doctorName);
+        setSelectedDoctor(editModeData.doctorName);
+        // Trigger doctor info fetch
+        shouldFetchDoctorInfoRef.current = true;
+      }
+      if (editModeData.doctorMobile) setDoctorMobile(editModeData.doctorMobile);
+      if (editModeData.doctorEmail) setDoctorEmail(editModeData.doctorEmail);
+      if (editModeData.paymentMode) setPaymentMode(editModeData.paymentMode);
+      if (editModeData.insuranceCompany) setInsuranceCompany(editModeData.insuranceCompany);
+      if (editModeData.invoiceNumber) setInvoiceNumber(editModeData.invoiceNumber);
+      if (editModeData.invoiceDate) setInvoiceDate(editModeData.invoiceDate);
+      
+      // Pre-populate sales items if available
+      if (editModeData.salesItems && Array.isArray(editModeData.salesItems) && editModeData.salesItems.length > 0) {
+        const recalculatedItems = editModeData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item));
+        setSalesItems(recalculatedItems);
+        
+        // Recalculate summary
+        const correctedSummary = calculateFinancialSummary(recalculatedItems);
+        setTotalValue(correctedSummary.totalValue);
+        setTotalDiscount(correctedSummary.totalDiscount);
+        setTaxAmount(correctedSummary.taxAmount);
+        setTotalPayableAmount(correctedSummary.totalPayableAmount);
+      } else if (editModeData.totalValue) {
+        // If no items but have totals, set the totals
+        setTotalValue(editModeData.totalValue || '0');
+        setTotalDiscount(editModeData.totalDiscount || '0');
+        setTaxAmount(editModeData.taxAmount || '0');
+        setTotalPayableAmount(editModeData.totalPayableAmount || '0');
+      }
+      
+      // Set customer if available
+      if (editModeData.customerName && editModeData.customerMobile) {
+        const customer: Customer = {
+          id: 0,
+          name: editModeData.customerName,
+          mobile: editModeData.customerMobile,
+          city: editModeData.customerCity || '',
+        };
+        setSelectedCustomer(customer);
+      }
+
+      // Store original data for comparison
+      const originalItems = editModeData.salesItems && Array.isArray(editModeData.salesItems) && editModeData.salesItems.length > 0
+        ? editModeData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item))
+        : [];
+      
+      setOriginalInvoiceData({
+        customerName: editModeData.customerName || '',
+        customerMobile: editModeData.customerMobile || '',
+        customerCity: editModeData.customerCity || '',
+        doctorName: editModeData.doctorName || '',
+        doctorMobile: editModeData.doctorMobile || '',
+        doctorEmail: editModeData.doctorEmail || '',
+        paymentMode: editModeData.paymentMode || '',
+        insuranceCompany: editModeData.insuranceCompany || '',
+        invoiceNumber: editModeData.invoiceNumber || '',
+        invoiceDate: editModeData.invoiceDate || '',
+        salesItems: originalItems,
+        totalValue: editModeData.totalValue || '0',
+        totalDiscount: editModeData.totalDiscount || '0',
+        taxAmount: editModeData.taxAmount || '0',
+        totalPayableAmount: editModeData.totalPayableAmount || '0',
+      });
+    }
+  }, [isEditMode, editModeData]);
+
+  // Load cart items (only if not in edit mode)
   useCartLoader({
     onCartLoaded: useCallback((items, summary) => {
-      // Recalculate all items to ensure discount amounts are correct
-      const recalculatedItems = items.map(item => recalculateSalesItemAmount(item));
-      setSalesItems(recalculatedItems);
-      
-      // Recalculate summary with corrected items
-      const correctedSummary = calculateFinancialSummary(recalculatedItems);
-      setTotalValue(correctedSummary.totalValue);
-      setTotalDiscount(correctedSummary.totalDiscount);
-      setTaxAmount(correctedSummary.taxAmount);
-      setTotalPayableAmount(correctedSummary.totalPayableAmount);
-    }, [])
+      // Only load cart items if we're not in edit mode
+      if (!isEditMode) {
+        // Recalculate all items to ensure discount amounts are correct
+        const recalculatedItems = items.map(item => recalculateSalesItemAmount(item));
+        setSalesItems(recalculatedItems);
+        
+        // Recalculate summary with corrected items
+        const correctedSummary = calculateFinancialSummary(recalculatedItems);
+        setTotalValue(correctedSummary.totalValue);
+        setTotalDiscount(correctedSummary.totalDiscount);
+        setTaxAmount(correctedSummary.taxAmount);
+        setTotalPayableAmount(correctedSummary.totalPayableAmount);
+      }
+    }, [isEditMode])
   });
 
   // Recalculate totals whenever salesItems change (e.g., when discount or taxes are updated)
@@ -246,7 +350,7 @@ const SalesReceipt: React.FC = () => {
     }
   };
 
-  // Handle form persistence
+  // Handle form persistence (skip if in edit mode)
   useFormPersistence({
     customerName,
     customerMobile,
@@ -259,18 +363,26 @@ const SalesReceipt: React.FC = () => {
     invoiceNumber,
     invoiceDate,
     onFormDataLoaded: useCallback((formData) => {
-      setCustomerName(formData.customerName);
-      setCustomerMobile(formData.customerMobile);
-      setCustomerCity(formData.customerCity);
-      setDoctorName(formData.doctorName);
-      setDoctorMobile(formData.doctorMobile);
-      setDoctorEmail(formData.doctorEmail);
-      setPaymentMode(formData.paymentMode);
-      setInsuranceCompany(formData.insuranceCompany);
-      if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
-      if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
-    }, []),
-    onCustomerRestored: setSelectedCustomer
+      // Only load form data if not in edit mode
+      if (!isEditMode) {
+        setCustomerName(formData.customerName);
+        setCustomerMobile(formData.customerMobile);
+        setCustomerCity(formData.customerCity);
+        setDoctorName(formData.doctorName);
+        setDoctorMobile(formData.doctorMobile);
+        setDoctorEmail(formData.doctorEmail);
+        setPaymentMode(formData.paymentMode);
+        setInsuranceCompany(formData.insuranceCompany);
+        if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
+        if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
+      }
+    }, [isEditMode]),
+    onCustomerRestored: useCallback((customer) => {
+      // Only restore customer if not in edit mode
+      if (!isEditMode) {
+        setSelectedCustomer(customer);
+      }
+    }, [isEditMode])
   });
 
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
@@ -560,6 +672,93 @@ const SalesReceipt: React.FC = () => {
     };
   }, [customerName, customerMobile, doctorName, salesItems]);
 
+  // Check if there are any changes from original data (for edit mode)
+  const hasChanges = useCallback(() => {
+    if (!isEditMode || !originalInvoiceData) {
+      // If not in edit mode, always return true (normal save flow)
+      return true;
+    }
+
+    // Compare form fields
+    if (
+      customerName.trim() !== originalInvoiceData.customerName.trim() ||
+      customerMobile.trim() !== originalInvoiceData.customerMobile.trim() ||
+      customerCity.trim() !== originalInvoiceData.customerCity.trim() ||
+      doctorName.trim() !== originalInvoiceData.doctorName.trim() ||
+      doctorMobile.trim() !== originalInvoiceData.doctorMobile.trim() ||
+      doctorEmail.trim() !== originalInvoiceData.doctorEmail.trim() ||
+      paymentMode.trim() !== originalInvoiceData.paymentMode.trim() ||
+      insuranceCompany.trim() !== originalInvoiceData.insuranceCompany.trim() ||
+      invoiceNumber.trim() !== originalInvoiceData.invoiceNumber.trim() ||
+      invoiceDate.trim() !== originalInvoiceData.invoiceDate.trim()
+    ) {
+      return true;
+    }
+
+    // Compare sales items
+    if (salesItems.length !== originalInvoiceData.salesItems.length) {
+      return true;
+    }
+
+    // Deep compare sales items
+    for (let i = 0; i < salesItems.length; i++) {
+      const current = salesItems[i];
+      const original = originalInvoiceData.salesItems[i];
+      
+      if (!original) {
+        return true;
+      }
+
+      // Compare all relevant fields
+      if (
+        current.productName !== original.productName ||
+        current.quantity !== original.quantity ||
+        current.unitPrice !== original.unitPrice ||
+        current.mrp !== original.mrp ||
+        current.discountPercent !== original.discountPercent ||
+        current.discount !== original.discount ||
+        current.batch !== original.batch ||
+        current.type !== original.type ||
+        current.cgstPercent !== original.cgstPercent ||
+        current.sgstPercent !== original.sgstPercent ||
+        current.igstPercent !== original.igstPercent ||
+        current.amount !== original.amount
+      ) {
+        return true;
+      }
+    }
+
+    // Compare financial summary
+    if (
+      totalValue !== originalInvoiceData.totalValue ||
+      totalDiscount !== originalInvoiceData.totalDiscount ||
+      taxAmount !== originalInvoiceData.taxAmount ||
+      totalPayableAmount !== originalInvoiceData.totalPayableAmount
+    ) {
+      return true;
+    }
+
+    return false;
+  }, [
+    isEditMode,
+    originalInvoiceData,
+    customerName,
+    customerMobile,
+    customerCity,
+    doctorName,
+    doctorMobile,
+    doctorEmail,
+    paymentMode,
+    insuranceCompany,
+    invoiceNumber,
+    invoiceDate,
+    salesItems,
+    totalValue,
+    totalDiscount,
+    taxAmount,
+    totalPayableAmount,
+  ]);
+
   const handleSave = () => {
     const validation = validateRequiredFields();
     
@@ -597,12 +796,15 @@ const SalesReceipt: React.FC = () => {
       productsError,
       user,
       submitSale,
+      updateSales,
       showToast,
       resetForm,
       clearCart: () => dispatch(clearCart()),
       navigate,
+      invoiceId: isEditMode && editModeData?.invoiceId ? editModeData.invoiceId : undefined,
+      isEditMode,
     });
-  }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, showToast, navigate, dispatch]);
+  }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {
@@ -807,7 +1009,8 @@ const SalesReceipt: React.FC = () => {
           onCancel={handleCancel}
           onSave={handleSave}
           onPrint={handlePrint}
-          isSaveDisabled={!validateRequiredFields().isValid}
+          isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
+          hidePrintButton={isEditMode}
         />
 
         <CustomerModal
@@ -895,7 +1098,7 @@ const SalesReceipt: React.FC = () => {
           open={isConfirmDialogOpen}
           onClose={handleConfirmDialogClose}
           onConfirm={handleConfirmDialogConfirm}
-          isLoading={isSubmittingSale}
+          isLoading={isSubmittingSale || isUpdatingSale}
         />
       </SalesReceiptContainer>
     </>
