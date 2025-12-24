@@ -613,17 +613,20 @@ const SalesReceipt: React.FC = () => {
    * - If action is 'save': Execute save operation
    * - If action is 'print': Open Print Preview Modal (shows customer receipt)
    */
-  const handleConfirmDialogConfirm = () => {
-    setIsConfirmDialogOpen(false);
-    
+  const handleConfirmDialogConfirm = async () => {
     if (pendingAction === 'save') {
-      executeSaveWrapper();
+      // Close dialog first
+      setIsConfirmDialogOpen(false);
+      // Execute save (this will show toast when complete)
+      await executeSaveWrapper();
+      // Reset pending action after save completes
+      setPendingAction(null);
     } else if (pendingAction === 'print') {
+      setIsConfirmDialogOpen(false);
       // Open Print Preview Modal which shows the customer receipt
       setIsPrintModalOpen(true);
+      setPendingAction(null);
     }
-    
-    setPendingAction(null);
   };
 
   const resetForm = useCallback(() => {

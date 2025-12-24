@@ -59,6 +59,36 @@ import ProductSelectionForm from "./components/ProductSelectionForm";
 import ValidationErrorAlert from "./components/ValidationErrorAlert";
 import BulkActionsBar from "./components/BulkActionsBar";
 
+// Helper function to format stock error messages in a user-friendly way
+const formatStockErrorMessage = (errorMessage: string): string => {
+  if (!errorMessage) return errorMessage;
+  
+  // Check for "No stock found" patterns
+  const noStockPattern = /no stock found/i;
+  const productIdPattern = /product_id\s*(\d+)/i;
+  const batchPattern = /batch_number\s*([^\s,]+)/i;
+  
+  if (noStockPattern.test(errorMessage)) {
+    const productIdMatch = errorMessage.match(productIdPattern);
+    const batchMatch = errorMessage.match(batchPattern);
+    
+    if (productIdMatch && batchMatch) {
+      return `⚠️ Insufficient stock: The selected batch "${batchMatch[1]}" for this product is not available. Please select a different batch or reduce the quantity.`;
+    } else if (productIdMatch) {
+      return `⚠️ Insufficient stock: This product is not available in the selected quantity. Please reduce the quantity or select a different batch.`;
+    } else {
+      return `⚠️ Insufficient stock: The selected product/batch is not available. Please select a different batch or reduce the quantity.`;
+    }
+  }
+  
+  // Check for other stock-related errors
+  if (/insufficient|not available|out of stock|stock.*not found/i.test(errorMessage)) {
+    return `⚠️ ${errorMessage}`;
+  }
+  
+  return errorMessage;
+};
+
 // Mock products data
 const products: Product[] = [
   {
@@ -236,7 +266,9 @@ export default function SalePage() {
 
         if (response.message && !response.mrp && !response.selling_price) {
           setValidatedData(null);
-          setValidationError(response.message);
+          // Make error message more user-friendly
+          const userFriendlyMessage = formatStockErrorMessage(response.message);
+          setValidationError(userFriendlyMessage);
         } else {
           setValidatedData(response);
           setValidationError("");
@@ -264,8 +296,9 @@ export default function SalePage() {
           errorMessage = "Unable to validate product availability";
         }
         
-        // Ensure we show the error message clearly
-        setValidationError(errorMessage);
+        // Make error message more user-friendly
+        const userFriendlyMessage = formatStockErrorMessage(errorMessage);
+        setValidationError(userFriendlyMessage);
       }
     };
 

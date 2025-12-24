@@ -263,7 +263,15 @@ const InventoryAdjustment: React.FC = () => {
       
       startTransition(() => {
         setProductInfo(result.product);
-      setBatchRows(transformedBatches);
+        setBatchRows(transformedBatches);
+        
+        // If selectedType is null (searching by Product ID), create it from productInfo
+        if (!selectedType && result.product) {
+          setSelectedType({
+            type: result.product.type,
+            product_id: result.product.product_id,
+          });
+        }
       });
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -272,7 +280,7 @@ const InventoryAdjustment: React.FC = () => {
         setBatchRows([]);
       });
     }
-  }, [getBatchesForProduct]);
+  }, [getBatchesForProduct, selectedType]);
 
   // Fetch all product IDs for dropdown options
   const fetchProductOptions = useCallback(async () => {
@@ -513,7 +521,10 @@ const InventoryAdjustment: React.FC = () => {
   };
 
   const handleConfirmAdjustment = async () => {
-    if (!productInfo || !selectedType || batchRows.length === 0) {
+    // When searching by Product ID, selectedType may be null, but productInfo has product_id
+    const productId = selectedType?.product_id || productInfo?.product_id;
+    
+    if (!productInfo || !productId || batchRows.length === 0) {
       setConfirmDialogOpen(false);
       return;
     }
@@ -534,17 +545,17 @@ const InventoryAdjustment: React.FC = () => {
       }
 
       const lines = modifiedBatches.map((batch) => {
-        // Use batch.id (which is the batch_number string) for the API
+        // Use batch.batchNumber (the original batch_number from API) for the API call
         // The backend expects batch_number, not batch_id
-        const batchNumber = batch.id; // This is the batch_number string like "CTZ-2026-06-A"
+        const batchNumber = batch.batchNumber; // This is the batch_number (string or number) like "AMX-2026-02-A"
         
-        if (!batchNumber) {
+        if (batchNumber === undefined || batchNumber === null) {
           console.error('Invalid batchNumber for batch:', batch);
           throw new Error(`Invalid batch_number for batch ${batch.id}`);
         }
         
         return {
-          batch_number: batchNumber, // Use batch_number (string) for API as backend expects
+          batch_number: batchNumber, // Use batch_number (string or number) for API as backend expects
           old_qty: batch.oldQuantity,
           new_qty: batch.quantity,
           expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
@@ -553,7 +564,7 @@ const InventoryAdjustment: React.FC = () => {
 
       await adjustInventoryBatches({
         user: username,
-        product_id: selectedType.product_id,
+        product_id: productId,
         lines,
       }).unwrap();
 
@@ -574,8 +585,9 @@ const InventoryAdjustment: React.FC = () => {
       setConfirmDialogOpen(false);
       
       // Refresh batches to get latest data
-      if (selectedType) {
-        fetchBatchesForProduct(selectedType.product_id);
+      const productIdToRefresh = selectedType?.product_id || productInfo?.product_id;
+      if (productIdToRefresh) {
+        fetchBatchesForProduct(productIdToRefresh);
       }
     } catch (error) {
       console.error('Error adjusting inventory:', error);
@@ -605,7 +617,10 @@ const InventoryAdjustment: React.FC = () => {
   };
 
   const handleSave = () => {
-    if (!productInfo || !selectedType || batchRows.length === 0) {
+    // When searching by Product ID, selectedType may be null, but productInfo has product_id
+    const productId = selectedType?.product_id || productInfo?.product_id;
+    
+    if (!productInfo || !productId || batchRows.length === 0) {
       return;
     }
     

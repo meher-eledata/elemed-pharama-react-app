@@ -4,6 +4,36 @@ import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage } from '../../utils/cartStorage';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
 
+// Helper function to format stock error messages in a user-friendly way
+const formatStockErrorMessage = (errorMessage: string): string => {
+  if (!errorMessage) return errorMessage;
+  
+  // Check for "No stock found" patterns
+  const noStockPattern = /no stock found/i;
+  const productIdPattern = /product_id\s*(\d+)/i;
+  const batchPattern = /batch_number\s*([^\s,]+)/i;
+  
+  if (noStockPattern.test(errorMessage)) {
+    const productIdMatch = errorMessage.match(productIdPattern);
+    const batchMatch = errorMessage.match(batchPattern);
+    
+    if (productIdMatch && batchMatch) {
+      return `⚠️ Insufficient stock: The selected batch "${batchMatch[1]}" for this product is not available. Please select a different batch or reduce the quantity.`;
+    } else if (productIdMatch) {
+      return `⚠️ Insufficient stock: This product is not available in the selected quantity. Please reduce the quantity or select a different batch.`;
+    } else {
+      return `⚠️ Insufficient stock: The selected product/batch is not available. Please select a different batch or reduce the quantity.`;
+    }
+  }
+  
+  // Check for other stock-related errors
+  if (/insufficient|not available|out of stock|stock.*not found/i.test(errorMessage)) {
+    return `⚠️ ${errorMessage}`;
+  }
+  
+  return errorMessage;
+};
+
 interface ExecuteSaveParams {
   customerName: string;
   customerMobile: string;
@@ -173,12 +203,16 @@ export const executeSave = async ({
             errorMessage = submitError.data.error;
           } else if (submitError.data.message) {
             errorMessage = submitError.data.message;
+          } else if (submitError.data.detail) {
+            errorMessage = submitError.data.detail;
           }
         } else if (submitError?.message) {
           errorMessage = submitError.message;
         }
         
-        throw new Error(errorMessage);
+        // Format stock error messages to be more user-friendly
+        const formattedErrorMessage = formatStockErrorMessage(errorMessage);
+        throw new Error(formattedErrorMessage);
       }
     }
     
@@ -204,13 +238,19 @@ export const executeSave = async ({
     // Pass invoiceId to update existing entry instead of creating duplicate
     saveSalesHistoryToStorage(historyItem, invoiceId);
     
-    // Show success toast first
+    // Show success toast with a small delay to ensure dialog has closed and DOM is ready
     const successMessage = isEditMode 
       ? 'Sale updated successfully!' 
       : 'Sale submitted successfully!';
-    showToast(successMessage, 'success');
     
-    // Wait longer to ensure toast is visible before resetting and navigating
+    // Use requestAnimationFrame to ensure toast is shown after dialog closes and DOM updates
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        showToast(successMessage, 'success');
+      }, 200);
+    });
+    
+    // Wait to ensure toast is visible before resetting and navigating
     setTimeout(() => {
       resetForm();
       clearCart();
