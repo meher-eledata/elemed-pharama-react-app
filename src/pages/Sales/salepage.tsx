@@ -63,6 +63,17 @@ import BulkActionsBar from "./components/BulkActionsBar";
 const formatStockErrorMessage = (errorMessage: string): string => {
   if (!errorMessage) return errorMessage;
   
+  // Check for "maximum available quantity" pattern (from backend validation)
+  // Pattern: "the maximum available quantity for this product in batch AMX-2026-02-A is 10"
+  const maxQtyPattern = /the maximum available quantity for this product (?:in batch )?([^\s]+) is (\d+)/i;
+  const maxQtyMatch = errorMessage.match(maxQtyPattern);
+  
+  if (maxQtyMatch) {
+    const batchName = maxQtyMatch[1] || 'selected batch';
+    const maxQty = maxQtyMatch[2] || '0';
+    return `⚠️ Insufficient stock: The maximum available quantity for batch "${batchName}" is ${maxQty}. Please reduce the quantity or select a different batch.`;
+  }
+  
   // Check for "No stock found" patterns
   const noStockPattern = /no stock found/i;
   const productIdPattern = /product_id\s*(\d+)/i;
@@ -81,8 +92,19 @@ const formatStockErrorMessage = (errorMessage: string): string => {
     }
   }
   
+  // Check for "Insufficient stock in batch" pattern
+  const insufficientBatchPattern = /insufficient stock in batch\s+([^\s]+)\s+for product_id\s+(\d+).*?have\s+(\d+).*?need\s+(\d+)/i;
+  const insufficientMatch = errorMessage.match(insufficientBatchPattern);
+  
+  if (insufficientMatch) {
+    const batchName = insufficientMatch[1];
+    const available = insufficientMatch[3];
+    const requested = insufficientMatch[4];
+    return `⚠️ Insufficient stock: Batch "${batchName}" has only ${available} units available, but ${requested} units were requested. Please reduce the quantity or select a different batch.`;
+  }
+  
   // Check for other stock-related errors
-  if (/insufficient|not available|out of stock|stock.*not found/i.test(errorMessage)) {
+  if (/insufficient|not available|out of stock|stock.*not found|maximum available/i.test(errorMessage)) {
     return `⚠️ ${errorMessage}`;
   }
   
