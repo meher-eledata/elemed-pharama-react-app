@@ -1,8 +1,9 @@
-import { Customer } from '../../redux/slices/salesApi';
+import { Customer, AddCustomerRequest } from '../../redux/slices/salesApi';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage } from '../../utils/cartStorage';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
+
 
 // Helper function to format stock error messages in a user-friendly way
 const formatStockErrorMessage = (errorMessage: string): string => {
@@ -108,11 +109,18 @@ export const executeSave = async ({
       return;
     }
 
+    // Get customer_id from selected customer
+    // If customer was created via modal, it will have a valid ID
+    // Otherwise, we'll send customer_id = 0 and let backend handle validation
     let customerId: number = 0;
     
     if (selectedCustomer && selectedCustomer.id && selectedCustomer.id > 0) {
       customerId = selectedCustomer.id;
+      console.log('✅ Using customer ID from selected customer:', customerId);
     } else {
+      // No customer ID available - send 0 and let backend validate
+      // Backend will return error if customer_id is required and invalid
+      console.log('⚠️ No customer ID available, sending customer_id = 0. Backend will validate.');
     }
 
     if (salesItems.length === 0) {
@@ -143,7 +151,7 @@ export const executeSave = async ({
       ? salesItems.reduce((sum, item) => sum + parseFloat(item.discountPercent || '0'), 0) / salesItems.length
       : 0;
     
-    const lines = salesItems.map(item => {
+    const lines = salesItems.map((item, index) => {
       const productId = getProductIdFromName(item.productName, apiProducts);
       
       if (!productId) {
@@ -151,10 +159,21 @@ export const executeSave = async ({
         throw new Error(`Product ID not found for product: "${item.productName}". Please check if the product name matches exactly.`);
       }
 
+      // Backend requires batch_number for each line item
+      const batchNumber = (item.batch || '').toString().trim();
+      if (!batchNumber) {
+        throw new Error(`Batch number is required for product "${item.productName}" (item ${index + 1})`);
+      }
+
+      const quantity = parseFloat(item.quantity || '0');
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error(`Invalid quantity for product "${item.productName}" (item ${index + 1})`);
+      }
+
       const lineItem = {
         product_id: productId,
-        quantity: parseFloat(item.quantity || '0'),
-        batch_number: item.batch || undefined,
+        quantity: quantity,
+        batch_number: batchNumber, // Required by backend
         mrp: parseFloat(item.mrp || '0'),
         sp: parseFloat(item.unitPrice || '0'),
         discount: parseFloat(item.discountPercent || '0') / 100,
@@ -164,17 +183,17 @@ export const executeSave = async ({
       return lineItem;
     });
 
+    // Build payload according to backend expectations
+    // Backend expects: disc, payment_method, payment_amount, created_by, customer_id, doctor_id (optional), lines
+    // Backend does NOT use: quantity (top-level), customer_name, customer_mobile, invoice_number
     const submitSalePayload = {
-      quantity: totalQuantity,
       disc: totalDiscountPercent / 100,
       payment_method: paymentMode || 'Cash',
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
-      customer_id: customerId,
-      customer_name: customerName.trim(),
-      customer_mobile: customerMobile.trim(),
-      invoice_number: invoiceNumber && invoiceNumber.trim() ? invoiceNumber.trim() : null,
-      lines: lines,
+      customer_id: customerId, // Must be valid number > 0
+      // doctor_id: undefined, // Optional - can be added later if needed
+      lines: lines, // Already in correct format from lines.map above
     };
     
     // In edit mode, skip API call and just update localStorage (no backend endpoint)
@@ -189,9 +208,39 @@ export const executeSave = async ({
       
       let result;
       try {
+        console.log('🔄 Calling backend API: POST /api/sales/submit-sale');
+        console.log('📦 Payload:', JSON.stringify(submitSalePayload, null, 2));
+        
         result = await submitSale(submitSalePayload).unwrap();
-        console.log('Sale submission response:', JSON.stringify(result, null, 2));
+        
+        console.log('✅ Backend API Response:', JSON.stringify(result, null, 2));
+        console.log('📊 Response status: Success');
+        
+        // Validate that the API call was successful
+        if (!result) {
+          console.error('❌ No response received from server');
+          throw new Error('No response received from server. Sale may not have been saved to database.');
+        }
+        
+        // Check if response indicates success (has message or invoice_number)
+        if (result.message || result.invoice_number !== undefined) {
+          // Update invoice number from API response if provided
+          if (result.invoice_number && !invoiceNumber) {
+            invoiceNumber = result.invoice_number.toString();
+            console.log('📝 Invoice number updated from API response:', invoiceNumber);
+          }
+          console.log('✅ Sale successfully saved to database. Invoice number:', result.invoice_number || invoiceNumber);
+          console.log('📋 Response message:', result.message || 'Success');
+        } else {
+          console.warn('⚠️ API response does not indicate clear success:', result);
+          console.warn('⚠️ Response missing expected fields (message or invoice_number)');
+          // Still continue, but log a warning
+        }
       } catch (submitError: any) {
+        console.error('❌ Backend API Error:', submitError);
+        console.error('❌ Error status:', submitError?.status);
+        console.error('❌ Error data:', submitError?.data);
+        console.error('❌ Full error object:', JSON.stringify(submitError, null, 2));
         logError(submitError, 'SalesReceipt.submitSale');
         
         let errorMessage = 'Failed to submit sale. Please try again.';

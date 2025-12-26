@@ -496,6 +496,16 @@ export default function SaleHistory() {
   const handleEditInvoice = (invoiceId: number) => {
     const invoice = salesHistoryData.find(item => item.id === invoiceId);
     if (invoice) {
+      // Parse the actual database invoice ID from invoiceNumber (e.g., "RB1" -> 1)
+      let databaseInvoiceId: number = 0;
+      if (invoice.invoiceNumber) {
+        const cleanedNumber = invoice.invoiceNumber.replace(/^RB/i, '').trim();
+        const parsed = parseInt(cleanedNumber, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
+          databaseInvoiceId = parsed;
+        }
+      }
+      
       // Get invoice details from storage
       const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
       
@@ -522,7 +532,8 @@ export default function SaleHistory() {
         navigate('/sales/receipt', { 
           state: { 
             isEditMode: true,
-            invoiceId: invoice.id,
+            invoiceId: databaseInvoiceId || invoice.id, // Use parsed database ID, fallback to frontend ID
+            invoice_id: databaseInvoiceId || invoice.id, // Also include as invoice_id for API compatibility
             ...invoiceData
           } 
         });
@@ -549,7 +560,8 @@ export default function SaleHistory() {
         navigate('/sales/receipt', { 
           state: { 
             isEditMode: true,
-            invoiceId: invoice.id,
+            invoiceId: databaseInvoiceId || invoice.id, // Use parsed database ID, fallback to frontend ID
+            invoice_id: databaseInvoiceId || invoice.id, // Also include as invoice_id for API compatibility
             ...invoiceData
           } 
         });
@@ -564,10 +576,22 @@ export default function SaleHistory() {
       const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
       const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
       
+      // Parse invoice number to get the database invoice ID
+      // Invoice numbers are like "RB1" or "1", we need to extract the numeric part
+      let databaseInvoiceId: number = 0;
+      if (invoice.invoiceNumber) {
+        // Remove "RB" prefix if present and parse
+        const cleanedNumber = invoice.invoiceNumber.replace(/^RB/i, '').trim();
+        const parsed = parseInt(cleanedNumber, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          databaseInvoiceId = parsed;
+        }
+      }
+      
       // Navigate immediately without blocking
       navigate('/sales/sale-return', { 
         state: { 
-          invoiceId: invoice.id,
+          invoiceId: databaseInvoiceId || invoice.id, // Use parsed invoice number as database ID, fallback to invoice.id
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
           customerName: invoice.customerName,

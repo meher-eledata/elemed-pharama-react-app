@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, ChangeEvent } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, ChangeEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Box, 
@@ -18,11 +18,16 @@ import {
 } from '@mui/material';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
+import { useSubmitSalesReturnMutation, useGetSalesProductsQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../redux/store';
 
 interface ReturnItem extends SalesReceiptItem {
   returnQuantity: string;
   originalQuantity: string;
   originalAmount: string; // Store the original amount for proportional calculation
+  invoice_line_id?: number;
+  refundable_quantity?: number;
 }
 
 export default function SaleReturn() {
@@ -41,10 +46,18 @@ export default function SaleReturn() {
     paymentMode?: string;
   } | null;
 
+  const user = useSelector((state: RootState) => state.auth.user);
+  const [submitSalesReturn, { isLoading: isSubmittingReturn }] = useSubmitSalesReturnMutation();
+  const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
+  // Skip products query if not needed - it's only used for product name lookup
+  const { data: apiProducts = [] } = useGetSalesProductsQuery(undefined, { skip: true });
+  
   const [returnPaymentType, setReturnPaymentType] = useState<string>('Cash');
   const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [reason, setReason] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: '',
@@ -55,51 +68,241 @@ export default function SaleReturn() {
   const [currentFilterKey, setCurrentFilterKey] = useState<string>('');
   const [currentFilter, setCurrentFilter] = useState<{ [key: string]: string | null }>({});
 
-  // Load invoice items from navigation state or storage
+  // Helper to get product name from product_id
+  const getProductName = useCallback((productId: number): string => {
+    if (!apiProducts || apiProducts.length === 0) {
+      return `Product ID: ${productId}`;
+    }
+    
+    // Try to find product in apiProducts
+    const product = apiProducts.find((p: any) => {
+      if (Array.isArray(p)) {
+        return p[1] === productId; // [name, id] format
+      } else if (p && typeof p === 'object') {
+        return p.id === productId || p.product_id === productId;
+      }
+      return false;
+    });
+    
+    if (product) {
+      if (Array.isArray(product)) {
+        return product[0]; // [name, id] format
+      } else if (product.name) {
+        return product.name;
+      }
+    }
+    
+    return `Product ID: ${productId}`;
+  }, [apiProducts]);
+
+  // Step 2: Load invoice items from API using /sales/get-invoice-details/
   useEffect(() => {
     if (!invoiceData) {
       navigate('/sales');
       return;
     }
 
-    // First, try to use items passed from navigation state
-    if (invoiceData.items && invoiceData.items.length > 0) {
-      const items: ReturnItem[] = invoiceData.items.map((item: SalesReceiptItem) => ({
-        ...item,
-        returnQuantity: item.quantity,
-        originalQuantity: item.quantity,
-        originalAmount: item.amount, // Store original amount
-      }));
-      setReturnItems(items);
-      return;
+    let isMounted = true;
+
+    // Parse invoice ID from invoiceNumber (e.g., "RB1" -> 1, "INV-1234" -> 1234) or use invoiceId from state
+    let invoiceIdToFetch: number | null = null;
+    
+    if (invoiceData.invoiceNumber) {
+      // Remove common prefixes (RB, INV-, etc.) and extract numeric part
+      let cleanedNumber = invoiceData.invoiceNumber
+        .replace(/^(RB|INV-?)/i, '') // Remove RB or INV- prefix
+        .replace(/[^0-9]/g, '') // Remove all non-numeric characters
+        .trim();
+      
+      if (cleanedNumber) {
+        const parsed = parseInt(cleanedNumber, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
+          invoiceIdToFetch = parsed;
+        }
+      }
+    }
+    
+    // Fallback to invoiceId from state if it's a reasonable number
+    if (!invoiceIdToFetch && invoiceData.invoiceId) {
+      const idValue = typeof invoiceData.invoiceId === 'number' 
+        ? invoiceData.invoiceId 
+        : parseInt(String(invoiceData.invoiceId || '0'), 10);
+      if (!isNaN(idValue) && idValue > 0 && idValue < 1000000) {
+        invoiceIdToFetch = idValue;
+      }
     }
 
-    // If no items in state, try to get from storage
-    const savedHistory = getSalesHistoryFromStorage();
-    const savedInvoice = savedHistory.find((item: any) => item.id === invoiceData.invoiceId);
-    
-    if (savedInvoice && savedInvoice.items && savedInvoice.items.length > 0) {
-      const items: ReturnItem[] = savedInvoice.items.map((item: SalesReceiptItem) => ({
-        ...item,
-        returnQuantity: item.quantity,
-        originalQuantity: item.quantity,
-        originalAmount: item.amount, // Store original amount
-      }));
-      setReturnItems(items);
-    } else if (savedInvoice && savedInvoice.salesItems && savedInvoice.salesItems.length > 0) {
-      const items: ReturnItem[] = savedInvoice.salesItems.map((item: SalesReceiptItem) => ({
-        ...item,
-        returnQuantity: item.quantity,
-        originalQuantity: item.quantity,
-        originalAmount: item.amount, // Store original amount
-      }));
-      setReturnItems(items);
-    } else {
-      // If no items found, show empty state or navigate back
-      console.warn('No invoice items found for return');
-      setReturnItems([]);
-    }
-  }, [invoiceData, navigate]);
+    // Step 2: Call /sales/get-invoice-details/ to fill the page with invoice data
+    const fetchInvoiceDetails = async () => {
+      // Backend accepts either invoice_id or invoice_number
+      // Prefer invoice_number if available (more reliable)
+      const invoiceNumber = invoiceData.invoiceNumber;
+      
+      if (!invoiceNumber && !invoiceIdToFetch) {
+        // If no invoice number or ID, fall back to location state or storage
+        loadItemsFromStateOrStorage();
+        return;
+      }
+
+      try {
+        // Try with invoice_number first, then fallback to invoice_id
+        // Database stores invoice_number as integer (e.g., 3698), not "INV-3698"
+        let result;
+        let lastError: any = null;
+        
+        if (invoiceNumber) {
+          // Extract numeric part from invoice number (e.g., "INV-3698" -> "3698")
+          let numericInvoiceNumber = invoiceNumber;
+          if (typeof invoiceNumber === 'string') {
+            const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+            numericInvoiceNumber = cleaned || invoiceNumber;
+          }
+          
+          console.log('Fetching invoice details for return, invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
+          
+          try {
+            // Try with invoice_number as string
+            result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
+          } catch (err: any) {
+            lastError = err;
+            // If 404 and we have invoiceIdToFetch, try with invoice_id instead
+            if (err?.status === 404 && invoiceIdToFetch) {
+              console.log('Invoice not found by number, trying with invoice_id:', invoiceIdToFetch);
+              try {
+                result = await getInvoiceDetails({ invoice_id: invoiceIdToFetch }).unwrap();
+              } catch (err2: any) {
+                lastError = err2;
+                throw err2; // Re-throw if invoice_id also fails
+              }
+            } else {
+              throw err; // Re-throw if it's not a 404 or we don't have invoiceIdToFetch
+            }
+          }
+        } else if (invoiceIdToFetch) {
+          console.log('Fetching invoice details for return, invoice_id:', invoiceIdToFetch);
+          result = await getInvoiceDetails({ invoice_id: invoiceIdToFetch }).unwrap();
+        } else {
+          throw new Error('No invoice_number or invoice_id available');
+        }
+        console.log('Invoice details response:', result);
+        
+        if (result && isMounted) {
+          // API response structure: { invoice: {...}, lines: [...], ... }
+          const invoice = result.invoice || {};
+          const lines = result.lines || [];
+          
+          // Transform API response to ReturnItem format
+          if (lines.length > 0) {
+            const items: ReturnItem[] = lines.map((line: any) => ({
+              id: line.invoice_line_id?.toString() || line.id?.toString() || '',
+              productName: line.product_name || line.productName || '',
+              manufacturer: line.manufacturer || '',
+              batch: line.batch_number || line.batch || '',
+              expiryDate: line.expiry_date || line.expiryDate || '',
+              quantity: line.quantity?.toString() || '0',
+              unitPrice: line.unit_price?.toString() || line.unitPrice?.toString() || '0',
+              discountPercent: line.discount?.toString() || line.discountPercent?.toString() || '0',
+              cgstPercent: line.cgst?.toString() || line.cgstPercent?.toString() || '0',
+              sgstPercent: line.sgst?.toString() || line.sgstPercent?.toString() || '0',
+              igstPercent: line.igst?.toString() || line.igstPercent?.toString() || '0',
+              amount: line.amount?.toString() || line.total?.toString() || '0',
+              returnQuantity: line.quantity?.toString() || '0',
+              originalQuantity: line.quantity?.toString() || '0',
+              originalAmount: line.amount?.toString() || line.total?.toString() || '0',
+              invoice_line_id: line.invoice_line_id || line.id,
+              refundable_quantity: parseInt(line.quantity) || parseInt(line.refundable_quantity) || 0,
+            }));
+            setReturnItems(items);
+            return; // Successfully loaded from API, exit early
+          }
+        }
+      } catch (error: any) {
+        console.error('Error fetching invoice details for return:', error);
+        console.log('Falling back to location state or storage data...');
+        // Continue to fallback below - don't return here
+      }
+      
+      // Fallback: Load from location state or storage if API call fails or returns no data
+      if (isMounted) {
+        loadItemsFromStateOrStorage();
+      }
+    };
+
+    // Helper function to load items from state or storage
+    const loadItemsFromStateOrStorage = () => {
+      console.log('Loading items from location state or storage...');
+      // Try to use items passed from navigation state
+      if (invoiceData.items && invoiceData.items.length > 0) {
+        console.log('Loading items from location state:', invoiceData.items.length, 'items');
+        const items: ReturnItem[] = invoiceData.items.map((item: SalesReceiptItem) => {
+          const idAsNumber = parseInt(item.id);
+          const invoiceLineId = !isNaN(idAsNumber) && idAsNumber > 0 ? idAsNumber : undefined;
+          
+          return {
+            ...item,
+            returnQuantity: item.quantity,
+            originalQuantity: item.quantity,
+            originalAmount: item.amount,
+            invoice_line_id: invoiceLineId,
+            refundable_quantity: parseInt(item.quantity) || 0,
+          };
+        });
+        setReturnItems(items);
+        console.log('Items loaded from location state:', items.length);
+      } else {
+        // If no items in state, try to get from storage
+        console.log('No items in location state, checking storage...');
+        const savedHistory = getSalesHistoryFromStorage();
+        const savedInvoice = savedHistory.find((item: any) => item.id === invoiceData.invoiceId);
+        
+        if (savedInvoice && savedInvoice.items && savedInvoice.items.length > 0) {
+          console.log('Loading items from storage (items):', savedInvoice.items.length, 'items');
+          const items: ReturnItem[] = savedInvoice.items.map((item: SalesReceiptItem) => {
+            const idAsNumber = parseInt(item.id);
+            const invoiceLineId = !isNaN(idAsNumber) && idAsNumber > 0 ? idAsNumber : undefined;
+            
+            return {
+              ...item,
+              returnQuantity: item.quantity,
+              originalQuantity: item.quantity,
+              originalAmount: item.amount,
+              invoice_line_id: invoiceLineId,
+              refundable_quantity: parseInt(item.quantity) || 0,
+            };
+          });
+          setReturnItems(items);
+          console.log('Items loaded from storage:', items.length);
+        } else if (savedInvoice && savedInvoice.salesItems && savedInvoice.salesItems.length > 0) {
+          console.log('Loading items from storage (salesItems):', savedInvoice.salesItems.length, 'items');
+          const items: ReturnItem[] = savedInvoice.salesItems.map((item: SalesReceiptItem) => {
+            const idAsNumber = parseInt(item.id);
+            const invoiceLineId = !isNaN(idAsNumber) && idAsNumber > 0 ? idAsNumber : undefined;
+            
+            return {
+              ...item,
+              returnQuantity: item.quantity,
+              originalQuantity: item.quantity,
+              originalAmount: item.amount,
+              invoice_line_id: invoiceLineId,
+              refundable_quantity: parseInt(item.quantity) || 0,
+            };
+          });
+          setReturnItems(items);
+          console.log('Items loaded from storage:', items.length);
+        } else {
+          console.warn('No invoice items found for return in state or storage');
+          setReturnItems([]);
+        }
+      }
+    };
+
+    fetchInvoiceDetails();
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceData?.invoiceId, invoiceData?.invoiceNumber]);
 
   useEffect(() => {
     console.log('Dialog state changed:', isConfirmDialogOpen);
@@ -153,7 +356,10 @@ export default function SaleReturn() {
   const handleQuantityChange = (index: number, value: string) => {
     const numValue = parseInt(value) || 0;
     const originalQty = parseInt(returnItems[index].originalQuantity) || 0;
-    const clampedValue = Math.max(0, Math.min(numValue, originalQty));
+    const refundableQty = returnItems[index].refundable_quantity || originalQty;
+    // Clamp between 0 and refundable quantity (or original quantity if refundable not set)
+    const maxQty = refundableQty > 0 ? refundableQty : originalQty;
+    const clampedValue = Math.max(0, Math.min(numValue, maxQty));
     
     setReturnItems(items => {
       const newItems = [...items];
@@ -257,16 +463,120 @@ export default function SaleReturn() {
     setIsConfirmDialogOpen(true);
   };
 
-  const handleConfirmReturn = () => {
-    setIsConfirmDialogOpen(false);
-    // TODO: Implement actual return API call
-    console.log('Return confirmed', {
-      invoiceNumber: invoiceData?.invoiceNumber,
-      returnPaymentType,
-      items: selectedItems,
-    });
-    // Navigate back to sale history after successful return
-    navigate('/sales');
+  const handleConfirmReturn = async () => {
+    if (!invoiceData) return;
+
+    if (!reason.trim()) {
+      alert('Please provide a reason for the return');
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      alert('Please select at least one item to return');
+      return;
+    }
+
+    try {
+      // Try to get invoice_line_id from the item
+      // It might be in invoice_line_id property, or in the id field if it's a number
+      const lines = selectedItems
+        .filter(item => {
+          const returnQty = parseInt(item.returnQuantity) || 0;
+          if (returnQty <= 0) return false;
+          
+          // Check if invoice_line_id exists
+          if (item.invoice_line_id) return true;
+          
+          // Try to use id if it's a valid invoice_line_id (numeric)
+          const idAsNumber = parseInt(item.id);
+          if (!isNaN(idAsNumber) && idAsNumber > 0) return true;
+          
+          return false;
+        })
+        .map(item => {
+          // Use invoice_line_id if available, otherwise try to use id as invoice_line_id
+          const invoiceLineId = item.invoice_line_id || (parseInt(item.id) || 0);
+          
+          return {
+            invoice_line_id: invoiceLineId,
+            batch_number: item.batch || '',
+            quantity: parseInt(item.returnQuantity) || 0,
+            restock_action: 'RESTOCK', // Default to RESTOCK, can be made configurable later
+          };
+        })
+        .filter(line => line.invoice_line_id > 0 && line.quantity > 0);
+
+      if (lines.length === 0) {
+        console.error('Selected items:', selectedItems);
+        alert('No valid items selected for return. Please ensure items have valid invoice line IDs and return quantities.');
+        return;
+      }
+
+      // Get invoice number from location state
+      // Database stores invoice_number as integer (e.g., 3698), not "INV-3698"
+      // Parse invoiceNumber (e.g., "RB1" -> 1, "INV-1234" -> 1234, or "1" -> 1)
+      let invoiceNumber: number = 0;
+      
+      if (invoiceData.invoiceNumber) {
+        // Remove common prefixes (RB, INV-, etc.) and extract numeric part
+        // Handles formats like: "RB1", "INV-1234", "1234", etc.
+        let cleanedNumber = invoiceData.invoiceNumber
+          .replace(/^(RB|INV-?)/i, '') // Remove RB or INV- prefix
+          .replace(/[^0-9]/g, '') // Remove all non-numeric characters
+          .trim();
+        
+        // If there's still a number after cleaning, parse it
+        if (cleanedNumber) {
+          const parsed = parseInt(cleanedNumber, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            invoiceNumber = parsed;
+          }
+        }
+      }
+      
+      // Note: Database stores invoice_number as integer, so we send the numeric value
+      
+      // Fallback: try invoiceId if it's a reasonable number (not a timestamp)
+      if (!invoiceNumber && invoiceData.invoiceId) {
+        const invoiceId = typeof invoiceData.invoiceId === 'number' 
+          ? invoiceData.invoiceId 
+          : parseInt(String(invoiceData.invoiceId || '0'), 10);
+        // Only use if it's a reasonable invoice ID (not a timestamp like 1766719204936)
+        if (!isNaN(invoiceId) && invoiceId > 0 && invoiceId < 1000000) {
+          invoiceNumber = invoiceId;
+        }
+      }
+      
+      if (!invoiceNumber || invoiceNumber <= 0) {
+        console.error('Invoice number resolution failed:', {
+          invoiceDataInvoiceNumber: invoiceData.invoiceNumber,
+          invoiceDataInvoiceId: invoiceData.invoiceId,
+          parsedInvoiceNumber: invoiceNumber
+        });
+        alert('Invalid invoice number. Cannot submit return. Please try again or contact support.');
+        return;
+      }
+      
+      const createdBy = user?.username || invoiceData.username || 'system';
+
+      const result = await submitSalesReturn({
+        invoice_number: invoiceNumber,
+        created_by: createdBy,
+        reason: reason.trim(),
+        notes: notes.trim(),
+        lines: lines,
+      }).unwrap();
+
+      setIsConfirmDialogOpen(false);
+      console.log('Return submitted successfully:', result);
+      
+      // Navigate back to sale history after successful return
+      navigate('/sales');
+    } catch (error: any) {
+      console.error('Error submitting return:', error);
+      const errorMessage = error?.data?.error || error?.message || 'Failed to submit return. Please try again.';
+      alert(errorMessage);
+    }
   };
 
   const selectedItems = useMemo(() => 
@@ -759,12 +1069,96 @@ export default function SaleReturn() {
           Confirm Return
         </DialogTitle>
         <DialogContent sx={{ padding: '0 24px 16px' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Reason for Return"
+              placeholder="Enter reason for return (required)"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              required
+              fullWidth
+              multiline
+              rows={2}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '10px',
+                  '& fieldset': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#9CA3AF',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#5C17E5 !important',
+                    borderWidth: '2px',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#6B7280',
+                  '&.Mui-focused': {
+                    color: '#5C17E5 !important',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: '#1F2937',
+                },
+                '& .MuiInputBase-root': {
+                  '&.Mui-focused': {
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#5C17E5 !important',
+                    },
+                  },
+                },
+              }}
+            />
+            <TextField
+              label="Notes"
+              placeholder="Enter any additional notes (optional)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              fullWidth
+              multiline
+              rows={3}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '10px',
+                  '& fieldset': {
+                    borderColor: '#D1D5DB',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#9CA3AF',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#5C17E5 !important',
+                    borderWidth: '2px',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#6B7280',
+                  '&.Mui-focused': {
+                    color: '#5C17E5 !important',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: '#1F2937',
+                },
+                '& .MuiInputBase-root': {
+                  '&.Mui-focused': {
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#5C17E5 !important',
+                    },
+                  },
+                },
+              }}
+            />
+          </Box>
           <Box
             sx={{
               backgroundColor: '#F9FAFB',
               border: '1px solid #E5E7EB',
               borderRadius: '12px',
               padding: '20px',
+              mt: 2,
             }}
           >
             <Typography
@@ -776,7 +1170,7 @@ export default function SaleReturn() {
                 mb: 1,
               }}
             >
-              Are you sure you want to confirm the return of the selected items. This change cannot be reversed.
+              Are you sure you want to confirm the return of the selected items? This change cannot be reversed.
             </Typography>
           </Box>
         </DialogContent>
@@ -809,6 +1203,7 @@ export default function SaleReturn() {
             onClick={handleConfirmReturn}
             variant="primary"
             size="large"
+            disabled={!reason.trim() || isSubmittingReturn}
             sx={{
               minWidth: '100px',
               borderRadius: '10px',
@@ -820,7 +1215,7 @@ export default function SaleReturn() {
               boxShadow: 'none',
             }}
           >
-            Yes
+            {isSubmittingReturn ? 'Submitting...' : 'Yes'}
           </StandardButton>
         </DialogActions>
       </Dialog>

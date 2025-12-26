@@ -39,7 +39,11 @@ export const processProductOptions = (apiProducts: any[]): string[] => {
   if (options.length === 0 && apiProducts.length > 0) {
   }
   
-  return options;
+  // Remove duplicates to prevent React key warnings
+  // Use Set to get unique product names, then convert back to array
+  const uniqueOptions = Array.from(new Set(options));
+  
+  return uniqueOptions;
 };
 
 /**

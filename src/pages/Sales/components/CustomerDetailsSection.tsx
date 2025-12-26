@@ -221,7 +221,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
         />
         <Autocomplete
           options={cityOptions}
-          value={customerCity ? customerCity : undefined}
+          value={customerCity || ''}
           isOptionEqualToValue={(option, value) => option === (value || '')}
           onChange={(_, newValue) => {
             if (newValue) {

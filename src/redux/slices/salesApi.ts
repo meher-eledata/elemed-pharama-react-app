@@ -436,6 +436,37 @@ export const salesApi = createApi({
         body,
       }),
     }),
+
+    // Get invoice details for editing invoices
+    // Backend accepts either invoice_id (database id) or invoice_number (string like "INV-1234")
+    getInvoiceDetails: builder.mutation<any, { invoice_id?: number; invoice_number?: string }>({
+      query: (body) => ({
+        url: "sales/get-invoice-details/",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    // Submit sales return
+    submitSalesReturn: builder.mutation<any, {
+      invoice_number: number;
+      created_by: string;
+      reason: string;
+      notes: string;
+      lines: Array<{
+        invoice_line_id: number;
+        batch_number: string;
+        quantity: number;
+        restock_action: string;
+      }>;
+    }>({
+      query: (body) => ({
+        url: "sales/submit-sales-return/",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Sales"],
+    }),
   }),
 });
 
@@ -467,4 +498,6 @@ export const {
   useGetCustomerPhonesMutation,
   useGetDoctorPhonesAndEmailsMutation,
   useGetBatchNumbersByProductIdMutation,
+  useGetInvoiceDetailsMutation,
+  useSubmitSalesReturnMutation,
 } = salesApi;

@@ -16,6 +16,7 @@ import {
   useUpdateSalesMutation,
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
+  useGetInvoiceDetailsMutation,
   Customer,
   DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
@@ -71,6 +72,7 @@ const SalesReceipt: React.FC = () => {
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
+  const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
   const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
   
@@ -158,9 +160,172 @@ const SalesReceipt: React.FC = () => {
     totalPayableAmount: string;
   } | null>(null);
 
-  // Load invoice data when in edit mode
   useEffect(() => {
     if (isEditMode && editModeData) {
+      let invoiceId: number | null = null;
+      
+      if (editModeData.invoiceNumber) {
+        const cleanedNumber = editModeData.invoiceNumber.replace(/^RB/i, '').trim();
+        const parsed = parseInt(cleanedNumber, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
+          invoiceId = parsed;
+        }
+      }
+      
+      if (!invoiceId) {
+        const stateId = editModeData.invoiceId || editModeData.invoice_id;
+        if (stateId && typeof stateId === 'number' && stateId > 0 && stateId < 1000000) {
+          invoiceId = stateId;
+        }
+      }
+      
+      const invoiceNumber = editModeData.invoiceNumber;
+      if ((invoiceId && invoiceId > 0) || invoiceNumber) {
+        const fetchInvoiceDetails = async () => {
+          try {
+            // Prefer invoice_number  available (more reliable)
+            let result;
+            if (invoiceNumber) {
+              console.log('Fetching invoice details for invoice_number:', invoiceNumber);
+              result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
+            } else if (invoiceId && invoiceId > 0) {
+              console.log('Fetching invoice details for invoice_id:', invoiceId);
+              result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
+            } else {
+              throw new Error('No invoice_number or invoice_id available');
+            }
+            console.log('Invoice details response:', result);
+            
+            if (result) {
+              // API response structure: { invoice: {...}, lines: [...], payments: [...], ... }
+              const invoice = result.invoice || {};
+              const lines = result.lines || [];
+              
+              // Transform API response to form data
+              // Note: invoice object has customer_id and doctor_id, but not names directly
+              // Use location state data as fallback for customer/doctor names
+              const invoiceData = {
+                customerName: result.customer_name || editModeData.customerName || '',
+                customerMobile: result.customer_mobile || editModeData.customerMobile || '',
+                customerCity: result.customer_city || editModeData.customerCity || '',
+                doctorName: result.doctor_name || editModeData.doctorName || '',
+                doctorMobile: result.doctor_mobile || editModeData.doctorMobile || '',
+                doctorEmail: result.doctor_email || editModeData.doctorEmail || '',
+                paymentMode: result.payment_mode || editModeData.paymentMode || 'Cash',
+                insuranceCompany: result.insurance_company || editModeData.insuranceCompany || '',
+                invoiceNumber: invoice.invoice_number?.toString() || result.invoice_number?.toString() || editModeData.invoiceNumber || '',
+                invoiceDate: invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB').split('/').reverse().join('-') : (editModeData.invoiceDate || getTodayDate()),
+                salesItems: lines.length > 0 ? lines.map((line: any) => ({
+                  id: line.invoice_line_id?.toString() || line.id?.toString() || '',
+                  productName: line.product_name || line.productName || '',
+                  manufacturer: line.manufacturer || '',
+                  batch: line.batch_number || line.batch || '',
+                  expiryDate: line.expiry_date || line.expiryDate || '',
+                  quantity: line.quantity?.toString() || '0',
+                  unitPrice: line.rate?.toString() || line.unit_price?.toString() || '0',
+                  mrp: line.mrp?.toString() || '0',
+                  discount: line.discount?.toString() || '0',
+                  discountPercent: line.discount_percent?.toString() || '0',
+                  cgst: line.cgst?.toString() || '0',
+                  cgstPercent: line.cgst_percent?.toString() || '0',
+                  sgst: line.sgst?.toString() || '0',
+                  sgstPercent: line.sgst_percent?.toString() || '0',
+                  igst: line.igst?.toString() || '0',
+                  igstPercent: line.igst_percent?.toString() || '0',
+                  amount: line.selling_price?.toString() || line.amount?.toString() || '0',
+                })) : (editModeData.salesItems || []),
+                totalValue: invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || editModeData.totalValue || '0',
+                totalDiscount: invoice.discount?.toString() || result.total_discount?.toString() || result.totalDiscount?.toString() || editModeData.totalDiscount || '0',
+                taxAmount: result.tax_amount?.toString() || result.taxAmount?.toString() || editModeData.taxAmount || '0',
+                totalPayableAmount: invoice.total_amount?.toString() || result.total_payable_amount?.toString() || result.totalPayableAmount?.toString() || editModeData.totalPayableAmount || '0',
+              };
+              
+              // Pre-populate form fields from API data
+              if (invoiceData.customerName) setCustomerName(invoiceData.customerName);
+              if (invoiceData.customerMobile) setCustomerMobile(invoiceData.customerMobile);
+              if (invoiceData.customerCity) setCustomerCity(invoiceData.customerCity);
+              if (invoiceData.doctorName) {
+                setDoctorName(invoiceData.doctorName);
+                setSelectedDoctor(invoiceData.doctorName);
+                shouldFetchDoctorInfoRef.current = true;
+              }
+              if (invoiceData.doctorMobile) setDoctorMobile(invoiceData.doctorMobile);
+              if (invoiceData.doctorEmail) setDoctorEmail(invoiceData.doctorEmail);
+              if (invoiceData.paymentMode) setPaymentMode(invoiceData.paymentMode);
+              if (invoiceData.insuranceCompany) setInsuranceCompany(invoiceData.insuranceCompany);
+              if (invoiceData.invoiceNumber) setInvoiceNumber(invoiceData.invoiceNumber);
+              if (invoiceData.invoiceDate) setInvoiceDate(invoiceData.invoiceDate);
+              
+              // Pre-populate sales items
+              if (invoiceData.salesItems && Array.isArray(invoiceData.salesItems) && invoiceData.salesItems.length > 0) {
+                const recalculatedItems = invoiceData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item));
+                setSalesItems(recalculatedItems);
+                
+                // Recalculate summary
+                const correctedSummary = calculateFinancialSummary(recalculatedItems);
+                setTotalValue(correctedSummary.totalValue);
+                setTotalDiscount(correctedSummary.totalDiscount);
+                setTaxAmount(correctedSummary.taxAmount);
+                setTotalPayableAmount(correctedSummary.totalPayableAmount);
+              } else if (invoiceData.totalValue) {
+                setTotalValue(invoiceData.totalValue || '0');
+                setTotalDiscount(invoiceData.totalDiscount || '0');
+                setTaxAmount(invoiceData.taxAmount || '0');
+                setTotalPayableAmount(invoiceData.totalPayableAmount || '0');
+              }
+              
+              // Set customer if available
+              if (invoiceData.customerName && invoiceData.customerMobile) {
+                const customer: Customer = {
+                  id: 0,
+                  name: invoiceData.customerName,
+                  mobile: invoiceData.customerMobile,
+                  city: invoiceData.customerCity || '',
+                };
+                setSelectedCustomer(customer);
+              }
+
+              // Store original data for comparison
+              const originalItems = invoiceData.salesItems && Array.isArray(invoiceData.salesItems) && invoiceData.salesItems.length > 0
+                ? invoiceData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item))
+                : [];
+              
+              setOriginalInvoiceData({
+                customerName: invoiceData.customerName || '',
+                customerMobile: invoiceData.customerMobile || '',
+                customerCity: invoiceData.customerCity || '',
+                doctorName: invoiceData.doctorName || '',
+                doctorMobile: invoiceData.doctorMobile || '',
+                doctorEmail: invoiceData.doctorEmail || '',
+                paymentMode: invoiceData.paymentMode || '',
+                insuranceCompany: invoiceData.insuranceCompany || '',
+                invoiceNumber: invoiceData.invoiceNumber || '',
+                invoiceDate: invoiceData.invoiceDate || '',
+                salesItems: originalItems,
+                totalValue: invoiceData.totalValue || '0',
+                totalDiscount: invoiceData.totalDiscount || '0',
+                taxAmount: invoiceData.taxAmount || '0',
+                totalPayableAmount: invoiceData.totalPayableAmount || '0',
+              });
+              
+              return; // Exit early if API call succeeded
+            }
+          } catch (error) {
+            console.error('Error fetching invoice details from API:', error);
+            console.error('Error details:', {
+              invoiceId,
+              invoiceNumber: editModeData.invoiceNumber,
+              errorStatus: (error as any)?.status,
+              errorData: (error as any)?.data,
+            });
+            // Fall through to use location state data as fallback
+          }
+        };
+        
+        fetchInvoiceDetails();
+      }
+      
+      // Fallback: Use location state data if API call fails or invoiceId is not available
       // Pre-populate form fields
       if (editModeData.customerName) setCustomerName(editModeData.customerName);
       if (editModeData.customerMobile) setCustomerMobile(editModeData.customerMobile);
@@ -231,7 +396,7 @@ const SalesReceipt: React.FC = () => {
         totalPayableAmount: editModeData.totalPayableAmount || '0',
       });
     }
-  }, [isEditMode, editModeData]);
+  }, [isEditMode, editModeData, getInvoiceDetails]);
 
   // Load cart items (only if not in edit mode)
   useCartLoader({
@@ -662,6 +827,7 @@ const SalesReceipt: React.FC = () => {
     if (!customerMobile || !customerMobile.trim()) {
       missingFields.push('Customer Mobile Number');
     }
+    
     if (!doctorName || !doctorName.trim()) {
       missingFields.push('Doctor Name');
     }

@@ -19,6 +19,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation } from "../../redux/slices/receiveApi";
+import { useGetBatchesForProductMutation } from "../../redux/slices/inventoryApi";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
@@ -101,6 +102,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const dispatch = useDispatch();
   const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
+  const [getBatchesForProduct] = useGetBatchesForProductMutation();
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [sortConfig, setSortConfig] = useState<{
@@ -267,7 +269,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const data = await response.json();
-      setSupplierOptions(Array.isArray(data) ? data : []);
+      // Normalize the response - handle both {supplier_name, supplier_id} and {supplier_name, id} formats
+      const normalizedData = Array.isArray(data) ? data.map((item: any) => ({
+        supplier_name: item.supplier_name || item.name || '',
+        supplier_id: item.supplier_id || item.id || 0
+      })) : [];
+      console.log('Fetched suppliers:', normalizedData.slice(0, 5)); // Log first 5 for debugging
+      setSupplierOptions(normalizedData);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch suppliers';
       setSuppliersError(errorMessage);
@@ -323,8 +331,22 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const transformFormDataToApiPayload = () => {
-    const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
+    // Find supplier with case-insensitive matching
+    const normalize = (str: string) => str.trim().toLowerCase();
+    const normalizedSupplierName = normalize(supplierName);
+    const selectedSupplierData = supplierOptions.find(s => 
+      normalize(s.supplier_name) === normalizedSupplierName
+    );
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
+
+    // Debug logging
+    console.log('Supplier lookup:', {
+      supplierName,
+      normalizedSupplierName,
+      supplierOptionsCount: supplierOptions.length,
+      selectedSupplierData,
+      isExistingSupplier
+    });
 
     const getProductIdFromName = (productName: string): number | null => {
       if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
@@ -348,11 +370,44 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const lines = pharmaTableData.map((row, index) => {
       const productId = getProductIdFromName(row.productId);
-      const expiryDateFormatted = row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()
-        ? row.expiryDate.format('DD/MM/YYYY')
-        : "";
+      
+      // Format expiry_date to ISO format (YYYY-MM-DD) as expected by backend
+      // Always provide a value - use today's date as fallback if not provided
+      let expiryDateFormatted: string;
+      if (row.expiryDate) {
+        if (dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()) {
+          expiryDateFormatted = row.expiryDate.format('YYYY-MM-DD');
+        } else if (typeof row.expiryDate === 'string') {
+          // Try to parse if it's a string
+          const parsed = dayjs(row.expiryDate);
+          if (parsed.isValid()) {
+            expiryDateFormatted = parsed.format('YYYY-MM-DD');
+          } else {
+            // Fallback to today's date if parsing fails
+            expiryDateFormatted = dayjs().format('YYYY-MM-DD');
+          }
+        } else {
+          // Fallback to today's date
+          expiryDateFormatted = dayjs().format('YYYY-MM-DD');
+        }
+      } else {
+        // Fallback to today's date if no expiry date provided
+        expiryDateFormatted = dayjs().format('YYYY-MM-DD');
+      }
 
-      const line = {
+      const line: {
+        product: string;
+        product_id: number | null;
+        batch_number: string;
+        received_qty: number;
+        free_qty: number;
+        expiry_date: string;
+        unit_price: number;
+        cgst: number;
+        sgst: number;
+        igst: number;
+        discount: number;
+      } = {
         product: row.productId,
         product_id: productId,
         batch_number: row.batchNumber || "",
@@ -377,9 +432,30 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
     }
 
-    const payload = {
+    // Validate that we have a valid supplier_id before proceeding
+    if (!isExistingSupplier || !selectedSupplierData?.supplier_id || selectedSupplierData.supplier_id <= 0) {
+      console.error('Supplier validation failed:', {
+        supplierName,
+        selectedSupplierData,
+        supplierOptions: supplierOptions.slice(0, 5) // Log first 5 for debugging
+      });
+      throw new Error(`Supplier "${supplierName}" not found. Please select a supplier from the dropdown.`);
+    }
+
+    const payload: {
+      supplier_name: string;
+      supplier_id: number;
+      po_number: string;
+      payment_method: string;
+      payment_vendor: string;
+      transaction_number: string;
+      invoice_date?: string;
+      notes: string;
+      created_by: string;
+      lines: typeof lines;
+    } = {
       supplier_name: supplierName.trim(),
-      ...(isExistingSupplier && { supplier_id: selectedSupplierData.supplier_id }),
+      supplier_id: selectedSupplierData.supplier_id,
       po_number: poNumber.trim(),
       payment_method: paymentMethod || 'Cash',
       payment_vendor: paymentVendor.trim(),
@@ -389,6 +465,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       created_by: "meher",
       lines: lines
     };
+
+    // Debug: Log the payload being sent
+    console.log('Submitting receipt payload:', JSON.stringify(payload, null, 2));
 
     return payload;
   };
@@ -424,7 +503,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const formatExpiryDate = (row: PharmaTableRow): string => {
       if (row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()) {
-        return row.expiryDate.format('DD/MM/YYYY');
+        // Format as ISO (YYYY-MM-DD) to match backend format and new receipt submission
+        return row.expiryDate.format('YYYY-MM-DD');
       }
       return '';
     };
@@ -486,15 +566,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         const originalRow = originalReceiptLines.find(orig => orig.id === row.id);
         const productId = row.product_id || originalRow?.product_id || getProductIdFromName(row.productId);
         
+        // Format expiry_date - use empty string if not provided (backend may handle this)
+        const expiryDateFormatted = formatExpiryDate(row);
+        
         return {
           receipt_line_id: parseInt(row.id || '0'),
           po_line_id: row.po_line_id || originalRow?.po_line_id || 0,
           batch_id: row.batch_id || originalRow?.batch_id || 0,
+          batch_number: row.batchNumber || originalRow?.batchNumber || '',
           product_id: productId || 0,
           product_name: row.productId,
           received_qty: row.qtyReceived,
           free_qty: row.qtyFree,
-          expiry_date: formatExpiryDate(row),
+          expiry_date: expiryDateFormatted,
           unit_price: row.pp.toString(),
           cgst: row.cgst.toString(),
           sgst: row.sgst.toString(),
@@ -624,7 +708,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         const editPayload = transformFormDataToEditPayload();
         result = await editReceipt(editPayload).unwrap();
       } else {
-        const submitPayload = transformFormDataToApiPayload();
+        let submitPayload;
+        try {
+          submitPayload = transformFormDataToApiPayload();
+        } catch (validationError: any) {
+          setSaveError(validationError.message || 'Invalid form data. Please ensure supplier is selected from dropdown.');
+          setIsSaving(false);
+          return;
+        }
         
         try {
           result = await submitReceipt(submitPayload).unwrap();
@@ -756,15 +847,23 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setEditingData({ 
       ...row,
       batchNumber: row.batchNumber || '', // Ensure batchNumber is included
+      expiryDate: row.expiryDate || null, // Explicitly ensure expiryDate is copied (can be null)
     });
   };
 
   const saveRow = () => {
     if (editingRowId && editingData) {
+      // Convert empty strings to 0 for numeric fields
+      const cleanedData: any = { ...editingData };
+      if (cleanedData.cgst === "" || cleanedData.cgst === null || cleanedData.cgst === undefined) cleanedData.cgst = 0;
+      if (cleanedData.sgst === "" || cleanedData.sgst === null || cleanedData.sgst === undefined) cleanedData.sgst = 0;
+      if (cleanedData.igst === "" || cleanedData.igst === null || cleanedData.igst === undefined) cleanedData.igst = 0;
+      if (cleanedData.disc === "" || cleanedData.disc === null || cleanedData.disc === undefined) cleanedData.disc = 0;
+      
       setPharmaTableData(prev => 
         prev.map(row => 
           row.id === editingRowId 
-            ? { ...row, ...editingData, isEditing: false }
+            ? { ...row, ...cleanedData, isEditing: false }
             : row
         )
       );
@@ -946,6 +1045,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       const receiptLinesData = await response.json();
       const receiptLines = Array.isArray(receiptLinesData) ? receiptLinesData : [];
       
+      // NOTE: The backend API /receive/get-receipt-lines does NOT return expiry_date
+      // This is a backend issue that should be fixed. As a workaround, we'll try to fetch
+      // expiry dates from the batch table using batch_number and product_id
+      
       if (receiptLines && receiptLines.length > 0) {
         const firstLine = receiptLines[0];
         if (firstLine.transaction_number) {
@@ -975,10 +1078,55 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setInvoiceDate(navigationInvoiceDate);
       }
       
+      // Workaround: Fetch expiry dates from batches since backend doesn't return them
+      // Group lines by product_id to minimize API calls
+      const productBatchMap = new Map<string, { product_id: number; batch_number: string }>();
+      receiptLines.forEach((line: any) => {
+        if (line.product_id && line.batch_number) {
+          const key = `${line.product_id}_${line.batch_number}`;
+          if (!productBatchMap.has(key)) {
+            productBatchMap.set(key, { product_id: line.product_id, batch_number: line.batch_number });
+          }
+        }
+      });
+
+      // Fetch batches for each unique product to get expiry dates
+      const batchExpiryMap = new Map<string, string | null>();
+      await Promise.all(
+        Array.from(productBatchMap.values()).map(async ({ product_id, batch_number }) => {
+          try {
+            const result = await getBatchesForProduct({ product_id }).unwrap();
+            const matchingBatch = result.batches?.find(
+              (batch: any) => String(batch.batch_number) === String(batch_number)
+            );
+            if (matchingBatch?.expiry_date) {
+              batchExpiryMap.set(`${product_id}_${batch_number}`, matchingBatch.expiry_date);
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch batches for product ${product_id}:`, error);
+          }
+        })
+      );
+
       const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => {
-        const expiryDateValue = line.expiry_date 
+        // Try to get expiry_date from batch lookup first, then from line data
+        const batchKey = line.product_id && line.batch_number ? `${line.product_id}_${line.batch_number}` : null;
+        const expiryDateFromBatch = batchKey ? batchExpiryMap.get(batchKey) : null;
+        const expiryDateRaw = expiryDateFromBatch || line.expiry_date || line.expiryDate || line.expiry || null;
+        
+        const expiryDateValue = (expiryDateRaw !== null && expiryDateRaw !== undefined && expiryDateRaw !== '' && expiryDateRaw !== 'null' && expiryDateRaw !== 'undefined') 
           ? (() => {
-              const parsed = dayjs(line.expiry_date, 'DD/MM/YYYY');
+              // Try parsing with multiple formats - backend might return ISO (YYYY-MM-DD) or DD/MM/YYYY
+              let parsed = dayjs(expiryDateRaw, 'YYYY-MM-DD', true); // Try ISO format first
+              if (!parsed.isValid()) {
+                parsed = dayjs(expiryDateRaw, 'DD/MM/YYYY', true); // Try DD/MM/YYYY
+              }
+              if (!parsed.isValid()) {
+                parsed = dayjs(expiryDateRaw, 'MM/DD/YYYY', true); // Try MM/DD/YYYY
+              }
+              if (!parsed.isValid()) {
+                parsed = dayjs(expiryDateRaw); // Try auto-parsing
+              }
               return parsed.isValid() ? parsed : null;
             })()
           : null;
@@ -1141,9 +1289,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
             <PharmaDatePicker
               value={
-                editingData.expiryDate !== undefined
-                  ? editingData.expiryDate
-                  : row.expiryDate
+                'expiryDate' in editingData
+                  ? editingData.expiryDate ?? null
+                  : row.expiryDate ?? null
               }
               onChange={(newValue: Dayjs | null) => {
                 updateEditingData("expiryDate", newValue);
@@ -1181,7 +1329,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       ),
     },
     {
-      key: "sp",
+      key: "cgst",
       header: `${orderLabels.cgst} (%)`,
       sortable: false,
       render: (row) => (
@@ -1189,48 +1337,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           <TextField
             size="small"
             type="number"
-            value={editingData.sp || ""}
-            onChange={(e) => updateEditingData("sp", Number(e.target.value))}
-            variant="outlined"
-            fullWidth
-            sx={numberInputStyles}
-          />
-        ) : (
-          <span>{row.sp}</span>
-        )
-      ),
-    },
-    {
-      key: "mrp",
-      header: `${orderLabels.sgst} (%)`,
-      sortable: false,
-      render: (row) => (
-        editingRowId === row.id ? (
-          <TextField
-            size="small"
-            type="number"
-            value={editingData.mrp || ""}
-            onChange={(e) => updateEditingData("mrp", Number(e.target.value))}
-            variant="outlined"
-            fullWidth
-            sx={numberInputStyles}
-          />
-        ) : (
-          <span>{row.mrp}</span>
-        )
-      ),
-    },
-    {
-      key: "cgst",
-      header: `${orderLabels.igst} (%)`,
-      sortable: false,
-      render: (row) => (
-        editingRowId === row.id ? (
-          <TextField
-            size="small"
-            type="number"
-            value={editingData.cgst || ""}
-            onChange={(e) => updateEditingData("cgst", Number(e.target.value))}
+            value={editingData.cgst !== undefined ? ((editingData.cgst as any) === "" || editingData.cgst === null ? "" : Number(editingData.cgst)) : (row.cgst || "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              updateEditingData("cgst", val === "" ? ("" as any) : Number(val) || 0);
+            }}
             variant="outlined"
             fullWidth
             sx={numberInputStyles}
@@ -1242,6 +1353,52 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     },
     {
       key: "sgst",
+      header: `${orderLabels.sgst} (%)`,
+      sortable: false,
+      render: (row) => (
+        editingRowId === row.id ? (
+          <TextField
+            size="small"
+            type="number"
+            value={editingData.sgst !== undefined ? ((editingData.sgst as any) === "" || editingData.sgst === null ? "" : Number(editingData.sgst)) : (row.sgst || "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              updateEditingData("sgst", val === "" ? ("" as any) : Number(val) || 0);
+            }}
+            variant="outlined"
+            fullWidth
+            sx={numberInputStyles}
+          />
+        ) : (
+          <span>{row.sgst}</span>
+        )
+      ),
+    },
+    {
+      key: "igst",
+      header: `${orderLabels.igst} (%)`,
+      sortable: false,
+      render: (row) => (
+        editingRowId === row.id ? (
+          <TextField
+            size="small"
+            type="number"
+            value={editingData.igst !== undefined ? (String(editingData.igst) === "" || editingData.igst === null ? "" : Number(editingData.igst)) : (row.igst || "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              updateEditingData("igst", val === "" ? ("" as any) : Number(val) || 0);
+            }}
+            variant="outlined"
+            fullWidth
+            sx={numberInputStyles}
+          />
+        ) : (
+          <span>{row.igst}</span>
+        )
+      ),
+    },
+    {
+      key: "disc",
       header: `${orderLabels.discount} (%)`,
       sortable: false,
       render: (row) => (
@@ -1249,14 +1406,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           <TextField
             size="small"
             type="number"
-            value={editingData.sgst || ""}
-            onChange={(e) => updateEditingData("sgst", Number(e.target.value))}
+            value={editingData.disc !== undefined ? ((editingData.disc as any) === "" || editingData.disc === null ? "" : Number(editingData.disc)) : (row.disc || "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              updateEditingData("disc", val === "" ? ("" as any) : Number(val) || 0);
+            }}
             variant="outlined"
             fullWidth
             sx={numberInputStyles}
           />
         ) : (
-          <span>{row.sgst}</span>
+          <span>{row.disc}</span>
         )
       ),
     },

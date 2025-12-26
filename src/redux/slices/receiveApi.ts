@@ -59,10 +59,12 @@ export interface EditReceiptRequest {
     receipt_line_id: number;
     po_line_id: number;
     batch_id: number;
+    batch_number?: string;
     product_id: number;
     product_name: string;
     received_qty: number;
     free_qty: number;
+    expiry_date: string;
     unit_price: string;
     cgst: string;
     sgst: string;
@@ -108,6 +110,8 @@ export interface ReceiptLine {
   supplier_name: string;
   transaction_number: string;
   unit_price: string;
+  expiry_date?: string | null; // Expiry date field from backend
+  batch_number?: string; // Batch number field from backend
   hsn_id?: string; // HSN ID field from backend
   hsn_code?: string; // HSN code field from backend (if exists)
 }
@@ -273,6 +277,7 @@ export const receiveApi = createApi({
         lines: Array<{
           product: string;
           product_id: number | null; // Allow null for product_id
+          batch_number?: string; // Optional batch_number
           received_qty: number;
           free_qty: number;
           expiry_date: string;
