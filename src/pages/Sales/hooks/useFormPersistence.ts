@@ -8,6 +8,7 @@ interface FormData {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  patientType: string;
   doctorName: string;
   doctorMobile: string;
   doctorEmail: string;
@@ -21,6 +22,7 @@ interface UseFormPersistenceParams {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  patientType: string;
   doctorName: string;
   doctorMobile: string;
   doctorEmail: string;
@@ -36,6 +38,7 @@ export const useFormPersistence = ({
   customerName,
   customerMobile,
   customerCity,
+  patientType,
   doctorName,
   doctorMobile,
   doctorEmail,
@@ -53,7 +56,10 @@ export const useFormPersistence = ({
   // Load form data from Redux
   useEffect(() => {
     if (formData) {
-      onFormDataLoaded(formData);
+      onFormDataLoaded({
+        ...formData,
+        patientType: formData.patientType || 'Out Patient', // Default if missing
+      });
       
       if (formData.customerName && formData.customerMobile) {
         const restoredCustomer: Customer = {
@@ -77,6 +83,7 @@ export const useFormPersistence = ({
         customerName,
         customerMobile,
         customerCity,
+        patientType,
         doctorName,
         doctorMobile,
         doctorEmail,
@@ -88,7 +95,7 @@ export const useFormPersistence = ({
       
       dispatch(saveFormData(formDataToSave));
     }
-  }, [isDataLoaded, customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, dispatch]);
+  }, [isDataLoaded, customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, dispatch]);
 
   return { isDataLoaded };
 };

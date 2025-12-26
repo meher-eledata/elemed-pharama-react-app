@@ -112,6 +112,7 @@ const SalesReceipt: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [customerCity, setCustomerCity] = useState('');
+  const [patientType, setPatientType] = useState<string>('Out Patient'); // Default to 'Out Patient'
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [availablePhones, setAvailablePhones] = useState<string[]>([]);
   
@@ -520,6 +521,7 @@ const SalesReceipt: React.FC = () => {
     customerName,
     customerMobile,
     customerCity,
+    patientType,
     doctorName,
     doctorMobile,
     doctorEmail,
@@ -533,6 +535,7 @@ const SalesReceipt: React.FC = () => {
         setCustomerName(formData.customerName);
         setCustomerMobile(formData.customerMobile);
         setCustomerCity(formData.customerCity);
+        setPatientType(formData.patientType || 'Out Patient');
         setDoctorName(formData.doctorName);
         setDoctorMobile(formData.doctorMobile);
         setDoctorEmail(formData.doctorEmail);
@@ -799,6 +802,7 @@ const SalesReceipt: React.FC = () => {
     setCustomerName('');
     setCustomerMobile('');
     setCustomerCity('');
+    setPatientType('Out Patient');
     setSelectedCustomer(null);
     setDoctorName('');
     setDoctorMobile('');
@@ -946,6 +950,7 @@ const SalesReceipt: React.FC = () => {
       customerName,
       customerMobile,
       customerCity,
+      patientType,
       doctorName,
       doctorMobile,
       doctorEmail,
@@ -1048,6 +1053,7 @@ const SalesReceipt: React.FC = () => {
             customerName={customerName}
             customerMobile={customerMobile}
             customerCity={customerCity}
+            patientType={patientType}
             selectedCustomer={selectedCustomer}
             customerNames={customerNames}
             availablePhones={availablePhones}
@@ -1064,6 +1070,7 @@ const SalesReceipt: React.FC = () => {
             onCustomerSelect={handleCustomerSelect}
             onCustomerMobileChange={setCustomerMobile}
             onCustomerCityChange={setCustomerCity}
+            onPatientTypeChange={setPatientType}
             onAddNewCustomer={handleOpenCustomerModal}
           />
 

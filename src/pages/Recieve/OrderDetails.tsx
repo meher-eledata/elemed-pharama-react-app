@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, startTransition } from "react";
+import React, { useState, useMemo, useEffect, startTransition, useRef } from "react";
 import {
   Box,
   Typography,
@@ -27,6 +27,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import UploadIcon from "@mui/icons-material/Upload";
 
 import { orderLabels } from "../../config/label/OrderDetail.labels";
 import {
@@ -175,6 +176,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [rowToDeleteId, setRowToDeleteId] = useState<string | null>(null);
   
   const [isReceiptDeleteDialogOpen, setIsReceiptDeleteDialogOpen] = useState<boolean>(false);
+  
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [invoiceFileName, setInvoiceFileName] = useState<string>("");
+  const [invoiceAttachmentUrl, setInvoiceAttachmentUrl] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const inputFieldStyles = {
     '& .MuiOutlinedInput-root': {
@@ -450,6 +456,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       payment_vendor: string;
       transaction_number: string;
       invoice_date?: string;
+      invoice_attachment?: string;
       notes: string;
       created_by: string;
       lines: typeof lines;
@@ -461,6 +468,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       payment_vendor: paymentVendor.trim(),
       transaction_number: transactionNumber.trim(),
       ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
+      ...(invoiceAttachmentUrl && { invoice_attachment: invoiceAttachmentUrl }),
       notes: "",
       created_by: "meher",
       lines: lines
@@ -615,6 +623,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       payment_vendor: paymentVendor,
       transaction_number: transactionNumber,
       ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
+      ...(invoiceAttachmentUrl && { invoice_attachment: invoiceAttachmentUrl }),
       notes: "",
       created_by: "meher",
       Deleted: deleted,
@@ -671,7 +680,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   };
 
-  const handleSubmitReceipt = async () => {
+  const proceedWithSave = async () => {
     try {
       setIsSaving(true);
       setSaveError(null);
@@ -760,6 +769,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setInvoiceDate("");
         setTransactionNumber("");
         setPaymentVendor("");
+        setInvoiceFile(null);
+        setInvoiceFileName("");
+        setInvoiceAttachmentUrl("");
         setIsProductSelected(false);
         setSaveSuccess(false);
         navigate('/receive/order-receive');
@@ -788,6 +800,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSubmitReceipt = async () => {
+    // Invoice upload is optional - proceed with save directly
+    await proceedWithSave();
   };
 
   const addProductToTable = async (productName: string) => {
@@ -1045,9 +1062,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       const receiptLinesData = await response.json();
       const receiptLines = Array.isArray(receiptLinesData) ? receiptLinesData : [];
       
-      // NOTE: The backend API /receive/get-receipt-lines does NOT return expiry_date
-      // This is a backend issue that should be fixed. As a workaround, we'll try to fetch
-      // expiry dates from the batch table using batch_number and product_id
+    
       
       if (receiptLines && receiptLines.length > 0) {
         const firstLine = receiptLines[0];
@@ -1061,7 +1076,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         } else if (navigationPaymentVendor) {
           setPaymentVendor(navigationPaymentVendor);
         }
-        // Auto-populate batch number form field from first receipt line
         if (firstLine.batch_number) {
           setBatchNumber(firstLine.batch_number);
         }
@@ -1078,8 +1092,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setInvoiceDate(navigationInvoiceDate);
       }
       
-      // Workaround: Fetch expiry dates from batches since backend doesn't return them
-      // Group lines by product_id to minimize API calls
+     
       const productBatchMap = new Map<string, { product_id: number; batch_number: string }>();
       receiptLines.forEach((line: any) => {
         if (line.product_id && line.batch_number) {
@@ -1090,7 +1103,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }
       });
 
-      // Fetch batches for each unique product to get expiry dates
       const batchExpiryMap = new Map<string, string | null>();
       await Promise.all(
         Array.from(productBatchMap.values()).map(async ({ product_id, batch_number }) => {
@@ -1109,23 +1121,21 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       );
 
       const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => {
-        // Try to get expiry_date from batch lookup first, then from line data
         const batchKey = line.product_id && line.batch_number ? `${line.product_id}_${line.batch_number}` : null;
         const expiryDateFromBatch = batchKey ? batchExpiryMap.get(batchKey) : null;
         const expiryDateRaw = expiryDateFromBatch || line.expiry_date || line.expiryDate || line.expiry || null;
         
         const expiryDateValue = (expiryDateRaw !== null && expiryDateRaw !== undefined && expiryDateRaw !== '' && expiryDateRaw !== 'null' && expiryDateRaw !== 'undefined') 
           ? (() => {
-              // Try parsing with multiple formats - backend might return ISO (YYYY-MM-DD) or DD/MM/YYYY
-              let parsed = dayjs(expiryDateRaw, 'YYYY-MM-DD', true); // Try ISO format first
+              let parsed = dayjs(expiryDateRaw, 'YYYY-MM-DD', true); 
               if (!parsed.isValid()) {
-                parsed = dayjs(expiryDateRaw, 'DD/MM/YYYY', true); // Try DD/MM/YYYY
+                parsed = dayjs(expiryDateRaw, 'DD/MM/YYYY', true); 
               }
               if (!parsed.isValid()) {
-                parsed = dayjs(expiryDateRaw, 'MM/DD/YYYY', true); // Try MM/DD/YYYY
+                parsed = dayjs(expiryDateRaw, 'MM/DD/YYYY', true);
               }
               if (!parsed.isValid()) {
-                parsed = dayjs(expiryDateRaw); // Try auto-parsing
+                parsed = dayjs(expiryDateRaw); 
               }
               return parsed.isValid() ? parsed : null;
             })()
@@ -1160,6 +1170,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       setPharmaTableData(transformedLines);
       setOriginalReceiptLines(transformedLines);
+      
+      // Load invoice attachment if available from selectedOrder
+      if (selectedOrder && (selectedOrder as any).invoice_attachment) {
+        setInvoiceAttachmentUrl((selectedOrder as any).invoice_attachment);
+        // Set file name if available or use a default
+        if ((selectedOrder as any).invoice_attachment.startsWith('data:')) {
+          setInvoiceFileName('Invoice Receipt');
+        }
+      }
       
       setOriginalFormValues({
         supplierName: supplierName,
@@ -2315,6 +2334,80 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               />
             )}
           />
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setInvoiceFile(file);
+                  setInvoiceFileName(file.name);
+                  
+                  // Convert file to base64 data URL for storage and display
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    const base64String = reader.result as string;
+                    setInvoiceAttachmentUrl(base64String);
+                    
+                  };
+                  reader.onerror = () => {
+                    setSaveError('Failed to read the invoice file');
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+            <Button
+              variant="contained"
+              startIcon={<UploadIcon />}
+              onClick={() => fileInputRef.current?.click()}
+              sx={{
+                height: "40px",
+                borderRadius: "8px",
+                backgroundColor: "#5C17E5",
+                color: "#FFFFFF",
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: "14px",
+                fontWeight: 500,
+                textTransform: "none",
+                "&:hover": {
+                  backgroundColor: "#4A14C7",
+                },
+                whiteSpace: "nowrap",
+                padding: "8px 16px",
+                boxShadow: "none",
+              }}
+            >
+              {invoiceFileName ? `Uploaded: ${invoiceFileName.length > 20 ? invoiceFileName.substring(0, 20) + '...' : invoiceFileName}` : "Upload Invoice Receipt"}
+            </Button>
+            {invoiceFileName && (
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setInvoiceFile(null);
+                  setInvoiceFileName("");
+                  setInvoiceAttachmentUrl("");
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}
+                sx={{
+                  marginLeft: "8px",
+                  color: "#6B7280",
+                  "&:hover": {
+                    color: "#374151",
+                    backgroundColor: "transparent",
+                  },
+                }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            )}
           </Box>
           
           {isEditMode && (

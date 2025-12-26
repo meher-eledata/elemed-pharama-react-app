@@ -28,6 +28,7 @@ interface CustomerDetailsSectionProps {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  patientType: string;
   selectedCustomer: Customer | null;
   customerNames: string[]; // Customer names from /sales/get-all-customer-names endpoint
   availablePhones?: string[]; // Phone numbers from /sales/get-customer-phones/ endpoint
@@ -35,6 +36,7 @@ interface CustomerDetailsSectionProps {
   onCustomerSelect: (customer: Customer | null) => void;
   onCustomerMobileChange: (value: string) => void;
   onCustomerCityChange: (value: string) => void;
+  onPatientTypeChange: (value: string) => void;
   onAddNewCustomer: () => void;
 }
 
@@ -42,6 +44,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   customerName,
   customerMobile,
   customerCity,
+  patientType,
   selectedCustomer,
   customerNames,
   availablePhones = [],
@@ -49,6 +52,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   onCustomerSelect,
   onCustomerMobileChange,
   onCustomerCityChange,
+  onPatientTypeChange,
   onAddNewCustomer,
 }) => {
   return (
@@ -135,7 +139,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           disableClearable={!customerName}
           forcePopupIcon
           popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
-          sx={{ width: `${SALES_RECEIPT_CONSTANTS.CUSTOMER_NAME_WIDTH}px` }}
+          sx={{ width: '220px' }}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -143,7 +147,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
               variant="outlined"
               placeholder={SALES_RECEIPT_LABELS.CUSTOMER_NAME_PLACEHOLDER}
               sx={{
-                width: `${SALES_RECEIPT_CONSTANTS.CUSTOMER_NAME_WIDTH}px`,
+                width: '220px',
                 '& .MuiOutlinedInput-root': {
                   height: '48px',
                   borderRadius: '8px',
@@ -201,6 +205,80 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
             );
           }}
         />
+        <Autocomplete
+          options={['In Patient', 'Out Patient']}
+          value={patientType || 'Out Patient'}
+          onChange={(_, newValue) => {
+            if (newValue) {
+              onPatientTypeChange(newValue);
+            } else {
+              onPatientTypeChange('Out Patient');
+            }
+          }}
+          disableClearable
+          forcePopupIcon
+          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+          sx={{ width: '180px' }}
+          ListboxProps={{
+            sx: {
+              '& .MuiAutocomplete-option': {
+                '&.Mui-focused': {
+                  backgroundColor: '#F3F4F6',
+                },
+                '&[aria-selected="true"]': {
+                  backgroundColor: '#F3F4F6',
+                  '&.Mui-focused': {
+                    backgroundColor: '#F3F4F6',
+                  },
+                },
+              },
+            },
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Patient Type"
+              variant="outlined"
+              placeholder="Select patient type"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  height: '48px',
+                  borderRadius: '8px',
+                  backgroundColor: '#FFFFFF',
+                  '& fieldset': {
+                    borderColor: '#9AA8BC',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#9AA8BC',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#5C17E5',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  padding: '12px 16px',
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: '16px',
+                  color: '#1A212B',
+                  '&::placeholder': {
+                    color: '#728197',
+                    fontSize: '16px',
+                    fontFamily: "'Lexend', sans-serif",
+                    opacity: 1,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: '16px',
+                  color: '#1A212B',
+                  '&.Mui-focused': {
+                    color: '#5C17E5',
+                  },
+                },
+              }}
+            />
+          )}
+        />
       </SectionRow>
 
       <SectionRow>
@@ -213,7 +291,6 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           onChange={(e) => {
             const newMobile = e.target.value;
             onCustomerMobileChange(newMobile);
-            // Only clear selected customer if the new value doesn't match the selected customer's mobile
             if (selectedCustomer && newMobile !== selectedCustomer.mobile) {
               onCustomerSelect(null);
             }

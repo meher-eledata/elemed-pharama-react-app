@@ -202,7 +202,8 @@ export interface SubmitSaleRequest {
   customer_id?: number; // Optional - backend may accept name/mobile instead
   customer_name?: string; // Send name if ID not available
   customer_mobile?: string; // Send mobile if ID not available
-  invoice_number?: string | null; // Invoice number entered by user
+  invoice_number?: string | null; // Invoice number entered by user (for return flow - invoice already stored in DB)
+  invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   lines: SubmitSaleLine[];
 }
 

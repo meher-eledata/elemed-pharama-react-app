@@ -14,6 +14,7 @@ export interface SalesFormData {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  patientType: string;
   doctorName: string;
   doctorMobile: string;
   doctorEmail: string;

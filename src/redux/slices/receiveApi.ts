@@ -27,6 +27,7 @@ export interface Receipt {
   transaction_number?: string;
   payment_vendor?: string;
   invoice_date?: string; // Invoice date from form
+  invoice_attachment?: string; // Invoice attachment (base64 data URL)
 }
 
 export interface EditReceiptRequest {
@@ -38,6 +39,8 @@ export interface EditReceiptRequest {
   payment_method: string;
   payment_vendor: string;
   transaction_number: string;
+  invoice_date?: string; // Invoice date in ISO format
+  invoice_attachment?: string; // Invoice attachment (base64 data URL)
   notes: string;
   created_by: string;
   Deleted: Array<{
@@ -272,6 +275,7 @@ export const receiveApi = createApi({
         payment_vendor: string;
         transaction_number: string;
         invoice_date?: string; // Invoice date in ISO format
+        invoice_attachment?: string; // Invoice attachment (base64 data URL)
         notes: string;
         created_by: string;
         lines: Array<{

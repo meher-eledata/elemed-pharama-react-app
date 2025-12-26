@@ -111,6 +111,7 @@ export interface OrderReceiveRow {
   transaction_number?: string;
   payment_vendor?: string;
   invoice_date?: string;
+  invoice_attachment?: string;
 }
 
 export interface PurchaseOrderRow {
@@ -241,6 +242,7 @@ const OrderReceive: React.FC = () => {
           transaction_number: receipt.transaction_number || '',
           payment_vendor: receipt.payment_vendor || '',
           invoice_date: (receipt as any).invoice_date || null,
+          invoice_attachment: (receipt as any).invoice_attachment || undefined,
         };
       });
   }, [receipts]);
@@ -725,6 +727,63 @@ const OrderReceive: React.FC = () => {
           <span>{row.amt}</span>
         )
       )
+    },
+    {
+      key: "invoice_attachment",
+      header: ORDER_RECEIVE_TABLE_HEADERS.INVOICE_ATTACHMENT,
+      render: (row) => {
+        if (!row.invoice_attachment) {
+          return <span style={{ color: '#9CA3AF' }}>No attachment</span>;
+        }
+        
+        // Check if it's a base64 data URL (starts with data:)
+        const isBase64 = row.invoice_attachment.startsWith('data:');
+        const isImage = isBase64 && row.invoice_attachment.startsWith('data:image/');
+        
+        if (isImage) {
+          // For images, show a clickable thumbnail that opens in a new tab
+          return (
+            <a 
+              href={row.invoice_attachment} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'inline-block',
+                cursor: 'pointer'
+              }}
+            >
+              <img 
+                src={row.invoice_attachment} 
+                alt="Invoice Receipt"
+                style={{
+                  maxWidth: '100px',
+                  maxHeight: '60px',
+                  objectFit: 'contain',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '4px',
+                  padding: '2px'
+                }}
+              />
+            </a>
+          );
+        } else {
+          // For other file types (PDF, DOC, etc.), show as clickable link
+          return (
+            <a 
+              href={row.invoice_attachment} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                color: '#3B82F6', 
+                textDecoration: 'underline',
+                cursor: 'pointer'
+              }}
+            >
+              View Attachment
+            </a>
+          );
+        }
+      }
     },
     {
       key: "actions",

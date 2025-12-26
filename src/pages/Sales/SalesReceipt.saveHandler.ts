@@ -39,6 +39,7 @@ interface ExecuteSaveParams {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  patientType: string;
   doctorName: string;
   doctorMobile: string;
   doctorEmail: string;
@@ -71,6 +72,7 @@ export const executeSave = async ({
   customerName,
   customerMobile,
   customerCity,
+  patientType,
   doctorName,
   doctorMobile,
   doctorEmail,
@@ -185,7 +187,7 @@ export const executeSave = async ({
 
     // Build payload according to backend expectations
     // Backend expects: disc, payment_method, payment_amount, created_by, customer_id, doctor_id (optional), lines
-    // Backend does NOT use: quantity (top-level), customer_name, customer_mobile, invoice_number
+    // For return flow: invoice_number and invoice_date should be included when available (invoice already stored in DB)
     const submitSalePayload = {
       disc: totalDiscountPercent / 100,
       payment_method: paymentMode || 'Cash',
@@ -193,6 +195,9 @@ export const executeSave = async ({
       created_by: user?.username || 'Guest',
       customer_id: customerId, // Must be valid number > 0
       // doctor_id: undefined, // Optional - can be added later if needed
+      // Include invoice_number and invoice_date for return flow (when invoice already exists in DB)
+      ...(invoiceNumber && invoiceNumber.trim() ? { invoice_number: invoiceNumber.trim() } : {}),
+      ...(invoiceDate && invoiceDate.trim() ? { invoice_date: invoiceDate.trim() } : {}),
       lines: lines, // Already in correct format from lines.map above
     };
     
