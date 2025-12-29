@@ -18,7 +18,7 @@ import { PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation } from "../../redux/slices/receiveApi";
+import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation, useUploadReceiptFileMutation, getReceiptFileUrl } from "../../redux/slices/receiveApi";
 import { useGetBatchesForProductMutation } from "../../redux/slices/inventoryApi";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -103,6 +103,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const dispatch = useDispatch();
   const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
+  const [uploadReceiptFile] = useUploadReceiptFileMutation();
   const [getBatchesForProduct] = useGetBatchesForProductMutation();
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -161,6 +162,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     paymentMethod: 'Cash',
   });
   
+  const [originalInvoiceFile, setOriginalInvoiceFile] = useState<File | null>(null);
+  const [originalInvoiceAttachmentUrl, setOriginalInvoiceAttachmentUrl] = useState<string>('');
+  
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<boolean>(false);
@@ -176,6 +180,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [rowToDeleteId, setRowToDeleteId] = useState<string | null>(null);
   
   const [isReceiptDeleteDialogOpen, setIsReceiptDeleteDialogOpen] = useState<boolean>(false);
+  
+  const [isUploadConfirmationDialogOpen, setIsUploadConfirmationDialogOpen] = useState<boolean>(false);
   
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [invoiceFileName, setInvoiceFileName] = useState<string>("");
@@ -468,7 +474,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       payment_vendor: paymentVendor.trim(),
       transaction_number: transactionNumber.trim(),
       ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
-      ...(invoiceAttachmentUrl && { invoice_attachment: invoiceAttachmentUrl }),
+      // Don't send base64 attachment in payload - will upload file separately after receipt is created
       notes: "",
       created_by: "meher",
       lines: lines
@@ -623,7 +629,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       payment_vendor: paymentVendor,
       transaction_number: transactionNumber,
       ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
-      ...(invoiceAttachmentUrl && { invoice_attachment: invoiceAttachmentUrl }),
+      // Don't send base64 attachment in payload - will upload file separately after receipt is updated
       notes: "",
       created_by: "meher",
       Deleted: deleted,
@@ -712,10 +718,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       let result;
+      let finalReceiptId: number | null = null;
       
       if (isEditMode && receiptId) {
         const editPayload = transformFormDataToEditPayload();
         result = await editReceipt(editPayload).unwrap();
+        finalReceiptId = receiptId;
       } else {
         let submitPayload;
         try {
@@ -728,6 +736,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         
         try {
           result = await submitReceipt(submitPayload).unwrap();
+          finalReceiptId = result.receiptId;
         } catch (rtkError) {
           
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
@@ -745,6 +754,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           }
 
           result = await response.json();
+          finalReceiptId = result.receiptId;
+        }
+      }
+      
+      // Upload file if a file was selected and we have a receipt ID
+      if (invoiceFile && finalReceiptId) {
+        try {
+          await uploadReceiptFile({ receiptId: finalReceiptId, file: invoiceFile }).unwrap();
+          console.log('Invoice file uploaded successfully');
+        } catch (uploadError) {
+          console.error('Failed to upload invoice file:', uploadError);
+          // Don't fail the entire save if file upload fails - just log the error
         }
       }
       
@@ -803,7 +824,28 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const handleSubmitReceipt = async () => {
-    // Invoice upload is optional - proceed with save directly
+    // Check if user forgot to upload invoice file
+    if (!invoiceFile && !invoiceAttachmentUrl) {
+      // Show confirmation dialog asking if they want to upload
+      setIsUploadConfirmationDialogOpen(true);
+      return;
+    }
+    
+    // If file exists or user chose to skip, proceed with save
+    await proceedWithSave();
+  };
+
+  const handleUploadConfirmationYes = () => {
+    setIsUploadConfirmationDialogOpen(false);
+    // Trigger file input click to allow user to select file
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleUploadConfirmationNo = async () => {
+    setIsUploadConfirmationDialogOpen(false);
+    // User chose to skip upload, proceed with save
     await proceedWithSave();
   };
 
@@ -961,7 +1003,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const tableDataChanged = JSON.stringify(pharmaTableData) !== JSON.stringify(originalReceiptLines);
 
-    return formFieldsChanged || tableDataChanged;
+    // Check if invoice file changed (new file uploaded or file removed)
+    // If user only wants to upload/replace invoice file, save button should be enabled
+    const invoiceFileChanged = 
+      (invoiceFile !== null && invoiceFile !== originalInvoiceFile) || // New file uploaded
+      (invoiceFile === null && invoiceAttachmentUrl !== originalInvoiceAttachmentUrl && originalInvoiceAttachmentUrl !== ''); // File removed
+
+    return formFieldsChanged || tableDataChanged || invoiceFileChanged;
   }, [
     isEditMode,
     supplierName,
@@ -972,7 +1020,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     paymentMethod,
     pharmaTableData,
     originalFormValues,
-    originalReceiptLines
+    originalReceiptLines,
+    invoiceFile,
+    originalInvoiceFile,
+    invoiceAttachmentUrl,
+    originalInvoiceAttachmentUrl
   ]);
 
   useEffect(() => {
@@ -1035,6 +1087,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   useEffect(() => {
     if (isEditMode && receiptId) {
+      // Clear existing data before fetching to prevent duplicates
+      setPharmaTableData([]);
       fetchReceiptLines();
     }
   }, [isEditMode, receiptId]);
@@ -1060,9 +1114,23 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const receiptLinesData = await response.json();
-      const receiptLines = Array.isArray(receiptLinesData) ? receiptLinesData : [];
+      let receiptLines = Array.isArray(receiptLinesData) ? receiptLinesData : [];
       
-    
+      // Deduplicate receipt lines by receipt_line_id to prevent duplicates
+      const seenIds = new Set();
+      receiptLines = receiptLines.filter((line: any) => {
+        const lineId = line.receipt_line_id || line.id;
+        if (lineId && seenIds.has(lineId)) {
+          console.warn('Duplicate receipt line detected and removed:', lineId);
+          return false;
+        }
+        if (lineId) {
+          seenIds.add(lineId);
+        }
+        return true;
+      });
+      
+      console.log('Fetched receipt lines:', receiptLines.length, receiptLines);
       
       if (receiptLines && receiptLines.length > 0) {
         const firstLine = receiptLines[0];
@@ -1172,13 +1240,56 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setOriginalReceiptLines(transformedLines);
       
       // Load invoice attachment if available from selectedOrder
-      if (selectedOrder && (selectedOrder as any).invoice_attachment) {
-        setInvoiceAttachmentUrl((selectedOrder as any).invoice_attachment);
-        // Set file name if available or use a default
-        if ((selectedOrder as any).invoice_attachment.startsWith('data:')) {
-          setInvoiceFileName('Invoice Receipt');
+      // Check for both old format (base64) and new format (file URL from server)
+      if (selectedOrder) {
+        const attachmentUrl = (selectedOrder as any).invoice_attachment;
+        
+        if (attachmentUrl) {
+          // Old format: base64 data URL
+          if (attachmentUrl.startsWith('data:')) {
+            setInvoiceAttachmentUrl(attachmentUrl);
+            setOriginalInvoiceAttachmentUrl(attachmentUrl);
+            setInvoiceFileName('Invoice Receipt');
+          } else {
+            // New format: file path or URL - use getReceiptFileUrl to get the proper URL
+            const fileUrl = getReceiptFileUrl(receiptId);
+            setInvoiceAttachmentUrl(fileUrl);
+            setOriginalInvoiceAttachmentUrl(fileUrl);
+            // Get file name from receipt data - this should be the actual uploaded file name (e.g., "dummy.pdf")
+            const receiptFileName = (selectedOrder as any).receipt_file_name;
+            setInvoiceFileName(receiptFileName || 'Invoice Receipt');
+          }
+        } else if (receiptId) {
+          // No invoice_attachment in selectedOrder, but receiptId exists
+          // For new file upload system, file is stored on server
+          // Use getReceiptFileUrl to construct the URL (file may or may not exist)
+          const fileUrl = getReceiptFileUrl(receiptId);
+          setInvoiceAttachmentUrl(fileUrl);
+          setOriginalInvoiceAttachmentUrl(fileUrl);
+          // Get file name from receipt data - this should be the actual uploaded file name (e.g., "dummy.pdf")
+          const receiptFileName = (selectedOrder as any).receipt_file_name;
+          setInvoiceFileName(receiptFileName || 'Invoice Receipt');
+        } else {
+          // No original attachment
+          setOriginalInvoiceAttachmentUrl('');
+          setInvoiceAttachmentUrl('');
+          setInvoiceFileName('');
         }
+      } else if (receiptId) {
+        // No selectedOrder but receiptId exists - try to load file URL
+        const fileUrl = getReceiptFileUrl(receiptId);
+        setInvoiceAttachmentUrl(fileUrl);
+        setOriginalInvoiceAttachmentUrl(fileUrl);
+        setInvoiceFileName('Invoice Receipt');
+      } else {
+        // No original attachment
+        setOriginalInvoiceAttachmentUrl('');
+        setInvoiceAttachmentUrl('');
+        setInvoiceFileName('');
       }
+      
+      // Reset original invoice file (no file selected initially in edit mode)
+      setOriginalInvoiceFile(null);
       
       setOriginalFormValues({
         supplierName: supplierName,
@@ -2345,6 +2456,21 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
+                  // File size limit: 15MB (15 * 1024 * 1024 bytes) - matches backend limit
+                  const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+                  
+                  if (file.size > MAX_FILE_SIZE) {
+                    setSaveError(`File size exceeds the limit. Maximum file size is 15MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                    // Reset file input
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                    }
+                    setInvoiceFile(null);
+                    setInvoiceFileName('');
+                    setInvoiceAttachmentUrl('');
+                    return;
+                  }
+                  
                   setInvoiceFile(file);
                   setInvoiceFileName(file.name);
                   
@@ -2359,24 +2485,35 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     setSaveError('Failed to read the invoice file');
                   };
                   reader.readAsDataURL(file);
+                  
+                  // Close the confirmation dialog if it was open
+                  if (isUploadConfirmationDialogOpen) {
+                    setIsUploadConfirmationDialogOpen(false);
+                  }
                 }
               }}
             />
             <Button
-              variant="contained"
+              variant="outlined"
               startIcon={<UploadIcon />}
               onClick={() => fileInputRef.current?.click()}
               sx={{
                 height: "40px",
-                borderRadius: "8px",
-                backgroundColor: "#5C17E5",
-                color: "#FFFFFF",
+                borderRadius: "6px",
+                backgroundColor: "#FFFFFF",
+                color: "#374151",
+                borderColor: "#D1D5DB",
+                borderWidth: "1px",
                 fontFamily: "'Lexend', sans-serif",
                 fontSize: "14px",
                 fontWeight: 500,
                 textTransform: "none",
                 "&:hover": {
-                  backgroundColor: "#4A14C7",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#9CA3AF",
+                },
+                "&:focus": {
+                  borderColor: "#9AA8BC",
                 },
                 whiteSpace: "nowrap",
                 padding: "8px 16px",
@@ -2385,16 +2522,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             >
               {invoiceFileName ? `Uploaded: ${invoiceFileName.length > 20 ? invoiceFileName.substring(0, 20) + '...' : invoiceFileName}` : "Upload Invoice Receipt"}
             </Button>
-            {invoiceFileName && (
+            {(invoiceFileName || invoiceAttachmentUrl) && (
               <IconButton
                 size="small"
                 onClick={() => {
+                  // Clear the current file selection
                   setInvoiceFile(null);
                   setInvoiceFileName("");
                   setInvoiceAttachmentUrl("");
                   if (fileInputRef.current) {
                     fileInputRef.current.value = "";
                   }
+                  // Note: If there was an original file, clearing it will enable save button
+                  // When saved, the new file (null) will replace the old one on the server
                 }}
                 sx={{
                   marginLeft: "8px",
@@ -2786,6 +2926,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         title="Delete Receipt"
         message="Are you sure you want to delete the entire receipt? This action cannot be undone."
         itemName={receiptNumber ? `Receipt ${receiptNumber}` : undefined}
+      />
+
+      <ConfirmationDialog
+        open={isUploadConfirmationDialogOpen}
+        onClose={handleUploadConfirmationNo}
+        onConfirm={handleUploadConfirmationYes}
+        title="Upload Invoice Receipt"
+        message="Did you forget to upload the invoice receipt? Would you like to upload it now?"
+        confirmLabel="Yes, Upload"
+        cancelLabel="No, Save Without Upload"
       />
     </>
   );

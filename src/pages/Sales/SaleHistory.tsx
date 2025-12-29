@@ -1,6 +1,6 @@
 import React, { useState, useMemo, ChangeEvent, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Box, Typography, IconButton, Autocomplete, TextField, InputAdornment } from '@mui/material';
+import { Box, Typography, IconButton, Autocomplete, TextField, InputAdornment, Badge, Tooltip, Chip } from '@mui/material';
 import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import dayjs, { Dayjs } from 'dayjs';
 import SearchIcon from '@mui/icons-material/Search';
@@ -13,6 +13,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
+import UndoIcon from '@mui/icons-material/Undo';
+import WarningIcon from '@mui/icons-material/Warning';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
@@ -32,7 +34,20 @@ export interface SalesHistoryItem {
   customerMobile: string;
   doctorName: string;
   username: string;
+  patientType?: string; // Patient type: "In Patient" or "Out Patient"
   totalAmount: number;
+  // Return information (to be populated from API)
+  returnInfo?: {
+    totalItems: number; // Total items in invoice
+    returnedItems: number; // Total items returned
+    isFullReturn: boolean; // Whether all items are returned
+    returnDetails?: Array<{
+      productName: string;
+      originalQuantity: number;
+      returnedQuantity: number;
+      returnDate?: string;
+    }>;
+  };
 }
 
 export interface InvoiceDetails {
@@ -101,6 +116,7 @@ export default function SaleHistory() {
       customerMobile: item.customerMobile || '',
       doctorName: item.doctorName || '',
       username: item.username || 'Guest',
+      patientType: item.patientType || 'Out Patient', // Default to "Out Patient" if not specified
       totalAmount: item.totalAmount || 0,
     }));
 
@@ -123,14 +139,26 @@ export default function SaleHistory() {
         ? dayjs(invoice.created_at).format('DD/MM/YYYY')
         : '';
       
+      // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
+      let patientType = 'Out Patient'; // Default
+      if (invoice.patient_type !== undefined && invoice.patient_type !== null) {
+        patientType = invoice.patient_type === 0 ? 'In Patient' : 'Out Patient';
+      }
+      
+      // Use the database invoice ID (invoice.id) if available, otherwise use invoice_number
+      // Format invoice number as "INV" + number to match our format
+      const dbInvoiceId = invoice.id || parseInt(invoice.invoice_number) || index + 1000;
+      const formattedInvoiceNumber = `INV${invoice.invoice_number}`;
+      
       return {
-        id: parseInt(invoice.invoice_number) || index + 1000,
-        invoiceNumber: `RB${invoice.invoice_number}`,
+        id: dbInvoiceId, // Use database invoice ID for proper matching
+        invoiceNumber: formattedInvoiceNumber, // Use "INV" format, not "RB"
         invoiceDate: invoiceDate,
         customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
         customerMobile: 'N/A',
         doctorName: invoice.doctor_name || (invoice.doctor_id ? `Doctor ${invoice.doctor_id}` : 'N/A'),
         username: `User ${invoice.created_by}`,
+        patientType: patientType,
         totalAmount: parseFloat(invoice.total_amount) || 0,
       };
     });
@@ -273,6 +301,37 @@ export default function SaleHistory() {
   }, [filteredData, sortConfig]);
 
   // Table columns configuration
+  // Helper function to get return status
+  const getReturnStatus = (item: SalesHistoryItem) => {
+    if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
+      return { status: 'none', label: '', returned: 0, total: 0 };
+    }
+    const { returnedItems, totalItems, isFullReturn } = item.returnInfo;
+    if (isFullReturn) {
+      return { status: 'full', label: 'Full Return', returned: returnedItems, total: totalItems };
+    }
+    return { status: 'partial', label: `Partial: ${returnedItems}/${totalItems}`, returned: returnedItems, total: totalItems };
+  };
+
+  // Helper function to get return details for tooltip
+  const getReturnTooltipContent = (item: SalesHistoryItem) => {
+    if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
+      return 'No returns';
+    }
+    const { returnedItems, totalItems, returnDetails } = item.returnInfo;
+    let content = `${returnedItems} of ${totalItems} items returned`;
+    if (returnDetails && returnDetails.length > 0) {
+      content += '\n\nReturned items:';
+      returnDetails.forEach(detail => {
+        content += `\n• ${detail.productName}: ${detail.returnedQuantity}/${detail.originalQuantity}`;
+        if (detail.returnDate) {
+          content += ` (${detail.returnDate})`;
+        }
+      });
+    }
+    return content;
+  };
+
   const columns: TableColumn<SalesHistoryItem>[] = [
     {
       key: 'invoiceNumber',
@@ -340,6 +399,12 @@ export default function SaleHistory() {
       sortable: true,
     },
     {
+      key: 'patientType',
+      header: 'Patient Type',
+      sortable: true,
+      render: (item) => item.patientType || 'Out Patient',
+    },
+    {
       key: 'username',
       header: SALES_HISTORY_LABELS.TABLE.USERNAME,
       sortable: true,
@@ -355,6 +420,30 @@ export default function SaleHistory() {
       ),
     },
     {
+      key: 'returnStatus',
+      header: 'Return Status',
+      sortable: false,
+      render: (item) => {
+        const returnStatus = getReturnStatus(item);
+        if (returnStatus.status === 'none') {
+          return <Typography variant="body2" sx={{ color: '#9CA3AF' }}>-</Typography>;
+        }
+        return (
+          <Chip
+            label={returnStatus.label}
+            size="small"
+            sx={{
+              backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
+              color: returnStatus.status === 'full' ? '#DC2626' : '#D97706',
+              fontWeight: 500,
+              fontSize: '12px',
+              height: '24px',
+            }}
+          />
+        );
+      },
+    },
+    {
         key: 'actions',
         header: '',
         sortable: false,
@@ -367,37 +456,77 @@ export default function SaleHistory() {
         }}>
           <EditIcon
             sx={{ 
-              fontSize: '20px', 
-              color: '#5C17E5', 
+              fontSize: '24px', 
+              color: '#000000', 
               cursor: 'pointer',
               padding: '4px',
               borderRadius: '4px',
               '&:hover': {
                 backgroundColor: '#f5f5f5',
-                color: '#4a12c4'
+                color: '#000000'
               }
             }}
             onClick={() => handleEditInvoice(item.id)}
           />
-          <StandardButton
-            onClick={() => handleReturnInvoice(item.id)}
-            variant="primary"
-            size="small"
-            sx={{
-              minWidth: '100px',
-              height: '32px',
-              borderRadius: '8px',
-              backgroundColor: '#5c17e5',
-              color: '#FFFFFF',
-              fontWeight: 600,
-              fontSize: '14px',
-              textTransform: 'none',
-              boxShadow: 'none',
-      
+          <UndoIcon
+            sx={{ 
+              fontSize: '24px', 
+              color: '#000000', 
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                color: '#000000'
+              }
             }}
-          >
-            Return
-          </StandardButton>
+            onClick={() => handleReturnInvoice(item.id)}
+          />
+          {(() => {
+            const returnStatus = getReturnStatus(item);
+            if (returnStatus.status === 'none') {
+              return null;
+            }
+            const tooltipContent = getReturnTooltipContent(item);
+            return (
+              <Tooltip 
+                title={tooltipContent}
+                arrow
+                placement="top"
+              >
+                <Badge
+                  badgeContent={returnStatus.status === 'partial' ? `${returnStatus.returned}/${returnStatus.total}` : '!'}
+                  color={returnStatus.status === 'full' ? 'error' : 'warning'}
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      fontSize: '10px',
+                      minWidth: '20px',
+                      height: '20px',
+                      padding: '0 4px',
+                    }
+                  }}
+                >
+                  <WarningIcon
+                    sx={{ 
+                      fontSize: '24px', 
+                      color: returnStatus.status === 'full' ? '#DC2626' : '#D97706', 
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                      '&:hover': {
+                        backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
+                        color: returnStatus.status === 'full' ? '#DC2626' : '#D97706'
+                      }
+                    }}
+                    onClick={() => {
+                      // TODO: Add alert/warning handler logic - maybe open a modal with return details
+                      console.log('Alert clicked for invoice:', item.id, 'Return info:', item.returnInfo);
+                    }}
+                  />
+                </Badge>
+              </Tooltip>
+            );
+          })()}
         </Box>
       ),
     },
@@ -496,18 +625,40 @@ export default function SaleHistory() {
   const handleEditInvoice = (invoiceId: number) => {
     const invoice = salesHistoryData.find(item => item.id === invoiceId);
     if (invoice) {
-      // Parse the actual database invoice ID from invoiceNumber (e.g., "RB1" -> 1)
+      console.log('🔍 Edit invoice clicked:', {
+        frontendInvoiceId: invoiceId,
+        invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        totalAmount: invoice.totalAmount
+      });
+      
+      // Get invoice details from storage first (this has the correct database ID)
+      const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
+      
+      // Determine the database invoice ID to use for fetching
       let databaseInvoiceId: number = 0;
-      if (invoice.invoiceNumber) {
-        const cleanedNumber = invoice.invoiceNumber.replace(/^RB/i, '').trim();
+      
+      // Priority 1: Use the ID from saved item (this is the database invoice ID we stored)
+      if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
+        databaseInvoiceId = savedItem.id;
+        console.log('✅ Using database invoice ID from saved item:', databaseInvoiceId);
+      } 
+      // Priority 2: Parse from invoice number (e.g., "INV8" -> 8)
+      else if (invoice.invoiceNumber) {
+        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
         const parsed = parseInt(cleanedNumber, 10);
         if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
           databaseInvoiceId = parsed;
+          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
         }
       }
+      // Priority 3: Use frontend ID if it's reasonable (not a timestamp)
+      else if (invoiceId && invoiceId < 1000000) {
+        databaseInvoiceId = invoiceId;
+        console.log('⚠️ Using frontend invoice ID as fallback:', databaseInvoiceId);
+      }
       
-      // Get invoice details from storage
-      const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
+      console.log('🔍 Final database invoice ID to use:', databaseInvoiceId);
       
       if (savedItem) {
         // Use saved invoice details
@@ -576,22 +727,36 @@ export default function SaleHistory() {
       const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
       const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
       
-      // Parse invoice number to get the database invoice ID
-      // Invoice numbers are like "RB1" or "1", we need to extract the numeric part
+      // Determine the database invoice ID to use for fetching
+      // Priority 1: Use the ID from saved item (this is the database invoice ID we stored when sale was submitted)
       let databaseInvoiceId: number = 0;
-      if (invoice.invoiceNumber) {
-        // Remove "RB" prefix if present and parse
-        const cleanedNumber = invoice.invoiceNumber.replace(/^RB/i, '').trim();
+      
+      if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
+        databaseInvoiceId = savedItem.id;
+        console.log('✅ Using database invoice ID from saved item:', databaseInvoiceId);
+      } 
+      // Priority 2: Parse from invoice number (e.g., "INV56" -> 56)
+      else if (invoice.invoiceNumber) {
+        // Remove "INV" or "RB" prefix if present and parse
+        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
         const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0) {
+        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
           databaseInvoiceId = parsed;
+          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
         }
       }
+      // Priority 3: Use frontend ID if it's reasonable (not a timestamp)
+      else if (invoiceId && invoiceId < 1000000) {
+        databaseInvoiceId = invoiceId;
+        console.log('⚠️ Using frontend invoice ID as fallback:', databaseInvoiceId);
+      }
+      
+      console.log('🔍 Final database invoice ID to use for return:', databaseInvoiceId);
       
       // Navigate immediately without blocking
       navigate('/sales/sale-return', { 
         state: { 
-          invoiceId: databaseInvoiceId || invoice.id, // Use parsed invoice number as database ID, fallback to invoice.id
+          invoiceId: databaseInvoiceId || invoice.id, // Use database invoice ID, fallback to invoice.id
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
           customerName: invoice.customerName,

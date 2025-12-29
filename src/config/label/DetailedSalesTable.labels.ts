@@ -11,6 +11,8 @@ export const DETAILED_SALES_TABLE_LABELS = {
     CGST: 'CGST (₹)',
     GST: 'GST (₹)',
     IGST: 'IGST (₹)',
+    TOTAL_AMOUNT: 'Total amount (₹)',
+    PATIENT_TYPE: 'Patient type',
   },
 } as const;
 

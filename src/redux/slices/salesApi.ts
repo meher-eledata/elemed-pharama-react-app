@@ -204,6 +204,7 @@ export interface SubmitSaleRequest {
   customer_mobile?: string; // Send mobile if ID not available
   invoice_number?: string | null; // Invoice number entered by user (for return flow - invoice already stored in DB)
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
+  patient_type?: number; // 0 for "In Patient", 1 for "Out Patient"
   lines: SubmitSaleLine[];
 }
 
@@ -250,7 +251,7 @@ export interface AddCustomerResponse {
 export const salesApi = createApi({
   reducerPath: "salesApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Sales", "ProductType"] as const,
+  tagTypes: ["Sales", "ProductType", "Inventory"] as const,
   endpoints: (builder) => ({
     // Get product types by product ID (can return multiple types)
     getProductType: builder.query<ProductTypesResponse, GetProductTypeRequest>({
@@ -333,20 +334,26 @@ export const salesApi = createApi({
       },
     }),
 
-    // Get doctor names (simple array of strings)
-    getDoctorNames: builder.query<string[], void>({
+    // Get doctor names - returns array of objects with {id, name}
+    getDoctorNames: builder.query<Array<{ id: string; name: string }>, void>({
       query: () => "sales/get-doctor-names",
       providesTags: ["Sales"],
-      transformResponse: (response: any): string[] => {
+      transformResponse: (response: any): Array<{ id: string; name: string }> => {
         // Handle different response formats
         if (Array.isArray(response)) {
-          // If it's an array of strings, return as is
-          if (response.length === 0 || typeof response[0] === 'string') {
-            return response;
+          // If it's an array of objects with {id, name}, return as is
+          if (response.length > 0 && typeof response[0] === 'object' && response[0].name) {
+            return response.map((doctor: any) => ({
+              id: String(doctor.id), // Ensure id is a string
+              name: doctor.name
+            }));
           }
-          // If it's an array of objects with {id, name}, extract names
-          if (typeof response[0] === 'object' && response[0].name) {
-            return response.map((doctor: any) => doctor.name);
+          // If it's an array of strings (legacy format), convert to objects
+          if (response.length > 0 && typeof response[0] === 'string') {
+            return response.map((name: string, index: number) => ({
+              id: String(index + 1),
+              name: name
+            }));
           }
         }
         return [];
@@ -391,7 +398,7 @@ export const salesApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Sales"],
+      invalidatesTags: ["Sales", "Inventory"],
     }),
 
     addCustomer: builder.mutation<AddCustomerResponse, AddCustomerRequest>({
@@ -466,7 +473,7 @@ export const salesApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Sales"],
+      invalidatesTags: ["Sales", "Inventory"],
     }),
   }),
 });

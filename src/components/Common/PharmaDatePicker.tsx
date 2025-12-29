@@ -39,11 +39,15 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
     if (!open) return;
 
     const handleScroll = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('.MuiPickersPopper-root') || 
-          target.closest('.MuiPaper-root') ||
-          target.closest('[role="dialog"]')) {
-        return;
+      const target = e.target;
+      // Check if target is an Element and has closest method
+      if (target && typeof (target as any).closest === 'function') {
+        const element = target as Element;
+        if (element.closest('.MuiPickersPopper-root') || 
+            element.closest('.MuiPaper-root') ||
+            element.closest('[role="dialog"]')) {
+          return;
+        }
       }
       setOpen(false);
     };

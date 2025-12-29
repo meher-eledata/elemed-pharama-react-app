@@ -31,7 +31,7 @@ import { extractErrorMessage, logError } from "../../utils/errorUtils";
 import {
   useGetReceiptsQuery, useEditReceiptMutation, useDeleteReceiptMutation,
   useGetCurrentPurchaseOrdersQuery, useGetReceiptLinesQuery,
-  Receipt, EditReceiptRequest, PurchaseOrder
+  Receipt, EditReceiptRequest, PurchaseOrder, getReceiptFileUrl
 } from "../../redux/slices/receiveApi";
 import { useGetBatchesForProductMutation } from "../../redux/slices/inventoryApi";
 
@@ -112,6 +112,8 @@ export interface OrderReceiveRow {
   payment_vendor?: string;
   invoice_date?: string;
   invoice_attachment?: string;
+  receipt_file_name?: string; // File name from server upload
+  receipt_file_url?: string; // File URL from server upload
 }
 
 export interface PurchaseOrderRow {
@@ -243,6 +245,8 @@ const OrderReceive: React.FC = () => {
           payment_vendor: receipt.payment_vendor || '',
           invoice_date: (receipt as any).invoice_date || null,
           invoice_attachment: (receipt as any).invoice_attachment || undefined,
+          receipt_file_name: (receipt as any).receipt_file_name || undefined,
+          receipt_file_url: (receipt as any).receipt_file_url || undefined,
         };
       });
   }, [receipts]);
@@ -732,19 +736,39 @@ const OrderReceive: React.FC = () => {
       key: "invoice_attachment",
       header: ORDER_RECEIVE_TABLE_HEADERS.INVOICE_ATTACHMENT,
       render: (row) => {
-        if (!row.invoice_attachment) {
+        // Determine the file URL
+        let fileUrl: string | null = null;
+        let isBase64 = false;
+        let isImage = false;
+        
+        if (row.invoice_attachment) {
+          // Check if it's a base64 data URL (starts with data:)
+          isBase64 = row.invoice_attachment.startsWith('data:');
+          if (isBase64) {
+            // Legacy: base64 data URL (old format)
+            fileUrl = row.invoice_attachment;
+            isImage = row.invoice_attachment.startsWith('data:image/');
+          } else {
+            // If it's not base64, it might be a URL - use it as-is
+            fileUrl = row.invoice_attachment;
+          }
+        }
+        
+        // If no attachment URL from database, try to use receiptId to get file URL
+        if (!fileUrl && row.receiptId) {
+          fileUrl = getReceiptFileUrl(row.receiptId);
+        }
+        
+        // If still no file URL, show "No attachment"
+        if (!fileUrl) {
           return <span style={{ color: '#9CA3AF' }}>No attachment</span>;
         }
         
-        // Check if it's a base64 data URL (starts with data:)
-        const isBase64 = row.invoice_attachment.startsWith('data:');
-        const isImage = isBase64 && row.invoice_attachment.startsWith('data:image/');
-        
         if (isImage) {
-          // For images, show a clickable thumbnail that opens in a new tab
+          // For images (base64), show a clickable thumbnail that opens in a new tab
           return (
             <a 
-              href={row.invoice_attachment} 
+              href={fileUrl} 
               target="_blank" 
               rel="noopener noreferrer"
               style={{ 
@@ -753,7 +777,7 @@ const OrderReceive: React.FC = () => {
               }}
             >
               <img 
-                src={row.invoice_attachment} 
+                src={fileUrl} 
                 alt="Invoice Receipt"
                 style={{
                   maxWidth: '100px',
@@ -767,10 +791,10 @@ const OrderReceive: React.FC = () => {
             </a>
           );
         } else {
-          // For other file types (PDF, DOC, etc.), show as clickable link
+          // For other file types (PDF, DOC, etc.) or new file URLs, show as clickable link
           return (
             <a 
-              href={row.invoice_attachment} 
+              href={fileUrl} 
               target="_blank" 
               rel="noopener noreferrer"
               style={{ 

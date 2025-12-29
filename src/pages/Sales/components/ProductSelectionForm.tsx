@@ -20,7 +20,7 @@ import AddCartIcon from '../../../assets/AddCart.svg';
 import { ProductSelectionContainer, FormFieldsContainer } from '../SalesPage.styles';
 import { SALES_PAGE_LABELS } from '../../../config/label/SalesPage.labels';
 import { SALES_PAGE_CONSTANTS } from '../../../config/constants/SalesPage.constants';
-import { useGetDoctorNamesQuery, useGetDoctorsQuery } from '../../../redux/slices/salesApi';
+import { useGetDoctorNamesQuery } from '../../../redux/slices/salesApi';
 import { CircularProgress } from '@mui/material';
 
 interface ProductSelectionFormProps {
@@ -114,9 +114,6 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
   validatedData,
 }) => {
   const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
-  // Note: get-doctors endpoint returns 404, so we skip this query
-  // Doctor ID will be undefined until a proper endpoint is available
-  const { data: doctors = [] } = useGetDoctorsQuery(undefined, { skip: true });
   return (
     <ProductSelectionContainer>
       <FormFieldsContainer>
@@ -584,44 +581,36 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
               freeSolo
               forcePopupIcon
               openOnFocus
-              options={isLoadingDoctorNames ? ["Loading doctors..."] : doctorNames}
-              value={discountAuthorizedBy || ''}
-              getOptionLabel={(option: string | { name: string } | null) => {
+              options={isLoadingDoctorNames ? [] : doctorNames}
+              value={doctorNames.find(d => d.name === discountAuthorizedBy) || null}
+              getOptionLabel={(option: { id: string; name: string } | string | null) => {
                 if (typeof option === 'string') return option;
                 if (option && typeof option === 'object' && option !== null && 'name' in option) {
-                  return (option as { name: string }).name;
+                  return option.name;
                 }
                 return '';
               }}
-              onChange={(_, newValue: string | { name: string } | null) => {
-                // Extract name if it's an object
-                let doctorName = '';
-                if (typeof newValue === 'string') {
-                  doctorName = newValue;
-                } else if (newValue && typeof newValue === 'object' && 'name' in newValue) {
-                  doctorName = (newValue as { name: string }).name;
-                }
-                
-                if (!doctorName) {
+              onChange={(_, newValue: { id: string; name: string } | string | null) => {
+                if (!newValue) {
                   onDiscountAuthorizedByChange('', undefined);
                   return;
                 }
                 
-                // Find the doctor ID from the doctors list (case-insensitive match)
-                // Try exact match first, then partial match
-                let selectedDoctor = doctors.find(d => 
-                  d.name.toLowerCase().trim() === doctorName.toLowerCase().trim()
-                );
-                
-                // If exact match not found, try partial match (in case of autocomplete)
-                if (!selectedDoctor) {
-                  selectedDoctor = doctors.find(d => 
-                    d.name.toLowerCase().trim().includes(doctorName.toLowerCase().trim()) ||
-                    doctorName.toLowerCase().trim().includes(d.name.toLowerCase().trim())
+                // Handle both object and string formats
+                if (typeof newValue === 'string') {
+                  // If it's a string, try to find matching doctor
+                  const matchingDoctor = doctorNames.find(d => 
+                    d.name.toLowerCase().trim() === newValue.toLowerCase().trim()
                   );
+                  if (matchingDoctor) {
+                    onDiscountAuthorizedByChange(matchingDoctor.name, parseInt(matchingDoctor.id));
+                  } else {
+                    onDiscountAuthorizedByChange(newValue, undefined);
+                  }
+                } else if (newValue && typeof newValue === 'object' && 'name' in newValue) {
+                  // If it's an object, extract name and ID
+                  onDiscountAuthorizedByChange(newValue.name, parseInt(newValue.id));
                 }
-                
-                onDiscountAuthorizedByChange(doctorName, selectedDoctor?.id);
               }}
               onInputChange={(_, newInputValue) => {
                 // When typing, try to find matching doctor (case-insensitive)
@@ -629,20 +618,25 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   onDiscountAuthorizedByChange('', undefined);
                   return;
                 }
+                
                 // Try exact match first
-                let matchingDoctor = doctors.find(d => 
+                let matchingDoctor = doctorNames.find(d => 
                   d.name.toLowerCase().trim() === newInputValue.toLowerCase().trim()
                 );
                 
                 // If exact match not found, try partial match
                 if (!matchingDoctor && newInputValue.length > 2) {
-                  matchingDoctor = doctors.find(d => 
+                  matchingDoctor = doctorNames.find(d => 
                     d.name.toLowerCase().trim().startsWith(newInputValue.toLowerCase().trim()) ||
                     newInputValue.toLowerCase().trim().startsWith(d.name.toLowerCase().trim())
                   );
                 }
                 
-                onDiscountAuthorizedByChange(newInputValue, matchingDoctor?.id);
+                if (matchingDoctor) {
+                  onDiscountAuthorizedByChange(matchingDoctor.name, parseInt(matchingDoctor.id));
+                } else {
+                  onDiscountAuthorizedByChange(newInputValue, undefined);
+                }
               }}
               disabled={!isProductSelected}
               loading={isLoadingDoctorNames}
@@ -719,12 +713,13 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
       <StandardButton
         startIcon={<img src={AddCartIcon} alt="Add to Cart" style={{ width: '16px', height: '16px' }} />}
         onClick={onAddToCart}
-        disabled={!!validationError || isValidating || !validatedData}
+        disabled={isValidating} // Only disable when actively validating, allow clicks to show warnings
         variant="primary"
         size="medium"
         sx={{
           marginTop: '20px',
           borderRadius: '12px',
+          opacity: (!!validationError || !validatedData) ? 0.6 : 1, // Visual indicator when disabled
         }}
       >
         {isValidating ? 'Validating...' : SALES_PAGE_LABELS.ADD_TO_CART_BUTTON}

@@ -172,25 +172,61 @@ const DailySalesReport: React.FC = () => {
     totalSales: 18007,
     totalDiscount: 0,
     totalTaxCollected: 1891.36,
+    totalBillsBreakdown: {
+      inpatient: 10,
+      outpatient: 14,
+    },
+    totalSalesBreakdown: {
+      inpatient: 8500,
+      outpatient: 9507,
+    },
+    totalDiscountBreakdown: {
+      inpatient: 0,
+      outpatient: 0,
+    },
+    totalTaxCollectedBreakdown: {
+      inpatient: 892.50,
+      outpatient: 998.86,
+    },
     cashSales: {
       amount: 4993,
       bills: 4,
+      breakdown: {
+        inpatient: 2000,
+        outpatient: 2993,
+      },
     },
     otherSales: {
       amount: 0,
       bills: 20,
+      breakdown: {
+        inpatient: 0,
+        outpatient: 0,
+      },
     },
     cardSales: {
       amount: 3000,
       bills: 8,
+      breakdown: {
+        inpatient: 1500,
+        outpatient: 1500,
+      },
     },
     upiSales: {
       amount: 2500,
       bills: 6,
+      breakdown: {
+        inpatient: 1000,
+        outpatient: 1500,
+      },
     },
     insuranceSales: {
       amount: 1500,
       bills: 2,
+      breakdown: {
+        inpatient: 800,
+        outpatient: 700,
+      },
     },
     paymentTypeData: [
       { id: 0, value: 4993, label: 'Cash', color: '#3B82F6' },
@@ -208,6 +244,8 @@ const DailySalesReport: React.FC = () => {
     weeklyTrend: {
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
       values: [28, 30, 26, 32, 38, 36, 50],
+      inpatient: [12, 14, 11, 15, 18, 16, 22],
+      outpatient: [16, 16, 15, 17, 20, 20, 28],
     },
   };
 
@@ -329,6 +367,7 @@ const DailySalesReport: React.FC = () => {
               borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
               boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
               border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+              backgroundColor: '#F9FAFB',
             }}
           >
             <Typography
@@ -347,11 +386,32 @@ const DailySalesReport: React.FC = () => {
                 fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_SIZE,
                 fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_WEIGHT,
                 color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
+                mb: 1,
                 fontFamily: "'Lexend', sans-serif",
               }}
             >
               {reportData.totalBills}
             </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#3B82F6',
+                }}
+              >
+                In Patient: {reportData.totalBillsBreakdown.inpatient}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#10B981',
+                }}
+              >
+                Out Patient: {reportData.totalBillsBreakdown.outpatient}
+              </Typography>
+            </Box>
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -361,6 +421,7 @@ const DailySalesReport: React.FC = () => {
               borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
               boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
               border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+              backgroundColor: '#F9FAFB',
             }}
           >
             <Typography
@@ -379,11 +440,32 @@ const DailySalesReport: React.FC = () => {
                 fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_SIZE,
                 fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_WEIGHT,
                 color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
+                mb: 1,
                 fontFamily: "'Lexend', sans-serif",
               }}
             >
               {formatCurrency(reportData.totalSales)}
             </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#3B82F6',
+                }}
+              >
+                In Patient: {formatCurrency(reportData.totalSalesBreakdown.inpatient)}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#10B981',
+                }}
+              >
+                Out Patient: {formatCurrency(reportData.totalSalesBreakdown.outpatient)}
+              </Typography>
+            </Box>
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -393,6 +475,7 @@ const DailySalesReport: React.FC = () => {
               borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
               boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
               border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+              backgroundColor: '#F9FAFB',
             }}
           >
             <Typography
@@ -411,11 +494,32 @@ const DailySalesReport: React.FC = () => {
                 fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_SIZE,
                 fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_WEIGHT,
                 color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
+                mb: 1,
                 fontFamily: "'Lexend', sans-serif",
               }}
             >
               {formatCurrency(reportData.totalDiscount)}
             </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#3B82F6',
+                }}
+              >
+                In Patient: {formatCurrency(reportData.totalDiscountBreakdown.inpatient)}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#10B981',
+                }}
+              >
+                Out Patient: {formatCurrency(reportData.totalDiscountBreakdown.outpatient)}
+              </Typography>
+            </Box>
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -425,6 +529,7 @@ const DailySalesReport: React.FC = () => {
               borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
               boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
               border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+              backgroundColor: '#F9FAFB',
             }}
           >
             <Typography
@@ -443,11 +548,32 @@ const DailySalesReport: React.FC = () => {
                 fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_SIZE,
                 fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.FONT_WEIGHT,
                 color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
+                mb: 1,
                 fontFamily: "'Lexend', sans-serif",
               }}
             >
               {formatCurrency(reportData.totalTaxCollected)}
             </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#3B82F6',
+                }}
+              >
+                In Patient: {formatCurrency(reportData.totalTaxCollectedBreakdown.inpatient)}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  fontFamily: "'Lexend', sans-serif",
+                  color: '#10B981',
+                }}
+              >
+                Out Patient: {formatCurrency(reportData.totalTaxCollectedBreakdown.outpatient)}
+              </Typography>
+            </Box>
           </Card>
         </Grid>
       </Grid>
@@ -476,6 +602,7 @@ const DailySalesReport: React.FC = () => {
                   borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
                   boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
                   border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+                  backgroundColor: '#F9FAFB',
                 }}
               >
                 <Typography
@@ -504,11 +631,32 @@ const DailySalesReport: React.FC = () => {
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
                     color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
+                    mb: 1,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
                   {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.cashSales.bills} bills
                 </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#3B82F6',
+                    }}
+                  >
+                    In Patient: {formatCurrency(reportData.cashSales.breakdown.inpatient)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#10B981',
+                    }}
+                  >
+                    Out Patient: {formatCurrency(reportData.cashSales.breakdown.outpatient)}
+                  </Typography>
+                </Box>
               </Card>
             </Grid>
 
@@ -520,6 +668,7 @@ const DailySalesReport: React.FC = () => {
                   borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
                   boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
                   border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+                  backgroundColor: '#F9FAFB',
                 }}
               >
                 <Typography
@@ -548,11 +697,32 @@ const DailySalesReport: React.FC = () => {
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
                     color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
+                    mb: 1,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
                   {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.otherSales.bills} bills
                 </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#3B82F6',
+                    }}
+                  >
+                    In Patient: {formatCurrency(reportData.otherSales.breakdown.inpatient)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#10B981',
+                    }}
+                  >
+                    Out Patient: {formatCurrency(reportData.otherSales.breakdown.outpatient)}
+                  </Typography>
+                </Box>
               </Card>
             </Grid>
 
@@ -565,6 +735,7 @@ const DailySalesReport: React.FC = () => {
                   boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
                   border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
                   height: '100%',
+                  backgroundColor: '#F9FAFB',
                 }}
               >
                 <Typography
@@ -593,11 +764,32 @@ const DailySalesReport: React.FC = () => {
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
                     color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
+                    mb: 1,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
                   {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.cardSales.bills} bills
                 </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#3B82F6',
+                    }}
+                  >
+                    In Patient: {formatCurrency(reportData.cardSales.breakdown.inpatient)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#10B981',
+                    }}
+                  >
+                    Out Patient: {formatCurrency(reportData.cardSales.breakdown.outpatient)}
+                  </Typography>
+                </Box>
               </Card>
             </Grid>
 
@@ -610,6 +802,7 @@ const DailySalesReport: React.FC = () => {
                   boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
                   border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
                   height: '100%',
+                  backgroundColor: '#F9FAFB',
                 }}
               >
                 <Typography
@@ -638,11 +831,32 @@ const DailySalesReport: React.FC = () => {
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
                     color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
+                    mb: 1,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
                   {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.upiSales.bills} bills
                 </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#3B82F6',
+                    }}
+                  >
+                    In Patient: {formatCurrency(reportData.upiSales.breakdown.inpatient)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#10B981',
+                    }}
+                  >
+                    Out Patient: {formatCurrency(reportData.upiSales.breakdown.outpatient)}
+                  </Typography>
+                </Box>
               </Card>
             </Grid>
 
@@ -655,6 +869,7 @@ const DailySalesReport: React.FC = () => {
                   boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
                   border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
                   height: '100%',
+                  backgroundColor: '#F9FAFB',
                 }}
               >
                 <Typography
@@ -683,11 +898,32 @@ const DailySalesReport: React.FC = () => {
                   sx={{
                     fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
                     color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
+                    mb: 1,
                     fontFamily: "'Lexend', sans-serif",
                   }}
                 >
                   {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.insuranceSales.bills} bills
                 </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#3B82F6',
+                    }}
+                  >
+                    In Patient: {formatCurrency(reportData.insuranceSales.breakdown.inpatient)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#10B981',
+                    }}
+                  >
+                    Out Patient: {formatCurrency(reportData.insuranceSales.breakdown.outpatient)}
+                  </Typography>
+                </Box>
               </Card>
             </Grid>
           </Grid>
@@ -993,6 +1229,11 @@ const DailySalesReport: React.FC = () => {
                       fill: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_COLOR,
                       fontFamily: "'Lexend', sans-serif",
                     },
+                    labelStyle: {
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_FONT_SIZE,
+                      fill: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_COLOR,
+                      fontFamily: "'Lexend', sans-serif",
+                    },
                   },
                 ]}
                 yAxis={[
@@ -1009,17 +1250,32 @@ const DailySalesReport: React.FC = () => {
                 ]}
                 series={[
                   {
-                    data: reportData.weeklyTrend.values,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.CHART_COLOR,
+                    data: reportData.weeklyTrend.inpatient,
+                    label: 'In Patient',
+                    color: '#3B82F6',
+                  },
+                  {
+                    data: reportData.weeklyTrend.outpatient,
+                    label: 'Out Patient',
+                    color: '#10B981',
                   },
                 ]}
                 width={475}
                 height={200}
-                margin={{ top: 10, bottom: 30, left: 40, right: 20 }}
+                margin={{ top: 10, bottom: 50, left: 40, right: 20 }}
                 grid={{ vertical: false, horizontal: true }}
                 sx={{
                   '& .MuiChartsAxis-root': {
                     stroke: '#6B7280',
+                    strokeWidth: 1,
+                  },
+                  '& .MuiChartsAxis-line': {
+                    stroke: '#6B7280',
+                    strokeWidth: 1,
+                  },
+                  '& .MuiChartsAxis-tick': {
+                    stroke: '#6B7280',
+                    strokeWidth: 1,
                   },
                   '& .MuiChartsGrid-root': {
                     stroke: '#E5E7EB',

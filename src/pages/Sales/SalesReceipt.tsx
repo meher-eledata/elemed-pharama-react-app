@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
+import React, { useState, ChangeEvent, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { StandardButton } from '../../components/Common';
@@ -30,7 +30,7 @@ import {
 import { RootState } from '../../redux/store';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
-import { clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
+import { clearCartFromStorage, clearFormDataFromStorage, generateNextInvoiceNumber } from '../../utils/cartStorage';
 
 import CustomerDetailsSection from './components/CustomerDetailsSection';
 import DoctorDetailsSection from './components/DoctorDetailsSection';
@@ -73,7 +73,14 @@ const SalesReceipt: React.FC = () => {
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
-  const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
+  const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
+  
+  // Extract names from doctor objects array to string array for compatibility
+  const doctorNames: string[] = useMemo(() => {
+    return doctorNamesData.map((doctor: { id: string; name: string } | string) => 
+      typeof doctor === 'string' ? doctor : doctor.name
+    );
+  }, [doctorNamesData]);
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
   
   // Note: We only have these customer endpoints:
@@ -164,12 +171,20 @@ const SalesReceipt: React.FC = () => {
   useEffect(() => {
     if (isEditMode && editModeData) {
       let invoiceId: number | null = null;
+      let invoiceNumber: string | null = null;
       
+      // Extract numeric invoice number from formats like "INV8", "RB1", or just "8"
       if (editModeData.invoiceNumber) {
-        const cleanedNumber = editModeData.invoiceNumber.replace(/^RB/i, '').trim();
+        // Remove prefixes like "INV", "RB", "INV-", "RB-"
+        const cleanedNumber = editModeData.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
         const parsed = parseInt(cleanedNumber, 10);
         if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
           invoiceId = parsed;
+          // Use the numeric part as invoice_number for API
+          invoiceNumber = parsed.toString();
+        } else {
+          // If parsing fails, use the original invoice number
+          invoiceNumber = editModeData.invoiceNumber;
         }
       }
       
@@ -177,25 +192,54 @@ const SalesReceipt: React.FC = () => {
         const stateId = editModeData.invoiceId || editModeData.invoice_id;
         if (stateId && typeof stateId === 'number' && stateId > 0 && stateId < 1000000) {
           invoiceId = stateId;
+          if (!invoiceNumber) {
+            invoiceNumber = stateId.toString();
+          }
         }
       }
       
-      const invoiceNumber = editModeData.invoiceNumber;
       if ((invoiceId && invoiceId > 0) || invoiceNumber) {
         const fetchInvoiceDetails = async () => {
           try {
-            // Prefer invoice_number  available (more reliable)
+            console.log('🔍 Edit mode - fetching invoice details:', {
+              invoiceNumber: invoiceNumber,
+              originalInvoiceNumber: editModeData.invoiceNumber,
+              invoiceId: invoiceId,
+              editModeData: {
+                invoiceId: editModeData.invoiceId,
+                invoice_id: editModeData.invoice_id,
+                invoiceNumber: editModeData.invoiceNumber
+              }
+            });
+            
+            // Prefer invoice_number (numeric) as it's more reliable
             let result;
             if (invoiceNumber) {
-              console.log('Fetching invoice details for invoice_number:', invoiceNumber);
+              console.log('📡 Fetching invoice details for invoice_number:', invoiceNumber, '(original:', editModeData.invoiceNumber, ')');
               result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
             } else if (invoiceId && invoiceId > 0) {
-              console.log('Fetching invoice details for invoice_id:', invoiceId);
+              console.log('📡 Fetching invoice details for invoice_id:', invoiceId);
               result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
             } else {
               throw new Error('No invoice_number or invoice_id available');
             }
-            console.log('Invoice details response:', result);
+            
+            console.log('✅ Invoice details response received:', {
+              invoiceId: result.invoice?.id,
+              invoiceNumber: result.invoice?.invoice_number,
+              totalAmount: result.invoice?.total_amount,
+              linesCount: result.lines?.length
+            });
+            
+            if (result.lines && result.lines.length > 0) {
+              console.log('📦 First line details:', {
+                productName: result.lines[0].name,
+                product_id: result.lines[0].product_id,
+                quantity: result.lines[0].quantity,
+                rate: result.lines[0].rate,
+                batch_number: result.lines[0].batch_number
+              });
+            }
             
             if (result) {
               // API response structure: { invoice: {...}, lines: [...], payments: [...], ... }
@@ -216,25 +260,79 @@ const SalesReceipt: React.FC = () => {
                 insuranceCompany: result.insurance_company || editModeData.insuranceCompany || '',
                 invoiceNumber: invoice.invoice_number?.toString() || result.invoice_number?.toString() || editModeData.invoiceNumber || '',
                 invoiceDate: invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB').split('/').reverse().join('-') : (editModeData.invoiceDate || getTodayDate()),
-                salesItems: lines.length > 0 ? lines.map((line: any) => ({
-                  id: line.invoice_line_id?.toString() || line.id?.toString() || '',
-                  productName: line.product_name || line.productName || '',
-                  manufacturer: line.manufacturer || '',
-                  batch: line.batch_number || line.batch || '',
-                  expiryDate: line.expiry_date || line.expiryDate || '',
-                  quantity: line.quantity?.toString() || '0',
-                  unitPrice: line.rate?.toString() || line.unit_price?.toString() || '0',
-                  mrp: line.mrp?.toString() || '0',
-                  discount: line.discount?.toString() || '0',
-                  discountPercent: line.discount_percent?.toString() || '0',
-                  cgst: line.cgst?.toString() || '0',
-                  cgstPercent: line.cgst_percent?.toString() || '0',
-                  sgst: line.sgst?.toString() || '0',
-                  sgstPercent: line.sgst_percent?.toString() || '0',
-                  igst: line.igst?.toString() || '0',
-                  igstPercent: line.igst_percent?.toString() || '0',
-                  amount: line.selling_price?.toString() || line.amount?.toString() || '0',
-                })) : (editModeData.salesItems || []),
+                salesItems: lines.length > 0 ? lines.map((line: any) => {
+                  const unitPrice = parseFloat(line.rate || line.unit_price || '0');
+                  const quantity = parseFloat(line.quantity || '1');
+                  const baseAmount = unitPrice * quantity;
+                  
+                  // Calculate discount percentage - API returns absolute discount amount
+                  let discountPercentValue = '0';
+                  if (line.discount_percent !== undefined && line.discount_percent !== null) {
+                    discountPercentValue = line.discount_percent.toString();
+                  } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
+                    discountPercentValue = line.discountPercent.toString();
+                  } else if (line.discount !== undefined && line.discount !== null && baseAmount > 0) {
+                    // API returns absolute discount amount, calculate percentage
+                    const discountAmount = parseFloat(line.discount);
+                    // If discount amount is greater than base amount, it's likely already a percentage value
+                    if (discountAmount > baseAmount) {
+                      discountPercentValue = discountAmount.toString();
+                    } else {
+                      // Calculate percentage from absolute amount
+                      discountPercentValue = ((discountAmount / baseAmount) * 100).toFixed(2);
+                    }
+                  }
+
+                  // Calculate discounted amount (base amount after discount)
+                  const discountAmount = parseFloat(line.discount || '0');
+                  const discountedAmount = baseAmount - discountAmount;
+                  
+                  let cgstPercent = '0';
+                  if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
+                    cgstPercent = line.cgst_percent.toString();
+                  } else if (line.cgst !== undefined && line.cgst !== null && discountedAmount > 0) {
+                    const cgstAmount = parseFloat(line.cgst);
+                    cgstPercent = ((cgstAmount / discountedAmount) * 100).toFixed(2);
+                  }
+
+                  let sgstPercent = '0';
+                  if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
+                    sgstPercent = line.sgst_percent.toString();
+                  } else if (line.sgst !== undefined && line.sgst !== null && discountedAmount > 0) {
+                    const sgstAmount = parseFloat(line.sgst);
+                    sgstPercent = ((sgstAmount / discountedAmount) * 100).toFixed(2);
+                  }
+
+                  let igstPercent = '0';
+                  if (line.igst_percent !== undefined && line.igst_percent !== null) {
+                    igstPercent = line.igst_percent.toString();
+                  } else if (line.igst !== undefined && line.igst !== null && discountedAmount > 0) {
+                    const igstAmount = parseFloat(line.igst);
+                    igstPercent = ((igstAmount / discountedAmount) * 100).toFixed(2);
+                  }
+
+                  return {
+                    id: line.invoice_line_id?.toString() || line.id?.toString() || '',
+                    productName: line.name || line.product_name || line.productName || '', // API returns 'name' field
+                    product_id: line.product_id || undefined, // Preserve product_id from API (important for batch validation)
+                    manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name' field
+                    batch: line.batch_number || line.batch || '',
+                    expiryDate: line.expiry_date || line.expiryDate || '',
+                    quantity: line.quantity?.toString() || '0',
+                    unitPrice: line.rate?.toString() || line.unit_price?.toString() || '0',
+                    mrp: line.mrp?.toString() || '0',
+                    discount: line.discount?.toString() || '0',
+                    discountPercent: discountPercentValue,
+                    cgst: line.cgst?.toString() || '0',
+                    cgstPercent: cgstPercent,
+                    sgst: line.sgst?.toString() || '0',
+                    sgstPercent: sgstPercent,
+                    igst: line.igst?.toString() || '0',
+                    igstPercent: igstPercent,
+                    amount: line.selling_price?.toString() || line.amount?.toString() || '0',
+                    discountAuthorizedBy: line.discount_authority || undefined,
+                  };
+                }) : (editModeData.salesItems || []),
                 totalValue: invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || editModeData.totalValue || '0',
                 totalDiscount: invoice.discount?.toString() || result.total_discount?.toString() || result.totalDiscount?.toString() || editModeData.totalDiscount || '0',
                 taxAmount: result.tax_amount?.toString() || result.taxAmount?.toString() || editModeData.taxAmount || '0',
@@ -553,6 +651,17 @@ const SalesReceipt: React.FC = () => {
     }, [isEditMode])
   });
 
+  // Generate invoice number on mount (if not in edit mode and not already set)
+  // This generates and reserves the invoice number immediately so it's visible to the user
+  useEffect(() => {
+    if (!isEditMode && !invoiceNumber) {
+      const nextInvoiceNumber = generateNextInvoiceNumber();
+      setInvoiceNumber(nextInvoiceNumber);
+      console.log('📝 Generated and reserved invoice number on mount:', nextInvoiceNumber);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
@@ -676,7 +785,8 @@ const SalesReceipt: React.FC = () => {
   const handleEditCart = useCallback(() => {
     const cartItemsWithGst = transformCartItemsForEdit(salesItems);
     dispatch(setCartItems(cartItemsWithGst));
-    navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
+    // Navigate to sales/new page to edit/add products to cart
+    navigate('/sales/new');
   }, [salesItems, dispatch, navigate]);
 
   /**
@@ -785,10 +895,16 @@ const SalesReceipt: React.FC = () => {
     if (pendingAction === 'save') {
       // Close dialog first
       setIsConfirmDialogOpen(false);
-      // Execute save (this will show toast when complete)
-      await executeSaveWrapper();
-      // Reset pending action after save completes
-      setPendingAction(null);
+      try {
+        // Execute save (this will show toast when complete)
+        await executeSaveWrapper();
+        // Reset pending action after save completes
+        setPendingAction(null);
+      } catch (error) {
+        // Error is already handled and displayed in executeSave
+        // Just reset pending action
+        setPendingAction(null);
+      }
     } else if (pendingAction === 'print') {
       setIsConfirmDialogOpen(false);
       // Open Print Preview Modal which shows the customer receipt

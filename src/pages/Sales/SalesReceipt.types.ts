@@ -3,6 +3,7 @@
 export interface SalesReceiptItem {
   id: string;
   productName: string;
+  product_id?: number; // Product ID from cart item - important for batch validation
   manufacturer: string;
   batch: string;
   expiryDate: string;

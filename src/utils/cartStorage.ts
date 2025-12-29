@@ -2,6 +2,7 @@ const CART_STORAGE_KEY = 'pharma_sales_cart';
 const CART_TIMESTAMP_KEY = 'pharma_sales_cart_timestamp';
 const FORM_DATA_STORAGE_KEY = 'pharma_sales_form_data';
 const SALES_HISTORY_STORAGE_KEY = 'pharma_sales_history';
+const INVOICE_NUMBER_COUNTER_KEY = 'pharma_invoice_number_counter';
 const CART_EXPIRY_HOURS = 24;
 
 export interface CartData {
@@ -213,9 +214,12 @@ export const saveSalesHistoryToStorage = (historyItem: any, invoiceId?: number):
         localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(filteredHistory));
       } else {
         // Add new entry
+        // Use the invoiceId from historyItem if provided (should be database invoice ID)
+        // Otherwise use a timestamp as fallback
+        const newId = historyItem.id || invoiceId || Date.now();
         const newHistory = [...existingHistory, {
           ...historyItem,
-          id: Date.now(),
+          id: newId, // Use database invoice ID if available
           savedAt: new Date().toISOString()
         }];
         localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
@@ -241,6 +245,74 @@ export const clearSalesHistoryFromStorage = (): void => {
   try {
     localStorage.removeItem(SALES_HISTORY_STORAGE_KEY);
   } catch (error) {
+  }
+};
+
+// Invoice Number Management Functions
+/**
+ * Gets the current invoice number counter from localStorage
+ * @returns The current invoice number (starts from 1)
+ */
+export const getCurrentInvoiceNumber = (): number => {
+  try {
+    const stored = localStorage.getItem(INVOICE_NUMBER_COUNTER_KEY);
+    if (stored) {
+      const number = parseInt(stored, 10);
+      return isNaN(number) || number < 1 ? 1 : number;
+    }
+    return 1; // Start from 1 if not found
+  } catch (error) {
+    return 1;
+  }
+};
+
+/**
+ * Generates the next invoice number and saves it
+ * Format: "INV" + number (e.g., "INV1", "INV2", etc.)
+ * @returns The formatted invoice number string
+ */
+export const generateNextInvoiceNumber = (): string => {
+  try {
+    const currentNumber = getCurrentInvoiceNumber();
+    const nextNumber = currentNumber + 1;
+    localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, nextNumber.toString());
+    return `INV${currentNumber}`;
+  } catch (error) {
+    // Fallback: if storage fails, return a timestamp-based number
+    return `INV${Date.now()}`;
+  }
+};
+
+/**
+ * Gets the next invoice number without incrementing the counter
+ * Useful for previewing what the next invoice number will be
+ * @returns The formatted invoice number string
+ */
+export const getNextInvoiceNumber = (): string => {
+  const currentNumber = getCurrentInvoiceNumber();
+  return `INV${currentNumber}`;
+};
+
+/**
+ * Saves an invoice number to ensure the counter is at least that number
+ * This is useful when loading existing invoices to prevent duplicates
+ * @param invoiceNumber - The invoice number string (e.g., "INV123")
+ */
+export const saveInvoiceNumber = (invoiceNumber: string): void => {
+  try {
+    // Extract numeric part from invoice number (e.g., "INV123" -> 123)
+    const numericPart = invoiceNumber.replace(/^INV/i, '').trim();
+    const number = parseInt(numericPart, 10);
+    
+    if (!isNaN(number) && number > 0) {
+      const currentNumber = getCurrentInvoiceNumber();
+      // Update counter to be at least this number
+      if (number >= currentNumber) {
+        localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, (number + 1).toString());
+      }
+    }
+  } catch (error) {
+    // Silently fail if there's an error
   }
 };
 

@@ -100,10 +100,11 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
             if (option && typeof option === 'object' && 'name' in option) return (option as { name: string }).name;
             return String(option || '');
           }}
-          value={customerName || ''}
+          value={customerName || null}
           isOptionEqualToValue={(option, value) => {
             const optionValue = typeof option === 'string' ? option : (option && typeof option === 'object' && 'name' in option ? (option as { name: string }).name : '');
-            return optionValue === value;
+            const valueStr = value || '';
+            return optionValue === valueStr;
           }}
           onChange={(_, newValue) => {
             // Handle string (customer name) - this fires when selecting from dropdown
@@ -188,14 +189,19 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           renderOption={(props, option, index) => {
             const { key, ...otherProps } = props;
             // Get the label string using the same logic as getOptionLabel
-            const optionLabel = typeof option === 'string' 
-              ? option 
-              : (option && typeof option === 'object' && 'name' in option 
-                  ? (option as { name: string }).name 
-                  : String(option));
-            // Use index as the key to ensure uniqueness (even if names are duplicated)
+            let optionLabel: string;
+            if (typeof option === 'string') {
+              optionLabel = option;
+            } else if (option && typeof option === 'object' && 'name' in option) {
+              optionLabel = (option as { name: string }).name;
+            } else {
+              optionLabel = String(option || '');
+            }
+            // Use a unique key: combine index with option label to ensure uniqueness
+            // This prevents duplicate key warnings when options have the same name
+            const uniqueKey = `customer-name-${index}-${optionLabel || 'empty'}`;
             return (
-              <li key={`customer-name-${index}`} {...otherProps}>
+              <li key={uniqueKey} {...otherProps}>
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {optionLabel}
@@ -298,8 +304,13 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
         />
         <Autocomplete
           options={cityOptions}
-          value={customerCity || ''}
-          isOptionEqualToValue={(option, value) => option === (value || '')}
+          value={customerCity || undefined}
+          defaultValue={undefined}
+          isOptionEqualToValue={(option, value) => {
+            const optionStr = option || '';
+            const valueStr = (value || '');
+            return optionStr === valueStr;
+          }}
           onChange={(_, newValue) => {
             if (newValue) {
               onCustomerCityChange(newValue);
@@ -308,7 +319,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
             }
           }}
           onInputChange={(_, newInputValue) => {
-            onCustomerCityChange(newInputValue);
+            onCustomerCityChange(newInputValue || '');
           }}
           {...(!customerCity ? { disableClearable: true } : {})}
           forcePopupIcon

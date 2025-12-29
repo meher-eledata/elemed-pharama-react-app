@@ -164,7 +164,7 @@ import { baseQueryWithReauth } from "../baseQuery";
 export const receiveApi = createApi({
   reducerPath: "receiveApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Receive", "ReceiptLines"] as const,
+  tagTypes: ["Receive", "ReceiptLines", "Inventory"] as const,
   endpoints: (builder) => ({
     getCurrentPurchaseOrders: builder.query<PurchaseOrder[], void>({
       query: () => "receive/current-purchase-orders",
@@ -218,7 +218,7 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive"],
+      invalidatesTags: ["Receive", "Inventory"],
     }),
 
     deleteReceipt: builder.mutation<DeleteReceiptResponse, DeleteReceiptRequest>({
@@ -227,7 +227,7 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive"],
+      invalidatesTags: ["Receive", "Inventory"],
     }),
 
     // Receipt line endpoints
@@ -300,7 +300,7 @@ export const receiveApi = createApi({
           body,
         };
       },
-      invalidatesTags: ["Receive"],
+      invalidatesTags: ["Receive", "Inventory"],
     }),
 
     // Get all products endpoint (shared across modules)
@@ -342,6 +342,45 @@ export const receiveApi = createApi({
         return response;
       },
     }),
+
+    // Upload receipt file endpoint
+    uploadReceiptFile: builder.mutation<
+      {
+        message: string;
+        receipt_id: number;
+        receipt_file_url: string;
+        receipt_file_type: string;
+        receipt_file_name: string;
+        size_bytes: number;
+      },
+      { receiptId: number; file: File }
+    >({
+      query: ({ receiptId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        return {
+          url: `receive/${receiptId}/upload-file`,
+          method: 'POST',
+          body: formData,
+          // RTK Query will automatically set Content-Type with boundary for FormData
+        };
+      },
+      invalidatesTags: ['Receive'],
+    }),
+
+    // Get receipt file URL (returns the URL to fetch the file)
+    getReceiptFile: builder.query<Blob, number>({
+      query: (receiptId) => ({
+        url: `receive/${receiptId}/file`,
+        responseHandler: async (response) => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch file');
+          }
+          return await response.blob();
+        },
+      }),
+    }),
   }),
 });
 
@@ -359,4 +398,12 @@ export const {
   useDeleteReceiptLineMutation,
   useSubmitReceiptMutation,
   useGetProductsQuery,
+  useUploadReceiptFileMutation,
+  useGetReceiptFileQuery,
 } = receiveApi;
+
+// Helper function to get receipt file URL (for iframe or direct link)
+export const getReceiptFileUrl = (receiptId: number): string => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
+  return `${baseUrl}receive/${receiptId}/file`;
+};

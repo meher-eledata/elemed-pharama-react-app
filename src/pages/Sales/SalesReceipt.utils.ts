@@ -21,6 +21,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
     return {
       id: item.id,
       productName: item.name,
+      product_id: item.product_id, // Preserve product_id from cart item (important for batch validation)
       manufacturer: 'N/A',
       batch: item.batch,
       expiryDate: item.expiry,

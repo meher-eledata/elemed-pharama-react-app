@@ -22,6 +22,8 @@ interface SalesData {
   cgst: number;
   gst: number;
   igst: number;
+  totalAmount: number;
+  patientType: string;
 }
 
 const DetailedSalesTable: React.FC = () => {
@@ -40,6 +42,8 @@ const DetailedSalesTable: React.FC = () => {
       cgst: 82.21,
       gst: 0.00,
       igst: 0.00,
+      totalAmount: 1617.21,
+      patientType: 'Out Patient',
     },
     {
       id: 2,
@@ -52,6 +56,8 @@ const DetailedSalesTable: React.FC = () => {
       cgst: 28.18,
       gst: 0.00,
       igst: 0.00,
+      totalAmount: 553.18,
+      patientType: 'In Patient',
     },
     {
       id: 3,
@@ -64,6 +70,8 @@ const DetailedSalesTable: React.FC = () => {
       cgst: 50.09,
       gst: 0.00,
       igst: 0.00,
+      totalAmount: 985.09,
+      patientType: 'Out Patient',
     },
     {
       id: 4,
@@ -76,6 +84,8 @@ const DetailedSalesTable: React.FC = () => {
       cgst: 4.29,
       gst: 0.00,
       igst: 0.00,
+      totalAmount: 84.29,
+      patientType: 'In Patient',
     },
   ];
 
@@ -96,6 +106,14 @@ const DetailedSalesTable: React.FC = () => {
     return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const formatDate = (dateString: string) => {
+   
+    const datePart = dateString.split(' ')[0]; 
+    const [day, month, year] = datePart.split('/');
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    return `${day}/${month}/${fullYear}`;
+  };
+
   const filteredData = useMemo(() => {
     let filtered = [...mockData];
 
@@ -103,7 +121,8 @@ const DetailedSalesTable: React.FC = () => {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
         item.invoiceNumber.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-        item.paymentType.toLowerCase().includes(currentSearchTerm.toLowerCase())
+        item.paymentType.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+        item.patientType.toLowerCase().includes(currentSearchTerm.toLowerCase())
       );
     }
 
@@ -156,7 +175,7 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {item.transactionDate}
+          {formatDate(item.transactionDate)}
         </Typography>
       ),
     },
@@ -272,6 +291,34 @@ const DetailedSalesTable: React.FC = () => {
         </Typography>
       ),
     },
+    {
+      key: 'totalAmount',
+      header: DETAILED_SALES_TABLE_LABELS.TABLE.TOTAL_AMOUNT,
+      sortable: true,
+      render: (item) => (
+        <Typography sx={{
+          fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+          fontSize: '14px',
+          color: '#1A212B',
+        }}>
+          {formatCurrency(item.totalAmount)}
+        </Typography>
+      ),
+    },
+    {
+      key: 'patientType',
+      header: DETAILED_SALES_TABLE_LABELS.TABLE.PATIENT_TYPE,
+      sortable: true,
+      render: (item) => (
+        <Typography sx={{
+          fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+          fontSize: '14px',
+          color: '#1A212B',
+        }}>
+          {item.patientType}
+        </Typography>
+      ),
+    },
   ];
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -293,7 +340,7 @@ const DetailedSalesTable: React.FC = () => {
   // Prepare CSV data
   const csvData = useMemo(() => {
     return sortedData.map(item => ({
-      'Transaction Date': item.transactionDate,
+      'Transaction Date': formatDate(item.transactionDate),
       'Invoice Number': item.invoiceNumber,
       'Customer Name': item.customerName,
       'Payment Type': item.paymentType,
@@ -302,6 +349,8 @@ const DetailedSalesTable: React.FC = () => {
       'CGST (₹)': item.cgst.toFixed(2),
       'GST (₹)': item.gst.toFixed(2),
       'IGST (₹)': item.igst.toFixed(2),
+      'Total Amount (₹)': item.totalAmount.toFixed(2),
+      'Patient Type': item.patientType,
     }));
   }, [sortedData]);
 

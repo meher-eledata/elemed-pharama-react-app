@@ -5,7 +5,7 @@ interface UseDoctorPhonesAndEmailsParams {
   doctorName: string;
   doctorMobile: string;
   doctorEmail: string;
-  doctorNames: string[];
+  doctorNames: string[]; // Now always string array after conversion
   onInfoFetched: (info: DoctorPhoneEmailInfo[]) => void;
   onDoctorAutoFill: (phone: string, email: string) => void;
   onInfoClear: () => void;
@@ -32,7 +32,9 @@ export const useDoctorPhonesAndEmails = ({
           onInfoFetched(info);
           
           const normalizedDoctorName = doctorName.trim().toLowerCase();
-          const isExactMatch = doctorNames.length > 0 && doctorNames.some(name => name.toLowerCase() === normalizedDoctorName);
+          const isExactMatch = doctorNames.length > 0 && doctorNames.some((name: string) => 
+            name.toLowerCase() === normalizedDoctorName
+          );
           
           if (info.length === 1) {
             const singleInfo = info[0];
@@ -56,7 +58,9 @@ export const useDoctorPhonesAndEmails = ({
     };
 
     const normalizedDoctorName = doctorName.trim().toLowerCase();
-    const isExactMatch = doctorNames.length > 0 && doctorNames.some(name => name.toLowerCase() === normalizedDoctorName);
+    const isExactMatch = doctorNames.length > 0 && doctorNames.some((name: string) => 
+      name.toLowerCase() === normalizedDoctorName
+    );
     const shouldFetchImmediately = shouldFetchImmediatelyRef.current || isExactMatch;
 
     shouldFetchImmediatelyRef.current = false;
