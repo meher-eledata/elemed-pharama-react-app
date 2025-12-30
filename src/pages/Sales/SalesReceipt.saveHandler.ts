@@ -183,6 +183,11 @@ export const executeSave = async ({
         throw new Error(`Invalid quantity for product "${item.productName}" (item ${index + 1})`);
       }
 
+      // Send tax percentages (not amounts) - backend will calculate amounts from percentages
+      const cgstPercent = parseFloat(item.cgstPercent || '0');
+      const sgstPercent = parseFloat(item.sgstPercent || '0');
+      const igstPercent = parseFloat(item.igstPercent || '0');
+
       const lineItem = {
         product_id: productId,
         quantity: quantity,
@@ -191,6 +196,9 @@ export const executeSave = async ({
         sp: parseFloat(item.unitPrice || '0'),
         discount: parseFloat(item.discountPercent || '0') / 100,
         discount_authority: item.discountAuthorizedBy || undefined, // Send name instead of ID
+        cgst: cgstPercent, // Tax percentage (e.g., 1 for 1%)
+        sgst: sgstPercent, // Tax percentage (e.g., 1 for 1%)
+        igst: igstPercent, // Tax percentage (e.g., 2 for 2%)
       };
       
       return lineItem;
@@ -202,6 +210,15 @@ export const executeSave = async ({
     if (!isEditMode && (!finalInvoiceNumber || !finalInvoiceNumber.trim())) {
       finalInvoiceNumber = generateNextInvoiceNumber();
       console.log('📝 Generated invoice number during save (should not happen normally):', finalInvoiceNumber);
+    }
+    
+    // Extract numeric part from invoice number (backend expects just the number, not "INV12")
+    // Frontend generates "INV12", but backend should receive just "12" or the full string
+    // Based on backend code, it accepts string, so we'll send the numeric part only
+    let invoiceNumberForBackend = finalInvoiceNumber.trim();
+    // Remove "INV" prefix if present to get just the numeric part
+    if (invoiceNumberForBackend.toUpperCase().startsWith('INV')) {
+      invoiceNumberForBackend = invoiceNumberForBackend.replace(/^INV/i, '').trim();
     }
     
     // Build payload according to backend expectations
@@ -217,7 +234,7 @@ export const executeSave = async ({
       created_by: user?.username || 'Guest',
       customer_id: customerId, // Must be valid number > 0
       patient_type: patientTypeNumber, // 0 for "In Patient", 1 for "Out Patient"
-      invoice_number: finalInvoiceNumber.trim(), // Always include invoice number
+      invoice_number: invoiceNumberForBackend, // Send numeric part only (e.g., "12" instead of "INV12")
       // doctor_id: undefined, // Optional - can be added later if needed
       // Include invoice_date for return flow (when invoice already exists in DB)
       ...(invoiceDate && invoiceDate.trim() ? { invoice_date: invoiceDate.trim() } : {}),

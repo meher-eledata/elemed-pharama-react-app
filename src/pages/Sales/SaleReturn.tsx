@@ -7,8 +7,9 @@ import {
   Autocomplete
 } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import { StandardButton } from '../../components/Common';
+import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { paymentMethods } from '../../config/constants/OrderDetail.constants';
+import dayjs, { Dayjs } from 'dayjs';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import {
   Dialog,
@@ -51,12 +52,15 @@ export default function SaleReturn() {
   const [submitSalesReturn, { isLoading: isSubmittingReturn }] = useSubmitSalesReturnMutation();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
   
+  const [returnDate, setReturnDate] = useState<Dayjs | null>(dayjs());
   const [returnPaymentType, setReturnPaymentType] = useState<string>('Cash');
   const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [reason, setReason] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [invoiceIdFromApi, setInvoiceIdFromApi] = useState<number | null>(null);
+  const [invoiceNumberFromApi, setInvoiceNumberFromApi] = useState<number | null | undefined>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: '',
@@ -66,8 +70,45 @@ export default function SaleReturn() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentFilterKey, setCurrentFilterKey] = useState<string>('');
   const [currentFilter, setCurrentFilter] = useState<{ [key: string]: string | null }>({});
+  const recalculateItemAmount = useCallback((item: ReturnItem, quantity: number) => {
+    if (quantity === 0) {
+      return {
+        amount: '0.00',
+        discount: '0.00',
+        cgst: '0.00',
+        sgst: '0.00',
+        igst: '0.00',
+      };
+    }
 
-  // Step 2: Load invoice items from API using /sales/get-invoice-details/
+    const unitPrice = parseFloat(item.unitPrice) || 0;
+    const discountPercent = parseFloat(item.discountPercent) || 0;
+    const cgstPercent = parseFloat(item.cgstPercent) || 0;
+    const sgstPercent = parseFloat(item.sgstPercent) || 0;
+    const igstPercent = parseFloat(item.igstPercent) || 0;
+    
+    const baseAmount = unitPrice * quantity;
+    
+    const discountMultiplier = 1 - (discountPercent / 100);
+    const discountedAmount = baseAmount * discountMultiplier;
+    
+    const discountAmount = (unitPrice * discountPercent / 100 * quantity).toFixed(2);
+    
+    const cgstAmount = discountedAmount * cgstPercent / 100;
+    const sgstAmount = discountedAmount * sgstPercent / 100;
+    const igstAmount = discountedAmount * igstPercent / 100;
+    
+    const finalAmount = discountedAmount + cgstAmount + sgstAmount + igstAmount;
+    
+    return {
+      amount: finalAmount.toFixed(2),
+      discount: discountAmount,
+      cgst: cgstAmount.toFixed(2),
+      sgst: sgstAmount.toFixed(2),
+      igst: igstAmount.toFixed(2),
+    };
+  }, []);
+
   useEffect(() => {
     if (!invoiceData) {
       navigate('/sales');
@@ -76,28 +117,23 @@ export default function SaleReturn() {
 
     let isMounted = true;
 
-    // Prioritize invoiceId from state (this is the actual database ID from backend)
-    // Only fall back to parsing invoice number if invoiceId is not available
+ 
     let invoiceIdToFetch: number | null = null;
     
-    // First, try to use invoiceId from state (this is the actual database ID)
     if (invoiceData.invoiceId) {
       const idValue = typeof invoiceData.invoiceId === 'number' 
         ? invoiceData.invoiceId 
         : parseInt(String(invoiceData.invoiceId || '0'), 10);
-      // Only use if it's a reasonable invoice ID (not a timestamp like 1766719204936)
       if (!isNaN(idValue) && idValue > 0 && idValue < 1000000) {
         invoiceIdToFetch = idValue;
         console.log('✅ Using invoiceId from state (database ID):', invoiceIdToFetch);
       }
     }
     
-    // Fallback: Parse invoice ID from invoiceNumber if invoiceId is not available
     if (!invoiceIdToFetch && invoiceData.invoiceNumber) {
-      // Remove common prefixes (RB, INV-, etc.) and extract numeric part
       let cleanedNumber = invoiceData.invoiceNumber
-        .replace(/^(RB|INV-?)/i, '') // Remove RB or INV- prefix
-        .replace(/[^0-9]/g, '') // Remove all non-numeric characters
+        .replace(/^(RB|INV-?)/i, '') 
+        .replace(/[^0-9]/g, '') //
         .trim();
       
       if (cleanedNumber) {
@@ -109,25 +145,19 @@ export default function SaleReturn() {
       }
     }
 
-    // Step 2: Call /sales/get-invoice-details/ to fill the page with invoice data
     const fetchInvoiceDetails = async () => {
-      // Backend accepts either invoice_id or invoice_number
-      // Prefer invoice_number if available (more reliable)
       const invoiceNumber = invoiceData.invoiceNumber;
       
       if (!invoiceNumber && !invoiceIdToFetch) {
-        // If no invoice number or ID, fall back to location state or storage
         loadItemsFromStateOrStorage();
         return;
       }
 
       try {
-        // Prioritize invoice_id (database ID) over invoice_number for better reliability
-        // Database stores invoices by invoice_id, not by the frontend-generated invoice number
+        
         let result;
         let lastError: any = null;
         
-        // Try with invoice_id first (most reliable - this is the actual database ID)
         if (invoiceIdToFetch) {
           console.log('🔍 Fetching invoice details for return using invoice_id (database ID):', invoiceIdToFetch);
           try {
@@ -136,9 +166,7 @@ export default function SaleReturn() {
           } catch (err: any) {
             lastError = err;
             console.log('❌ Invoice not found by invoice_id, trying with invoice_number...');
-            // If invoice_id fails and we have invoice number, try with invoice_number as fallback
             if (invoiceNumber && err?.status === 404) {
-              // Extract numeric part from invoice number (e.g., "INV-3698" -> "3698")
               let numericInvoiceNumber = invoiceNumber;
               if (typeof invoiceNumber === 'string') {
                 const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
@@ -151,14 +179,13 @@ export default function SaleReturn() {
                 console.log('✅ Invoice found using invoice_number');
               } catch (err2: any) {
                 lastError = err2;
-                throw err2; // Re-throw if invoice_number also fails
+                throw err2; 
               }
             } else {
-              throw err; // Re-throw if it's not a 404 or we don't have invoice number
+              throw err;
             }
           }
         } else if (invoiceNumber) {
-          // Fallback: Try with invoice_number if invoice_id is not available
           let numericInvoiceNumber = invoiceNumber;
           if (typeof invoiceNumber === 'string') {
             const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
@@ -179,44 +206,48 @@ export default function SaleReturn() {
         console.log('Invoice details response:', result);
         
         if (result && isMounted) {
-          // API response structure: { invoice: {...}, lines: [...], payments: [...], total_refunded: number, net_paid: number }
           const invoice = result.invoice || {};
           const lines = result.lines || [];
+          
+          if (invoice.id) {
+            setInvoiceIdFromApi(invoice.id);
+            setInvoiceNumberFromApi(invoice.invoice_number);
+            console.log('📝 Stored invoice id from API response:', invoice.id);
+            console.log('📝 Invoice number from API response:', invoice.invoice_number);
+          }
+          
+          console.log('📋 Invoice lines from API (full details):', lines);
+          console.log('📋 Invoice lines summary:', lines.map((line: any) => ({
+            invoice_line_id: line.invoice_line_id,
+            invoice_id: line.invoice_id,
+            id: line.id,
+            product_name: line.name || line.product_name,
+            is_same_as_invoice_id: line.invoice_line_id === line.invoice_id,
+          })));
           const payments = result.payments || [];
           const totalRefunded = result.total_refunded || 0;
           const netPaid = result.net_paid || 0;
           
-          // Log payment and refund information for debugging
           if (payments.length > 0 || totalRefunded > 0) {
             console.log('Invoice payment info:', { payments, totalRefunded, netPaid });
           }
-          
-          // Get original items from location state (if available) to preserve tax percentages
-          // Location state items have the original tax percentages the user set
           const originalItemsFromState = invoiceData.items || [];
           const originalItemsMap = new Map<string, any>();
           originalItemsFromState.forEach((item: any) => {
-            // Use invoice_line_id or id as key to match with API response
             const key = item.invoice_line_id?.toString() || item.id?.toString() || '';
             if (key) {
               originalItemsMap.set(key, item);
             }
           });
           
-          // Transform API response to ReturnItem format
           if (lines.length > 0) {
             const items: ReturnItem[] = lines.map((line: any) => {
-              // Try to find matching original item from location state to preserve tax percentages
               const lineId = line.invoice_line_id?.toString() || line.id?.toString() || '';
               const originalItem = originalItemsMap.get(lineId);
-              // Get product_id from the line
               const productId = line.product_id || line.productId;
               
-              // API returns 'name' field, not 'product_name'
-              // Product name is always provided in the invoice details response
               const productName = line.name || line.product_name || line.productName || (productId ? `Product ID: ${productId}` : 'Unknown Product');
               
-              // Calculate discount percentage - handle both decimal (0-1) and percentage (0-100) formats
               let discountPercentValue = '0';
               if (line.discount_percent !== undefined && line.discount_percent !== null) {
                 discountPercentValue = line.discount_percent.toString();
@@ -224,33 +255,34 @@ export default function SaleReturn() {
                 discountPercentValue = line.discountPercent.toString();
               } else if (line.discount !== undefined && line.discount !== null) {
                 const discountValue = parseFloat(line.discount);
-                // If discount is > 1, assume it's already a percentage, otherwise convert from decimal
                 discountPercentValue = (discountValue > 1 ? discountValue : discountValue * 100).toString();
               }
 
-              // Calculate refundable quantity: original quantity minus already returned quantity
-              const originalQty = parseFloat(line.quantity || '0');
+          
+              const quantityValue = line.quantity !== undefined && line.quantity !== null 
+                ? (typeof line.quantity === 'number' ? line.quantity : parseFloat(String(line.quantity)))
+                : (line.qty !== undefined && line.qty !== null 
+                    ? (typeof line.qty === 'number' ? line.qty : parseFloat(String(line.qty)))
+                    : 0);
+              const originalQty = isNaN(quantityValue) ? 0 : quantityValue;
               const returnedQty = parseInt(line.returned_quantity || '0');
               const refundableQty = line.refundable_quantity !== undefined && line.refundable_quantity !== null
                 ? parseInt(line.refundable_quantity)
                 : Math.max(0, originalQty - returnedQty);
 
-              // Calculate tax percentages from absolute tax amounts
-              // Backend returns absolute tax amounts (cgst, sgst, igst), we need to calculate percentages
-              // Formula: tax_percent = (tax_amount / discounted_amount) * 100
               const unitPrice = parseFloat(line.rate || line.unit_price || '0');
-              const quantity = parseFloat(line.quantity || '1');
+              const quantity = originalQty > 0 ? originalQty : (parseFloat(line.quantity || line.qty || '1'));
               const baseAmount = unitPrice * quantity;
               
-              // Calculate discounted amount (base amount after discount)
+              // Use refundable quantity for initial return quantity (not original quantity)
+              // If refundable is 0, start with 0; otherwise start with refundable quantity
+              const initialReturnQty = refundableQty;
+              
               const discountAmount = parseFloat(line.discount || '0');
               const discountedAmount = baseAmount - discountAmount;
               
-              // Calculate tax percentages - PRIORITIZE original tax percentages from location state
-              // Backend returns absolute tax amounts (cgst, sgst, igst), but we want to preserve
-              // the original tax percentages the user set in the receipt (e.g., 1%, 1%, 2%)
+              
               let cgstPercentValue = '0';
-              // PRIORITY 1: Use original tax percentages from location state (what user actually set)
               if (originalItem && originalItem.cgstPercent) {
                 cgstPercentValue = originalItem.cgstPercent.toString();
                 console.log('✅ Using original CGST percent from location state:', cgstPercentValue);
@@ -259,14 +291,12 @@ export default function SaleReturn() {
               } else if (line.cgstPercent !== undefined && line.cgstPercent !== null) {
                 cgstPercentValue = line.cgstPercent.toString();
               } else if (line.cgst !== undefined && line.cgst !== null && discountedAmount > 0) {
-                // Calculate percentage from absolute amount (fallback)
                 const cgstAmount = parseFloat(line.cgst);
                 cgstPercentValue = ((cgstAmount / discountedAmount) * 100).toFixed(2);
                 console.log('📊 Calculated CGST percent from absolute amount:', cgstPercentValue);
               }
               
               let sgstPercentValue = '0';
-              // PRIORITY 1: Use original tax percentages from location state (what user actually set)
               if (originalItem && originalItem.sgstPercent) {
                 sgstPercentValue = originalItem.sgstPercent.toString();
                 console.log('✅ Using original SGST percent from location state:', sgstPercentValue);
@@ -282,7 +312,6 @@ export default function SaleReturn() {
               }
               
               let igstPercentValue = '0';
-              // PRIORITY 1: Use original tax percentages from location state (what user actually set)
               if (originalItem && originalItem.igstPercent) {
                 igstPercentValue = originalItem.igstPercent.toString();
                 console.log('✅ Using original IGST percent from location state:', igstPercentValue);
@@ -291,19 +320,22 @@ export default function SaleReturn() {
               } else if (line.igstPercent !== undefined && line.igstPercent !== null) {
                 igstPercentValue = line.igstPercent.toString();
               } else if (line.igst !== undefined && line.igst !== null && discountedAmount > 0) {
-                // Calculate percentage from absolute amount (fallback)
                 const igstAmount = parseFloat(line.igst);
                 igstPercentValue = ((igstAmount / discountedAmount) * 100).toFixed(2);
                 console.log('📊 Calculated IGST percent from absolute amount:', igstPercentValue);
               }
 
-              return {
-                id: line.invoice_line_id?.toString() || line.id?.toString() || '',
+              const returnQty = originalQty || quantity || 0;
+              
+              const tempItem: ReturnItem = {
+                // Use invoice_line_id as the id (this is the unique identifier for the line item)
+                // DO NOT use line.id as fallback - it might be the invoice_id, not invoice_line_id
+                id: line.invoice_line_id?.toString() || '',
                 productName: productName || (productId ? `Product ID: ${productId}` : 'Unknown Product'),
                 manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name'
                 batch: line.batch_number || line.batch || '',
                 expiryDate: line.expiry_date || line.expiryDate || '',
-                quantity: line.quantity?.toString() || '0',
+                quantity: String(returnQty),
                 type: line.product_type || line.type || 'N/A', // API returns 'product_type'
                 // Map backend 'rate' to 'unit_price', also check for 'unit_price' as fallback
                 unitPrice: line.rate?.toString() || line.unit_price?.toString() || line.unitPrice?.toString() || '0',
@@ -314,17 +346,73 @@ export default function SaleReturn() {
                 cgstPercent: cgstPercentValue,
                 sgstPercent: sgstPercentValue,
                 igstPercent: igstPercentValue,
-                // Map backend 'selling_price' to 'amount', also check for 'amount' as fallback
-                amount: line.selling_price?.toString() || line.amount?.toString() || line.total?.toString() || '0',
-                returnQuantity: '0', // Start with 0 for return quantity
-                originalQuantity: line.quantity?.toString() || '0',
+                // Temporary values - will be recalculated
+                amount: '0',
+                discount: '0',
+                cgst: '0',
+                sgst: '0',
+                igst: '0',
+                returnQuantity: String(initialReturnQty), // Start with refundable quantity (0 if all returned)
+                originalQuantity: String(originalQty),
                 // Use selling_price for originalAmount as well
                 originalAmount: line.selling_price?.toString() || line.amount?.toString() || line.total?.toString() || '0',
-                invoice_line_id: line.invoice_line_id || line.id,
+                // CRITICAL: Only use invoice_line_id from API response
+                // DO NOT fallback to line.id - it might be invoice_id, not invoice_line_id
+                // If invoice_line_id is missing, log an error and set to undefined
+                invoice_line_id: (() => {
+                  if (line.invoice_line_id !== undefined && line.invoice_line_id !== null) {
+                    const id = Number(line.invoice_line_id);
+                    const invoiceId = line.invoice_id ? Number(line.invoice_id) : null;
+                    
+                    // Note: invoice_line_id can sometimes match invoice_id if there's only one line item
+                    // This is acceptable - we'll use the invoice_line_id as provided by the backend
+                    if (invoiceId && id === invoiceId) {
+                      console.warn(`⚠️ WARNING: invoice_line_id (${id}) matches invoice_id (${invoiceId})`);
+                      console.warn(`   This can happen with single-line invoices. Proceeding with invoice_line_id: ${id}`);
+                    }
+                    
+                    console.log(`✅ Setting invoice_line_id from API: ${id} for product ${productName}`, {
+                      invoice_line_id: id,
+                      invoice_id: invoiceId,
+                      status: 'OK',
+                    });
+                    return id;
+                  } else {
+                    console.error(`❌ Missing invoice_line_id in API response for product ${productName}:`, line);
+                    return undefined;
+                  }
+                })(),
                 refundable_quantity: refundableQty, // Use calculated refundable quantity from API
                 product_id: productId, // Store product_id for later lookup if needed
                 discountAuthorizedBy: line.discount_authority || undefined, // Map discount_authority if present
               };
+              
+              // Recalculate amount based on the return quantity (which starts as refundable quantity)
+              const calculated = recalculateItemAmount(tempItem, initialReturnQty);
+              
+              // Return the item with calculated values
+              const finalItem = {
+                ...tempItem,
+                amount: calculated.amount,
+                discount: calculated.discount,
+                cgst: calculated.cgst,
+                sgst: calculated.sgst,
+                igst: calculated.igst,
+              };
+              
+              // Debug: Log the invoice_line_id to verify it's correct
+              console.log('📋 Created return item:', {
+                productName: finalItem.productName,
+                invoice_line_id: finalItem.invoice_line_id,
+                id: finalItem.id,
+                quantity: finalItem.returnQuantity,
+                // Warn if invoice_line_id looks suspicious (might be invoice_id instead)
+                warning: finalItem.invoice_line_id && finalItem.invoice_line_id > 10 
+                  ? '⚠️ invoice_line_id seems high, might be invoice_id!' 
+                  : 'OK',
+              });
+              
+              return finalItem;
             });
             setReturnItems(items);
             return; // Successfully loaded from API, exit early
@@ -342,23 +430,42 @@ export default function SaleReturn() {
       }
     };
 
-    // Helper function to load items from state or storage
     const loadItemsFromStateOrStorage = () => {
       console.log('Loading items from location state or storage...');
-      // Try to use items passed from navigation state
       if (invoiceData.items && invoiceData.items.length > 0) {
         console.log('Loading items from location state:', invoiceData.items.length, 'items');
         const items: ReturnItem[] = invoiceData.items.map((item: SalesReceiptItem) => {
-          const idAsNumber = parseInt(item.id);
-          const invoiceLineId = !isNaN(idAsNumber) && idAsNumber > 0 ? idAsNumber : undefined;
+         
+          const invoiceLineId = (item as any).invoice_line_id 
+            ? Number((item as any).invoice_line_id)
+            : undefined;
           
+          if (!invoiceLineId) {
+            console.warn('⚠️ Item from state missing invoice_line_id - cannot use for return:', {
+              productName: item.productName,
+              id: item.id,
+              invoice_line_id: (item as any).invoice_line_id,
+            });
+          }
+          
+          console.log('Loading item from state:', {
+            productName: item.productName,
+            id: item.id,
+            invoice_line_id: (item as any).invoice_line_id,
+            resolved_invoice_line_id: invoiceLineId,
+          });
+          
+          // For fallback items from storage, we don't have returned_quantity info
+          // So we'll set returnQuantity to 0 and let user enter the correct value
+          // The refundable_quantity will be calculated when API is called
+          const fallbackRefundableQty = parseInt(item.quantity) || 0;
           return {
             ...item,
-            returnQuantity: item.quantity,
+            returnQuantity: '0', // Start with 0 for fallback items (user must enter correct value)
             originalQuantity: item.quantity,
             originalAmount: item.amount,
             invoice_line_id: invoiceLineId,
-            refundable_quantity: parseInt(item.quantity) || 0,
+            refundable_quantity: fallbackRefundableQty,
           };
         });
         setReturnItems(items);
@@ -372,16 +479,37 @@ export default function SaleReturn() {
         if (savedInvoice && savedInvoice.items && savedInvoice.items.length > 0) {
           console.log('Loading items from storage (items):', savedInvoice.items.length, 'items');
           const items: ReturnItem[] = savedInvoice.items.map((item: SalesReceiptItem) => {
-            const idAsNumber = parseInt(item.id);
-            const invoiceLineId = !isNaN(idAsNumber) && idAsNumber > 0 ? idAsNumber : undefined;
+            // CRITICAL: Only use invoice_line_id if it exists in the item
+            // DO NOT use item.id as fallback - it might be invoice_id, not invoice_line_id
+            const invoiceLineId = (item as any).invoice_line_id 
+              ? Number((item as any).invoice_line_id)
+              : undefined;
             
+            if (!invoiceLineId) {
+              console.warn('⚠️ Item from storage missing invoice_line_id - cannot use for return:', {
+                productName: item.productName,
+                id: item.id,
+                invoice_line_id: (item as any).invoice_line_id,
+              });
+            }
+            
+            console.log('Loading item from storage (items):', {
+              productName: item.productName,
+              id: item.id,
+              invoice_line_id: (item as any).invoice_line_id,
+              resolved_invoice_line_id: invoiceLineId,
+            });
+            
+            // For fallback items from storage, we don't have returned_quantity info
+            // So we'll set returnQuantity to 0 and let user enter the correct value
+            const fallbackRefundableQty = parseInt(item.quantity) || 0;
             return {
               ...item,
-              returnQuantity: item.quantity,
+              returnQuantity: '0', // Start with 0 for fallback items (user must enter correct value)
               originalQuantity: item.quantity,
               originalAmount: item.amount,
-              invoice_line_id: invoiceLineId,
-              refundable_quantity: parseInt(item.quantity) || 0,
+              invoice_line_id: invoiceLineId, // Will be undefined if not present
+              refundable_quantity: fallbackRefundableQty,
             };
           });
           setReturnItems(items);
@@ -389,16 +517,37 @@ export default function SaleReturn() {
         } else if (savedInvoice && savedInvoice.salesItems && savedInvoice.salesItems.length > 0) {
           console.log('Loading items from storage (salesItems):', savedInvoice.salesItems.length, 'items');
           const items: ReturnItem[] = savedInvoice.salesItems.map((item: SalesReceiptItem) => {
-            const idAsNumber = parseInt(item.id);
-            const invoiceLineId = !isNaN(idAsNumber) && idAsNumber > 0 ? idAsNumber : undefined;
+            // CRITICAL: Only use invoice_line_id if it exists in the item
+            // DO NOT use item.id as fallback - it might be invoice_id, not invoice_line_id
+            const invoiceLineId = (item as any).invoice_line_id 
+              ? Number((item as any).invoice_line_id)
+              : undefined;
             
+            if (!invoiceLineId) {
+              console.warn('⚠️ Item from storage missing invoice_line_id - cannot use for return:', {
+                productName: item.productName,
+                id: item.id,
+                invoice_line_id: (item as any).invoice_line_id,
+              });
+            }
+            
+            console.log('Loading item from storage (salesItems):', {
+              productName: item.productName,
+              id: item.id,
+              invoice_line_id: (item as any).invoice_line_id,
+              resolved_invoice_line_id: invoiceLineId,
+            });
+            
+            // For fallback items from storage, we don't have returned_quantity info
+            // So we'll set returnQuantity to 0 and let user enter the correct value
+            const fallbackRefundableQty = parseInt(item.quantity) || 0;
             return {
               ...item,
-              returnQuantity: item.quantity,
+              returnQuantity: '0', // Start with 0 for fallback items (user must enter correct value)
               originalQuantity: item.quantity,
               originalAmount: item.amount,
-              invoice_line_id: invoiceLineId,
-              refundable_quantity: parseInt(item.quantity) || 0,
+              invoice_line_id: invoiceLineId, // Will be undefined if not present
+              refundable_quantity: fallbackRefundableQty,
             };
           });
           setReturnItems(items);
@@ -422,58 +571,15 @@ export default function SaleReturn() {
     console.log('Dialog state changed:', isConfirmDialogOpen);
   }, [isConfirmDialogOpen]);
 
-  // Helper function to recalculate amount, taxes, and discount for an item
-  const recalculateItemAmount = (item: ReturnItem, quantity: number) => {
-    if (quantity === 0) {
-      return {
-        amount: '0.00',
-        discount: '0.00',
-        cgst: '0.00',
-        sgst: '0.00',
-        igst: '0.00',
-      };
-    }
-
-    const unitPrice = parseFloat(item.unitPrice) || 0;
-    const discountPercent = parseFloat(item.discountPercent) || 0;
-    const cgstPercent = parseFloat(item.cgstPercent) || 0;
-    const sgstPercent = parseFloat(item.sgstPercent) || 0;
-    const igstPercent = parseFloat(item.igstPercent) || 0;
-    
-    // Calculate base amount (unit price * quantity)
-    const baseAmount = unitPrice * quantity;
-    
-    // Apply discount - calculate discounted amount
-    const discountMultiplier = 1 - (discountPercent / 100);
-    const discountedAmount = baseAmount * discountMultiplier;
-    
-    // Calculate discount amount
-    const discountAmount = (unitPrice * discountPercent / 100 * quantity).toFixed(2);
-    
-    // Calculate taxes based on discounted amount
-    const cgstAmount = discountedAmount * cgstPercent / 100;
-    const sgstAmount = discountedAmount * sgstPercent / 100;
-    const igstAmount = discountedAmount * igstPercent / 100;
-    
-    // Final amount = discounted amount + CGST + SGST + IGST
-    const finalAmount = discountedAmount + cgstAmount + sgstAmount + igstAmount;
-    
-    return {
-      amount: finalAmount.toFixed(2),
-      discount: discountAmount,
-      cgst: cgstAmount.toFixed(2),
-      sgst: sgstAmount.toFixed(2),
-      igst: igstAmount.toFixed(2),
-    };
-  };
-
   const handleQuantityChange = (index: number, value: string) => {
     const numValue = parseInt(value) || 0;
     const originalQty = parseInt(returnItems[index].originalQuantity) || 0;
-    const refundableQty = returnItems[index].refundable_quantity || originalQty;
-    // Clamp between 0 and refundable quantity (or original quantity if refundable not set)
-    const maxQty = refundableQty > 0 ? refundableQty : originalQty;
-    const clampedValue = Math.max(0, Math.min(numValue, maxQty));
+    // Use refundable_quantity if it's defined (even if 0), otherwise fall back to originalQty
+    const refundableQty = returnItems[index].refundable_quantity !== undefined && returnItems[index].refundable_quantity !== null
+      ? returnItems[index].refundable_quantity
+      : originalQty;
+    // Clamp between 0 and refundable quantity
+    const clampedValue = Math.max(0, Math.min(numValue, refundableQty));
     
     setReturnItems(items => {
       const newItems = [...items];
@@ -519,8 +625,7 @@ export default function SaleReturn() {
       const newItems = [...items];
       const item = newItems[index];
       const numValue = parseFloat(value) || 0;
-      const clampedValue = Math.max(0, Math.min(numValue, 100)); // Clamp between 0 and 100
-      
+      const clampedValue = Math.max(0, Math.min(numValue, 100)); 
       // Update the tax percentage
       if (taxType === 'cgst') {
         newItems[index].cgstPercent = clampedValue.toString();
@@ -578,17 +683,27 @@ export default function SaleReturn() {
   };
 
   const handleConfirmReturn = async () => {
-    if (!invoiceData) return;
+    console.log(' handleConfirmReturn called');
+    
+    if (!invoiceData) {
+      console.error('❌ No invoiceData found');
+      return;
+    }
 
     if (!reason.trim()) {
+      console.error('❌ Reason is empty');
       alert('Please provide a reason for the return');
       return;
     }
 
     if (selectedItems.length === 0) {
+      console.error('❌ No items selected');
       alert('Please select at least one item to return');
       return;
     }
+
+    console.log('✅ Validation passed, processing return...');
+    console.log('📋 Selected items:', selectedItems);
 
     try {
       // Try to get invoice_line_id from the item
@@ -596,42 +711,77 @@ export default function SaleReturn() {
       const lines = selectedItems
         .filter(item => {
           const returnQty = parseInt(item.returnQuantity) || 0;
-          if (returnQty <= 0) return false;
+          if (returnQty <= 0) {
+            console.warn('⚠️ Item has zero return quantity:', item.productName);
+            return false;
+          }
           
-          // Check if invoice_line_id exists
-          if (item.invoice_line_id) return true;
+          // Validate return quantity doesn't exceed refundable quantity
+          const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
+            ? item.refundable_quantity
+            : parseInt(item.originalQuantity) || 0;
           
-          // Try to use id if it's a valid invoice_line_id (numeric)
-          const idAsNumber = parseInt(item.id);
-          if (!isNaN(idAsNumber) && idAsNumber > 0) return true;
+          if (returnQty > refundableQty) {
+            console.error(`❌ Return quantity (${returnQty}) exceeds refundable quantity (${refundableQty}) for item:`, item.productName);
+            alert(`Return quantity (${returnQty}) cannot exceed available quantity (${refundableQty}) for ${item.productName}`);
+            return false;
+          }
           
-          return false;
+          // CRITICAL: Only proceed if invoice_line_id exists
+          // Do NOT use item.id as fallback - it might be invoice_id, not invoice_line_id
+          if (!item.invoice_line_id) {
+            console.error('❌ Item missing invoice_line_id:', item);
+            return false;
+          }
+          
+          return true;
         })
         .map(item => {
-          // Use invoice_line_id if available, otherwise try to use id as invoice_line_id
-          const invoiceLineId = item.invoice_line_id || (parseInt(item.id) || 0);
+          // CRITICAL: Only use invoice_line_id from the item
+          // Do NOT fallback to item.id - it might be the invoice_id, not invoice_line_id
+          if (!item.invoice_line_id) {
+            console.error('❌ Missing invoice_line_id for item:', item);
+            return null;
+          }
           
-          return {
-            invoice_line_id: invoiceLineId,
+          const line = {
+            invoice_line_id: item.invoice_line_id,
             batch_number: item.batch || '',
             quantity: parseInt(item.returnQuantity) || 0,
-            restock_action: 'RESTOCK', // Default to RESTOCK, can be made configurable later
+            restock_action: 'RESTOCK', 
           };
+          console.log('✅ Created line:', line);
+          return line;
         })
+        .filter((line): line is NonNullable<typeof line> => line !== null)
         .filter(line => line.invoice_line_id > 0 && line.quantity > 0);
 
+      console.log('📦 Processed lines:', lines);
+
       if (lines.length === 0) {
-        console.error('Selected items:', selectedItems);
-        alert('No valid items selected for return. Please ensure items have valid invoice line IDs and return quantities.');
+        console.error('❌ No valid lines after processing. Selected items:', selectedItems);
+        const hasInvalidIds = selectedItems.some(item => !item.invoice_line_id);
+        if (hasInvalidIds) {
+          alert('Cannot process return: Some items are missing invoice line IDs. Please ensure all selected items have valid invoice line IDs and return quantities.');
+        } else {
+          alert('No valid items selected for return. Please ensure items have valid invoice line IDs and return quantities greater than zero.');
+        }
         return;
       }
 
-      // Get invoice number from location state
-      // Database stores invoice_number as integer (e.g., 3698), not "INV-3698"
-      // Parse invoiceNumber (e.g., "RB1" -> 1, "INV-1234" -> 1234, or "1" -> 1)
-      let invoiceNumber: number = 0;
+      // Get invoice number from API response (for new invoices, invoice_number should always be set)
+      // For new invoices only - invoice_number should exist in the database
+      let invoiceNumber: string | number = '';
       
-      if (invoiceData.invoiceNumber) {
+      // Priority 1: Use invoice_number from API response (this is what's stored in the database)
+      // For new invoices, this should always be available
+      if (invoiceNumberFromApi !== null && invoiceNumberFromApi !== undefined) {
+        // Use the invoice_number exactly as stored in the database
+        invoiceNumber = invoiceNumberFromApi;
+        console.log('✅ Using invoice_number from API response (PRIORITY 1):', invoiceNumber);
+      }
+      // Priority 2: Parse from invoiceData.invoiceNumber (from location state)
+      else if (invoiceData.invoiceNumber) {
         // Remove common prefixes (RB, INV-, etc.) and extract numeric part
         // Handles formats like: "RB1", "INV-1234", "1234", etc.
         let cleanedNumber = invoiceData.invoiceNumber
@@ -639,55 +789,69 @@ export default function SaleReturn() {
           .replace(/[^0-9]/g, '') // Remove all non-numeric characters
           .trim();
         
-        // If there's still a number after cleaning, parse it
+        // If there's still a number after cleaning, use it
         if (cleanedNumber) {
-          const parsed = parseInt(cleanedNumber, 10);
-          if (!isNaN(parsed) && parsed > 0) {
-            invoiceNumber = parsed;
-          }
+          invoiceNumber = cleanedNumber; // Keep as string to match backend format
+          console.log('📝 Using parsed invoiceNumber from location state (PRIORITY 2):', invoiceNumber);
         }
       }
       
-      // Note: Database stores invoice_number as integer, so we send the numeric value
+      console.log('📄 Invoice number resolved:', invoiceNumber, {
+        fromApi: invoiceNumberFromApi,
+        fromInvoiceNumber: invoiceData.invoiceNumber,
+        fromInvoiceId: invoiceData.invoiceId,
+      });
       
-      // Fallback: try invoiceId if it's a reasonable number (not a timestamp)
-      if (!invoiceNumber && invoiceData.invoiceId) {
-        const invoiceId = typeof invoiceData.invoiceId === 'number' 
-          ? invoiceData.invoiceId 
-          : parseInt(String(invoiceData.invoiceId || '0'), 10);
-        // Only use if it's a reasonable invoice ID (not a timestamp like 1766719204936)
-        if (!isNaN(invoiceId) && invoiceId > 0 && invoiceId < 1000000) {
-          invoiceNumber = invoiceId;
-        }
-      }
-      
-      if (!invoiceNumber || invoiceNumber <= 0) {
-        console.error('Invoice number resolution failed:', {
+      if (!invoiceNumber || (typeof invoiceNumber === 'string' && invoiceNumber.trim() === '')) {
+        console.error('❌ Invoice number resolution failed - invoice_number is required for new invoices:', {
+          invoiceNumberFromApi: invoiceNumberFromApi,
           invoiceDataInvoiceNumber: invoiceData.invoiceNumber,
           invoiceDataInvoiceId: invoiceData.invoiceId,
-          parsedInvoiceNumber: invoiceNumber
         });
-        alert('Invalid invoice number. Cannot submit return. Please try again or contact support.');
+        alert('Invalid invoice number. Cannot submit return. Please ensure the invoice has a valid invoice number (new invoices should always have one).');
         return;
       }
       
       const createdBy = user?.username || invoiceData.username || 'system';
+      console.log('👤 Created by:', createdBy);
 
-      const result = await submitSalesReturn({
-        invoice_number: invoiceNumber,
+      
+      // Send invoice_number exactly as stored in database (for new invoices)
+      // Backend expects string format matching what's in the database
+      const payload = {
+        invoice_number: String(invoiceNumber), // Send as string to match backend lookup
         created_by: createdBy,
+        return_date: returnDate ? returnDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'), // Format as YYYY-MM-DD
         reason: reason.trim(),
         notes: notes.trim(),
         lines: lines,
-      }).unwrap();
+      };
 
+      console.log('📝 Using invoice_number for return:', invoiceNumber, {
+        source: invoiceNumberFromApi !== null && invoiceNumberFromApi !== undefined 
+          ? 'API response' 
+          : 'Location state (parsed)',
+        originalFromApi: invoiceNumberFromApi
+      });
+
+      console.log('🚀 Calling submitSalesReturn API with payload:', JSON.stringify(payload, null, 2));
+      console.log('🌐 Endpoint: POST /sales/submit-sales-return/');
+
+      const result = await submitSalesReturn(payload).unwrap();
+
+      console.log('✅ Return submitted successfully:', result);
       setIsConfirmDialogOpen(false);
-      console.log('Return submitted successfully:', result);
       
       // Navigate back to sale history after successful return
       navigate('/sales');
     } catch (error: any) {
-      console.error('Error submitting return:', error);
+      console.error('❌ Error submitting return:', error);
+      console.error('❌ Error details:', {
+        status: error?.status,
+        data: error?.data,
+        message: error?.message,
+        error: error?.error,
+      });
       const errorMessage = error?.data?.error || error?.message || 'Failed to submit return. Please try again.';
       alert(errorMessage);
     }
@@ -755,13 +919,24 @@ export default function SaleReturn() {
         }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Typography sx={{ fontSize: '12px', color: '#728197' }}>
+              Return date
+            </Typography>
+            <PharmaDatePicker
+              value={returnDate}
+              onChange={(newValue) => setReturnDate(newValue)}
+              width={200}
+              height={40}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Typography sx={{ fontSize: '12px', color: '#728197' }}>
               Original payment type
             </Typography>
             <TextField
               value="Cash"
               disabled
               sx={{
-                width: '200px',
+                width: '150px',
                 '& .MuiOutlinedInput-root': {
                   height: '40px',
                   borderRadius: '12px',
@@ -794,7 +969,7 @@ export default function SaleReturn() {
               disableClearable
               forcePopupIcon
               popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
-              sx={{ width: '200px' }}
+              sx={{ width: '150px' }}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -847,26 +1022,50 @@ export default function SaleReturn() {
               sortable: false,
               render: (item: ReturnItem) => {
                 const index = returnItems.findIndex(i => i.id === item.id);
+                const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
+                  ? item.refundable_quantity
+                  : parseInt(item.originalQuantity) || 0;
+                const isAllReturned = refundableQty === 0;
+                
                 return (
-                  <TextField
-                    type="number"
-                    value={item.returnQuantity}
-                    onChange={(e) => handleQuantityChange(index, e.target.value)}
-                    inputProps={{ 
-                      min: 0, 
-                      max: parseInt(item.originalQuantity) || 0,
-                      style: { textAlign: 'center', padding: '4px 8px' }
-                    }}
-                    sx={{
-                      width: '80px',
-                      '& .MuiOutlinedInput-root': {
-                        height: '32px',
-                        '& input': {
-                          padding: '4px 8px',
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <TextField
+                      type="number"
+                      value={item.returnQuantity}
+                      onChange={(e) => handleQuantityChange(index, e.target.value)}
+                      disabled={isAllReturned}
+                      inputProps={{ 
+                        min: 0, 
+                        max: refundableQty,
+                        style: { textAlign: 'center', padding: '4px 8px' }
+                      }}
+                      sx={{
+                        width: '80px',
+                        '& .MuiOutlinedInput-root': {
+                          height: '32px',
+                          '& input': {
+                            padding: '4px 8px',
+                          },
+                          '&.Mui-disabled': {
+                            backgroundColor: '#F3F4F6',
+                          },
                         },
-                      },
-                    }}
-                  />
+                      }}
+                    />
+                    {isAllReturned && (
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: '#DC2626',
+                          fontSize: '11px',
+                          fontWeight: 500,
+                          fontStyle: 'italic'
+                        }}
+                      >
+                        All items returned
+                      </Typography>
+                    )}
+                  </Box>
                 );
               },
             },

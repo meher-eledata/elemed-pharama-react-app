@@ -17,6 +17,7 @@ interface GetTableColumnsParams {
   handleSaveClick: () => void;
   handleCancelClick: () => void;
   handleDeleteClick: (itemId?: string) => void;
+  isReturnDetailsMode?: boolean;
 }
 
 export const getTableColumns = ({
@@ -27,13 +28,18 @@ export const getTableColumns = ({
   handleSaveClick,
   handleCancelClick,
   handleDeleteClick,
+  isReturnDetailsMode = false,
 }: GetTableColumnsParams): TableColumn<SalesReceiptItem>[] => [
   {
     key: 'productName',
     header: SALES_RECEIPT_LABELS.TABLE_HEADER_PRODUCT,
     sortable: true,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.productName}
+        </Typography>
+      ) : (
         <TextField
           value={item.productName}
           onChange={(e) => {
@@ -56,10 +62,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.productName}
-        </Typography>
       )
     )
   },
@@ -67,7 +69,11 @@ export const getTableColumns = ({
     key: 'quantity',
     header: SALES_RECEIPT_LABELS.TABLE_HEADER_QUANTITY,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.quantity}
+        </Typography>
+      ) : (
         <TextField
           value={item.quantity}
           onChange={(e) => {
@@ -95,10 +101,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.quantity}
-        </Typography>
       )
     )
   },
@@ -106,7 +108,11 @@ export const getTableColumns = ({
     key: 'batch',
     header: SALES_RECEIPT_LABELS.TABLE_HEADER_BATCH,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.batch}
+        </Typography>
+      ) : (
         <TextField
           value={item.batch}
           onChange={(e) => {
@@ -129,10 +135,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.batch}
-        </Typography>
       )
     )
   },
@@ -140,7 +142,11 @@ export const getTableColumns = ({
     key: 'unitPrice',
     header: SALES_RECEIPT_LABELS.TABLE_HEADER_UNIT_PRICE,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.unitPrice}
+        </Typography>
+      ) : (
         <TextField
           value={item.unitPrice}
           onChange={(e) => {
@@ -168,10 +174,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.unitPrice}
-        </Typography>
       )
     )
   },
@@ -179,7 +181,11 @@ export const getTableColumns = ({
     key: 'discount',
     header: SALES_RECEIPT_LABELS.TABLE_HEADER_DISC,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.discountPercent}%
+        </Typography>
+      ) : (
         <TextField
           value={item.discountPercent}
           onChange={(e) => {
@@ -213,10 +219,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.discountPercent}%
-        </Typography>
       )
     )
   },
@@ -224,7 +226,11 @@ export const getTableColumns = ({
     key: 'cgst',
     header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_CGST} (%)`,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.cgstPercent}
+        </Typography>
+      ) : (
         <TextField
           value={item.cgstPercent}
           onChange={(e) => {
@@ -266,10 +272,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.cgstPercent}
-        </Typography>
       )
     )
   },
@@ -277,7 +279,11 @@ export const getTableColumns = ({
     key: 'sgst',
     header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_SGST} (%)`,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.sgstPercent}
+        </Typography>
+      ) : (
         <TextField
           value={item.sgstPercent}
           onChange={(e) => {
@@ -319,10 +325,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.sgstPercent}
-        </Typography>
       )
     )
   },
@@ -330,7 +332,11 @@ export const getTableColumns = ({
     key: 'igst',
     header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_IGST} (%)`,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          {item.igstPercent}
+        </Typography>
+      ) : (
         <TextField
           value={item.igstPercent}
           onChange={(e) => {
@@ -372,10 +378,6 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          {item.igstPercent}
-        </Typography>
       )
     )
   },
@@ -383,7 +385,11 @@ export const getTableColumns = ({
     key: 'amount',
     header: SALES_RECEIPT_LABELS.TABLE_HEADER_AMOUNT,
     render: (item) => (
-      editingRowId === item.id ? (
+      (isReturnDetailsMode || editingRowId !== item.id) ? (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
+          ₹{item.amount}
+        </Typography>
+      ) : (
         <TextField
           value={item.amount}
           onChange={(e) => {
@@ -407,92 +413,112 @@ export const getTableColumns = ({
             },
           }}
         />
-      ) : (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B' }}>
-          ₹{item.amount}
-        </Typography>
       )
     )
   },
   {
-    key: 'actions',
-    header: SALES_RECEIPT_LABELS.TABLE_HEADER_ACTIONS,
+    key: isReturnDetailsMode ? 'returnStatus' : 'actions',
+    header: isReturnDetailsMode ? 'Return Status' : SALES_RECEIPT_LABELS.TABLE_HEADER_ACTIONS,
     sortable: false,
-    render: (item) => (
-      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-        {editingRowId === item.id ? (
-          <>
-            <IconButton
-              size="small"
-              onClick={handleSaveClick}
-              sx={{ 
-                padding: '4px',
-                color: '#000000',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: '#000000'
-                }
-              }}
-            >
-              <CheckIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={handleCancelClick}
-              sx={{ 
-                padding: '4px',
-                color: '#000000',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: '#000000'
-                }
-              }}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </>
-        ) : (
-          <>
-            <IconButton
-              size="small"
-              onClick={() => handleEditClick(item.id)}
-              sx={{ 
-                padding: '4px',
-                color: '#6B7280',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: '#6B7280'
-                }
-              }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={() => handleDeleteClick(item.id)}
-              sx={{ 
-                padding: '4px',
-                color: '#6B7280',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: '#6B7280'
-                }
-              }}
-            >
-              <img 
-                src={DeleteNewIcon} 
-                alt="Delete" 
-                style={{ 
-                  width: '16px', 
-                  height: '16px',
-                  filter: 'brightness(0) saturate(100%) invert(45%) sepia(8%) saturate(1038%) hue-rotate(185deg) brightness(95%) contrast(86%)'
-                }} 
-              />
-            </IconButton>
-          </>
-        )}
-      </Box>
-    )
+    render: (item) => {
+      if (isReturnDetailsMode) {
+        // Return Status column for return details mode
+        const originalQty = item.original_quantity || parseFloat(item.quantity) || 0;
+        const returnedQty = item.returned_quantity || 0;
+        const statusText = returnedQty === 0 
+          ? '0 return'
+          : `${returnedQty} out of ${originalQty} return`;
+        
+        return (
+          <Typography sx={{ 
+            fontFamily: "'Lexend', sans-serif", 
+            fontWeight: 500, 
+            fontSize: '14px', 
+            lineHeight: '20px', 
+            color: '#1A212B' 
+          }}>
+            {statusText}
+          </Typography>
+        );
+      }
+      
+      // Actions column for normal/edit mode
+      return (
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+          {editingRowId === item.id ? (
+            <>
+              <IconButton
+                size="small"
+                onClick={handleSaveClick}
+                sx={{ 
+                  padding: '4px',
+                  color: '#000000',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    color: '#000000'
+                  }
+                }}
+              >
+                <CheckIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={handleCancelClick}
+                sx={{ 
+                  padding: '4px',
+                  color: '#000000',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    color: '#000000'
+                  }
+                }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </>
+          ) : (
+            <>
+              <IconButton
+                size="small"
+                onClick={() => handleEditClick(item.id)}
+                sx={{ 
+                  padding: '4px',
+                  color: '#6B7280',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    color: '#6B7280'
+                  }
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => handleDeleteClick(item.id)}
+                sx={{ 
+                  padding: '4px',
+                  color: '#6B7280',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    color: '#6B7280'
+                  }
+                }}
+              >
+                <img 
+                  src={DeleteNewIcon} 
+                  alt="Delete" 
+                  style={{ 
+                    width: '16px', 
+                    height: '16px',
+                    filter: 'brightness(0) saturate(100%) invert(45%) sepia(8%) saturate(1038%) hue-rotate(185deg) brightness(95%) contrast(86%)'
+                  }} 
+                />
+              </IconButton>
+            </>
+          )}
+        </Box>
+      );
+    }
   }
 ];
 

@@ -22,6 +22,9 @@ export interface SalesReceiptItem {
   igst: string;
   igstPercent: string;
   amount: string;
+  // Return information (for return details view)
+  returned_quantity?: number;
+  original_quantity?: number;
 }
 
 export interface FormData {

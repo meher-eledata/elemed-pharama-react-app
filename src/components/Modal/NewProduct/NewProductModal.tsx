@@ -602,6 +602,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                               setFormErrors(prev => ({ ...prev, expiry: '' }));
                             }
                           }}
+                          minDate={dayjs().startOf('day')} // Only allow today and future dates
                           width="100%"
                           height={NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT}
                           error={!!formErrors.expiry}

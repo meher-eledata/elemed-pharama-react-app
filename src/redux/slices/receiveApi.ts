@@ -28,6 +28,8 @@ export interface Receipt {
   payment_vendor?: string;
   invoice_date?: string; // Invoice date from form
   invoice_attachment?: string; // Invoice attachment (base64 data URL)
+  receipt_file_url?: string; // Receipt file URL from server
+  receipt_file_name?: string; // Receipt file name
 }
 
 export interface EditReceiptRequest {

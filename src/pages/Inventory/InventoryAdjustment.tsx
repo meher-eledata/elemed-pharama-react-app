@@ -225,7 +225,6 @@ const InventoryAdjustment: React.FC = () => {
     try {
       const result = await getTypesForBrandAndProduct({
         brand_id: brandId,
-        brand_name: brandName,
         product_name: productName,
       }).unwrap();
       setTypesForProduct(result);
@@ -295,7 +294,6 @@ const InventoryAdjustment: React.FC = () => {
             try {
               const types = await getTypesForBrandAndProduct({
                 brand_id: brand.id,
-                brand_name: brand.brand_name,
                 product_name: product.name,
               }).unwrap();
               
@@ -745,6 +743,7 @@ const InventoryAdjustment: React.FC = () => {
                 )
               );
             }}
+            minDate={dayjs().startOf('day')} // Only allow today and future dates
             disabled={!isEditing}
             width={150}
             height={36}

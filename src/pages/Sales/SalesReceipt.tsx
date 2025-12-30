@@ -145,9 +145,10 @@ const SalesReceipt: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
 
-  // Check if we're in edit mode from location state
+  // Check if we're in edit mode or return details mode from location state
   const editModeData = (location.state as any) || null;
   const isEditMode = editModeData?.isEditMode || false;
+  const isReturnDetailsMode = editModeData?.isReturnDetailsMode || false;
 
   // Store original invoice data for comparison
   const [originalInvoiceData, setOriginalInvoiceData] = useState<{
@@ -169,7 +170,7 @@ const SalesReceipt: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
-    if (isEditMode && editModeData) {
+    if ((isEditMode || isReturnDetailsMode) && editModeData) {
       let invoiceId: number | null = null;
       let invoiceNumber: string | null = null;
       
@@ -311,6 +312,9 @@ const SalesReceipt: React.FC = () => {
                     igstPercent = ((igstAmount / discountedAmount) * 100).toFixed(2);
                   }
 
+                  const originalQty = parseFloat(line.quantity || '0');
+                  const returnedQty = parseFloat(line.returned_quantity || '0');
+                  
                   return {
                     id: line.invoice_line_id?.toString() || line.id?.toString() || '',
                     productName: line.name || line.product_name || line.productName || '', // API returns 'name' field
@@ -331,6 +335,9 @@ const SalesReceipt: React.FC = () => {
                     igstPercent: igstPercent,
                     amount: line.selling_price?.toString() || line.amount?.toString() || '0',
                     discountAuthorizedBy: line.discount_authority || undefined,
+                    // Store return information for return details view
+                    returned_quantity: returnedQty,
+                    original_quantity: originalQty,
                   };
                 }) : (editModeData.salesItems || []),
                 totalValue: invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || editModeData.totalValue || '0',
@@ -698,6 +705,8 @@ const SalesReceipt: React.FC = () => {
   };
 
   const handleEditClick = (itemId: string) => {
+    // Don't allow editing in return details mode
+    if (isReturnDetailsMode) return;
     setEditingRowId(itemId);
     setApplyGstToAll(false);
   };
@@ -1121,6 +1130,7 @@ const SalesReceipt: React.FC = () => {
     handleSaveClick,
     handleCancelClick,
     handleDeleteClick,
+    isReturnDetailsMode,
   });
 
   const searchAndFilterConfig: SearchAndFilterConfig = {
@@ -1157,7 +1167,7 @@ const SalesReceipt: React.FC = () => {
         <SalesReceiptHeader>
           <LeftSection>
             <SalesReceiptTitle variant="h1">
-              {SALES_RECEIPT_LABELS.PAGE_TITLE}
+              {isReturnDetailsMode ? 'Return details' : SALES_RECEIPT_LABELS.PAGE_TITLE}
             </SalesReceiptTitle>
           </LeftSection>
         </SalesReceiptHeader>
@@ -1173,7 +1183,7 @@ const SalesReceipt: React.FC = () => {
             selectedCustomer={selectedCustomer}
             customerNames={customerNames}
             availablePhones={availablePhones}
-            onCustomerNameChange={(newName) => {
+            onCustomerNameChange={isReturnDetailsMode ? () => {} : (newName) => {
               // When name changes and it's an exact match from dropdown, set immediate fetch flag first
               const normalizedNewName = newName.trim().toLowerCase();
               const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
@@ -1183,11 +1193,11 @@ const SalesReceipt: React.FC = () => {
               }
               handleCustomerNameChange(newName);
             }}
-            onCustomerSelect={handleCustomerSelect}
-            onCustomerMobileChange={setCustomerMobile}
-            onCustomerCityChange={setCustomerCity}
-            onPatientTypeChange={setPatientType}
-            onAddNewCustomer={handleOpenCustomerModal}
+            onCustomerSelect={isReturnDetailsMode ? () => {} : handleCustomerSelect}
+            onCustomerMobileChange={isReturnDetailsMode ? () => {} : setCustomerMobile}
+            onCustomerCityChange={isReturnDetailsMode ? () => {} : setCustomerCity}
+            onPatientTypeChange={isReturnDetailsMode ? () => {} : setPatientType}
+            onAddNewCustomer={isReturnDetailsMode ? () => {} : handleOpenCustomerModal}
           />
 
           <DoctorDetailsSection
@@ -1198,10 +1208,10 @@ const SalesReceipt: React.FC = () => {
             doctorNames={doctorNames}
             isLoadingDoctorNames={isLoadingDoctorNames}
             availableDoctorInfo={availableDoctorInfo}
-            onDoctorSelect={handleDoctorSelect}
-            onDoctorNameChange={handleDoctorNameChange}
-            onDoctorMobileChange={setDoctorMobile}
-            onDoctorEmailChange={setDoctorEmail}
+            onDoctorSelect={isReturnDetailsMode ? () => {} : handleDoctorSelect}
+            onDoctorNameChange={isReturnDetailsMode ? () => {} : handleDoctorNameChange}
+            onDoctorMobileChange={isReturnDetailsMode ? () => {} : setDoctorMobile}
+            onDoctorEmailChange={isReturnDetailsMode ? () => {} : setDoctorEmail}
           />
 
           <PaymentDetailsSection
@@ -1209,10 +1219,10 @@ const SalesReceipt: React.FC = () => {
             insuranceCompany={insuranceCompany}
             invoiceNumber={invoiceNumber}
             invoiceDate={invoiceDate}
-            onPaymentModeChange={setPaymentMode}
-            onInsuranceCompanyChange={setInsuranceCompany}
-            onInvoiceNumberChange={setInvoiceNumber}
-            onInvoiceDateChange={setInvoiceDate}
+            onPaymentModeChange={isReturnDetailsMode ? () => {} : setPaymentMode}
+            onInsuranceCompanyChange={isReturnDetailsMode ? () => {} : setInsuranceCompany}
+            onInvoiceNumberChange={isReturnDetailsMode ? () => {} : setInvoiceNumber}
+            onInvoiceDateChange={isReturnDetailsMode ? () => {} : setInvoiceDate}
           />
         </CustomerDoctorSection>
 
@@ -1226,42 +1236,46 @@ const SalesReceipt: React.FC = () => {
             alignItems: 'center',
             marginBottom: '16px' 
           }}>
-            <ApplyGstCheckbox
-              editingRowId={editingRowId}
-              applyGstToAll={applyGstToAll}
-              salesItems={salesItems}
-              onApplyGstToAllChange={useCallback((checked: boolean) => {
-                setApplyGstToAll(checked);
-                if (checked && salesItems.length > 0) {
-                  const firstRowItem = salesItems[0];
-                  setSalesItems(prev => prev.map(product => ({
-                    ...product,
-                    cgstPercent: firstRowItem.cgstPercent,
-                    sgstPercent: firstRowItem.sgstPercent,
-                    igstPercent: firstRowItem.igstPercent,
-                    cgst: (parseFloat(product.amount) * parseFloat(firstRowItem.cgstPercent || '0') / 100).toFixed(2),
-                    sgst: (parseFloat(product.amount) * parseFloat(firstRowItem.sgstPercent || '0') / 100).toFixed(2),
-                    igst: (parseFloat(product.amount) * parseFloat(firstRowItem.igstPercent || '0') / 100).toFixed(2),
-                  })));
-                }
-              }, [salesItems])}
-            />
-            
-            <StandardButton 
-              onClick={handleEditCart}
-              variant="text"
-              size="small"
-              startIcon={<EditIcon sx={{ fontSize: '16px' }} />}
-              sx={{ 
-                color: '#5C17E5',
-                backgroundColor: 'transparent',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                }
-              }}
-            >
-              {SALES_RECEIPT_LABELS.EDIT_CART_BUTTON}
-            </StandardButton>
+            {!isReturnDetailsMode && (
+              <>
+                <ApplyGstCheckbox
+                  editingRowId={editingRowId}
+                  applyGstToAll={applyGstToAll}
+                  salesItems={salesItems}
+                  onApplyGstToAllChange={useCallback((checked: boolean) => {
+                    setApplyGstToAll(checked);
+                    if (checked && salesItems.length > 0) {
+                      const firstRowItem = salesItems[0];
+                      setSalesItems(prev => prev.map(product => ({
+                        ...product,
+                        cgstPercent: firstRowItem.cgstPercent,
+                        sgstPercent: firstRowItem.sgstPercent,
+                        igstPercent: firstRowItem.igstPercent,
+                        cgst: (parseFloat(product.amount) * parseFloat(firstRowItem.cgstPercent || '0') / 100).toFixed(2),
+                        sgst: (parseFloat(product.amount) * parseFloat(firstRowItem.sgstPercent || '0') / 100).toFixed(2),
+                        igst: (parseFloat(product.amount) * parseFloat(firstRowItem.igstPercent || '0') / 100).toFixed(2),
+                      })));
+                    }
+                  }, [salesItems])}
+                />
+                
+                <StandardButton 
+                  onClick={handleEditCart}
+                  variant="text"
+                  size="small"
+                  startIcon={<EditIcon sx={{ fontSize: '16px' }} />}
+                  sx={{ 
+                    color: '#5C17E5',
+                    backgroundColor: 'transparent',
+                    '&:hover': {
+                      backgroundColor: 'transparent',
+                    }
+                  }}
+                >
+                  {SALES_RECEIPT_LABELS.EDIT_CART_BUTTON}
+                </StandardButton>
+              </>
+            )}
           </Box>
           
           <Box sx={{ 
@@ -1291,19 +1305,21 @@ const SalesReceipt: React.FC = () => {
           totalDiscount={totalDiscount}
           taxAmount={taxAmount}
           totalPayableAmount={totalPayableAmount}
-          onTotalValueChange={setTotalValue}
-          onTotalDiscountChange={setTotalDiscount}
-          onTaxAmountChange={setTaxAmount}
-          onTotalPayableAmountChange={setTotalPayableAmount}
+          onTotalValueChange={isReturnDetailsMode ? () => {} : setTotalValue}
+          onTotalDiscountChange={isReturnDetailsMode ? () => {} : setTotalDiscount}
+          onTaxAmountChange={isReturnDetailsMode ? () => {} : setTaxAmount}
+          onTotalPayableAmountChange={isReturnDetailsMode ? () => {} : setTotalPayableAmount}
         />
 
-        <ActionButtons
-          onCancel={handleCancel}
-          onSave={handleSave}
-          onPrint={handlePrint}
-          isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
-          hidePrintButton={isEditMode}
-        />
+        {!isReturnDetailsMode && (
+          <ActionButtons
+            onCancel={handleCancel}
+            onSave={handleSave}
+            onPrint={handlePrint}
+            isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
+            hidePrintButton={isEditMode}
+          />
+        )}
 
         <CustomerModal
           isOpen={isCustomerModalOpen}

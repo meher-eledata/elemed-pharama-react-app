@@ -18,7 +18,7 @@ import { PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation, useUploadReceiptFileMutation, getReceiptFileUrl } from "../../redux/slices/receiveApi";
+import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation, useUploadReceiptFileMutation, getReceiptFileUrl, useGetReceiptsQuery } from "../../redux/slices/receiveApi";
 import { useGetBatchesForProductMutation } from "../../redux/slices/inventoryApi";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -140,6 +140,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigationPaymentVendor = (location.state as any)?.paymentVendor || "";
   const navigationInvoiceDate = (location.state as any)?.invoiceDate || "";
   
+  // Fetch receipt data when in edit mode to get receipt_file_name and receipt_file_url
+  const { data: receiptsData } = useGetReceiptsQuery(undefined, {
+    skip: !isEditMode || !receiptId, // Only fetch when in edit mode and receiptId exists
+  });
+  
   const [supplierName, setSupplierName] = useState<string>(
     (isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier) || ""
   );
@@ -186,6 +191,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [invoiceFileName, setInvoiceFileName] = useState<string>("");
   const [invoiceAttachmentUrl, setInvoiceAttachmentUrl] = useState<string>("");
+  const [isExistingFile, setIsExistingFile] = useState<boolean>(false); // Track if file is from server
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const inputFieldStyles = {
@@ -1239,53 +1245,58 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setPharmaTableData(transformedLines);
       setOriginalReceiptLines(transformedLines);
       
-      // Load invoice attachment if available from selectedOrder
-      // Check for both old format (base64) and new format (file URL from server)
-      if (selectedOrder) {
-        const attachmentUrl = (selectedOrder as any).invoice_attachment;
-        
-        if (attachmentUrl) {
-          // Old format: base64 data URL
-          if (attachmentUrl.startsWith('data:')) {
-            setInvoiceAttachmentUrl(attachmentUrl);
-            setOriginalInvoiceAttachmentUrl(attachmentUrl);
-            setInvoiceFileName('Invoice Receipt');
-          } else {
-            // New format: file path or URL - use getReceiptFileUrl to get the proper URL
-            const fileUrl = getReceiptFileUrl(receiptId);
-            setInvoiceAttachmentUrl(fileUrl);
-            setOriginalInvoiceAttachmentUrl(fileUrl);
-            // Get file name from receipt data - this should be the actual uploaded file name (e.g., "dummy.pdf")
-            const receiptFileName = (selectedOrder as any).receipt_file_name;
-            setInvoiceFileName(receiptFileName || 'Invoice Receipt');
-          }
-        } else if (receiptId) {
-          // No invoice_attachment in selectedOrder, but receiptId exists
-          // For new file upload system, file is stored on server
-          // Use getReceiptFileUrl to construct the URL (file may or may not exist)
-          const fileUrl = getReceiptFileUrl(receiptId);
-          setInvoiceAttachmentUrl(fileUrl);
-          setOriginalInvoiceAttachmentUrl(fileUrl);
-          // Get file name from receipt data - this should be the actual uploaded file name (e.g., "dummy.pdf")
-          const receiptFileName = (selectedOrder as any).receipt_file_name;
-          setInvoiceFileName(receiptFileName || 'Invoice Receipt');
-        } else {
-          // No original attachment
-          setOriginalInvoiceAttachmentUrl('');
-          setInvoiceAttachmentUrl('');
-          setInvoiceFileName('');
+      // Load invoice attachment if available
+      // Priority: 1) Receipt data from API (receipt_file_url, receipt_file_name)
+      //           2) selectedOrder data (invoice_attachment, receipt_file_name)
+      //           3) receiptId only (construct URL)
+      
+      let receiptFileName: string | undefined = undefined;
+      let hasReceiptFile: boolean = false;
+      
+      // First, try to get receipt data from API
+      if (receiptsData && receiptId) {
+        const receipt = receiptsData.find((r: any) => r.id === receiptId);
+        if (receipt) {
+          receiptFileName = receipt.receipt_file_name;
+          hasReceiptFile = !!(receipt.receipt_file_url || receipt.receipt_file_name);
         }
-      } else if (receiptId) {
-        // No selectedOrder but receiptId exists - try to load file URL
+      }
+      
+      // Fallback to selectedOrder data
+      if (!receiptFileName && selectedOrder) {
+        receiptFileName = (selectedOrder as any).receipt_file_name;
+        hasReceiptFile = !!(receiptFileName || (selectedOrder as any).receipt_file_url);
+      }
+      
+      // Check for old format (base64) in selectedOrder
+      const attachmentUrl = selectedOrder ? (selectedOrder as any).invoice_attachment : undefined;
+      
+      if (attachmentUrl && attachmentUrl.startsWith('data:')) {
+        // Old format: base64 data URL
+        setInvoiceAttachmentUrl(attachmentUrl);
+        setOriginalInvoiceAttachmentUrl(attachmentUrl);
+        setInvoiceFileName(receiptFileName || 'Invoice Receipt');
+        setIsExistingFile(true);
+      } else if (hasReceiptFile && receiptId) {
+        // New format: file stored on server - construct URL from receiptId
         const fileUrl = getReceiptFileUrl(receiptId);
         setInvoiceAttachmentUrl(fileUrl);
         setOriginalInvoiceAttachmentUrl(fileUrl);
-        setInvoiceFileName('Invoice Receipt');
+        setInvoiceFileName(receiptFileName || 'Invoice Receipt');
+        setIsExistingFile(true);
+      } else if (receiptId) {
+        // receiptId exists but no file info - try to construct URL anyway (file may exist)
+        const fileUrl = getReceiptFileUrl(receiptId);
+        setInvoiceAttachmentUrl(fileUrl);
+        setOriginalInvoiceAttachmentUrl(fileUrl);
+        setInvoiceFileName(receiptFileName || 'Invoice Receipt');
+        setIsExistingFile(!!receiptFileName);
       } else {
         // No original attachment
         setOriginalInvoiceAttachmentUrl('');
         setInvoiceAttachmentUrl('');
         setInvoiceFileName('');
+        setIsExistingFile(false);
       }
       
       // Reset original invoice file (no file selected initially in edit mode)
@@ -1426,6 +1437,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               onChange={(newValue: Dayjs | null) => {
                 updateEditingData("expiryDate", newValue);
               }}
+              minDate={dayjs().startOf('day')} // Only allow today and future dates
               placeholder="MM/DD/YYYY"
               width="100%"
               height={32}
@@ -2473,6 +2485,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   
                   setInvoiceFile(file);
                   setInvoiceFileName(file.name);
+                  setIsExistingFile(false); // New file selected, not from server
                   
                   // Convert file to base64 data URL for storage and display
                   const reader = new FileReader();
@@ -2520,7 +2533,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                 boxShadow: "none",
               }}
             >
-              {invoiceFileName ? `Uploaded: ${invoiceFileName.length > 20 ? invoiceFileName.substring(0, 20) + '...' : invoiceFileName}` : "Upload Invoice Receipt"}
+              {invoiceFileName 
+                ? (isExistingFile 
+                    ? `Current: ${invoiceFileName.length > 18 ? invoiceFileName.substring(0, 18) + '...' : invoiceFileName}` 
+                    : `Uploaded: ${invoiceFileName.length > 18 ? invoiceFileName.substring(0, 18) + '...' : invoiceFileName}`)
+                : "Upload Invoice Receipt"}
             </Button>
             {(invoiceFileName || invoiceAttachmentUrl) && (
               <IconButton
@@ -2530,6 +2547,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                   setInvoiceFile(null);
                   setInvoiceFileName("");
                   setInvoiceAttachmentUrl("");
+                  setIsExistingFile(false);
                   if (fileInputRef.current) {
                     fileInputRef.current.value = "";
                   }

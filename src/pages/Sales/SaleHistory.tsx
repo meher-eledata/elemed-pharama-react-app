@@ -21,7 +21,7 @@ import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/Sale
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
-import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery } from '../../redux/slices/salesApi';
+import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
@@ -75,6 +75,9 @@ export default function SaleHistory() {
   const user = useSelector((state: RootState) => state.auth.user);
   
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
+  const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
+  
+  const [returnInfoMap, setReturnInfoMap] = useState<Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
   
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -97,13 +100,15 @@ export default function SaleHistory() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
   
-  // Force refresh of saved history when location changes (e.g., after edit)
+  // Force refresh of saved history when location changes (e.g., after edit or return)
   const [refreshKey, setRefreshKey] = useState(0);
   
   useEffect(() => {
     // Reload saved history when component mounts or when navigating back
     setRefreshKey(prev => prev + 1);
-  }, [location.pathname]);
+    // Also refetch invoices to get updated return information
+    refetchInvoices();
+  }, [location.pathname, refetchInvoices]);
 
   const savedHistory = useMemo(() => getSalesHistoryFromStorage(), [refreshKey]);
   
@@ -119,9 +124,6 @@ export default function SaleHistory() {
       patientType: item.patientType || 'Out Patient', // Default to "Out Patient" if not specified
       totalAmount: item.totalAmount || 0,
     }));
-
-    // Remove duplicates from savedItems based on invoice number (keep the most recent one)
-    // Use Map for O(1) lookup instead of findIndex which is O(n)
     const savedItemsMap = new Map<string, SalesHistoryItem>();
     savedItems.forEach(item => {
       if (item.invoiceNumber) {
@@ -145,10 +147,48 @@ export default function SaleHistory() {
         patientType = invoice.patient_type === 0 ? 'In Patient' : 'Out Patient';
       }
       
-      // Use the database invoice ID (invoice.id) if available, otherwise use invoice_number
-      // Format invoice number as "INV" + number to match our format
       const dbInvoiceId = invoice.id || parseInt(invoice.invoice_number) || index + 1000;
-      const formattedInvoiceNumber = `INV${invoice.invoice_number}`;
+      
+      // Handle invoice_number formatting - use invoice_number if available, otherwise use invoice.id
+      let formattedInvoiceNumber: string;
+      
+      // Check if invoice_number is valid (not null, undefined, empty string, or string "null")
+      const invoiceNum = invoice.invoice_number;
+      const invoiceNumStr = String(invoiceNum || '').trim();
+      
+      // Check if invoice_number already has "INV" prefix (backend might store it with prefix)
+      const hasInvPrefix = invoiceNumStr.toUpperCase().startsWith('INV');
+      const numericPart = hasInvPrefix 
+        ? invoiceNumStr.replace(/^INV/i, '').trim()
+        : invoiceNumStr;
+      
+      const numValue = Number(numericPart);
+      const hasValidInvoiceNumber = invoiceNum !== null 
+        && invoiceNum !== undefined 
+        && invoiceNum !== '' 
+        && invoiceNumStr.toLowerCase() !== 'null'
+        && !isNaN(numValue)
+        && numValue > 0; // Must be a positive number
+      
+      if (hasValidInvoiceNumber) {
+      
+        formattedInvoiceNumber = hasInvPrefix ? invoiceNumStr : `INV${numericPart}`;
+      } else if (invoice.id) {
+        // invoice_number is null/undefined/invalid, use invoice.id as fallback
+        // This handles old invoices where invoice_number wasn't set
+        formattedInvoiceNumber = `INV${invoice.id}`;
+        // Debug: Log when we use fallback
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Invoice number is null/undefined, using invoice.id as fallback:', {
+            invoice_id: invoice.id,
+            invoice_number: invoice.invoice_number,
+            formatted: formattedInvoiceNumber
+          });
+        }
+      } else {
+        // Fallback if neither exists (shouldn't happen, but handle gracefully)
+        formattedInvoiceNumber = `INV${index + 1000}`;
+      }
       
       return {
         id: dbInvoiceId, // Use database invoice ID for proper matching
@@ -181,8 +221,102 @@ export default function SaleHistory() {
       }
     });
     
-    return Array.from(resultMap.values());
-  }, [savedHistory, invoicesData]);
+    const finalItems = Array.from(resultMap.values());
+    
+    // Add return info from returnInfoMap
+    return finalItems.map(item => {
+      const returnInfo = returnInfoMap.get(item.id);
+      if (returnInfo) {
+        return {
+          ...item,
+          returnInfo: {
+            totalItems: returnInfo.totalItems,
+            returnedItems: returnInfo.returnedItems,
+            isFullReturn: returnInfo.isFullReturn,
+          }
+        };
+      }
+      return item;
+    });
+  }, [savedHistory, invoicesData, returnInfoMap]);
+  
+  // Fetch return information for all invoices
+  // TODO: Enable this when the API is ready
+  const ENABLE_RETURN_STATUS_API = false; // Set to true when API is ready
+  
+  useEffect(() => {
+    if (!ENABLE_RETURN_STATUS_API) {
+      // API not ready yet - skip fetching return info
+      console.log('⚠️ Return status API is disabled - showing default "No return" status');
+      return;
+    }
+    
+    if (!invoicesData || invoicesData.length === 0) return;
+    
+    const fetchReturnInfo = async () => {
+      const newReturnInfoMap = new Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>();
+      
+      // Fetch return info for each invoice
+      const promises = invoicesData.map(async (invoice: any) => {
+        try {
+          const invoiceId = invoice.id;
+          const invoiceNumber = invoice.invoice_number;
+          
+          if (!invoiceId && !invoiceNumber) return;
+          
+          let result;
+          if (invoiceId) {
+            result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
+          } else if (invoiceNumber) {
+            const numericInvoiceNumber = String(invoiceNumber).replace(/^INV/i, '').trim();
+            result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
+          }
+          
+          if (result && result.lines) {
+            const lines = result.lines || [];
+            let totalItems = 0;
+            let returnedItems = 0;
+            
+            lines.forEach((line: any) => {
+              const soldQty = parseFloat(line.quantity || '0');
+              const returnedQty = parseFloat(line.returned_quantity || '0');
+              totalItems += soldQty;
+              returnedItems += returnedQty;
+            });
+            
+            // Check if all items are returned: returnedItems should equal or exceed totalItems
+            // Using >= to handle edge cases, but typically they should be equal
+            const isFullReturn = totalItems > 0 && returnedItems > 0 && returnedItems >= totalItems;
+            const mapKey = invoiceId || parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0;
+            newReturnInfoMap.set(mapKey, {
+              totalItems: Math.round(totalItems),
+              returnedItems: Math.round(returnedItems),
+              isFullReturn
+            });
+            
+            // Debug log for fully returned items
+            if (isFullReturn) {
+              console.log('✅ Full return detected for invoice:', {
+                invoiceId,
+                invoiceNumber,
+                totalItems,
+                returnedItems,
+                mapKey
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching return info for invoice:', invoice.id, error);
+        }
+      });
+      
+      await Promise.all(promises);
+      setReturnInfoMap(newReturnInfoMap);
+      console.log('📊 Return info map updated:', Array.from(newReturnInfoMap.entries()));
+    };
+    
+    fetchReturnInfo();
+  }, [invoicesData, getInvoiceDetails, refreshKey, ENABLE_RETURN_STATUS_API]);
   
 
   useEffect(() => {
@@ -304,14 +438,36 @@ export default function SaleHistory() {
   // Helper function to get return status
   const getReturnStatus = (item: SalesHistoryItem) => {
     if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
-      return { status: 'none', label: '', returned: 0, total: 0 };
+      return { status: 'none', label: 'No return', returned: 0, total: item.returnInfo?.totalItems || 0 };
     }
     const { returnedItems, totalItems, isFullReturn } = item.returnInfo;
     if (isFullReturn) {
-      return { status: 'full', label: 'Full Return', returned: returnedItems, total: totalItems };
+      return { status: 'full', label: 'All items returned', returned: returnedItems, total: totalItems };
     }
-    return { status: 'partial', label: `Partial: ${returnedItems}/${totalItems}`, returned: returnedItems, total: totalItems };
+    return { status: 'partial', label: 'Some items returned', returned: returnedItems, total: totalItems };
   };
+  
+  // Handler to navigate to return details
+  const handleViewReturnDetails = useCallback((invoiceId: number) => {
+    const invoice = salesHistoryData.find(item => item.id === invoiceId);
+    if (invoice) {
+      // Navigate to SalesReceipt in return details mode
+      navigate('/sales/receipt', {
+        state: {
+          isReturnDetailsMode: true,
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          customerName: invoice.customerName,
+          customerMobile: invoice.customerMobile,
+          doctorName: invoice.doctorName,
+          username: invoice.username,
+          totalAmount: invoice.totalAmount,
+          patientType: invoice.patientType,
+        }
+      });
+    }
+  }, [navigate, salesHistoryData]);
 
   // Helper function to get return details for tooltip
   const getReturnTooltipContent = (item: SalesHistoryItem) => {
@@ -425,19 +581,41 @@ export default function SaleHistory() {
       sortable: false,
       render: (item) => {
         const returnStatus = getReturnStatus(item);
+        const statusText = returnStatus.label;
+        
         if (returnStatus.status === 'none') {
-          return <Typography variant="body2" sx={{ color: '#9CA3AF' }}>-</Typography>;
+          return (
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: '#9CA3AF',
+                cursor: 'pointer',
+                '&:hover': {
+                  color: '#6B7280',
+                  textDecoration: 'underline'
+                }
+              }}
+              onClick={() => handleViewReturnDetails(item.id)}
+            >
+              {statusText}
+            </Typography>
+          );
         }
         return (
           <Chip
-            label={returnStatus.label}
+            label={statusText}
             size="small"
+            onClick={() => handleViewReturnDetails(item.id)}
             sx={{
               backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
               color: returnStatus.status === 'full' ? '#DC2626' : '#D97706',
               fontWeight: 500,
               fontSize: '12px',
               height: '24px',
+              cursor: 'pointer',
+              '&:hover': {
+                opacity: 0.8
+              }
             }}
           />
         );

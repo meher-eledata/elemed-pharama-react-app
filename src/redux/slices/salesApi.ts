@@ -191,6 +191,9 @@ export interface SubmitSaleLine {
   sp: number;
   discount: number;
   discount_authority?: string; // Doctor name who authorized the discount
+  cgst?: number; // Tax percentage (e.g., 1 for 1%)
+  sgst?: number; // Tax percentage (e.g., 1 for 1%)
+  igst?: number; // Tax percentage (e.g., 2 for 2%)
 }
 
 export interface SubmitSaleRequest {
@@ -456,9 +459,12 @@ export const salesApi = createApi({
     }),
 
     // Submit sales return
+    // invoice_number is required - backend accepts string or number
+    // Backend will look up by invoice_number, and if not found, will fallback to id
     submitSalesReturn: builder.mutation<any, {
-      invoice_number: number;
+      invoice_number: number | string; // Can be number (invoice.id) or string (invoice_number from DB)
       created_by: string;
+      return_date?: string; // Return date in YYYY-MM-DD format
       reason: string;
       notes: string;
       lines: Array<{
