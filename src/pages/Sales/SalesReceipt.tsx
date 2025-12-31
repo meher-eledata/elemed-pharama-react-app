@@ -133,6 +133,7 @@ const SalesReceipt: React.FC = () => {
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => getTodayDate());
+  const [returnDate, setReturnDate] = useState<string>('');
   
   const [totalValue, setTotalValue] = useState('');
   const [totalDiscount, setTotalDiscount] = useState('');
@@ -361,6 +362,12 @@ const SalesReceipt: React.FC = () => {
               if (invoiceData.insuranceCompany) setInsuranceCompany(invoiceData.insuranceCompany);
               if (invoiceData.invoiceNumber) setInvoiceNumber(invoiceData.invoiceNumber);
               if (invoiceData.invoiceDate) setInvoiceDate(invoiceData.invoiceDate);
+              
+              // TODO: Extract return date from API when ready
+              // When API is ready, extract return_date from result and set it:
+              // if (isReturnDetailsMode && result.return_date) {
+              //   setReturnDate(result.return_date);
+              // }
               
               // Pre-populate sales items
               if (invoiceData.salesItems && Array.isArray(invoiceData.salesItems) && invoiceData.salesItems.length > 0) {
@@ -1223,6 +1230,8 @@ const SalesReceipt: React.FC = () => {
             onInsuranceCompanyChange={isReturnDetailsMode ? () => {} : setInsuranceCompany}
             onInvoiceNumberChange={isReturnDetailsMode ? () => {} : setInvoiceNumber}
             onInvoiceDateChange={isReturnDetailsMode ? () => {} : setInvoiceDate}
+            isReturnDetailsMode={isReturnDetailsMode}
+            returnDate={returnDate}
           />
         </CustomerDoctorSection>
 

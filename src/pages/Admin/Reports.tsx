@@ -1253,11 +1253,13 @@ const DailySalesReport: React.FC = () => {
                     data: reportData.weeklyTrend.inpatient,
                     label: 'In Patient',
                     color: '#3B82F6',
+                    stack: 'total',
                   },
                   {
                     data: reportData.weeklyTrend.outpatient,
                     label: 'Out Patient',
                     color: '#10B981',
+                    stack: 'total',
                   },
                 ]}
                 width={475}

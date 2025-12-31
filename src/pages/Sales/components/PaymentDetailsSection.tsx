@@ -21,6 +21,8 @@ interface PaymentDetailsSectionProps {
   onInsuranceCompanyChange: (value: string) => void;
   onInvoiceNumberChange: (value: string) => void;
   onInvoiceDateChange: (value: string) => void;
+  isReturnDetailsMode?: boolean;
+  returnDate?: string;
 }
 
 const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
@@ -32,6 +34,8 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   onInsuranceCompanyChange,
   onInvoiceNumberChange,
   onInvoiceDateChange,
+  isReturnDetailsMode = false,
+  returnDate,
 }) => {
   // Convert invoice date string to Dayjs for the date picker
   // Try multiple formats: "24 Nov 2025", "11/24/2025", "MM/DD/YYYY"
@@ -57,6 +61,23 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   const handleDateChange = (newDate: Dayjs | null) => {
     const formattedDate = formatInvoiceDate(newDate);
     onInvoiceDateChange(formattedDate);
+  };
+
+  // Format return date for display (convert YYYY-MM-DD to MM/DD/YYYY)
+  const formatReturnDate = (dateString: string | undefined): string => {
+    if (!dateString) return '';
+    // Try parsing different date formats
+    let parsed = dayjs(dateString, 'YYYY-MM-DD'); // API returns YYYY-MM-DD format
+    if (!parsed.isValid()) {
+      parsed = dayjs(dateString, 'DD MMM YYYY');
+    }
+    if (!parsed.isValid()) {
+      parsed = dayjs(dateString, 'MM/DD/YYYY');
+    }
+    if (!parsed.isValid()) {
+      parsed = dayjs(dateString);
+    }
+    return parsed.isValid() ? parsed.format('MM/DD/YYYY') : dateString;
   };
 
   return (
@@ -316,6 +337,52 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
           </Box>
         </Box>
       </SectionRow>
+
+      {/* Return Date Field - Only shown in return details mode, under Details and Invoice date */}
+      {isReturnDetailsMode && (
+        <SectionRow sx={{ gap: '16px', marginTop: '5px', marginLeft: '-10px' }}>
+          <TextField
+            label="Return date"
+            variant="outlined"
+            value={formatReturnDate(returnDate)}
+            disabled
+            sx={{
+              width: '200px',
+              '& .MuiOutlinedInput-root': {
+                height: '48px',
+                borderRadius: '12px',
+                backgroundColor: '#FFFFFF',
+                '& fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: '#FFFFFF',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: '1px solid #9AA8BC',
+                  },
+                },
+              },
+              '& .MuiOutlinedInput-input': {
+                padding: '12px 16px',
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '16px',
+                color: '#1A212B',
+              },
+              '& .MuiInputLabel-root': {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '16px',
+                color: '#1A212B',
+                '&.Mui-focused': {
+                  color: '#5C17E5',
+                },
+              },
+            }}
+          />
+        </SectionRow>
+      )}
     </PaymentDetailsContainer>
   );
 };
