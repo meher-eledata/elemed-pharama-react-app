@@ -632,34 +632,38 @@ export default function SaleHistory() {
           alignItems: 'center', 
           gap: '8px' 
         }}>
-          <EditIcon
-            sx={{ 
-              fontSize: '24px', 
-              color: '#000000', 
-              cursor: 'pointer',
-              padding: '4px',
-              borderRadius: '4px',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-                color: '#000000'
-              }
-            }}
-            onClick={() => handleEditInvoice(item.id)}
-          />
-          <UndoIcon
-            sx={{ 
-              fontSize: '24px', 
-              color: '#000000', 
-              cursor: 'pointer',
-              padding: '4px',
-              borderRadius: '4px',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-                color: '#000000'
-              }
-            }}
-            onClick={() => handleReturnInvoice(item.id)}
-          />
+          <Tooltip title="Edit" arrow placement="top">
+            <EditIcon
+              sx={{ 
+                fontSize: '24px', 
+                color: '#000000', 
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5',
+                  color: '#000000'
+                }
+              }}
+              onClick={() => handleEditInvoice(item.id)}
+            />
+          </Tooltip>
+          <Tooltip title="Return" arrow placement="top">
+            <UndoIcon
+              sx={{ 
+                fontSize: '24px', 
+                color: '#000000', 
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5',
+                  color: '#000000'
+                }
+              }}
+              onClick={() => handleReturnInvoice(item.id)}
+            />
+          </Tooltip>
           {(() => {
             const returnStatus = getReturnStatus(item);
             if (returnStatus.status === 'none') {
