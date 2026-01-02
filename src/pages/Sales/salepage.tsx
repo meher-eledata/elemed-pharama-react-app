@@ -516,7 +516,7 @@ export default function SalePage() {
       let batchNumbers: string[] = [];
       
       try {
-        const batchesResult = await getBatchNumbersByProductId({ product_id: typeProductId }).unwrap();
+        const batchesResult: any = await getBatchNumbersByProductId({ product_id: typeProductId }).unwrap();
         console.log('📦 Sales API batch numbers response (raw):', batchesResult);
         console.log('📦 Response type:', typeof batchesResult, 'Is array:', Array.isArray(batchesResult));
         

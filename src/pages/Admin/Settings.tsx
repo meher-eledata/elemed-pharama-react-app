@@ -74,7 +74,7 @@ const Settings: React.FC = () => {
         flexDirection: 'column', 
         gap: 3, 
         maxWidth: '900px',
-        margin: '0 auto',
+        margin: 0,
         width: '100%',
       }}>
       {/* General Settings */}
