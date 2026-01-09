@@ -512,46 +512,103 @@ const PaymentDetails: React.FC = () => {
                 Payment vendor
               </Typography>
               <Autocomplete
-                options={paymentVendors}
-                value={paymentVendor || null}
-                onChange={(_, newValue) => {
-                  setPaymentVendor(newValue || "");
-                }}
-                disableClearable={!paymentVendor}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Select bank / vendor"
-                    variant="outlined"
-                    fullWidth
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "18px",
-                        height: "44px",
-                        backgroundColor: "#FFFFFF",
-                        "& fieldset": {
-                          borderColor: "#D1D5DB",
-                        },
-                        "&:hover fieldset": {
-                          borderColor: "#D1D5DB",
-                        },
-                        "&.Mui-focused fieldset": {
-                          borderColor: "#728197",
-                          borderWidth: "2px",
-                          outline: "none",
-                        },
-                      },
-                      "& .MuiOutlinedInput-input": {
-                        padding: "12px 16px",
-                        fontFamily: "'Lexend', sans-serif",
-                        fontSize: "16px",
-                        lineHeight: "24px",
-                        color: "#728197",
-                      },
-                    }}
-                  />
-                )}
-              />
+  options={paymentVendors}
+  value={paymentVendor || null}
+  onChange={(_, newValue) => {
+    setPaymentVendor(newValue || "");
+  }}
+  disableClearable={!paymentVendor}
+
+  // ADD these two props to fix height control:
+  disableListWrap={true}  // stops MUI from pre-calculating large height
+  PaperComponent={({ children }) => (
+    <Box
+      sx={{
+        padding: 0,
+        marginTop: "4px",
+        borderRadius: "12px",
+        border: "1px solid #E5E7EB",
+        backgroundColor: "#fff",
+      }}
+    >
+      {children}
+    </Box>
+  )}
+
+  slotProps={{
+    popper: {
+      sx: {
+        "& .MuiPaper-root": {
+          minWidth: "274px",
+          width: "fit-content",
+          padding: "0 !important",
+          marginTop: "4px !important",
+          maxHeight: "none !important",
+          height: "auto !important",
+          "& ul": {
+            padding: "4px 0 !important",
+            margin: "0 !important",
+            maxHeight: "none !important",
+            "& li:last-child": {
+              marginBottom: "0 !important",
+              paddingBottom: "8px !important",
+            },
+          },
+        },
+      },
+    },
+  }}
+
+  ListboxProps={{
+    sx: {
+      padding: "4px 0 !important",
+      maxHeight: "none !important",
+      "& li:last-child": {
+        marginBottom: "0 !important",
+      },
+    },
+  }}
+
+  sx={{
+    minWidth: "274px",
+    width: "274px",
+  }}
+
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      placeholder="Select bank / vendor"
+      variant="outlined"
+      fullWidth
+      sx={{
+        "& .MuiOutlinedInput-root": {
+          borderRadius: "18px",
+          height: "44px",
+          backgroundColor: "#FFFFFF",
+          "& fieldset": {
+            borderColor: "#D1D5DB",
+          },
+          "&:hover fieldset": {
+            borderColor: "#D1D5DB",
+          },
+          "&.Mui-focused fieldset": {
+            borderColor: "#728197",
+            borderWidth: "2px",
+            outline: "none",
+          },
+        },
+        "& .MuiOutlinedInput-input": {
+          padding: "12px 16px",
+          fontFamily: "'Lexend', sans-serif",
+          fontSize: "16px",
+          lineHeight: "24px",
+          color: "#728197",
+        },
+      }}
+    />
+  )}
+/>
+
             </Box>
 
             <Box sx={{ display: "flex", flexDirection: "column", width: "274px", gap: "4px" }}>

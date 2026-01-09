@@ -955,13 +955,19 @@ const OrderReceive: React.FC = () => {
                 sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer', fontSize: 18, flexShrink: 0 }}
                 onClick={() => handleEditClick(row)}
               />
-              <Typography sx={{ 
-                color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, 
-                fontSize: '16px',
-                fontWeight: 500,
-                cursor: 'default',
-                whiteSpace: 'nowrap'
-              }}>
+              <Typography 
+                onClick={() => handlePaymentDetailsClick(row)}
+                sx={{ 
+                  color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, 
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    opacity: 0.7
+                  }
+                }}
+              >
                 ₹
               </Typography>
             </Box>
@@ -977,6 +983,22 @@ const OrderReceive: React.FC = () => {
         selectedSupplier: row.supplier,
         selectedPO: row.poNo,
         selectedOrder: row
+      }
+    });
+  };
+
+  const handlePaymentDetailsClick = (row: OrderReceiveRow) => {
+    navigate('/receive/payment-details', {
+      state: {
+        supplierName: row.supplier,
+        poNumber: row.poNo,
+        invoiceDate: row.invoice_date || "",
+        receiptId: row.receiptId,
+        receiptNumber: row.reNo,
+        isEditMode: true,
+        transactionNumber: row.transaction_number || "",
+        paymentVendor: row.payment_vendor || "",
+        pharmaTableData: [], // Can be populated from receipt lines if needed
       }
     });
   };
