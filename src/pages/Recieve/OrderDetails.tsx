@@ -70,6 +70,7 @@ export interface PharmaTableRow {
   disc: number | string;
   margPercent: number | string;
   salesDiscPercent: number | string;
+  amount?: number;
   isEditing?: boolean;
   transaction_number?: string;
   payment_vendor?: string;
@@ -956,6 +957,23 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (cleanedData.sgst === "" || cleanedData.sgst === null || cleanedData.sgst === undefined) cleanedData.sgst = 0;
       if (cleanedData.igst === "" || cleanedData.igst === null || cleanedData.igst === undefined) cleanedData.igst = 0;
       if (cleanedData.disc === "" || cleanedData.disc === null || cleanedData.disc === undefined) cleanedData.disc = 0;
+      // If amount is empty, calculate it from other fields
+      if (cleanedData.amount === "" || cleanedData.amount === null || cleanedData.amount === undefined) {
+        const unitPrice = typeof cleanedData.pp === 'number' ? cleanedData.pp : parseFloat(String(cleanedData.pp)) || 0;
+        const qty = cleanedData.qtyReceived || 0;
+        const cgst = typeof cleanedData.cgst === 'number' ? cleanedData.cgst : parseFloat(String(cleanedData.cgst)) || 0;
+        const sgst = typeof cleanedData.sgst === 'number' ? cleanedData.sgst : parseFloat(String(cleanedData.sgst)) || 0;
+        const igst = typeof cleanedData.igst === 'number' ? cleanedData.igst : parseFloat(String(cleanedData.igst)) || 0;
+        const discount = typeof cleanedData.disc === 'number' ? cleanedData.disc : parseFloat(String(cleanedData.disc)) || 0;
+        
+        const baseAmount = unitPrice * qty;
+        const discountAmount = baseAmount * (discount / 100);
+        const amountAfterDiscount = baseAmount - discountAmount;
+        const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+        cleanedData.amount = amountAfterDiscount + taxAmount;
+      } else {
+        cleanedData.amount = typeof cleanedData.amount === 'number' ? cleanedData.amount : parseFloat(String(cleanedData.amount)) || 0;
+      }
       
       setPharmaTableData(prev => 
         prev.map(row => 
@@ -1599,31 +1617,72 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       header: "Amount (₹)",
       sortable: false,
       render: (row) => {
-        const unitPrice = typeof row.pp === 'number' ? row.pp : parseFloat(String(row.pp)) || 0;
-        const qty = row.qtyReceived || 0;
-        const cgst = typeof row.cgst === 'number' ? row.cgst : parseFloat(String(row.cgst)) || 0;
-        const sgst = typeof row.sgst === 'number' ? row.sgst : parseFloat(String(row.sgst)) || 0;
-        const igst = typeof row.igst === 'number' ? row.igst : parseFloat(String(row.igst)) || 0;
-        const discount = typeof row.disc === 'number' ? row.disc : parseFloat(String(row.disc)) || 0;
-        
-        // Calculate base amount
-        const baseAmount = unitPrice * qty;
-        
-        // Apply discount (assuming percentage)
-        const discountAmount = baseAmount * (discount / 100);
-        const amountAfterDiscount = baseAmount - discountAmount;
-        
-        // Apply taxes (assuming percentage)
-        const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
-        
-        // Row total = base - discount + taxes
-        const rowTotal = amountAfterDiscount + taxAmount;
-        
-        return (
-          <span>
-            ₹{rowTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        );
+        if (editingRowId === row.id) {
+          // Calculate default amount if not in editingData
+          const calculateAmount = () => {
+            const unitPrice = typeof editingData.pp === 'number' ? editingData.pp : (typeof row.pp === 'number' ? row.pp : parseFloat(String(editingData.pp || row.pp)) || 0);
+            const qty = editingData.qtyReceived !== undefined ? editingData.qtyReceived : (row.qtyReceived || 0);
+            const cgst = typeof editingData.cgst === 'number' ? editingData.cgst : (typeof row.cgst === 'number' ? row.cgst : parseFloat(String(editingData.cgst || row.cgst)) || 0);
+            const sgst = typeof editingData.sgst === 'number' ? editingData.sgst : (typeof row.sgst === 'number' ? row.sgst : parseFloat(String(editingData.sgst || row.sgst)) || 0);
+            const igst = typeof editingData.igst === 'number' ? editingData.igst : (typeof row.igst === 'number' ? row.igst : parseFloat(String(editingData.igst || row.igst)) || 0);
+            const discount = typeof editingData.disc === 'number' ? editingData.disc : (typeof row.disc === 'number' ? row.disc : parseFloat(String(editingData.disc || row.disc)) || 0);
+            
+            const baseAmount = unitPrice * qty;
+            const discountAmount = baseAmount * (discount / 100);
+            const amountAfterDiscount = baseAmount - discountAmount;
+            const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+            return amountAfterDiscount + taxAmount;
+          };
+
+          const defaultAmount = calculateAmount();
+          const amountValue = editingData.amount !== undefined 
+            ? ((editingData.amount as any) === "" || editingData.amount === null ? "" : Number(editingData.amount))
+            : defaultAmount;
+
+          return (
+            <TextField
+              size="small"
+              type="number"
+              value={amountValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                updateEditingData("amount" as keyof PharmaTableRow, val === "" ? ("" as any) : Number(val) || 0);
+              }}
+              variant="outlined"
+              fullWidth
+              sx={numberInputStyles}
+            />
+          );
+        } else {
+          const unitPrice = typeof row.pp === 'number' ? row.pp : parseFloat(String(row.pp)) || 0;
+          const qty = row.qtyReceived || 0;
+          const cgst = typeof row.cgst === 'number' ? row.cgst : parseFloat(String(row.cgst)) || 0;
+          const sgst = typeof row.sgst === 'number' ? row.sgst : parseFloat(String(row.sgst)) || 0;
+          const igst = typeof row.igst === 'number' ? row.igst : parseFloat(String(row.igst)) || 0;
+          const discount = typeof row.disc === 'number' ? row.disc : parseFloat(String(row.disc)) || 0;
+          
+          // Calculate base amount
+          const baseAmount = unitPrice * qty;
+          
+          // Apply discount (assuming percentage)
+          const discountAmount = baseAmount * (discount / 100);
+          const amountAfterDiscount = baseAmount - discountAmount;
+          
+          // Apply taxes (assuming percentage)
+          const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+          
+          // Row total = base - discount + taxes
+          // Use stored amount if available, otherwise calculate
+          const rowTotal = (row as any).amount !== undefined && (row as any).amount !== null
+            ? parseFloat(String((row as any).amount))
+            : amountAfterDiscount + taxAmount;
+          
+          return (
+            <span>
+              ₹{rowTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          );
+        }
       },
     },
     {
