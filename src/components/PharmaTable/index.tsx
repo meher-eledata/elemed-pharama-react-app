@@ -4,6 +4,7 @@ import {
     TableBody,
     TableCell,
     TableContainer,
+    TableFooter,
     TableHead,
     TableRow,
     Paper,
@@ -75,6 +76,7 @@ interface ReusableTableProps<T> {
     sortConfig: { key: string; direction: 'asc' | 'desc' };
     currentFilter?: { [key: string]: string | null }; // Added this prop for better state management
     customSearchBarContent?: React.ReactNode; // Custom content to render next to search bar
+    footerContent?: React.ReactNode; // Custom footer content
 }
 
 export const ReusableTable = <T,>({
@@ -98,6 +100,7 @@ export const ReusableTable = <T,>({
     sortConfig,
     currentFilter, // Destructure the new prop
     customSearchBarContent, // Custom content next to search bar
+    footerContent, // Footer content
 }: ReusableTableProps<T>) => {
     const theme = useTheme();
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -442,8 +445,7 @@ export const ReusableTable = <T,>({
                         border: 'none',
                         p: 0,
                         m: 0,
-                        maxHeight: '350px',
-                        overflowY: 'auto',
+                        overflowY: 'visible',
                         overflowX: 'auto',
                         width: '100%',
                         position: 'relative',
@@ -525,22 +527,22 @@ export const ReusableTable = <T,>({
                                         fontFamily: "'Lexend', sans-serif",
                                         fontWeight: 600,
                                         fontSize: '14px',
-                                        lineHeight: '20px',
+                                        lineHeight: '18px',
                                         color: '#374151',
-                                        padding: column.key === 'actions' ? '3px' : '12px 16px',
+                                        padding: column.key === 'actions' ? '3px' : '4px 12px',
                                         bgcolor: '#F9FAFB',
                                         whiteSpace: 'nowrap',
                                         width: column?.columnWidth || 'auto',
-                                        minWidth: column?.columnWidth ? undefined : 'auto',
-                                        maxWidth: column?.columnWidth || 'none',
+                                        minWidth: column?.columnWidth || 'auto',
+                                        maxWidth: column?.columnWidth ? column.columnWidth : 'none',
                                         cursor: 'default',
                                         textAlign: column.key === 'actions' ? 'center' : 'left',
                                         borderBottom: '1px solid #E5E7EB',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
+                                        overflow: 'visible',
+                                        textOverflow: 'clip',
                                     }}
                                 >
-                                        <Box display="flex" alignItems="center" gap={1}>
+                                        <Box display="flex" alignItems="center" gap={0.5}>
                                             {column.key === 'checkbox' && totalRows > 0 ? (
                                                 <Checkbox
                                                     indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
@@ -679,6 +681,21 @@ export const ReusableTable = <T,>({
                                 </TableRow>
                             )}
                         </TableBody>
+                        {footerContent && (
+                            <TableFooter>
+                                <TableRow>
+                                    <TableCell 
+                                        colSpan={visibleColumns.length}
+                                        sx={{
+                                            padding: 0,
+                                            border: 'none',
+                                        }}
+                                    >
+                                        {footerContent}
+                                    </TableCell>
+                                </TableRow>
+                            </TableFooter>
+                        )}
                     </Table>
                 </TableContainer>
             </Box>

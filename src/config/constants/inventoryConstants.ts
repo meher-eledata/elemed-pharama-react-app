@@ -13,16 +13,16 @@ export const baseButtonStyle = {
 };
 
 export const headerTitleStyle = {
-  marginBottom: '24px',
+  marginBottom: '1.5rem', // 24px = 1.5rem
   fontWeight: 600,
-  fontSize: '36px',
+  fontSize: '2.25rem', // 36px = 2.25rem
   fontFamily: 'Lexend',
-  marginTop: '20px'
+  marginTop: '1.25rem' // 20px = 1.25rem
 };
 
 export const checkboxStyle = {
-  width: "24px",
-  height: "24px",
+  width: "1.5rem", // 24px = 1.5rem
+  height: "1.5rem", // 24px = 1.5rem
   p: 0,
   "& .MuiSvgIcon-root": { display: "none" },
 };
@@ -30,26 +30,26 @@ export const checkboxStyle = {
 export const checkboxBoxStyle = {
   width: 18,
   height: 18,
-  border: "1.5px solid #D0D5DD",
-  borderRadius: "6px",
+  border: "0.09375rem solid #D0D5DD", // 1.5px = 0.09375rem
+  borderRadius: "0.375rem", // 6px = 0.375rem
   backgroundColor: "#fff",
 };
 
 export const checkboxCheckedBoxStyle = {
   ...checkboxBoxStyle,
-  border: "1.5px solid #1976d2",
+  border: "0.09375rem solid #1976d2", // 1.5px = 0.09375rem
   backgroundColor: "#1976d2",
 };
 
 export const productCellTextStyle = {
   color: '#1A212B',
-  fontSize: '14px',
+  fontSize: '0.875rem', // 14px = 0.875rem
   fontFamily: 'Lexend'
 };
 
 export const secondaryQuantityTextStyle = {
   color: '#728197',
-  fontSize: '14px',
+  fontSize: '0.875rem', // 14px = 0.875rem
   fontFamily: 'Lexend'
 };
 

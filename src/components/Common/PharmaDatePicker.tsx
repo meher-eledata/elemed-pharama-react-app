@@ -84,6 +84,14 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       const style = document.createElement('style');
       style.id = styleId;
       style.textContent = `
+        /* Calendar popper min-width and min-height */
+        .css-1rhbxvw-MuiPopper-root-MuiPickerPopper-root .MuiPaper-root,
+        .css-qo1xbo-MuiPopper-root-MuiPickerPopper-root .MuiPaper-root,
+        .MuiPopper-root .MuiPaper-root,
+        [class*="MuiPopper-root"][class*="MuiPickerPopper-root"] .MuiPaper-root {
+          min-width: 273px !important;
+          min-height: 318px !important;
+        }
         /* Ensure calendar icon is always visible */
         .MuiPickersTextField-root .MuiInputAdornment-root,
         .MuiPickersTextField-root .MuiPickersInputAdornment-root,
@@ -854,7 +862,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                 enabled: true,
                 options: {
                   rootBoundary: "viewport",
-                  boundary: "clippingParents",
+                  boundary: "viewport",
                   tether: false,
                   altAxis: false,
                   padding: 8,
@@ -877,10 +885,11 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                 padding: "16px",
                 width: "242px",
                 maxWidth: "242px",
-                minWidth: "242px",
+                minWidth: "273px",
                 height: "300px !important",
-                minHeight: "300px !important",
+                minHeight: "318px !important",
                 position: "relative",
+                overflow: "hidden",
               },
               "& .MuiDayCalendar-root": {
                 width: "242px",
@@ -994,13 +1003,30 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
               "& .MuiPickersDay-root": {
                 width: "32px",
                 height: "32px",
+                minWidth: "32px",
+                minHeight: "32px",
+                maxWidth: "32px",
+                maxHeight: "32px",
                 fontSize: "14px",
                 fontWeight: 500,
                 color: "#1A212B",
                 fontFamily: "'Lexend', sans-serif",
                 borderRadius: "50%",
                 margin: "2px",
+                padding: "0 !important",
                 backgroundColor: "transparent",
+                display: "flex !important",
+                alignItems: "center !important",
+                justifyContent: "center !important",
+                overflow: "hidden",
+                boxSizing: "border-box",
+                "& > *": {
+                  display: "flex !important",
+                  alignItems: "center !important",
+                  justifyContent: "center !important",
+                  width: "100%",
+                  height: "100%",
+                },
                 "&:hover": {
                   backgroundColor: "#F3E8FF !important",
                   color: "#5C17E5 !important",

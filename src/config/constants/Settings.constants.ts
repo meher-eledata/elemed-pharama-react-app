@@ -5,7 +5,7 @@ export const SETTINGS_CONSTANTS = {
   },
   ACCORDION: {
     RADIUS: '12px',
-    SHADOW: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+    SHADOW: '0 2px 8px rgba(0, 0, 0, 0.08)',
     BG: '#FFFFFF',
     PADDING: '24px',
     GAP: '16px',

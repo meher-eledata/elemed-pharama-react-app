@@ -38,7 +38,7 @@ export const SALES_PAGE_CONSTANTS = {
   PRIMARY_COLOR: '#5C17E5',
   PRIMARY_HOVER_COLOR: '#4A12C7',
   GRAY_TEXT_COLOR: '#728197',
-  BORDER_RADIUS: '8px',
+  BORDER_RADIUS: '0.5rem', // 8px = 0.5rem
   
   // Default Product Structure
   DEFAULT_PRODUCT_STRUCTURE: {

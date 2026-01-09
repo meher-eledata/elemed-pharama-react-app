@@ -73,10 +73,10 @@ const ForgotPassword: React.FC = () => {
         variant="h4"
         sx={{
           fontWeight: 600,
-          fontSize: '32px',
-          lineHeight: '36px',
+          fontSize: '2rem', // 32px = 2rem
+          lineHeight: '2.25rem', // 36px = 2.25rem
           color: '#1A212B',
-          mb: '40px',
+          mb: '2.5rem', // 40px = 2.5rem
           textAlign: 'left',
           width: '100%',
         }}
@@ -88,10 +88,10 @@ const ForgotPassword: React.FC = () => {
         variant="body1"
         sx={{
           fontWeight: 400,
-          fontSize: '14px',
-          lineHeight: '20px',
+          fontSize: '0.875rem', // 14px = 0.875rem
+          lineHeight: '1.25rem', // 20px = 1.25rem
           color: '#1A212B',
-          mb: '16px',
+          mb: '1rem', // 16px = 1rem
           width: '100%',
           textAlign: 'left',
         }}
@@ -108,10 +108,10 @@ const ForgotPassword: React.FC = () => {
         <Typography
           sx={{
             fontWeight: 500,
-            fontSize: '12px',
-            lineHeight: '18px',
+            fontSize: '0.75rem', // 12px = 0.75rem
+            lineHeight: '1.125rem', // 18px = 1.125rem
             color: '#525E6F',
-            mb: '4px',
+            mb: '0.25rem', // 4px = 0.25rem
             textAlign: 'left',
           }}
         >
@@ -136,12 +136,12 @@ const ForgotPassword: React.FC = () => {
           error={!!usernameError}
           helperText={usernameError}
           sx={{
-            mb: '16px',
+            mb: '1rem', // 16px = 1rem
             '& .MuiOutlinedInput-root': {
               borderRadius: FORGOT_PASSWORD_CONSTANTS.INPUT_RADIUS,
               backgroundColor: '#FFFFFF',
               height: FORGOT_PASSWORD_CONSTANTS.INPUT_HEIGHT,
-              padding: '0 16px',
+              padding: '0 1rem', // 16px = 1rem
               fontFamily: "'Lexend', sans-serif",
               '& fieldset': {
                 borderColor: '#9AA8BC !important',
@@ -153,8 +153,8 @@ const ForgotPassword: React.FC = () => {
                 borderColor: '#000 !important',
               },
               '& input': {
-                padding: '12px 0',
-                fontSize: '16px',
+                padding: '0.75rem 0', // 12px = 0.75rem
+                fontSize: '1rem', // 16px = 1rem
                 fontWeight: 400,
                 color: '#1A212B',
               },
@@ -168,9 +168,9 @@ const ForgotPassword: React.FC = () => {
             },
             '& .MuiFormHelperText-root': {
               color: usernameError ? '#E36414' : 'transparent',
-              fontSize: '12px',
+              fontSize: '0.75rem', // 12px = 0.75rem
               fontWeight: 400,
-              marginLeft: '0px',
+              marginLeft: '0',
             },
           }}
         />

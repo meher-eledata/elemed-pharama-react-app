@@ -6,15 +6,15 @@ export const themeColors = {
 
 export const buttonSizes = {
   small: {
-    height: '24px',
+    height: '1.5rem', // 24px = 1.5rem
   },
   large: {
-    height: '24px',
+    height: '1.5rem', // 24px = 1.5rem
   },
 };
 
 export const typography = {
-  headerSize: '36px',
+  headerSize: '2.25rem', // 36px = 2.25rem
 };
 
 export const supplierOptions = [

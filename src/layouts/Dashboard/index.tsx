@@ -28,16 +28,30 @@ export const DashboardLayout = () => {
   };
 
   return (
-    <Box display="flex" height="100vh">
+    <Box 
+      display="flex" 
+      height="100vh"
+      sx={{
+        width: '100%',
+        overflow: 'hidden',
+      }}
+    >
       <Sidebar onOpenChange={handleSidebarChange} isOpen={sidebarOpen} />
       <Box 
         flexGrow={1} 
         display="flex" 
         flexDirection="column" 
         sx={{ 
-          width: '100%', 
-          marginLeft: actualSidebarOpen ? '200px' : '60px', 
-          paddingLeft: '8px',
+          width: '100%',
+          maxWidth: '100%',
+          marginLeft: { 
+            xs: 0, // Mobile: no margin (sidebar overlays)
+            sm: actualSidebarOpen ? '12.5rem' : '3.75rem' // Desktop: 200px = 12.5rem, 60px = 3.75rem
+          },
+          paddingLeft: { 
+            xs: '0.5rem',
+            sm: '0.5rem'
+          },
           transition: 'margin-left 0.08s cubic-bezier(0.4, 0, 0.2, 1), padding-left 0.08s cubic-bezier(0.4, 0, 0.2, 1)', 
           willChange: 'margin-left', 
           boxSizing: 'border-box', 
@@ -51,11 +65,13 @@ export const DashboardLayout = () => {
         <Box 
           component="main" 
           flexGrow={1} 
-          paddingLeft={2} 
-          paddingRight={3} 
-          overflow="auto" 
-          marginTop={0}
           sx={{
+            paddingLeft: { xs: '0.5rem', sm: '1rem', md: '1.5rem' },
+            paddingRight: { xs: '0.5rem', sm: '1rem', md: '1.5rem' },
+            overflow: 'auto',
+            marginTop: 0,
+            width: '100%',
+            maxWidth: '100%',
             contain: 'layout style',
             '&::-webkit-scrollbar': {
               display: 'none',

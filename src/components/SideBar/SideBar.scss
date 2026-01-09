@@ -1,4 +1,3 @@
-
 $brand-primary: #5C17E5;
 $background-secondary: #F6F8FB;
 
@@ -11,11 +10,17 @@ $background-secondary: #F6F8FB;
   align-items: center;
   overflow: hidden;
   box-sizing: border-box;
-  padding-top: 14px; 
+  padding-top: 14px;
   
   pointer-events: auto;
   transition: width 0.08s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.08s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.08s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: width;
+
+  @media (max-width: 768px) {
+    position: fixed;
+    z-index: 1000;
+    border-radius: 0;
+  }
 }
 
 .sidebar-item {

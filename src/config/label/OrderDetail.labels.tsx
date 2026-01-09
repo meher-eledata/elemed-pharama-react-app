@@ -41,4 +41,5 @@ export const orderLabels = {
   
   // Add product option
   addProducts: 'Add Products...',
+  addNewSupplier: 'Add New Supplier',
 };

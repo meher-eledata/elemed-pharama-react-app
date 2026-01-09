@@ -1,22 +1,33 @@
-
 .inventory-tabs {
   display: inline-flex;
   gap: 8px;
   border-radius: 16px;
   padding: 6px;
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+  }
 }
 
 .inventory-module-content {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .summary-cards {
   display: flex;
   gap: 16px;
   margin-bottom: 24px;
-  height: 142px;
+  height: auto;
+  min-height: 142px;
+  flex-wrap: wrap;
 
   .text {
     font-family: 'Lexend', sans-serif;
@@ -25,11 +36,12 @@
     font-size: 16px;
   }
 
-  .summary-card1 {
+    .summary-card1 {
     background: #eceff4; 
     padding: 16px;
     border-radius: 16px;
     flex: 1;
+    min-width: 192px;
     position: relative;
 
     .big-number {
@@ -39,7 +51,7 @@
       font-family: 'Lexend', sans-serif;
       margin-top: 12px;
       color: #000000;
-      transform: translateY(8px); // Moves the number down
+      transform: translateY(8px);
     }
 
     .number {
@@ -221,22 +233,51 @@
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 
 .search-bar {
   flex: 1;
+  min-width: 0;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 }
 
 .tab-content {
   padding: 16px;
   background: #ffffff;
   border-radius: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .MuiContainer-root.my-custom-container {
   margin-top: 0;
   padding-left: 24px;
   padding-right: 24px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  @media (max-width: 320px) {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
 }
 
 // ----------------------------------------------------

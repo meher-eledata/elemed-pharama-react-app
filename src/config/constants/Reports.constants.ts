@@ -4,7 +4,7 @@ export const REPORTS_CONSTANTS = {
     BUTTON: {
       HEIGHT: '40px',
       MIN_WIDTH: '160px',
-      BORDER_RADIUS: '0.5rem',
+      BORDER_RADIUS: '8px',
       FONT_SIZE: '14px',
       FONT_WEIGHT: 600,
       ACTIVE_BG: '#5C17E5',

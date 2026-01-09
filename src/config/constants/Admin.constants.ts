@@ -9,7 +9,7 @@ export const ADMIN_CONSTANTS = {
     ICON_SIZE: 24,
     TITLE_COLOR: '#1A212B',
     DESC_COLOR: '#1A212B',
-    SHADOW: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+    SHADOW: '0 2px 8px rgba(0, 0, 0, 0.08)',
     ICON_CIRCLE_SIZE: 48,
     MIN_WIDTH: 280,
     MAX_WIDTH: 400,

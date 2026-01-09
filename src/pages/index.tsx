@@ -8,6 +8,7 @@ import InventoryModule from "./Inventory/InventoryModule";
 import InventoryAdjustment from "./Inventory/InventoryAdjustment";
 import OrderReceive from "../pages/Recieve/OrderReceive";
 import OrderDetails from "../pages/Recieve/OrderDetails";
+import PaymentDetails from "../pages/Recieve/PaymentDetails";
 import DashboardMain from "../pages/DashboardMain/DashboardMain"
 import Masterpage from "./Masters/MasterPage";
 import Sale from "./Sales/salepage";
@@ -47,6 +48,7 @@ export const Pages = () => {
       <Route path="/receive" element={<DashboardLayout />}>
         <Route path="order-receive" element={<OrderReceive />} />
         <Route path="order-details" element={<OrderDetails labels={orderLabels} />} />
+        <Route path="payment-details" element={<PaymentDetails />} />
       </Route>
 
       <Route path="/master" element={<DashboardLayout />}> 

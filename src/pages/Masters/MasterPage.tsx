@@ -286,7 +286,7 @@ const Masterpage: React.FC = () => {
           gap: { xs: 2, md: 3 },
           rowGap: { xs: 2, md: 3 },
           alignItems: 'stretch',
-          maxWidth: { xs: '100%', md: '1050px', lg: '1600px' },
+          maxWidth: { xs: '100%', md: '65.625rem', lg: '100rem' }, // 1050px = 65.625rem, 1600px = 100rem
           marginLeft: 0,
           marginRight: 'auto',
         }}

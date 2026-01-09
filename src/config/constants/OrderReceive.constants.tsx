@@ -23,7 +23,7 @@ export const ORDER_RECEIVE_CONSTANTS = {
     RECEIPT_VIEW_SIZE: 18,
   },
   TABLE: {
-    ROWS_PER_PAGE: 5,
+    ROWS_PER_PAGE: 4,
     ACTION_GAP: 1.5,
      ICONS_GAP: 5,
   },

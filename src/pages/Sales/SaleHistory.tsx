@@ -498,8 +498,8 @@ export default function SaleHistory() {
           display: 'flex', 
           flexDirection: 'row', 
           alignItems: 'center', 
-          gap: '2px', 
-          minHeight: '24px',
+          gap: '0.125rem', // 2px = 0.125rem
+          minHeight: '1.5rem', // 24px = 1.5rem
           width: '100%',
           position: 'relative'
         }}>
@@ -508,8 +508,8 @@ export default function SaleHistory() {
               fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE, 
               color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR, 
               cursor: 'pointer',
-              padding: '2px',
-              borderRadius: '4px',
+              padding: '0.125rem', // 2px = 0.125rem
+              borderRadius: '0.25rem', // 4px = 0.25rem
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
@@ -524,9 +524,9 @@ export default function SaleHistory() {
           />
           <span style={{ 
             flex: 1,
-            marginLeft: '4px',
+            marginLeft: '0.25rem', // 4px = 0.25rem
             fontWeight: 500,
-            fontSize: '14px',
+            fontSize: '0.875rem', // 14px = 0.875rem
             color: '#1A212B'
           }}>
             {item.invoiceNumber}
@@ -610,8 +610,8 @@ export default function SaleHistory() {
               backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
               color: returnStatus.status === 'full' ? '#DC2626' : '#D97706',
               fontWeight: 500,
-              fontSize: '12px',
-              height: '24px',
+              fontSize: '0.75rem', // 12px = 0.75rem
+              height: '1.5rem', // 24px = 1.5rem
               cursor: 'pointer',
               '&:hover': {
                 opacity: 0.8
@@ -630,16 +630,16 @@ export default function SaleHistory() {
           display: 'flex', 
           flexDirection: 'row', 
           alignItems: 'center', 
-          gap: '8px' 
+          gap: '0.5rem' // 8px = 0.5rem 
         }}>
           <Tooltip title="Edit" arrow placement="top">
             <EditIcon
               sx={{ 
-                fontSize: '24px', 
+                fontSize: '1.5rem', // 24px = 1.5rem 
                 color: '#000000', 
                 cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '4px',
+                padding: '0.25rem', // 4px = 0.25rem
+                borderRadius: '0.25rem', // 4px = 0.25rem
                 '&:hover': {
                   backgroundColor: '#f5f5f5',
                   color: '#000000'
@@ -651,11 +651,11 @@ export default function SaleHistory() {
           <Tooltip title="Return" arrow placement="top">
             <UndoIcon
               sx={{ 
-                fontSize: '24px', 
+                fontSize: '1.5rem', // 24px = 1.5rem 
                 color: '#000000', 
                 cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '4px',
+                padding: '0.25rem', // 4px = 0.25rem
+                borderRadius: '0.25rem', // 4px = 0.25rem
                 '&:hover': {
                   backgroundColor: '#f5f5f5',
                   color: '#000000'
@@ -681,16 +681,16 @@ export default function SaleHistory() {
                   color={returnStatus.status === 'full' ? 'error' : 'warning'}
                   sx={{
                     '& .MuiBadge-badge': {
-                      fontSize: '10px',
-                      minWidth: '20px',
-                      height: '20px',
-                      padding: '0 4px',
+                      fontSize: '0.625rem', // 10px = 0.625rem
+                      minWidth: '1.25rem', // 20px = 1.25rem
+                      height: '1.25rem', // 20px = 1.25rem
+                      padding: '0 0.25rem', // 4px = 0.25rem
                     }
                   }}
                 >
                   <WarningIcon
                     sx={{ 
-                      fontSize: '24px', 
+                      fontSize: '1.5rem', // 24px = 1.5rem 
                       color: returnStatus.status === 'full' ? '#DC2626' : '#D97706', 
                       cursor: 'pointer',
                       padding: '4px',
@@ -994,18 +994,18 @@ export default function SaleHistory() {
           onClick={handleStartNewSale}
           variant="primary"
           size="large"
-          startIcon={<AddIcon sx={{ fontSize: '18px' }} />}
+          startIcon={<AddIcon sx={{ fontSize: '1.125rem' }} />}
           sx={{
-            minWidth: '160px',
-            borderRadius: '30px',
+            minWidth: '10rem', // 160px = 10rem
+            borderRadius: '1.875rem', // 30px = 1.875rem
             backgroundColor: '#5C17E5',
             color: '#FFFFFF',
             fontWeight: 700,
-            fontSize: '14px',
+            fontSize: '0.875rem', // 14px = 0.875rem
             textTransform: 'none',
             boxShadow: 'none',
             '& .MuiButton-startIcon': {
-              marginRight: '8px',
+              marginRight: '0.5rem', // 8px = 0.5rem
             },
           }}
         >
@@ -1020,9 +1020,9 @@ export default function SaleHistory() {
         justifyContent: 'space-between',
         mb: 3,
         bgcolor: '#F6F8FB',
-        borderRadius: '16px',
-        border: '1px solid #E6ECF5',
-        p: '12px',
+        borderRadius: '1rem', // 16px = 1rem
+        border: '0.0625rem solid #E6ECF5', // 1px = 0.0625rem
+        p: '0.75rem', // 12px = 0.75rem
       }}>
         <TextField
           placeholder={SALES_HISTORY_LABELS.SEARCH_PLACEHOLDER}
@@ -1031,20 +1031,20 @@ export default function SaleHistory() {
           InputProps={{
             startAdornment: !currentSearchTerm.trim() ? (
               <InputAdornment position="start" sx={{ marginRight: '0px' }}>
-                <SearchIcon sx={{ color: '#8A99AF', fontSize: '24px' }} />
+                <SearchIcon sx={{ color: '#8A99AF', fontSize: '1.5rem' }} /> {/* 24px = 1.5rem */}
               </InputAdornment>
             ) : null,
           }}
           sx={{
-            height: '40px',
-            borderRadius: '12px',
+            height: '2.5rem', // 40px = 2.5rem
+            borderRadius: '0.75rem', // 12px = 0.75rem
             backgroundColor: '#fff',
-            width: '600px',
+            width: '37.5rem', // 600px = 37.5rem
             '& .MuiOutlinedInput-root': {
-              height: '40px',
-              borderRadius: '12px',
+              height: '2.5rem', // 40px = 2.5rem
+              borderRadius: '0.75rem', // 12px = 0.75rem
               backgroundColor: '#fff',
-              boxShadow: 'inset 0 0 0 1px #BFD1E6',
+              boxShadow: 'inset 0 0 0 0.0625rem #BFD1E6', // 1px = 0.0625rem
               '& .MuiOutlinedInput-notchedOutline': { 
                 border: 'none !important',
                 display: 'none !important'
@@ -1114,7 +1114,7 @@ export default function SaleHistory() {
           <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             {/* Doctor Name Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Typography sx={{ fontSize: '12px', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_DOCTOR_NAME}</Typography>
+            <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_DOCTOR_NAME}</Typography> {/* 12px = 0.75rem */}
               <Autocomplete
                 value={selectedDoctor}
                 onChange={(event, newValue) => setSelectedDoctor(newValue)}

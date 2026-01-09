@@ -59,7 +59,7 @@ const baseItems: SidebarItem[] = [
   { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: "Sales", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales' },
   { id: 'box', icon: BoxIcon, alt: 'Box', label: "Inventory", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
   // { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
-  { id: 'mail', icon: MailIcon, alt: 'Mail', label: "Order Receive", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive/order-receive' },
+  { id: 'mail', icon: MailIcon, alt: 'Mail', label: "Order Receive", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive' },
   { id: 'master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: "Master", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/master', isComponent: true },
   // { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', label: "Tasks", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
   // { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
@@ -153,14 +153,14 @@ return (
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         sx={{
-          width: open ? 200 : 60,
-          minWidth: open ? 200 : 60,
-          maxWidth: open ? 200 : 60,
+          width: open ? '12.5rem' : '3.75rem', // 200px = 12.5rem, 60px = 3.75rem
+          minWidth: open ? '12.5rem' : '3.75rem',
+          maxWidth: open ? '12.5rem' : '3.75rem',
           overflow: 'hidden',
           overflowX: 'hidden',
           flexShrink: 0,
           backgroundColor: '#5C17E5',
-          paddingTop: '10px',
+          paddingTop: '0.625rem', // 10px = 0.625rem
           zIndex: 100,
           position: 'fixed',
           top: 0,
@@ -175,15 +175,15 @@ return (
           willChange: 'width',
           contain: 'layout style paint',
           pointerEvents: 'auto',
-          boxShadow: open ? '2px 0 8px rgba(0, 0, 0, 0.1)' : 'none',
+          boxShadow: open ? '0.125rem 0 0.5rem rgba(0, 0, 0, 0.1)' : 'none', // 2px = 0.125rem, 8px = 0.5rem
         }}
       >
          <Box
   sx={{
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '0 12px 12px 12px',
+    gap: '0.625rem', // 10px = 0.625rem
+    padding: '0 0.75rem 0.75rem 0.75rem', // 12px = 0.75rem
     width: '100%',
     cursor: 'pointer', // make it clickable
   }}
@@ -192,12 +192,12 @@ return (
     if (onOpenChange) onOpenChange(!open); // notify parent if needed
   }}
 >
-  <img src={GroupIcon} alt="Logo" style={{ width: '32px', height: '32px' }} />
+  <img src={GroupIcon} alt="Logo" style={{ width: '2rem', height: '2rem' }} /> {/* 32px = 2rem */}
   {open && (
     <Typography 
       variant="subtitle1" 
       sx={{ 
-        fontSize: '18px', 
+        fontSize: '1.125rem', // 18px = 1.125rem
         fontWeight: 700,
         whiteSpace: 'nowrap',
         overflow: 'hidden'
@@ -215,7 +215,11 @@ return (
               button
               onClick={() => {
                 setActiveItemId(item.id)
-                if (item.route) navigate(item.route);
+                if (item.route) {
+                  // If route is /receive, navigate to /receive/order-receive
+                  const targetRoute = item.route === '/receive' ? '/receive/order-receive' : item.route;
+                  navigate(targetRoute);
+                }
               }}
               className={`sidebar-item ${activeItemId === item.id ? 'sidebar-item-active' : ''}`}
               sx={{

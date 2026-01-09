@@ -531,9 +531,9 @@ const InventoryModule: React.FC = () => {
               borderRadius: '0.5rem',
               textTransform: 'none',
               fontWeight: 600,
-              fontSize: '14px',
-              padding: '8px 16px',
-              minWidth: '120px',
+              fontSize: '0.875rem', // 14px = 0.875rem
+              padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+              minWidth: '7.5rem', // 120px = 7.5rem
               '&:hover': {
                 backgroundColor: selectedStockType === 'low' ? '#4C14C7' : 'transparent',
               },
@@ -550,9 +550,9 @@ const InventoryModule: React.FC = () => {
               borderRadius: '0.5rem',
               textTransform: 'none',
               fontWeight: 600,
-              fontSize: '14px',
-              padding: '8px 16px',
-              minWidth: '120px',
+              fontSize: '0.875rem', // 14px = 0.875rem
+              padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+              minWidth: '7.5rem', // 120px = 7.5rem
               '&:hover': {
                 backgroundColor: selectedStockType === 'excess' ? '#4C14C7' : 'transparent',
               },
@@ -569,9 +569,9 @@ const InventoryModule: React.FC = () => {
               borderRadius: '0.5rem',
               textTransform: 'none',
               fontWeight: 600,
-              fontSize: '14px',
-              padding: '8px 16px',
-              minWidth: '120px',
+              fontSize: '0.875rem', // 14px = 0.875rem
+              padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+              minWidth: '7.5rem', // 120px = 7.5rem
               '&:hover': {
                 backgroundColor: selectedStockType === 'nearExpiry' ? '#4C14C7' : 'transparent',
               },
@@ -588,9 +588,9 @@ const InventoryModule: React.FC = () => {
               borderRadius: '0.5rem',
               textTransform: 'none',
               fontWeight: 600,
-              fontSize: '14px',
-              padding: '8px 16px',
-              minWidth: '120px',
+              fontSize: '0.875rem', // 14px = 0.875rem
+              padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+              minWidth: '7.5rem', // 120px = 7.5rem
               '&:hover': {
                 backgroundColor: selectedStockType === 'expired' ? '#4C14C7' : 'transparent',
               },
@@ -615,7 +615,7 @@ const InventoryModule: React.FC = () => {
                 right: 0,
                 bottom: 0,
                 backgroundColor: selectedStockType === 'low' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
-                borderRadius: '16px',
+                borderRadius: '1rem', // 16px = 1rem
                 transition: 'background-color 0.3s ease-in-out',
                 pointerEvents: 'none',
                 zIndex: 1,
@@ -654,7 +654,7 @@ const InventoryModule: React.FC = () => {
                 right: 0,
                 bottom: 0,
                 backgroundColor: selectedStockType === 'excess' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
-                borderRadius: '16px',
+                borderRadius: '1rem', // 16px = 1rem
                 transition: 'background-color 0.3s ease-in-out',
                 pointerEvents: 'none',
                 zIndex: 1,
@@ -693,7 +693,7 @@ const InventoryModule: React.FC = () => {
                 right: 0,
                 bottom: 0,
                 backgroundColor: selectedStockType === 'nearExpiry' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
-                borderRadius: '16px',
+                borderRadius: '1rem', // 16px = 1rem
                 transition: 'background-color 0.3s ease-in-out',
                 pointerEvents: 'none',
                 zIndex: 1,
@@ -737,7 +737,7 @@ const InventoryModule: React.FC = () => {
                 right: 0,
                 bottom: 0,
                 backgroundColor: selectedStockType === 'expired' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
-                borderRadius: '16px',
+                borderRadius: '1rem', // 16px = 1rem
                 transition: 'background-color 0.3s ease-in-out',
                 pointerEvents: 'none',
                 zIndex: 1,
@@ -811,10 +811,10 @@ const InventoryModule: React.FC = () => {
                       borderRadius: '0.5rem',
                       textTransform: 'none',
                       fontWeight: 600,
-                      fontSize: '14px',
-                      padding: '8px 16px',
-                      minWidth: '100px',
-                      height: '38px',
+                      fontSize: '0.875rem', // 14px = 0.875rem
+                      padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+                      minWidth: '6.25rem', // 100px = 6.25rem
+                      height: '2.375rem', // 38px = 2.375rem
                       '&:hover': {
                         backgroundColor: nearExpiryMonths === 3 ? '#4C14C7' : 'transparent',
                       },
@@ -831,10 +831,10 @@ const InventoryModule: React.FC = () => {
                       borderRadius: '0.5rem',
                       textTransform: 'none',
                       fontWeight: 600,
-                      fontSize: '14px',
-                      padding: '8px 16px',
-                      minWidth: '100px',
-                      height: '38px',
+                      fontSize: '0.875rem', // 14px = 0.875rem
+                      padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+                      minWidth: '6.25rem', // 100px = 6.25rem
+                      height: '2.375rem', // 38px = 2.375rem
                       '&:hover': {
                         backgroundColor: nearExpiryMonths === 1 ? '#4C14C7' : 'transparent',
                       },

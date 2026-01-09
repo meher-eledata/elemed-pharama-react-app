@@ -68,10 +68,10 @@ const inputFieldStyles = {
     backgroundColor: '#ffffff',
     transition: 'all 0.2s ease',
     '& input': {
-      padding: '10px 14px',
+      padding: '0.625rem 0.875rem', // 10px = 0.625rem, 14px = 0.875rem
       fontSize: '0.875rem',
       color: '#1f2937',
-      borderRadius: '10px !important',
+      borderRadius: '0.625rem !important', // 10px = 0.625rem
     },
     '& fieldset': {
       borderColor: '#e5e7eb !important',
@@ -771,7 +771,7 @@ const InventoryAdjustment: React.FC = () => {
                   size="small" 
                   onClick={() => handleConfirmEdit(batch.id)}
                   sx={{ 
-                    padding: '4px',
+                    padding: '0.25rem', // 4px = 0.25rem
                     color: '#5C17E5',
                     '&:hover': {
                       backgroundColor: '#F3E8FF',

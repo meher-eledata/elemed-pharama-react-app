@@ -10,7 +10,7 @@ export const WHITE_COLOR = "#ffffff";
 export const FONT_FAMILY = "lexend";
 
 
-export const BORDER_RADIUS = "12px";
+export const BORDER_RADIUS = "0.75rem"; // 12px = 0.75rem
 
 // Button Styles
 export const CANCEL_BUTTON_STYLE = {
@@ -35,7 +35,7 @@ export const SELECT_STYLE = {
   backgroundColor: WHITE_COLOR,
   borderRadius: BORDER_RADIUS,
   "& .MuiSelect-select": {
-    padding: "8px 14px",
+    padding: "0.5rem 0.875rem", // 8px = 0.5rem, 14px = 0.875rem
     fontFamily: FONT_FAMILY,
     color: TEXT_COLOR
   },
@@ -48,10 +48,10 @@ export const MENU_PROPS = {
   PaperProps: {
     sx: {
       backgroundColor: WHITE_COLOR,
-      borderRadius: "8px",
+      borderRadius: "0.5rem", // 8px = 0.5rem
       "& .MuiMenuItem-root": {
-        fontSize: "14px",
-        padding: "8px 16px"
+        fontSize: "0.875rem", // 14px = 0.875rem
+        padding: "0.5rem 1rem" // 8px = 0.5rem, 16px = 1rem
       }
     }
   }

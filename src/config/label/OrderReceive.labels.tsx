@@ -15,6 +15,9 @@ export const ORDER_RECEIVE_TABLE_HEADERS = {
   RECEIVED_STATUS: "Received status",
   CREATED_BY: "Created By",
   TOTAL_AMOUNT: "Total amount (₹)",
+  AMOUNT_PAID: "Amount paid (₹)",
+  PENDING_AMOUNT: "Pending amount (₹)",
+  CREDIT_AVAILABLE_FOR_SUPPLIER: "Credit available for the supplier (₹)",
   INVOICE_ATTACHMENT: "Invoice Attachment",
   ACTIONS: "",
 } as const;

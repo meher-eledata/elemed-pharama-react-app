@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, ChangeEvent } from "react";
-import { Box, Typography, Snackbar, Alert, TextField, InputAdornment, Select, MenuItem, Autocomplete, IconButton } from "@mui/material";
+import { Box, Typography, Snackbar, Alert, TextField, InputAdornment, Select, MenuItem, Autocomplete, IconButton, Tooltip } from "@mui/material";
 import { StandardButton, PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useNavigate } from "react-router-dom";
@@ -60,11 +60,11 @@ const TickMarkIcon = (props: any) => (
 const commonStyles = {
   inputField: {
     '& .MuiOutlinedInput-root': {
-      height: '32px', borderRadius: '6px', backgroundColor: '#FFFFFF',
-      '& fieldset': { borderColor: '#D1D5DB', borderWidth: '1px' },
+      height: '2rem', borderRadius: '0.375rem', backgroundColor: '#FFFFFF', // 32px = 2rem, 6px = 0.375rem
+      '& fieldset': { borderColor: '#D1D5DB', borderWidth: '0.0625rem' }, // 1px = 0.0625rem
       '&:hover fieldset': { borderColor: '#9CA3AF' },
-      '&.Mui-focused fieldset': { borderColor: '#3B82F6', borderWidth: '1px' },
-      '& .MuiOutlinedInput-input': { padding: '6px 8px', fontSize: '13px', color: '#374151' },
+      '&.Mui-focused fieldset': { borderColor: '#3B82F6', borderWidth: '0.0625rem' }, // 1px = 0.0625rem
+      '& .MuiOutlinedInput-input': { padding: '0.375rem 0.5rem', fontSize: '0.8125rem', color: '#374151' }, // 6px = 0.375rem, 8px = 0.5rem, 13px = 0.8125rem
     },
   },
   numberInput: {
@@ -73,16 +73,16 @@ const commonStyles = {
   },
   searchField: {
     '& .MuiOutlinedInput-root': {
-      height: '40px', borderRadius: '12px', backgroundColor: '#fff',
-      boxShadow: 'inset 0 0 0 1px #BFD1E6', '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-      '&:hover': { boxShadow: 'inset 0 0 0 1px #AFC3DD' },
-      '&.Mui-focused': { boxShadow: 'inset 0 0 0 2px #9EB6D6' },
+      height: '2.5rem', borderRadius: '0.75rem', backgroundColor: '#fff', // 40px = 2.5rem, 12px = 0.75rem
+      boxShadow: 'inset 0 0 0 0.0625rem #BFD1E6', '& .MuiOutlinedInput-notchedOutline': { border: 'none' }, // 1px = 0.0625rem
+      '&:hover': { boxShadow: 'inset 0 0 0 0.0625rem #AFC3DD' }, // 1px = 0.0625rem
+      '&.Mui-focused': { boxShadow: 'inset 0 0 0 0.125rem #9EB6D6' }, // 2px = 0.125rem
     },
   },
   filterButton: {
-    minWidth: 160, height: 40, borderRadius: '12px', bgcolor: '#EEF2F7',
-    color: '#1A212B', textTransform: 'none', px: 2, border: '1px solid #D7DFEA',
-    boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)', '&:hover': { bgcolor: '#E6EBF2' }, fontWeight: 600,
+    minWidth: '10rem', height: '2.5rem', borderRadius: '0.75rem', bgcolor: '#EEF2F7', // 160px = 10rem, 40px = 2.5rem, 12px = 0.75rem
+    color: '#1A212B', textTransform: 'none', px: 2, border: '0.0625rem solid #D7DFEA', // 1px = 0.0625rem
+    boxShadow: '0 0.125rem 0.5rem rgba(2, 6, 23, 0.08)', '&:hover': { bgcolor: '#E6EBF2' }, fontWeight: 600, // 2px = 0.125rem, 8px = 0.5rem
   }
 };
 
@@ -114,6 +114,9 @@ export interface OrderReceiveRow {
   invoice_attachment?: string;
   receipt_file_name?: string; // File name from server upload
   receipt_file_url?: string; // File URL from server upload
+  amountPaid?: number; // Amount paid to supplier
+  pendingAmount?: number; // Pending amount
+  creditAvailable?: number; // Credit available for supplier
 }
 
 export interface PurchaseOrderRow {
@@ -229,6 +232,14 @@ const OrderReceive: React.FC = () => {
     return (receipts || [])
       .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
       .map((receipt) => {
+        // TODO: Backend not ready yet - these fields will be populated from API when ready
+        // For now, using placeholder values (0.00)
+        // Expected API fields: amount_paid, pending_amount, credit_available
+        const totalAmount = receipt.total_amount || 0;
+        const amountPaid = (receipt as any).amount_paid || (receipt as any).amountPaid || 0;
+        const pendingAmount = totalAmount - amountPaid;
+        const creditAvailable = (receipt as any).credit_available || (receipt as any).creditAvailable || 0;
+        
         return {
           receiptId: receipt.id,
           reNo: `RA${receipt.id}`,
@@ -239,7 +250,7 @@ const OrderReceive: React.FC = () => {
             : dayjs(receipt.received_on).format('MMM DD, YYYY h:mm A'),
           status: receipt.receipt_status,
           reBy: receipt.received_by,
-          amt: receipt.total_amount,
+          amt: totalAmount,
           products: [],
           transaction_number: receipt.transaction_number || '',
           payment_vendor: receipt.payment_vendor || '',
@@ -247,6 +258,9 @@ const OrderReceive: React.FC = () => {
           invoice_attachment: (receipt as any).invoice_attachment || undefined,
           receipt_file_name: (receipt as any).receipt_file_name || undefined,
           receipt_file_url: (receipt as any).receipt_file_url || undefined,
+          amountPaid: amountPaid,
+          pendingAmount: pendingAmount > 0 ? pendingAmount : 0,
+          creditAvailable: creditAvailable,
         };
       });
   }, [receipts]);
@@ -625,8 +639,8 @@ const OrderReceive: React.FC = () => {
           display: 'flex', 
           flexDirection: 'row', 
           alignItems: 'center', 
-          gap: '2px', 
-          minHeight: '24px',
+          gap: '0.125rem', // 2px = 0.125rem
+          minHeight: '1.5rem', // 24px = 1.5rem
           width: '100%',
           position: 'relative'
         }}>
@@ -635,8 +649,8 @@ const OrderReceive: React.FC = () => {
               fontSize: ORDER_RECEIVE_CONSTANTS.ICONS.RECEIPT_VIEW_SIZE, 
               color: ORDER_RECEIVE_CONSTANTS.ICONS.MUTED_COLOR, 
               cursor: 'pointer',
-              padding: '2px',
-              borderRadius: '4px',
+              padding: '0.125rem', // 2px = 0.125rem
+              borderRadius: '0.25rem', // 4px = 0.25rem
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
@@ -733,8 +747,61 @@ const OrderReceive: React.FC = () => {
       )
     },
     {
+      key: "amountPaid",
+      header: ORDER_RECEIVE_TABLE_HEADERS.AMOUNT_PAID,
+      sortable: true,
+      render: (row) => (
+        // TODO: Backend not ready - will show actual data when API provides amount_paid field
+        <span>{row.amountPaid !== undefined && row.amountPaid > 0 ? row.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+      )
+    },
+    {
+      key: "pendingAmount",
+      header: ORDER_RECEIVE_TABLE_HEADERS.PENDING_AMOUNT,
+      sortable: true,
+      render: (row) => (
+        // TODO: Backend not ready - will show actual data when API provides pending_amount field
+        <span>{row.pendingAmount !== undefined && row.pendingAmount > 0 ? row.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+      )
+    },
+    {
+      key: "creditAvailable",
+      header: "Credit available for supplier (₹)",
+      headerRender: () => (
+        <Tooltip title="Credit available for the supplier" arrow placement="top">
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'flex-start',
+            lineHeight: 1.2,
+            cursor: 'help',
+            whiteSpace: 'pre-line'
+          }}>
+            <span>Credit available</span>
+            <span>for supplier (₹)</span>
+          </Box>
+        </Tooltip>
+      ),
+      sortable: true,
+      render: (row) => (
+        // TODO: Backend not ready - will show actual data when API provides credit_available field
+        <span>{row.creditAvailable !== undefined && row.creditAvailable > 0 ? row.creditAvailable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+      )
+    },
+    {
       key: "invoice_attachment",
       header: ORDER_RECEIVE_TABLE_HEADERS.INVOICE_ATTACHMENT,
+      headerRender: () => (
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'flex-start',
+          lineHeight: 1.2
+        }}>
+          <span>Invoice</span>
+          <span>Attachment</span>
+        </Box>
+      ),
       render: (row) => {
         // Determine the file URL
         let fileUrl: string | null = null;
@@ -811,12 +878,12 @@ const OrderReceive: React.FC = () => {
                 src={fileUrl} 
                 alt="Invoice Receipt"
                 style={{
-                  maxWidth: '100px',
-                  maxHeight: '60px',
+                  maxWidth: '6.25rem', // 100px = 6.25rem
+                  maxHeight: '3.75rem', // 60px = 3.75rem
                   objectFit: 'contain',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '4px',
-                  padding: '2px',
+                  border: '0.0625rem solid #D1D5DB', // 1px = 0.0625rem
+                  borderRadius: '0.25rem', // 4px = 0.25rem
+                  padding: '0.125rem', // 2px = 0.125rem
                   backgroundColor: '#F9FAFB'
                 }}
                 onError={(e) => {
@@ -859,11 +926,11 @@ const OrderReceive: React.FC = () => {
       key: "actions",
       header: ORDER_RECEIVE_TABLE_HEADERS.ACTIONS,
       sortable: false,
-      columnWidth: "10%",
+      columnWidth: "12%",
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}> {/* 12px = 0.75rem */}
           {editingRowId === row.reNo ? (
-            <Box sx={{ display: 'flex', gap: '12px' }}>
+            <Box sx={{ display: 'flex', gap: '0.75rem' }}> {/* 12px = 0.75rem */}
               <Box
                 onClick={() => validateInlineEditing() ? handleSaveClick(row) : null}
                 sx={{ 
@@ -883,11 +950,20 @@ const OrderReceive: React.FC = () => {
               />
             </Box>
           ) : (
-            <Box sx={{ display: 'flex', gap: '18px' }}>
+            <Box sx={{ display: 'flex', gap: '0.5rem', alignItems: 'center', minWidth: '60px' }}> {/* 8px = 0.5rem */}
               <EditIcon
-                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer', fontSize: 18 }}
+                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer', fontSize: 18, flexShrink: 0 }}
                 onClick={() => handleEditClick(row)}
               />
+              <Typography sx={{ 
+                color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, 
+                fontSize: '16px',
+                fontWeight: 500,
+                cursor: 'default',
+                whiteSpace: 'nowrap'
+              }}>
+                ₹
+              </Typography>
             </Box>
           )}
         </Box>
@@ -1028,8 +1104,8 @@ const OrderReceive: React.FC = () => {
                 <Box
                   sx={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                    bgcolor: '#F6F8FB', borderRadius: '25px', border: '1px solid #E6ECF5', p: '12px', 
-                    gap: { xs: 2, sm: 4, md: 8, lg: '540px' }, 
+                    bgcolor: '#F6F8FB', borderRadius: '1.5625rem', border: '0.0625rem solid #E6ECF5', p: '0.75rem', // 25px = 1.5625rem, 1px = 0.0625rem, 12px = 0.75rem
+                    gap: { xs: 2, sm: 4, md: 8 }, // Remove fixed large gap that was causing overflow 
                     mb: 2, mt: 2,
                     flexWrap: { xs: 'wrap', lg: 'nowrap' },
                   }}
@@ -1040,26 +1116,26 @@ const OrderReceive: React.FC = () => {
                     onChange={(e: ChangeEvent<HTMLInputElement>) => handleSearchChange(e)}
                     InputProps={{
                       startAdornment: !searchTerm.trim() ? (
-                        <InputAdornment position="start" sx={{ marginRight: '4px' }}>
-                          <SearchIcon sx={{ color: '#8A99AF', fontSize: '24px' }} />
+                        <InputAdornment position="start" sx={{ marginRight: '0.25rem' }}> {/* 4px = 0.25rem */}
+                          <SearchIcon sx={{ color: '#8A99AF', fontSize: '1.5rem' }} /> {/* 24px = 1.5rem */}
                         </InputAdornment>
                       ) : null,
                     }}
                     sx={{
-                      height: '40px',
-                      borderRadius: '12px',
+                      height: '2.5rem', // 40px = 2.5rem
+                      borderRadius: '0.75rem', // 12px = 0.75rem
                       backgroundColor: '#fff',
-                      boxShadow: 'inset 0 0 0 1px #BFD1E6',
+                      boxShadow: 'inset 0 0 0 0.0625rem #BFD1E6', // 1px = 0.0625rem
                       flex: 1,
                       '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-                      '&:hover': { boxShadow: 'inset 0 0 0 1px #BFD1E6' },
-                      '&.Mui-focused': { boxShadow: 'inset 0 0 0 1px #BFD1E6' },
+                      '&:hover': { boxShadow: 'inset 0 0 0 0.0625rem #BFD1E6' }, // 1px = 0.0625rem
+                      '&.Mui-focused': { boxShadow: 'inset 0 0 0 0.0625rem #BFD1E6' }, // 1px = 0.0625rem
                       '& .MuiOutlinedInput-input': {
-                        padding: '10px 14px',
-                        paddingLeft: '8px',
+                        padding: '0.625rem 0.875rem', // 10px = 0.625rem, 14px = 0.875rem
+                        paddingLeft: '0.5rem', // 8px = 0.5rem
                       },
                       '& .MuiOutlinedInput-input::placeholder': {
-                        fontSize: '16px',
+                        fontSize: '1rem', // 16px = 1rem
                         opacity: 1,
                         color: '#9CA3AF',
                       },
@@ -1075,12 +1151,12 @@ const OrderReceive: React.FC = () => {
                     variant="secondary"
                     size="medium"
                     sx={{
-                      minWidth: 160,
+                      minWidth: '10rem', // 160px = 10rem
                       bgcolor: '#EEF2F7',
                       color: '#1A212B',
                       px: 2,
-                      border: '1px solid #D7DFEA',
-                      boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
+                      border: '0.0625rem solid #D7DFEA', // 1px = 0.0625rem
+                      boxShadow: '0 0.125rem 0.5rem rgba(2, 6, 23, 0.08)', // 2px = 0.125rem, 8px = 0.5rem
                       '&:hover': { bgcolor: '#E6EBF2' },
                       fontWeight: 600,
                     }}
@@ -1092,7 +1168,7 @@ const OrderReceive: React.FC = () => {
                   <Box sx={{ display: 'flex', gap: 4, mb: 2, alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <Typography sx={{ fontSize: '12px', color: '#728197' }}>Supplier Name</Typography>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>Supplier Name</Typography> {/* 12px = 0.75rem */}
                         <Autocomplete
                           value={filters.supplier}
                           onChange={handleSupplierChange}
@@ -1102,7 +1178,7 @@ const OrderReceive: React.FC = () => {
                           freeSolo
                           forcePopupIcon
                           disableClearable={!filters.supplier}
-                          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+                          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '1.5rem' }} />}
                           componentsProps={{
                             popper: {
                               sx: {
@@ -1122,13 +1198,13 @@ const OrderReceive: React.FC = () => {
                               {...params}
                               placeholder="Search supplier..."
                               sx={{
-                                width: 240,
-                                height: '40px',
-                                borderRadius: '12px',
+                                width: '15rem', // 240px = 15rem
+                                height: '2.5rem', // 40px = 2.5rem
+                                borderRadius: '0.75rem', // 12px = 0.75rem
                                 backgroundColor: '#ffffff',
                                 '& .MuiOutlinedInput-root': {
-                                  height: '40px',
-                                  borderRadius: '12px',
+                                  height: '2.5rem', // 40px = 2.5rem
+                                  borderRadius: '0.75rem', // 12px = 0.75rem
                                   '& .MuiOutlinedInput-notchedOutline': {
                                     border: '1px solid #D1D5DB',
                                   },
@@ -1150,7 +1226,7 @@ const OrderReceive: React.FC = () => {
                                   cursor: 'text',
                                 },
                                 '& .MuiAutocomplete-endAdornment': {
-                                  right: '8px',
+                                  right: '0.5rem', // 8px = 0.5rem
                                 },
                               }}
                               InputProps={{
@@ -1165,8 +1241,8 @@ const OrderReceive: React.FC = () => {
                           )}
                           ListboxProps={{
                             sx: {
-                              borderRadius: '12px',
-                              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                              borderRadius: '0.75rem', // 12px = 0.75rem
+                              boxShadow: '0 0.25rem 1.25rem rgba(0, 0, 0, 0.15)', // 4px = 0.25rem, 20px = 1.25rem
                               border: '1px solid #E6ECF5',
                               '& .MuiAutocomplete-option': {
                                 '&:hover': {
@@ -1182,7 +1258,7 @@ const OrderReceive: React.FC = () => {
                         />
                       </Box>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <Typography sx={{ fontSize: '12px', color: '#728197' }}>Received On</Typography>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>Received On</Typography> {/* 12px = 0.75rem */}
                         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                           <PharmaDatePicker
                             value={dateRange.startDate}
@@ -1199,7 +1275,7 @@ const OrderReceive: React.FC = () => {
                         </Box>
                       </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', pt: '28px' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', pt: '1.75rem' }}> {/* 28px = 1.75rem */}
                       <StandardButton
                         onClick={() => { 
                           setSearchTerm(''); 
@@ -1210,13 +1286,13 @@ const OrderReceive: React.FC = () => {
                         variant="secondary"
                         size="medium"
                         sx={{
-                          minWidth: 160,
-                          height: '40px',
+                          minWidth: '10rem', // 160px = 10rem
+                          height: '2.5rem', // 40px = 2.5rem
                           backgroundColor: '#F5F5F5',
                           border: '1px solid #D1D5DB',
                           color: '#1A212B',
                           fontWeight: 500,
-                          marginRight: '10px',
+                          marginRight: '0.625rem', // 10px = 0.625rem
                           '&:hover': {
                             backgroundColor: '#E0E0E0',
                             border: '1px solid #D1D5DB',
@@ -1252,26 +1328,72 @@ const OrderReceive: React.FC = () => {
                 setSelectedRows={setSelectedRows}
               />
             ) : (
-              <ReusableTable<OrderReceiveRow>
-                columns={orderReceiveColumns}
-                data={sortedData as OrderReceiveRow[]}
-                emptyMessage={ORDER_RECEIVE_MESSAGES.EMPTY_RECEIPTS}
-                searchAndFilterConfig={{ filterOptions: [] }}
-                currentSearchTerm={searchTerm}
-                onSearchChange={handleSearchChange}
-                showFilters={false}
-                onShowFiltersToggle={() => {}}
-                onFilterSelect={(key, value) => handleFilterChange(key, value)}
-                totalRows={sortedData.length}
-                rowsPerPage={rowsPerPage}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                onSortRequest={handleSortRequest}
-                sortConfig={sortConfig}
-                selectedRows={selectedRows}
-                setSelectedRows={setSelectedRows}
-                currentFilter={currentFilterForTable}
-              />
+              <>
+                <ReusableTable<OrderReceiveRow>
+                  columns={orderReceiveColumns}
+                  data={sortedData as OrderReceiveRow[]}
+                  emptyMessage={ORDER_RECEIVE_MESSAGES.EMPTY_RECEIPTS}
+                  searchAndFilterConfig={{ filterOptions: [] }}
+                  currentSearchTerm={searchTerm}
+                  onSearchChange={handleSearchChange}
+                  showFilters={false}
+                  onShowFiltersToggle={() => {}}
+                  onFilterSelect={(key, value) => handleFilterChange(key, value)}
+                  totalRows={sortedData.length}
+                  rowsPerPage={rowsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                  onSortRequest={handleSortRequest}
+                  sortConfig={sortConfig}
+                  selectedRows={selectedRows}
+                  setSelectedRows={setSelectedRows}
+                  currentFilter={currentFilterForTable}
+                  footerContent={sortedData.length > 0 && activeTab === 2 ? (() => {
+                    const orderReceiveData = sortedData as OrderReceiveRow[];
+                    const totalAmountPaid = orderReceiveData.reduce((sum, row) => sum + (row.amountPaid || 0), 0);
+                    const totalPendingAmount = orderReceiveData.reduce((sum, row) => sum + (row.pendingAmount || 0), 0);
+                    const totalCreditAvailable = orderReceiveData.reduce((sum, row) => sum + (row.creditAvailable || 0), 0);
+                    const totalAmount = totalAmountPaid + totalPendingAmount + totalCreditAvailable;
+                    
+                    return (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'flex-start',
+                          alignItems: 'center',
+                          padding: '8px 16px',
+                          backgroundColor: '#F9FAFB',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                          <Typography
+                            sx={{
+                              fontFamily: "'Lexend', sans-serif",
+                              fontWeight: 600,
+                              fontSize: '14px',
+                              lineHeight: '20px',
+                              color: '#374151',
+                            }}
+                          >
+                            Total Amount
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontFamily: "'Lexend', sans-serif",
+                              fontWeight: 600,
+                              fontSize: '16px',
+                              lineHeight: '24px',
+                              color: '#1A212B',
+                            }}
+                          >
+                            ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })() : undefined}
+                />
+              </>
             )}
           </>
         )}
@@ -1301,7 +1423,7 @@ const OrderReceive: React.FC = () => {
         open={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         title={ORDER_RECEIVE_MODAL.DETAILS_TITLE}
-        maxWidth="900px"
+        maxWidth="56.25rem" // 900px = 56.25rem
         content={
           <ProductDetailsModalContent
             productData={

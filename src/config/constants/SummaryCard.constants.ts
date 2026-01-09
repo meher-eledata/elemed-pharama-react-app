@@ -1,18 +1,18 @@
 export const SUMMARY_CARD_CONSTANTS = {
-    BORDER_RADIUS: "24px",
+    BORDER_RADIUS: "1.5rem", // 24px = 1.5rem
     BORDER_COLOR: "#CBD5E1",
   
     TITLE: {
       FONT_FAMILY: "lexend",
       FONT_WEIGHT: "500",
       COLOR: "#475569",
-      SIZE: "18px",
+      SIZE: "1.125rem", // 18px = 1.125rem
     },
   
     VALUE: {
       FONT_FAMILY: "lexend",
       FONT_WEIGHT: "400",
-      FONT_SIZE: "32px",
+      FONT_SIZE: "2rem", // 32px = 2rem
     },
   
     TREND: {

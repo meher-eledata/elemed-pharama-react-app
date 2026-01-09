@@ -112,10 +112,10 @@ const LoginForm: React.FC = () => {
         sx={{
           fontFamily: "'Lexend', sans-serif",
           fontWeight: 600,
-          fontSize: "32px",
-          lineHeight: "36px",
+          fontSize: "2rem", // 32px = 2rem
+          lineHeight: "2.25rem", // 36px = 2.25rem
           color: "#1A212B",
-          mb: "24px",
+          mb: "1.5rem", // 24px = 1.5rem
         }}
       >
         {LOGIN_LABELS.TITLE}
@@ -134,9 +134,9 @@ const LoginForm: React.FC = () => {
         {/* Username Field */}
         <Typography
           sx={{
-            fontSize: "12px",
+            fontSize: "0.75rem", // 12px = 0.75rem
             fontWeight: 400,
-            mb: "4px",
+            mb: "0.25rem", // 4px = 0.25rem
             color: "#728197",
           }}
         >
@@ -153,11 +153,11 @@ const LoginForm: React.FC = () => {
           helperText={errors.username}
           autoComplete="off"
           sx={{
-            mb: "24px",
+            mb: "1.5rem", // 24px = 1.5rem
             "& .MuiInputBase-root": {
               color: "#1A212B",
-              borderRadius: "12px", // rounded corners
-              height: "49px", // custom height
+              borderRadius: "0.75rem", // 12px = 0.75rem - rounded corners
+              height: "3.0625rem", // 49px = 3.0625rem - custom height
               "& fieldset": {
                 borderColor: "#9AA8BC",
               },
@@ -183,9 +183,9 @@ const LoginForm: React.FC = () => {
         {/* Password Field */}
         <Typography
           sx={{
-            fontSize: "12px",
+            fontSize: "0.75rem", // 12px = 0.75rem
             fontWeight: 400,
-            mb: "4px",
+            mb: "0.25rem", // 4px = 0.25rem
             color: "#728197",
           }}
         >
@@ -202,7 +202,7 @@ const LoginForm: React.FC = () => {
           helperText={errors.password}
           autoComplete="new-password"
           sx={{
-            mb: "24px",
+            mb: "1.5rem", // 24px = 1.5rem
 
             "& input::-ms-reveal, & input::-ms-clear": {
               display: "none",
@@ -213,8 +213,8 @@ const LoginForm: React.FC = () => {
               },
             "& .MuiInputBase-root": {
               color: "#1A212B",
-              borderRadius: "12px", // rounded corners
-              height: "49px", // custom height
+              borderRadius: "0.75rem", // 12px = 0.75rem - rounded corners
+              height: "3.0625rem", // 49px = 3.0625rem - custom height
               "& fieldset": {
                 borderColor: "#9AA8BC",
               },
@@ -250,11 +250,11 @@ const LoginForm: React.FC = () => {
         />
 
         {/* Forgot Password */}
-        <Box sx={{ mb: "32px", alignSelf: "flex-start" }}>
+        <Box sx={{ mb: "2rem", alignSelf: "flex-start" }}> {/* 32px = 2rem */}
           <Link to="/forgot-password" style={{ textDecoration: "none" }}>
             <Typography
               variant="caption"
-              sx={{ fontSize: "16px", cursor: "pointer" ,color:'#5C17E5'}}
+              sx={{ fontSize: "1rem", cursor: "pointer" ,color:'#5C17E5'}} // 16px = 1rem
             >
               {LOGIN_LABELS.FORGOT_PASSWORD}
             </Typography>
@@ -268,11 +268,11 @@ const LoginForm: React.FC = () => {
           disabled={isLoading}
           disableRipple
           sx={{
-            height:'56px',     
+            height:'3.5rem', // 56px = 3.5rem
             textTransform: "none",
             bgcolor: "#5C17E5",
-            borderRadius: "12px",
-            fontSize:"16px",
+            borderRadius: "0.75rem", // 12px = 0.75rem
+            fontSize:"1rem", // 16px = 1rem
             boxShadow:'none',
              "&:hover":{bgcolor: "#5C17E5",boxShadow:'none'}
           }}

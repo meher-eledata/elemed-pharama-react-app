@@ -32,8 +32,8 @@ const LoginRight: React.FC<LoginRightProps> = ({ className }) => {
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        borderBottomRightRadius: '20px',
-        borderTopRightRadius: '20px',
+        borderBottomRightRadius: '1.25rem', // 20px = 1.25rem
+        borderTopRightRadius: '1.25rem', // 20px = 1.25rem
       }}
     >
       <img

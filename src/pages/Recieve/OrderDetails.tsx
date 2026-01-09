@@ -41,8 +41,10 @@ import TickMarkSvg from "../../assets/Right.svg";
 import PlusIcon from "../../assets/PlusIcon.svg";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
+import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
 import { masterProducts, ProductMaster } from "../../data/masterData";
+import { useAddSupplierMutation } from "../../redux/slices/masterApi";
 
 interface OrderDetailsProps {
   labels: typeof orderLabels;
@@ -105,6 +107,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
   const [uploadReceiptFile] = useUploadReceiptFileMutation();
   const [getBatchesForProduct] = useGetBatchesForProductMutation();
+  const [addSupplier] = useAddSupplierMutation();
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [sortConfig, setSortConfig] = useState<{
@@ -112,6 +115,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     direction: "asc" | "desc";
   }>({ key: "productName", direction: "asc" });
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
+    useState<boolean>(false);
+  const [isNewSupplierModalOpen, setIsNewSupplierModalOpen] =
     useState<boolean>(false);
 
   const [findProductTerm, setFindProductTerm] = useState<string>("");
@@ -302,6 +307,33 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       startTransition(() => {
         setIsSuppliersLoading(false);
       });
+    }
+  };
+
+  const handleSupplierSubmit = async (supplierData: any) => {
+    try {
+      await addSupplier({
+        supplier_name: supplierData.supplierName,
+        supplier_code: supplierData.supplierCode || '',
+        contact_name: supplierData.contactName,
+        address: supplierData.address || '',
+        city: supplierData.city || '',
+        state: supplierData.state || '',
+        pin: supplierData.pin || '',
+        country: supplierData.country || '',
+        phone_number: supplierData.phoneNumber,
+        gst_number: supplierData.gstin || '',
+        cst_number: supplierData.cstNumber || '',
+        notes: supplierData.tinNumber || '',
+      }).unwrap();
+      setIsNewSupplierModalOpen(false);
+      // Refresh supplier list
+      await fetchSupplierNames();
+      // Set the newly added supplier name
+      setSupplierName(supplierData.supplierName);
+    } catch (error) {
+      console.error('Error adding supplier:', error);
+      throw error;
     }
   };
 
@@ -1317,8 +1349,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const transformedSupplierOptions = useMemo(() => {
-    if (!Array.isArray(supplierOptions) || supplierOptions.length === 0) return [];
-    return supplierOptions.map((supplier) => supplier.supplier_name);
+    if (!Array.isArray(supplierOptions) || supplierOptions.length === 0) return [orderLabels.addNewSupplier];
+    return [...supplierOptions.map((supplier) => supplier.supplier_name), orderLabels.addNewSupplier];
   }, [supplierOptions]);
 
   const pharmaTableColumns: TableColumn<PharmaTableRow>[] = [
@@ -1563,6 +1595,38 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       ),
     },
     {
+      key: "amount",
+      header: "Amount (₹)",
+      sortable: false,
+      render: (row) => {
+        const unitPrice = typeof row.pp === 'number' ? row.pp : parseFloat(String(row.pp)) || 0;
+        const qty = row.qtyReceived || 0;
+        const cgst = typeof row.cgst === 'number' ? row.cgst : parseFloat(String(row.cgst)) || 0;
+        const sgst = typeof row.sgst === 'number' ? row.sgst : parseFloat(String(row.sgst)) || 0;
+        const igst = typeof row.igst === 'number' ? row.igst : parseFloat(String(row.igst)) || 0;
+        const discount = typeof row.disc === 'number' ? row.disc : parseFloat(String(row.disc)) || 0;
+        
+        // Calculate base amount
+        const baseAmount = unitPrice * qty;
+        
+        // Apply discount (assuming percentage)
+        const discountAmount = baseAmount * (discount / 100);
+        const amountAfterDiscount = baseAmount - discountAmount;
+        
+        // Apply taxes (assuming percentage)
+        const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+        
+        // Row total = base - discount + taxes
+        const rowTotal = amountAfterDiscount + taxAmount;
+        
+        return (
+          <span>
+            ₹{rowTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        );
+      },
+    },
+    {
       key: "actions",
       header: orderLabels.actions,
       sortable: false,
@@ -1742,7 +1806,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             value={supplierName}
             onInputChange={(_, v) => setSupplierName(v)}
             onChange={(_, v) => {
-              if (v !== "Loading suppliers...") {
+              if (v === orderLabels.addNewSupplier) {
+                setIsNewSupplierModalOpen(true);
+                setSupplierName("");
+              } else if (v !== "Loading suppliers...") {
                 setSupplierName(v || "");
               }
             }}
@@ -1762,6 +1829,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             renderOption={(props, option) => {
               const isLoading = String(option) === "Loading suppliers...";
+              const isAddNewSupplier = String(option) === orderLabels.addNewSupplier;
               return (
                 <li 
                   {...props} 
@@ -1770,16 +1838,24 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     ...props.style,
                     cursor: isLoading ? 'default' : 'pointer',
                     opacity: isLoading ? 0.7 : 1,
-                    backgroundColor: isLoading ? '#f5f5f5' : 'transparent',
+                    backgroundColor: isLoading ? '#f5f5f5' : (isAddNewSupplier ? '#5C17E5' : 'transparent'),
+                    margin: isAddNewSupplier ? '4px 8px' : '0',
+                    borderRadius: isAddNewSupplier ? '8px' : '0',
                   }}
                 >
                   <Box sx={{ 
                     display: 'flex', 
                     alignItems: 'center', 
+                    justifyContent: 'flex-start',
                     gap: 1, 
-                    width: '100%',
-                    padding: isLoading ? '8px 16px' : '0px',
-                    fontStyle: isLoading ? 'italic' : 'normal'
+                    width: isAddNewSupplier ? 'calc(100% - 16px)' : '100%',
+                    height: isAddNewSupplier ? '40px' : 'auto',
+                    minHeight: isAddNewSupplier ? '40px' : 'auto',
+                    padding: isLoading ? '8px 16px' : (isAddNewSupplier ? '8px 16px' : '0px'),
+                    fontStyle: isLoading ? 'italic' : 'normal',
+                    color: isAddNewSupplier ? '#FFFFFF' : 'inherit',
+                    fontWeight: isAddNewSupplier ? 500 : 'normal',
+                    boxSizing: 'border-box',
                   }}>
                     {isLoading && <CircularProgress size={16} color="primary" />}
                     <span>{String(option)}</span>
@@ -1957,231 +2033,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               setInvoiceDate(formattedDate);
             }}
             width={274}
-          />
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            width: "274px",
-            gap: "4px",
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: "'Lexend', sans-serif",
-              fontWeight: 500,
-              fontSize: "12px",
-              lineHeight: "18px",
-              color: "#728197",
-            }}
-          >
-            {orderLabels.paymentMethod}
-          </Typography>
-
-          <Autocomplete
-            options={paymentMethods}
-            value={paymentMethod}
-            onChange={(_, newValue) => {
-              if (newValue) {
-                setPaymentMethod(newValue);
-              }
-            }}
-            disableClearable
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder="Select payment method"
-                variant="outlined"
-                fullWidth
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "18px",
-                    height: "44px",
-                    backgroundColor: "#FFFFFF",
-                    "& fieldset": {
-                      borderColor: "#D1D5DB",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#D1D5DB",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#728197",
-                      borderWidth: "2px",
-                      outline: "none",
-                    },
-                    "&.Mui-focused": {
-                      outline: "none",
-                    },
-                  },
-                  "& .MuiOutlinedInput-input": {
-                    padding: "12px 16px",
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: "16px",
-                    lineHeight: "24px",
-                    color: "#728197",
-                  },
-                  "& .MuiAutocomplete-endAdornment": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
-                  "& .MuiAutocomplete-popupIndicator": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
-                }}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: params.InputProps.endAdornment, 
-                }}
-              />
-            )}
-          />
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            width: "274px",
-            gap: "4px",
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: "'Lexend', sans-serif",
-              fontWeight: 500,
-              fontSize: "12px",
-              lineHeight: "18px",
-              color: "#728197",
-            }}
-          >
-            {orderLabels.paymentVendor}
-          </Typography>
-
-          <Autocomplete
-            options={paymentVendors}
-            value={paymentVendor || null}
-            isOptionEqualToValue={(option, value) => {
-              if (!value) return false;
-              return option === value;
-            }}
-            onChange={(_, newValue) => {
-              setPaymentVendor(newValue || "");
-            }}
-            onFocus={() => setIsVendorFocused(true)}
-            onBlur={() => setIsVendorFocused(false)}
-            disableClearable={!paymentVendor}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder={orderLabels.selectBankVendor}
-                variant="outlined"
-                fullWidth
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "18px",
-                    height: "44px",
-                    backgroundColor: "#FFFFFF",
-                    "& fieldset": {
-                      borderColor: "#D1D5DB",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#D1D5DB",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#728197",
-                      borderWidth: "2px",
-                      outline: "none",
-                    },
-                    "&.Mui-focused": {
-                      outline: "none",
-                    },
-                  },
-                  "& .MuiOutlinedInput-input": {
-                    padding: "12px 16px",
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: "16px",
-                    lineHeight: "24px",
-                    color: "#728197",
-                  },
-                  "& .MuiAutocomplete-endAdornment": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
-                  "& .MuiAutocomplete-popupIndicator": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
-                }}
-                InputProps={params.InputProps}
-              />
-            )}
-          />
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            width: "274px",
-            gap: "4px",
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: "'Lexend', sans-serif",
-              fontWeight: 500,
-              fontSize: "12px",
-              lineHeight: "18px",
-              color: "#728197",
-            }}
-          >
-            {orderLabels.transactionNumber}
-          </Typography>
-          <TextField
-            variant="outlined"
-            fullWidth
-            value={transactionNumber}
-            onChange={(e) => setTransactionNumber(e.target.value)}
-            onFocus={() => setIsTransactionFocused(true)}
-            onBlur={() => setIsTransactionFocused(false)}
-            onMouseEnter={() => setIsTransactionHovered(true)}
-            onMouseLeave={() => setIsTransactionHovered(false)}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "18px",
-                height: "44px",
-                backgroundColor: "#FFFFFF",
-                "& fieldset": { borderColor: "#D1D5DB" },
-                "&:hover fieldset": { borderColor: "#D1D5DB" },
-                "&.Mui-focused fieldset": { 
-                  borderColor: "#728197",
-                  borderWidth: "2px",
-                  outline: "none",
-                },
-                "&.Mui-focused": {
-                  outline: "none",
-                },
-              },
-              "& .MuiOutlinedInput-input": {
-                padding: "12px 16px",
-                fontFamily: "'Lexend', sans-serif",
-                fontSize: "16px",
-                lineHeight: "24px",
-                color: "#728197",
-              },
-            }}
-            InputProps={{
-              endAdornment: transactionNumber && (isTransactionFocused || isTransactionHovered) ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setTransactionNumber("")}>
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            }}
           />
         </Box>
 
@@ -2624,6 +2475,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       <Box sx={{ 
         marginTop: "24px",
         overflowX: "auto",
+        overflowY: "visible",
         "&::-webkit-scrollbar": {
           height: "8px",
         },
@@ -2657,6 +2509,68 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           onPageChange={setCurrentPage}
           onSortRequest={handleSortRequest}
           sortConfig={sortConfig}
+          footerContent={sortedData.length > 0 ? (() => {
+            const totalAmount = sortedData.reduce((sum, row) => {
+              const unitPrice = typeof row.pp === 'number' ? row.pp : parseFloat(String(row.pp)) || 0;
+              const qty = row.qtyReceived || 0;
+              const cgst = typeof row.cgst === 'number' ? row.cgst : parseFloat(String(row.cgst)) || 0;
+              const sgst = typeof row.sgst === 'number' ? row.sgst : parseFloat(String(row.sgst)) || 0;
+              const igst = typeof row.igst === 'number' ? row.igst : parseFloat(String(row.igst)) || 0;
+              const discount = typeof row.disc === 'number' ? row.disc : parseFloat(String(row.disc)) || 0;
+              
+              // Calculate base amount
+              const baseAmount = unitPrice * qty;
+              
+              // Apply discount (assuming percentage)
+              const discountAmount = baseAmount * (discount / 100);
+              const amountAfterDiscount = baseAmount - discountAmount;
+              
+              // Apply taxes (assuming percentage)
+              const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+              
+              // Row total = base - discount + taxes
+              const rowTotal = amountAfterDiscount + taxAmount;
+              
+              return sum + rowTotal;
+            }, 0);
+            
+            return (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  backgroundColor: '#F9FAFB',
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: '20px',
+                      color: '#374151',
+                    }}
+                  >
+                    Total Amount
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '16px',
+                      lineHeight: '24px',
+                      color: '#1A212B',
+                    }}
+                  >
+                    ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+              </Box>
+            );
+          })() : undefined}
         />
       </Box>
 
@@ -2730,53 +2644,38 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             variant="contained"
             disableRipple
             disableElevation
-            disabled={isSaving || !validateRequiredFields() || !hasFormChanges}
-            onClick={handleSubmitReceipt}
+            disabled={!validateRequiredFields()}
+            onClick={() => {
+              // Navigate to payment details page with current form data
+              navigate('/receive/payment-details', {
+                state: {
+                  supplierName,
+                  poNumber,
+                  invoiceDate,
+                  pharmaTableData,
+                  isEditMode,
+                  receiptId,
+                  receiptNumber,
+                }
+              });
+            }}
             sx={{
-              backgroundColor: isSaving ? "#6B7280" : "#5C17E5",
+              backgroundColor: "#5C17E5",
               "&:hover": {
-                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: "#4A14C7",
                 boxShadow: "none",
               },
               "&:focus": {
-                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: "#4A14C7",
                 boxShadow: "none",
               },
               "&:active": {
-                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
+                backgroundColor: "#4A14C7",
                 boxShadow: "none",
               },
-              "&:focus-visible": {
-                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
-                boxShadow: "none",
-              },
-              "&.Mui-focusVisible": {
-                backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
-                boxShadow: "none",
-              },
-              "& .MuiTouchRipple-root": {
-                display: "none",
-              },
-              "& .MuiButtonBase-root": {
-                "&:active": {
-                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
-                },
-              },
-              "& .MuiButton-contained": {
-                "&:active": {
-                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
-                },
-              },
-              "& .MuiButton-root": {
-                "&:active": {
-                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
-                },
-              },
-              "&::before": {
-                display: "none",
-              },
-              "&::after": {
-                display: "none",
+              "&:disabled": {
+                backgroundColor: "#D1D5DB",
+                color: "#9CA3AF",
               },
               borderRadius: "12px",
               width: "86px",
@@ -2784,20 +2683,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               fontFamily: "'Lexend', sans-serif",
               textTransform: "none",
               boxShadow: "none",
-              position: "relative",
-              overflow: "hidden",
-              "& *": {
-                "&:active": {
-                  backgroundColor: isSaving ? "#6B7280" : "#4A14C7",
-                },
-              },
+              fontWeight: 500,
+              fontSize: "16px",
+              lineHeight: "24px",
             }}
           >
-            {isSaving ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              orderLabels.saveButton
-            )}
+            Next
           </Button>
         </Box>
         
@@ -2954,6 +2845,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         message="Did you forget to upload the invoice receipt? Would you like to upload it now?"
         confirmLabel="Yes, Upload"
         cancelLabel="No, Save Without Upload"
+      />
+
+      <NewSupplierModal
+        isOpen={isNewSupplierModalOpen}
+        onClose={() => setIsNewSupplierModalOpen(false)}
+        onSubmit={handleSupplierSubmit}
       />
     </>
   );
