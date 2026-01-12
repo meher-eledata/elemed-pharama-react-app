@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, Autocomplete, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -55,6 +55,8 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   onPatientTypeChange,
   onAddNewCustomer,
 }) => {
+  const [patientTypeOpen, setPatientTypeOpen] = useState(false);
+
   return (
     <CustomerDetailsColumn>
       <Box sx={{ 
@@ -214,12 +216,16 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
         <Autocomplete
           options={['In Patient', 'Out Patient']}
           value={patientType || 'Out Patient'}
+          open={patientTypeOpen}
+          onOpen={() => setPatientTypeOpen(true)}
+          onClose={() => setPatientTypeOpen(false)}
           onChange={(_, newValue) => {
             if (newValue) {
               onPatientTypeChange(newValue);
             } else {
               onPatientTypeChange('Out Patient');
             }
+            setPatientTypeOpen(false);
           }}
           disableClearable
           forcePopupIcon
@@ -227,7 +233,12 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           sx={{ width: '180px' }}
           ListboxProps={{
             sx: {
+              zIndex: 1300,
+              padding: '4px 0',
               '& .MuiAutocomplete-option': {
+                minHeight: '36px',
+                padding: '6px 12px',
+                fontSize: '14px',
                 '&.Mui-focused': {
                   backgroundColor: '#F3F4F6',
                 },
@@ -237,6 +248,13 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                     backgroundColor: '#F3F4F6',
                   },
                 },
+              },
+            },
+          }}
+          componentsProps={{
+            popper: {
+              sx: {
+                zIndex: 1300,
               },
             },
           }}

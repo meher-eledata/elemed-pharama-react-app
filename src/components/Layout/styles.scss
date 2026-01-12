@@ -41,10 +41,11 @@ body {
 
 .container {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
-  max-width: min(1000px, 95%);
+  max-width: 1200px;
   min-height: 90vh;
+  height: 90vh;
   background: white;
   box-shadow: 0 8px 32px rgba(60, 60, 100, 0.08);
   border-radius: 20px;
@@ -79,7 +80,7 @@ body {
   background: none;
   box-sizing: border-box;
   width: 100%;
-  min-height: 95%;
+  height: 100%;
   padding: 24px;
 
   @media (max-width: 768px) {

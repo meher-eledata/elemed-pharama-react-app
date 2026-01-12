@@ -34,9 +34,9 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       discountAuthorizedBy: item.discountAuthorizedBy, // Preserve doctor name
       discountAuthorizedById: item.discountAuthorizedById, // Preserve doctor ID (important for API)
       cgst: item.cgst || '0',
-      cgstPercent: item.cgstPercent || '0',
+      cgstPercent: item.cgstPercent || '9',
       sgst: item.sgst || '0',
-      sgstPercent: item.sgstPercent || '0',
+      sgstPercent: item.sgstPercent || '9',
       igst: item.igst || '0',
       igstPercent: item.igstPercent || '0',
       amount: amount,
@@ -45,14 +45,19 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
 };
 
 export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
-  const totalValue = salesItems.reduce((sum, item) => sum + parseFloat(item.amount || '0'), 0);
+  // Total value is the sum of (unitPrice * quantity) for all items - before discount
+  const totalValue = salesItems.reduce((sum, item) => {
+    const unitPrice = parseFloat(item.unitPrice || '0');
+    const quantity = parseFloat(item.quantity || '0');
+    return sum + (unitPrice * quantity);
+  }, 0);
   const totalDiscount = salesItems.reduce((sum, item) => sum + parseFloat(item.discount || '0'), 0);
   // Calculate total tax amount from CGST, SGST, and IGST
   const taxAmount = salesItems.reduce((sum, item) => 
     sum + parseFloat(item.cgst || '0') + parseFloat(item.sgst || '0') + parseFloat(item.igst || '0'), 0
   );
-  // Total payable amount is the sum of all item amounts (which already includes taxes)
-  const totalPayableAmount = totalValue;
+  // Total payable amount is the sum of all item amounts (which already includes discount and taxes)
+  const totalPayableAmount = salesItems.reduce((sum, item) => sum + parseFloat(item.amount || '0'), 0);
 
   return {
     totalValue: totalValue.toFixed(2),
@@ -117,15 +122,26 @@ export const generatePrintHTML = (data: {
               margin: 0.5in;
               size: A4;
             }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
           }
           * {
             box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           body { 
             font-family: 'Lexend', sans-serif; 
             margin: 20px;
             padding: 20px;
             color: #1A212B;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .receipt-header { 
             text-align: left; 
@@ -139,23 +155,43 @@ export const generatePrintHTML = (data: {
           }
           .receipt-details { 
             display: flex; 
+            flex-direction: column;
             gap: 0px; 
             margin-bottom: 40px; 
             border: 1px solid #E5E7EB; 
             border-radius: 8px; 
-            overflow: visible;
+            overflow: hidden;
             page-break-inside: avoid;
-            flex-wrap: nowrap;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+          .receipt-details-row {
+            display: flex;
+            flex-direction: row;
+            gap: 0px;
+            width: 100%;
           }
           .detail-section { 
             flex: 1; 
             min-width: 180px;
-            background-color: #F9FAFB; 
+            background-color: #F9FAFB !important; 
             padding: 12px 8px; 
             border-right: 2px solid #9CA3AF; 
+            border-bottom: 2px solid #9CA3AF;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
-          .detail-section:last-child { 
-            border-right: none; 
+          .receipt-details-row:first-child .detail-section:last-child {
+            border-bottom: 2px solid #9CA3AF;
+            border-right: none;
+          }
+          .receipt-details-row:last-child .detail-section:last-child {
+            border-bottom: none;
+            border-right: none;
+          }
+          .receipt-details-row:last-child .detail-section:first-child {
+            border-bottom: none;
           }
           .detail-title { 
             font-weight: bold; 
@@ -191,22 +227,28 @@ export const generatePrintHTML = (data: {
             overflow: hidden;
           }
           .items-table th { 
-            background-color: #C7D2FE; 
+            background-color: #C7D2FE !important; 
             padding: 18px 12px; 
             font-weight: bold; 
             font-size: 11px; 
             text-align: left;
-            color: #1A212B;
+            color: #1A212B !important;
             border-bottom: 2px solid #A5B4FC;
             white-space: nowrap;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .items-table td { 
             padding: 18px 12px; 
             font-size: 11px; 
-            background-color: #FFFFFF; 
-            color: #374151;
+            background-color: #FFFFFF !important; 
+            color: #374151 !important;
             border-top: 1px solid #E5E7EB;
             line-height: 1.6;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .items-table tbody tr:first-child td {
             border-top: none;
@@ -216,7 +258,7 @@ export const generatePrintHTML = (data: {
             border-right: 1px solid #E5E7EB;
           }
           .summary { 
-            background-color: #C7D2FE; 
+            background-color: #C7D2FE !important; 
             padding: 20px 24px; 
             border-radius: 8px; 
             display: flex; 
@@ -224,6 +266,9 @@ export const generatePrintHTML = (data: {
             align-items: flex-start;
             page-break-inside: avoid;
             margin-top: 30px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .summary-left { 
             display: flex; 
@@ -270,32 +315,38 @@ export const generatePrintHTML = (data: {
         </div>
         
         <div class="receipt-details">
-          <div class="detail-section">
-            <div class="detail-title">${labels.CUSTOMER_DETAILS_TITLE}</div>
-            <div class="detail-item">${labels.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}</div>
-            <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}</div>
-            <div class="detail-item">${labels.CITY_PRINT.replace('{city}', (customerCity || '').trim())}</div>
+          <!-- First Row: Customer Details and Doctor Details -->
+          <div class="receipt-details-row">
+            <div class="detail-section">
+              <div class="detail-title">${labels.CUSTOMER_DETAILS_TITLE}</div>
+              <div class="detail-item">${labels.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}</div>
+              <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}</div>
+              <div class="detail-item">${labels.CITY_PRINT.replace('{city}', (customerCity || '').trim())}</div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
+              <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
+              <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}</div>
+              <div class="detail-item email-item">${labels.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}</div>
+            </div>
           </div>
-          <div class="detail-section">
-            <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
-            <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
-            <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}</div>
-            <div class="detail-item email-item">${labels.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
-            <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', (paymentMode || '').trim())}</div>
-            ${paymentMode === 'Insurance' 
-              ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}</div>`
-              : insuranceCompany && insuranceCompany.trim() 
-                ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
-                : ''
-            }
-          </div>
-          <div class="detail-section">
-            <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
-            <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
-            <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}</div>
+          <!-- Second Row: Payment Details and Invoice Details -->
+          <div class="receipt-details-row">
+            <div class="detail-section">
+              <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
+              <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', (paymentMode || '').trim())}</div>
+              ${paymentMode === 'Insurance' 
+                ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}</div>`
+                : insuranceCompany && insuranceCompany.trim() 
+                  ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
+                  : ''
+              }
+            </div>
+            <div class="detail-section">
+              <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
+              <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
+              <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}</div>
+            </div>
           </div>
         </div>
         

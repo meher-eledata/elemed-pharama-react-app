@@ -249,7 +249,7 @@ export const getTableColumns = ({
     header: "Actions",
     sortable: false,
     render: (item) => (
-      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}>
         {editingRowId === item.id ? (
           <>
             <IconButton

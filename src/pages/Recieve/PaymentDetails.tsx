@@ -359,7 +359,7 @@ const PaymentDetails: React.FC = () => {
   };
 
   return (
-    <Box sx={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
+    <Box sx={{ padding: "24px" }}>
       {/* Payment Details Section */}
       <Box sx={{ marginBottom: "32px" }}>
         <Typography

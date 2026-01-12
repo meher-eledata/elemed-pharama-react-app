@@ -114,6 +114,29 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
   validatedData,
 }) => {
   const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
+  const [productSearchOpen, setProductSearchOpen] = React.useState(false);
+  
+  // Reset dropdown state when product selection changes or products load
+  React.useEffect(() => {
+    if (isProductSelected) {
+      setProductSearchOpen(false);
+    }
+  }, [isProductSelected]);
+  
+  // Close dropdown when products are loading to prevent stale state
+  React.useEffect(() => {
+    if (isProductsLoading) {
+      setProductSearchOpen(false);
+    }
+  }, [isProductsLoading]);
+  
+  const handleOpen = () => {
+    // Only open if products are loaded and available
+    if (!isProductsLoading && productOptions.length > 0) {
+      setProductSearchOpen(true);
+    }
+  };
+  
   return (
     <ProductSelectionContainer>
       <FormFieldsContainer>
@@ -123,19 +146,22 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             {SALES_PAGE_LABELS.FIND_PRODUCT_LABEL}
           </Typography>
           <Autocomplete
-            key={isProductSelected ? 'selected' : 'not-selected'}
+            key={`${isProductSelected ? 'selected' : 'not-selected'}-${productOptions.length}`}
             freeSolo
             forcePopupIcon
-            openOnFocus
+            open={productSearchOpen && !isProductsLoading}
+            onOpen={handleOpen}
+            onClose={() => setProductSearchOpen(false)}
             options={
               isProductsLoading 
-                ? ["Loading products..."] 
+                ? [] 
                 : productOptions.length > 0 
                   ? productOptions.filter(option => option && typeof option === 'string')
-                  : ["No products found"]
+                  : []
             }
             value={findProduct || ''}
-            noOptionsText="No products found"
+            noOptionsText={isProductsLoading ? "Loading products..." : "No products found"}
+            loading={isProductsLoading}
             onInputChange={(_, v) => {
               onProductInputChange(v);
             }}
@@ -143,6 +169,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
               const value = (v as string) || "";
               if (value && value !== "Loading products..." && value !== "No products found") {
                 onProductChange(value);
+                setProductSearchOpen(false);
               } else {
                 onProductChange("");
               }
@@ -198,19 +225,19 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                     "& .MuiInputAdornment-root": {
                       opacity: 1,
                     },
-                  },
-                  "& .MuiInputBase-input": {
-                    padding: "8px 12px",
-                    paddingLeft: "0px",
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: "14px",
-                    fontWeight: 400,
-                    lineHeight: "20px",
-                    color: "#6B7280",
-                    "&::placeholder": {
-                      color: "#9CA3AF",
-                      opacity: 1,
-                      fontSize: "12px",
+                    "& .MuiInputBase-input": {
+                      padding: "8px 12px",
+                      paddingLeft: "0px",
+                      fontFamily: "'Lexend', sans-serif",
+                      fontSize: "14px",
+                      fontWeight: 400,
+                      lineHeight: "20px",
+                      color: "#6B7280",
+                      "&::placeholder": {
+                        color: "#9CA3AF",
+                        opacity: 1,
+                        fontSize: "12px",
+                      },
                     },
                   },
                 }}

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, ChangeEvent, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography, IconButton, Autocomplete, TextField, InputAdornment, Badge, Tooltip, Chip } from '@mui/material';
-import { StandardButton, PharmaDatePicker } from '../../components/Common';
+import { StandardButton } from '../../components/Common';
+import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import dayjs, { Dayjs } from 'dayjs';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
@@ -92,7 +93,7 @@ export default function SaleHistory() {
 
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
   const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Dayjs | null>(null);
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
@@ -373,10 +374,22 @@ export default function SaleHistory() {
       );
     }
 
-    if (startDate) {
+    if (dateRange[0] || dateRange[1]) {
       filtered = filtered.filter(item => {
         const itemDate = dayjs(item.invoiceDate, 'DD/MM/YYYY');
-        return itemDate.isSame(startDate, 'day');
+        const startDate = dateRange[0];
+        const endDate = dateRange[1];
+        
+        if (startDate && endDate) {
+          return itemDate.isSame(startDate, 'day') || 
+                 itemDate.isSame(endDate, 'day') || 
+                 (itemDate.isAfter(startDate, 'day') && itemDate.isBefore(endDate, 'day'));
+        } else if (startDate) {
+          return itemDate.isSame(startDate, 'day') || itemDate.isAfter(startDate, 'day');
+        } else if (endDate) {
+          return itemDate.isSame(endDate, 'day') || itemDate.isBefore(endDate, 'day');
+        }
+        return true;
       });
     }
 
@@ -390,7 +403,7 @@ export default function SaleHistory() {
     });
 
     return filtered;
-  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedUsername, startDate]);
+  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedUsername, dateRange]);
 
   const getUniqueDoctors = useMemo(() => {
     const doctors = [...new Set(salesHistoryData.map(item => item.doctorName))];
@@ -405,7 +418,7 @@ export default function SaleHistory() {
   const clearAllFilters = () => {
     setSelectedDoctor(null);
     setSelectedUsername(null);
-    setStartDate(null);
+    setDateRange([null, null]);
     setCurrentSearchTerm('');
     setCurrentFilter({});
   };
@@ -1256,12 +1269,9 @@ export default function SaleHistory() {
 
             {/* Date Range Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Typography sx={{ fontSize: '12px', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_DATE_RANGE}</Typography>
-              <PharmaDatePicker
-                value={startDate}
-                onChange={(newValue) => setStartDate(newValue)}
-                width={260}
-                height={40}
+              <DateRangeFilter
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
               />
             </Box>
           </Box>

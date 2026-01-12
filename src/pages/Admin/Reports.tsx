@@ -541,7 +541,7 @@ const DailySalesReport: React.FC = () => {
                 fontFamily: "'Lexend', sans-serif",
               }}
             >
-              {REPORTS_LABELS.DAILY_SALES_REPORT.METRICS.TOTAL_TAX_COLLECTED}
+              {REPORTS_LABELS.DAILY_SALES_REPORT.METRICS.CASH_IN_HAND}
             </Typography>
             <Typography
               sx={{
@@ -552,7 +552,7 @@ const DailySalesReport: React.FC = () => {
                 fontFamily: "'Lexend', sans-serif",
               }}
             >
-              {formatCurrency(reportData.totalTaxCollected)}
+              {formatCurrency(reportData.cashSales.amount)}
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
               <Typography
@@ -562,7 +562,7 @@ const DailySalesReport: React.FC = () => {
                   color: '#3B82F6',
                 }}
               >
-                In Patient: {formatCurrency(reportData.totalTaxCollectedBreakdown.inpatient)}
+                In Patient: {formatCurrency(reportData.cashSales.breakdown.inpatient)}
               </Typography>
               <Typography
                 sx={{
@@ -571,7 +571,7 @@ const DailySalesReport: React.FC = () => {
                   color: '#10B981',
                 }}
               >
-                Out Patient: {formatCurrency(reportData.totalTaxCollectedBreakdown.outpatient)}
+                Out Patient: {formatCurrency(reportData.cashSales.breakdown.outpatient)}
               </Typography>
             </Box>
           </Card>
@@ -931,68 +931,81 @@ const DailySalesReport: React.FC = () => {
 
         {/* Sales by Payment Type Section */}
         <Grid item xs={12} md={6}>
-          <Typography
-            sx={{
-              fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
-              fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
-              color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-              mb: 2,
-              fontFamily: "'Lexend', sans-serif",
-            }}
-          >
-            {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.SALES_BY_PAYMENT_TYPE}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', ml: 6, mr: 5 }}>
-            <Box
+          <Box sx={{ ml: 20}}>
+            <Typography
               sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
+                fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
+                fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
+                color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+                mb: 2,
+                fontFamily: "'Lexend', sans-serif",
               }}
             >
-              <Suspense
-                fallback={
-                  <Box
-                    sx={{
-                      width: 220,
-                      height: 220,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
+              {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.SALES_BY_PAYMENT_TYPE}
+            </Typography>
+            <Card
+              sx={{
+                p: 2,
+                width: '100%',
+                maxWidth: '500px',
+                borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
+                boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
+                border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-start', ml: 1, mr: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Suspense
+                    fallback={
+                      <Box
+                        sx={{
+                          width: 220,
+                          height: 220,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <CircularProgress size={40} />
+                      </Box>
+                    }
                   >
-                    <CircularProgress size={40} />
+                    <PaymentTypePieChart data={reportData.paymentTypeData} />
+                  </Suspense>
+                </Box>
+                <Box>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                    {reportData.paymentTypeData.map((item) => (
+                      <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '2px',
+                            backgroundColor: item.color,
+                          }}
+                        />
+                        <Typography
+                          sx={{
+                            fontSize: '14px',
+                            color: '#1A212B',
+                            fontFamily: "'Lexend', sans-serif",
+                          }}
+                        >
+                          {item.label}
+                        </Typography>
+                      </Box>
+                    ))}
                   </Box>
-                }
-              >
-                <PaymentTypePieChart data={reportData.paymentTypeData} />
-              </Suspense>
-            </Box>
-            <Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                {reportData.paymentTypeData.map((item) => (
-                  <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '2px',
-                        backgroundColor: item.color,
-                      }}
-                    />
-                    <Typography
-                      sx={{
-                        fontSize: '14px',
-                        color: '#1A212B',
-                        fontFamily: "'Lexend', sans-serif",
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                  </Box>
-                ))}
+                </Box>
               </Box>
-            </Box>
+            </Card>
           </Box>
         </Grid>
       </Grid>
@@ -1029,32 +1042,58 @@ const DailySalesReport: React.FC = () => {
               {/* Total Tax Collected - with separator */}
               <Box
                 sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
                   pb: 1,
                   borderBottom: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.BORDER_BOTTOM,
                 }}
               >
-                <Typography
+                <Box
                   sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-                    fontFamily: "'Lexend', sans-serif",
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 0.5,
                   }}
                 >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.TOTAL_TAX_COLLECTED}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_COLOR,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {formatCurrency(reportData.taxSummary.totalTax)}
-                </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.LABEL_FONT_SIZE,
+                      color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+                      fontFamily: "'Lexend', sans-serif",
+                    }}
+                  >
+                    {REPORTS_LABELS.DAILY_SALES_REPORT.TAX.TOTAL_TAX_COLLECTED}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_FONT_SIZE,
+                      fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_FONT_WEIGHT,
+                      color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.TAX_SUMMARY.VALUE_COLOR,
+                      fontFamily: "'Lexend', sans-serif",
+                    }}
+                  >
+                    {formatCurrency(reportData.taxSummary.totalTax)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, mt: 0.5 }}>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#3B82F6',
+                    }}
+                  >
+                    In Patient: {formatCurrency(reportData.totalTaxCollectedBreakdown.inpatient)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                      color: '#10B981',
+                    }}
+                  >
+                    Out Patient: {formatCurrency(reportData.totalTaxCollectedBreakdown.outpatient)}
+                  </Typography>
+                </Box>
               </Box>
               <Box
                 sx={{
@@ -1193,31 +1232,32 @@ const DailySalesReport: React.FC = () => {
 
         {/* Weekly Sales Trend Section */}
         <Grid item xs={12} md={6}>
-          <Typography
-            sx={{
-              fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
-              fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
-              color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-              mb: 2,
-              fontFamily: "'Lexend', sans-serif",
-            }}
-          >
-            {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.WEEKLY_SALES_TREND}
-          </Typography>
-          <Card
-            sx={{
-              p: 2,
-              width: '100%',
-              maxWidth: '480px',
-              height: 'auto',
-              minHeight: '180px',
-              borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-              boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-              border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
+          <Box sx={{ ml: 20 }}>
+            <Typography
+              sx={{
+                fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
+                fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
+                color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+                mb: 2,
+                fontFamily: "'Lexend', sans-serif",
+              }}
+            >
+              {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.WEEKLY_SALES_TREND}
+            </Typography>
+            <Card
+              sx={{
+                p: 2,
+                width: '100%',
+                maxWidth: '480px',
+                height: 'auto',
+                minHeight: '180px',
+                borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
+                boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
+                border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
             <Box sx={{ width: '100%', height: '160px', mt: 1 }}>
               <BarChart
                 xAxis={[
@@ -1287,6 +1327,7 @@ const DailySalesReport: React.FC = () => {
               />
             </Box>
           </Card>
+          </Box>
         </Grid>
       </Grid>
 

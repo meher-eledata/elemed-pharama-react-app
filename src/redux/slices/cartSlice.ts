@@ -74,6 +74,10 @@ const cartSlice = createSlice({
           ...product,
           quantity: product.quantity,
           totalPrice: product.quantity * product.sp * discountMultiplier,
+          // Set default tax percentages if not provided
+          cgstPercent: product.cgstPercent || '9',
+          sgstPercent: product.sgstPercent || '9',
+          igstPercent: product.igstPercent || '0',
         };
         state.items.push(newItem);
       }

@@ -11,7 +11,7 @@ export const REPORTS_LABELS = {
       TOTAL_BILLS: 'Total Bills',
       TOTAL_SALES: 'Total Sales',
       TOTAL_DISCOUNT: 'Total Discount',
-      TOTAL_TAX_COLLECTED: 'Total Tax Collected',
+      CASH_IN_HAND: 'Cash in Hand',
     },
     SECTIONS: {
       SALES_BREAKDOWN: 'Sales Breakdown',

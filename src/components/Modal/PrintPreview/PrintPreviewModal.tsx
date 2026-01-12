@@ -100,141 +100,175 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
     <Box sx={{ padding: '0', maxHeight: '100%', overflow: 'auto' }}>
       {/* Print Preview Content */}
       <Box ref={printContentRef} sx={{ 
-        padding: '20px',
+        padding: '24px',
         backgroundColor: '#FFFFFF',
-        border: '1px solid #E5E7EB',
         borderRadius: '8px',
-        margin: '10px',
-        fontFamily: "'Lexend', sans-serif"
+        fontFamily: "'Lexend', sans-serif",
+        maxWidth: '481px',
+        margin: '0 auto'
       }}>
         {/* Receipt Header */}
-        <Box sx={{ textAlign: 'left', marginBottom: '20px' }}>
+        <Box sx={{ textAlign: 'left', marginBottom: '24px' }}>
           <Typography sx={{ 
-            fontSize: '28px', 
-            fontWeight: 600, 
+            fontSize: '24px', 
+            fontWeight: 700, 
             color: '#1A212B',
-            marginBottom: '20px'
+            marginBottom: '0'
           }}>
             {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
           </Typography>
         </Box>
 
-        {/* Four Section Layout */}
+        {/* Four Section Layout - 2x2 Grid */}
         <Box sx={{ 
           display: 'flex', 
-          gap: '0px', 
-          marginBottom: '20px',
-          border: '1px solid #E5E7EB',
-          borderRadius: '8px',
-          overflow: 'visible',
-          flexWrap: 'nowrap'
+          flexDirection: 'column',
+          gap: '12px', 
+          marginBottom: '24px'
         }}>
-          {/* Customer Details */}
+          {/* First Row: Customer Details and Doctor Details */}
           <Box sx={{ 
-            flex: 1, 
-            minWidth: '180px',
-            backgroundColor: '#F9FAFB', 
-            padding: '12px 8px',
-            borderRight: '2px solid #9CA3AF'
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '12px',
+            width: '100%'
           }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
-              {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.CITY_PRINT.replace('{city}', (customerCity || '').trim())}
-            </Typography>
+            {/* Customer Details */}
+            <Box sx={{ 
+              flex: 1, 
+              minWidth: '180px',
+              backgroundColor: '#F9FAFB', 
+              padding: '12px 8px',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              boxSizing: 'border-box',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
+                {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.CITY_PRINT.replace('{city}', (customerCity || '').trim())}
+              </Typography>
+            </Box>
+
+            {/* Doctor Details */}
+            <Box sx={{ 
+              flex: 1, 
+              minWidth: '180px',
+              backgroundColor: '#F9FAFB', 
+              padding: '12px 8px',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              boxSizing: 'border-box',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
+                {SALES_RECEIPT_LABELS.DOCTOR_DETAILS_TITLE}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
+              </Typography>
+              <Typography sx={{ fontSize: '10px', color: '#374151', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}
+              </Typography>
+            </Box>
           </Box>
 
-          {/* Doctor Details */}
+          {/* Second Row: Payment Details and Invoice Details */}
           <Box sx={{ 
-            flex: 1, 
-            minWidth: '180px',
-            backgroundColor: '#F9FAFB', 
-            padding: '12px 8px',
-            borderRight: '2px solid #9CA3AF'
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '12px',
+            width: '100%'
           }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
-              {SALES_RECEIPT_LABELS.DOCTOR_DETAILS_TITLE}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
-            </Typography>
-            <Typography sx={{ fontSize: '10px', color: '#374151', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}
-            </Typography>
-          </Box>
+            {/* Payment Details */}
+            <Box sx={{ 
+              flex: 1, 
+              minWidth: '180px',
+              backgroundColor: '#F9FAFB', 
+              padding: '12px 8px',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              boxSizing: 'border-box',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
+                {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', (paymentMode || '').trim())}
+              </Typography>
+              {paymentMode === 'Insurance' ? (
+                <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
+                  {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}
+                </Typography>
+              ) : insuranceCompany && insuranceCompany.trim() ? (
+                <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
+                  {SALES_RECEIPT_LABELS.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}
+                </Typography>
+              ) : null}
+            </Box>
 
-          {/* Payment Details */}
-          <Box sx={{ 
-            flex: 1, 
-            minWidth: '180px',
-            backgroundColor: '#F9FAFB', 
-            padding: '12px 8px',
-            borderRight: '2px solid #9CA3AF'
-          }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
-              {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', (paymentMode || '').trim())}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}
-            </Typography>
-          </Box>
-
-          {/* Invoice Details */}
-          <Box sx={{ 
-            flex: 1, 
-            minWidth: '180px',
-            backgroundColor: '#F9FAFB', 
-            padding: '12px 8px'
-          }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
-              {SALES_RECEIPT_LABELS.INVOICE_DETAILS_TITLE}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}
-            </Typography>
-            <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
-              {SALES_RECEIPT_LABELS.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}
-            </Typography>
+            {/* Invoice Details */}
+            <Box sx={{ 
+              flex: 1, 
+              minWidth: '180px',
+              backgroundColor: '#F9FAFB', 
+              padding: '12px 8px',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              boxSizing: 'border-box',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
+                {SALES_RECEIPT_LABELS.INVOICE_DETAILS_TITLE}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
+                {SALES_RECEIPT_LABELS.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}
+              </Typography>
+            </Box>
           </Box>
         </Box>
 
         {/* Items Table with Scroll */}
-        <Box sx={{ marginBottom: '20px' }}>
-          <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
+        <Box sx={{ marginBottom: '24px' }}>
+          <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#1A212B', marginBottom: '16px' }}>
             {SALES_RECEIPT_LABELS.ITEMS_SECTION_TITLE}
           </Typography>
           <Box sx={{ 
-            border: '2px solid #A5B4FC', 
+            border: '1px solid #E5E7EB', 
             borderRadius: '8px', 
             overflow: 'hidden',
             maxHeight: '400px',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
           }}>
             {/* Fixed Header */}
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: '2fr 0.8fr 0.8fr 1fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr',
               columnGap: '12px',
-              backgroundColor: '#C7D2FE',
-              padding: '14px 16px',
-              fontSize: '12px',
+              backgroundColor: '#F9FAFB',
+              padding: '16px',
+              fontSize: '13px',
               fontWeight: 600,
               color: '#1A212B',
-              flexShrink: 0
+              flexShrink: 0,
+              borderBottom: '2px solid #E5E7EB'
             }}>
               <Box>Product</Box>
               <Box>Qty</Box>
@@ -270,10 +304,10 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                   display: 'grid', 
                   gridTemplateColumns: '2fr 0.8fr 0.8fr 1fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr',
                   columnGap: '12px',
-                  padding: '14px 16px',
-                  fontSize: '12px',
+                  padding: '16px',
+                  fontSize: '13px',
                   color: '#374151',
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
                   borderTop: index > 0 ? '1px solid #E5E7EB' : 'none'
                 }}>
                   <Box>{item.productName}</Box>
@@ -294,69 +328,40 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
         {/* Summary */}
         <Box sx={{ 
-          backgroundColor: '#C7D2FE', 
-          padding: '16px', 
+          backgroundColor: '#F9FAFB', 
+          padding: '20px 24px', 
           borderRadius: '8px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          border: '1px solid #E5E7EB',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
         }}>
-          <Box sx={{ display: 'flex', gap: '60px', fontSize: '12px', color: '#1A212B' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <Box sx={{ fontWeight: 500 }}>{SALES_RECEIPT_LABELS.TOTAL_VALUE_LABEL}</Box>
-              <Box sx={{ fontWeight: 700 }}>{totalValue}</Box>
+          <Box sx={{ display: 'flex', gap: '60px', fontSize: '13px', color: '#1A212B' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TOTAL_VALUE_LABEL}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{totalValue}</Box>
             </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <Box sx={{ fontWeight: 500 }}>{SALES_RECEIPT_LABELS.TOTAL_DISCOUNT_LABEL}</Box>
-              <Box sx={{ fontWeight: 700 }}>{totalDiscount}</Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TOTAL_DISCOUNT_LABEL}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{totalDiscount}</Box>
             </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <Box sx={{ fontWeight: 500 }}>{SALES_RECEIPT_LABELS.TAX_AMOUNT_LABEL}</Box>
-              <Box sx={{ fontWeight: 700 }}>{taxAmount}</Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TAX_AMOUNT_LABEL}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{taxAmount}</Box>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            <Box sx={{ fontSize: '14px', fontWeight: 500, color: '#1A212B' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+            <Box sx={{ fontSize: '14px', fontWeight: 500, color: '#6B7280' }}>
               {SALES_RECEIPT_LABELS.TOTAL_PAYABLE_LABEL}
             </Box>
-            <Box sx={{ fontSize: '18px', fontWeight: 700, color: '#1A212B' }}>
+            <Box sx={{ fontSize: '20px', fontWeight: 700, color: '#1A212B' }}>
               {totalPayableAmount}
             </Box>
           </Box>
         </Box>
       </Box>
 
-      {/* Action Buttons - Hidden when view-only mode */}
-      {!hideActionButtons && (
-        <Box sx={{ 
-          display: 'flex', 
-          gap: '12px', 
-          justifyContent: 'flex-end', 
-          padding: '8px 24px' // Match DialogActions padding for alignment with Close button
-        }}>
-          <StandardButton
-            onClick={onCancel}
-            variant="secondary"
-            size="medium"
-          >
-            {SALES_RECEIPT_LABELS.CANCEL_BUTTON}
-          </StandardButton>
-          <StandardButton
-            onClick={onSaveClick || handleSaveAsPDF}
-            variant="outline"
-            size="medium"
-          >
-            {SALES_RECEIPT_LABELS.SAVE_BUTTON}
-          </StandardButton>
-          <StandardButton
-            onClick={onPrint}
-            variant="primary"
-            size="medium"
-          >
-            {SALES_RECEIPT_LABELS.PRINT_BUTTON}
-          </StandardButton>
-        </Box>
-      )}
     </Box>
   );
 };

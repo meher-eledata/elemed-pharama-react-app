@@ -83,10 +83,6 @@ const SalesReceipt: React.FC = () => {
   }, [doctorNamesData]);
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
   
-  // Note: We only have these customer endpoints:
-  // - GET /sales/get-all-customer-names (returns just names)
-  // - POST /sales/get-customer-phones/ (returns phones by name)
-  // Neither returns customer IDs, so we'll always send customer_id = 0
   const { 
     data: apiProducts = [], 
     isLoading: isProductsLoading, 
@@ -244,13 +240,10 @@ const SalesReceipt: React.FC = () => {
             }
             
             if (result) {
-              // API response structure: { invoice: {...}, lines: [...], payments: [...], ... }
               const invoice = result.invoice || {};
               const lines = result.lines || [];
               
-              // Transform API response to form data
-              // Note: invoice object has customer_id and doctor_id, but not names directly
-              // Use location state data as fallback for customer/doctor names
+          
               const invoiceData = {
                 customerName: result.customer_name || editModeData.customerName || '',
                 customerMobile: result.customer_mobile || editModeData.customerMobile || '',
@@ -889,7 +882,6 @@ const SalesReceipt: React.FC = () => {
    * Handle Print from Print Preview Modal
    * This is called when user clicks "Print" button inside the Print Preview Modal.
    * It directly prints the customer receipt without any additional confirmation.
-   * The confirmation already happened in Step 2 (Sale Confirmation Dialog).
    */
   const handlePrintFromModal = () => {
     // Print directly from Print Preview modal without confirmation
@@ -905,7 +897,7 @@ const SalesReceipt: React.FC = () => {
    * Handle Confirmation Dialog Confirm
    * After user confirms in Sale Confirmation Dialog:
    * - If action is 'save': Execute save operation
-   * - If action is 'print': Open Print Preview Modal (shows customer receipt)
+   * - If action is 'print': Open Print Preview Modal (shows customer receipt for review before printing)
    */
   const handleConfirmDialogConfirm = async () => {
     if (pendingAction === 'save') {
@@ -923,7 +915,7 @@ const SalesReceipt: React.FC = () => {
       }
     } else if (pendingAction === 'print') {
       setIsConfirmDialogOpen(false);
-      // Open Print Preview Modal which shows the customer receipt
+      // Open Print Preview Modal which shows the customer receipt for review
       setIsPrintModalOpen(true);
       setPendingAction(null);
     }
@@ -1385,22 +1377,13 @@ const SalesReceipt: React.FC = () => {
           }
           onClose={handleClosePrintModal}
           actionButtons={
-            <>
-              <StandardButton
-                onClick={handleSaveFromModal}
-                variant="outline"
-                size="medium"
-              >
-                {SALES_RECEIPT_LABELS.SAVE_BUTTON}
-              </StandardButton>
-              <StandardButton
-                onClick={handlePrintFromModal}
-                variant="primary"
-                size="medium"
-              >
-                {SALES_RECEIPT_LABELS.PRINT_BUTTON}
-              </StandardButton>
-            </>
+            <StandardButton
+              onClick={handlePrintFromModal}
+              variant="primary"
+              size="medium"
+            >
+              {SALES_RECEIPT_LABELS.PRINT_BUTTON}
+            </StandardButton>
           }
         />
 

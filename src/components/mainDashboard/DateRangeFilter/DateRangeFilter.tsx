@@ -49,12 +49,12 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   return (
     <Box
       sx={{
-        backgroundColor: DATE_RANGE_CONSTANTS.CONTAINER_BG,
+        backgroundColor: "transparent",
         borderRadius: DATE_RANGE_CONSTANTS.CONTAINER_RADIUS,
-        padding: DATE_RANGE_CONSTANTS.CONTAINER_PADDING,
+        padding: 0,
         display: "flex",
         flexDirection: "column",
-        gap: "4px",
+        gap: 1,
         fontFamily: DATE_RANGE_CONSTANTS.FONT_FAMILY,
       }}
     >
@@ -76,7 +76,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           padding: DATE_RANGE_CONSTANTS.BOX_PADDING,
           cursor: "pointer",
           width: DATE_RANGE_CONSTANTS.BOX_WIDTH,
-          height: DATE_RANGE_CONSTANTS.BOX_HEIGHT,
+          height: '40px',
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -122,7 +122,22 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         open={open}
         anchorEl={anchorRef.current}
         placement="bottom-start"
-        style={{ zIndex: 1300 }}
+        style={{ zIndex: 9999 }}
+        disablePortal={false}
+        modifiers={[
+          {
+            name: 'preventOverflow',
+            enabled: true,
+            options: {
+              rootBoundary: 'viewport',
+              tether: false,
+            },
+          },
+          {
+            name: 'flip',
+            enabled: true,
+          },
+        ]}
       >
         <ClickAwayListener onClickAway={() => setOpen(false)}>
           <Paper
@@ -131,15 +146,15 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               p: 2,
               boxShadow: 3,
               borderRadius: DATE_RANGE_CONSTANTS.BOX_RADIUS,
-              overflow: "hidden !important",
-              overflowY: "hidden !important",
-              overflowX: "hidden !important",
-              maxHeight: "none !important",
+              overflow: "visible",
+              overflowY: "visible",
+              overflowX: "visible",
               width: "242px",
               maxWidth: "242px",
-              minWidth: "242px",
-              height: "300px !important",
-              minHeight: "300px !important",
+              minWidth: "272px",
+              height: "312px",
+              position: "relative",
+              zIndex: 9999,
               "&::-webkit-scrollbar": {
                 display: "none !important",
                 width: "0 !important",
