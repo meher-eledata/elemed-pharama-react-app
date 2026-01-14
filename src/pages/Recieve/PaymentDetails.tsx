@@ -6,10 +6,15 @@ import {
   TextField,
   Autocomplete,
   IconButton,
+  Snackbar,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import { PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -19,6 +24,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { paymentMethods, paymentVendors, themeColors } from "../../config/constants/OrderDetail.constants";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
+import { useUpsertReceiptPaymentsMutation } from "../../redux/slices/receiveApi";
 
 interface PaymentRow {
   id: string;
@@ -34,6 +40,8 @@ interface PaymentRow {
 const PaymentDetails: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [upsertReceiptPayments, { isLoading: isSavingPayments }] = useUpsertReceiptPaymentsMutation();
   
   // Get data from navigation state
   const navigationState = location.state as any;
@@ -53,6 +61,8 @@ const PaymentDetails: React.FC = () => {
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState<boolean>(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isFinalSaveConfirmationOpen, setIsFinalSaveConfirmationOpen] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
   // Form fields for adding new payment
   const [transactionNumber, setTransactionNumber] = useState<string>("");
@@ -154,6 +164,31 @@ const PaymentDetails: React.FC = () => {
           />
         ) : (
           <span>{row.paymentVendor || "-"}</span>
+        )
+      ),
+    },
+    {
+      key: "amount",
+      header: "Amount",
+      render: (row) => (
+        editingRowId === row.id ? (
+          <TextField
+            size="small"
+            type="number"
+            variant="outlined"
+            fullWidth
+            value={editingData.amount !== undefined ? editingData.amount : row.amount}
+            onChange={(e) => setEditingData({ ...editingData, amount: parseFloat(e.target.value) || 0 })}
+            sx={{ 
+              width: "120px",
+              "& .MuiOutlinedInput-root": {
+                height: "36px",
+                fontSize: "14px",
+              },
+            }}
+          />
+        ) : (
+          <span>₹{row.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         )
       ),
     },
@@ -338,20 +373,81 @@ const PaymentDetails: React.FC = () => {
     setIsFinalSaveConfirmationOpen(true);
   };
 
-  const handleConfirmFinalSave = () => {
-    // TODO: Implement save functionality
-    // This should save the payment details along with the order details
-    console.log('Saving payment details:', {
-      paymentRows,
-      supplierName,
-      poNumber,
-      invoiceDate,
-      pharmaTableData,
-    });
-    
-    // Navigate back to order receive after save
-    setIsFinalSaveConfirmationOpen(false);
-    navigate('/receive/order-receive');
+  const handleConfirmFinalSave = async () => {
+    if (!receiptId) {
+      setSaveError('Receipt ID is missing. Please go back and try again.');
+      setIsFinalSaveConfirmationOpen(false);
+      return;
+    }
+
+    try {
+      // Get created_by from user, fallback to "meher"
+      const createdBy = user?.username || user?.first_name || "meher";
+
+      // Transform paymentRows to match API structure
+      const payments = paymentRows.map(row => {
+        // Convert transaction_date from DD/MM/YYYY to YYYY-MM-DD
+        let transactionDateFormatted = "";
+        if (row.transactionDate) {
+          const parsedDate = dayjs(row.transactionDate, "DD/MM/YYYY");
+          if (parsedDate.isValid()) {
+            transactionDateFormatted = parsedDate.format("YYYY-MM-DD");
+          } else {
+            // Try parsing as ISO format if DD/MM/YYYY fails
+            const isoDate = dayjs(row.transactionDate);
+            transactionDateFormatted = isoDate.isValid() ? isoDate.format("YYYY-MM-DD") : dayjs().format("YYYY-MM-DD");
+          }
+        } else {
+          transactionDateFormatted = dayjs().format("YYYY-MM-DD");
+        }
+
+        return {
+          payment_method: row.paymentMethod,
+          payment_vendor: row.paymentVendor && row.paymentVendor.trim() !== "" ? row.paymentVendor : null,
+          transaction_number: row.transactionNumber,
+          transaction_date: transactionDateFormatted,
+          payment_amount: row.amount,
+          details: row.details || "",
+        };
+      });
+
+      const payload = {
+        receipt_id: receiptId,
+        created_by: createdBy,
+        payments: payments,
+      };
+
+      await upsertReceiptPayments(payload).unwrap();
+      
+      setSaveSuccess(true);
+      setIsFinalSaveConfirmationOpen(false);
+      
+      // Navigate back to order receive after successful save
+      setTimeout(() => {
+        navigate('/receive/order-receive');
+      }, 2000);
+    } catch (error: any) {
+      let errorMessage = 'Failed to save payment details';
+      
+      if (error?.data) {
+        if (typeof error.data === 'string') {
+          errorMessage = error.data;
+        } else if (error.data.message) {
+          errorMessage = error.data.message;
+        } else if (error.data.error) {
+          errorMessage = error.data.error;
+        } else if (Array.isArray(error.data.errors) && error.data.errors.length > 0) {
+          errorMessage = error.data.errors[0];
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.status) {
+        errorMessage = `Server error (${error.status}): ${error.status === 404 ? 'Endpoint not found' : error.status === 500 ? 'Internal server error' : 'Unknown error'}`;
+      }
+      
+      setSaveError(errorMessage);
+      setIsFinalSaveConfirmationOpen(false);
+    }
   };
 
   const handleCancelFinalSave = () => {
@@ -816,7 +912,7 @@ const PaymentDetails: React.FC = () => {
         <Button
           variant="contained"
           onClick={handleSave}
-          disabled={paymentRows.length === 0}
+          disabled={paymentRows.length === 0 || isSavingPayments}
           sx={{
             backgroundColor: paymentRows.length === 0 ? "#D1D5DB" : "#5C17E5",
             color: "#FFFFFF",
@@ -835,7 +931,14 @@ const PaymentDetails: React.FC = () => {
             },
           }}
         >
-          Save
+          {isSavingPayments ? (
+            <>
+              <CircularProgress size={16} sx={{ color: "#FFFFFF", marginRight: "8px" }} />
+              Saving...
+            </>
+          ) : (
+            "Save"
+          )}
         </Button>
       </Box>
 
@@ -864,10 +967,40 @@ const PaymentDetails: React.FC = () => {
         onClose={handleCancelFinalSave}
         onConfirm={handleConfirmFinalSave}
         title="Save Payment Details"
-        message="Are you sure you want to save all payment details? You will be redirected to the home screen."
+        message="Are you sure you want to save all payment details? You will be redirected to the order receive page."
         confirmLabel="Yes, Save"
         cancelLabel="Cancel"
       />
+
+      <Snackbar
+        open={!!saveError}
+        autoHideDuration={6000}
+        onClose={() => setSaveError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSaveError(null)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {saveError}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={saveSuccess}
+        autoHideDuration={3000}
+        onClose={() => setSaveSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSaveSuccess(false)} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          Payment details saved successfully!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

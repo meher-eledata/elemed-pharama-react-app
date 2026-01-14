@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, ChangeEvent } from "react";
-import { Box, Typography, Snackbar, Alert, TextField, InputAdornment, Select, MenuItem, Autocomplete, IconButton, Tooltip } from "@mui/material";
+import { Box, Typography, Snackbar, Alert, TextField, InputAdornment, Select, MenuItem, Autocomplete, IconButton, Tooltip, TableCell, TableRow } from "@mui/material";
 import { StandardButton, PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useNavigate } from "react-router-dom";
@@ -132,12 +132,12 @@ export interface PurchaseOrderRow {
 const OrderReceive: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<number>(2);
-  
+
   const capitalizeFirstLetter = (str: string): string => {
     if (!str) return str;
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
-  
+
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -149,7 +149,7 @@ const OrderReceive: React.FC = () => {
     startDate: null,
     endDate: null
   });
-  
+
   const [showFilters, setShowFilters] = useState<boolean>(false);
 
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -161,7 +161,7 @@ const OrderReceive: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<OrderReceiveRow | null>(null);
   const [isLastModalOpen, setIsLastModalOpen] = useState<boolean>(false);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
-  
+
   const { data: receipts, isLoading: loadingReceipts, error: receiptsError, refetch: refetchReceipts } = useGetReceiptsQuery(undefined, {
     skip: activeTab !== 2,
     refetchOnMountOrArgChange: true,
@@ -191,7 +191,7 @@ const OrderReceive: React.FC = () => {
 
     const fetchMissingProductNames = async () => {
       const missingNames: { [key: number]: Promise<string> } = {};
-      
+
       for (const line of receiptLines) {
         if ((!line.product_name || line.product_name === null) && line.product_id && line.product_id > 0) {
           if (!productNameCache[line.product_id]) {
@@ -232,34 +232,52 @@ const OrderReceive: React.FC = () => {
     return (receipts || [])
       .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
       .map((receipt) => {
-        // TODO: Backend not ready yet - these fields will be populated from API when ready
-        // For now, using placeholder values (0.00)
-        // Expected API fields: amount_paid, pending_amount, credit_available
-        const totalAmount = receipt.total_amount || 0;
-        const amountPaid = (receipt as any).amount_paid || (receipt as any).amountPaid || 0;
-        const pendingAmount = totalAmount - amountPaid;
-        const creditAvailable = (receipt as any).credit_available || (receipt as any).creditAvailable || 0;
-        
+        // Use receipt_id as primary ID, fallback to id for backward compatibility
+        const receiptId = receipt.receipt_id || receipt.id || 0;
+
+        // Convert po_total_amount from string to number, fallback to total_amount for backward compatibility
+        const totalAmount = receipt.po_total_amount
+          ? parseFloat(receipt.po_total_amount)
+          : (receipt.total_amount || 0);
+
+        // Use total_paid from API response
+        const amountPaid = receipt.total_paid || 0;
+
+        // Use amount_left_to_pay from API response
+        const pendingAmount = receipt.amount_left_to_pay || 0;
+
+        // Convert supplier_credit_available from string to number
+        const creditAvailable = receipt.supplier_credit_available
+          ? parseFloat(receipt.supplier_credit_available)
+          : 0;
+
+        // Use last_transaction_number and last_payment_vendor from API response
+        const transactionNumber = receipt.last_transaction_number || receipt.transaction_number || '';
+        const paymentVendor = receipt.last_payment_vendor || receipt.payment_vendor || '';
+
+        // Handle supplier_name (can be null)
+        const supplierName = receipt.supplier_name || 'N/A';
+
         return {
-          receiptId: receipt.id,
-          reNo: `RA${receipt.id}`,
+          receiptId: receiptId,
+          reNo: `RA${receiptId}`,
           poNo: receipt.po_number || String(receipt.po_id),
-          supplier: receipt.supplier_name,
-          received: (receipt as any).invoice_date 
-            ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A') 
+          supplier: supplierName,
+          received: (receipt as any).invoice_date
+            ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A')
             : dayjs(receipt.received_on).format('MMM DD, YYYY h:mm A'),
           status: receipt.receipt_status,
           reBy: receipt.received_by,
           amt: totalAmount,
           products: [],
-          transaction_number: receipt.transaction_number || '',
-          payment_vendor: receipt.payment_vendor || '',
+          transaction_number: transactionNumber,
+          payment_vendor: paymentVendor,
           invoice_date: (receipt as any).invoice_date || null,
           invoice_attachment: (receipt as any).invoice_attachment || undefined,
-          receipt_file_name: (receipt as any).receipt_file_name || undefined,
-          receipt_file_url: (receipt as any).receipt_file_url || undefined,
+          receipt_file_name: receipt.receipt_file_name || undefined,
+          receipt_file_url: receipt.receipt_file_url || undefined,
           amountPaid: amountPaid,
-          pendingAmount: pendingAmount > 0 ? pendingAmount : 0,
+          pendingAmount: pendingAmount,
           creditAvailable: creditAvailable,
         };
       });
@@ -286,7 +304,7 @@ const OrderReceive: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
-  
+
   const handleEditClick = (row: OrderReceiveRow) => {
     let invoiceDateValue = '';
     if (row.invoice_date) {
@@ -309,7 +327,7 @@ const OrderReceive: React.FC = () => {
       } catch (e) {
       }
     }
-    
+
     navigate('/receive/order-details', {
       state: {
         isEditMode: true,
@@ -322,9 +340,14 @@ const OrderReceive: React.FC = () => {
       }
     });
   };
-  
+
   const buildChanges = (original: OrderReceiveRow, draft: OrderReceiveRow): EditReceiptRequest => {
-    const originalReceipt = receipts?.find(r => `RA${r.id}` === original.reNo);
+    // Use receipt_id as primary ID, fallback to id for backward compatibility
+    const receiptId = original.receiptId;
+    const originalReceipt = receipts?.find(r => {
+      const rId = r.receipt_id || r.id || 0;
+      return `RA${rId}` === original.reNo;
+    });
     if (!originalReceipt) {
       throw new Error("Original receipt not found");
     }
@@ -332,20 +355,27 @@ const OrderReceive: React.FC = () => {
     const parsedPoId = Number(draft.poNo);
     const safePoId = Number.isNaN(parsedPoId) ? originalReceipt.po_id : parsedPoId;
 
+    // Use po_total_amount from API response, fallback to total_amount for backward compatibility
+    const originalAmount = originalReceipt.po_total_amount
+      ? parseFloat(originalReceipt.po_total_amount)
+      : (originalReceipt.total_amount || 0);
     const parsedAmount = Number(draft.amt);
-    const safeAmount = Number.isNaN(parsedAmount) ? originalReceipt.total_amount : parsedAmount;
+    const safeAmount = Number.isNaN(parsedAmount) ? originalAmount : parsedAmount;
+
+    // Handle supplier_name (can be null)
+    const supplierName = originalReceipt.supplier_name || '';
 
     return {
-      receipt_id: originalReceipt.id,
+      receipt_id: receiptId,
       po_id: safePoId,
-      supplier_name: originalReceipt.supplier_name,
-      supplier_id: 0, 
+      supplier_name: supplierName,
+      supplier_id: originalReceipt.supplier_id || 0,
       po_number: draft.poNo,
-      payment_method: '', 
-      payment_vendor: '', 
-      transaction_number: '', 
+      payment_method: '',
+      payment_vendor: '',
+      transaction_number: '',
       notes: '',
-      created_by: originalReceipt.received_by, 
+      created_by: originalReceipt.received_by,
       Deleted: [],
       Edited: [],
       Added: []
@@ -360,10 +390,10 @@ const OrderReceive: React.FC = () => {
     if (!editingDraft) {
       return false;
     }
-    
-    const isValid = editingDraft.poNo?.trim() && 
-                   editingDraft.amt && editingDraft.amt > 0;
-    
+
+    const isValid = editingDraft.poNo?.trim() &&
+      editingDraft.amt && editingDraft.amt > 0;
+
     return isValid;
   };
 
@@ -533,17 +563,17 @@ const OrderReceive: React.FC = () => {
       if (filters.supplier) {
         sortableItems = sortableItems.filter(item => item.supplier === filters.supplier);
       }
-      
+
       if (dateRange.startDate || dateRange.endDate) {
         sortableItems = sortableItems.filter(item => {
           const receivedDate = dayjs(item.received, 'MMM DD, YYYY h:mm A');
           const startDate = dateRange.startDate;
           const endDate = dateRange.endDate;
-          
+
           if (startDate && endDate) {
-            return receivedDate.isSame(startDate, 'day') || 
-                   receivedDate.isSame(endDate, 'day') || 
-                   (receivedDate.isAfter(startDate, 'day') && receivedDate.isBefore(endDate, 'day'));
+            return receivedDate.isSame(startDate, 'day') ||
+              receivedDate.isSame(endDate, 'day') ||
+              (receivedDate.isAfter(startDate, 'day') && receivedDate.isBefore(endDate, 'day'));
           } else if (startDate) {
             return receivedDate.isSame(startDate, 'day') || receivedDate.isAfter(startDate, 'day');
           } else if (endDate) {
@@ -563,7 +593,7 @@ const OrderReceive: React.FC = () => {
 
       const activeSortKey = sortConfig.key || 'reNo';
       const activeSortDirection = sortConfig.direction || 'desc';
-      
+
       sortableItems.sort((a, b) => {
         const aValue = a[activeSortKey as keyof OrderReceiveRow];
         const bValue = b[activeSortKey as keyof OrderReceiveRow];
@@ -575,7 +605,7 @@ const OrderReceive: React.FC = () => {
         }
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return activeSortDirection === 'asc' 
+          return activeSortDirection === 'asc'
             ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
             : bValue.localeCompare(aValue, undefined, { numeric: true, sensitivity: 'base' });
         } else if (typeof aValue === 'number' && typeof bValue === 'number') {
@@ -597,7 +627,7 @@ const OrderReceive: React.FC = () => {
 
       const activeSortKey = sortConfig.key || 'reNo';
       const activeSortDirection = sortConfig.direction || 'desc';
-      
+
       sortableItems.sort((a, b) => {
         const aValue = a[activeSortKey as keyof PurchaseOrderRow];
         const bValue = b[activeSortKey as keyof PurchaseOrderRow];
@@ -635,19 +665,19 @@ const OrderReceive: React.FC = () => {
       key: "reNo",
       header: ORDER_RECEIVE_TABLE_HEADERS.RECEIPT_NUMBER,
       render: (row) => (
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'row', 
-          alignItems: 'center', 
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
           gap: '0.125rem', // 2px = 0.125rem
           minHeight: '1.5rem', // 24px = 1.5rem
           width: '100%',
           position: 'relative'
         }}>
           <VisibilityIcon
-            sx={{ 
-              fontSize: ORDER_RECEIVE_CONSTANTS.ICONS.RECEIPT_VIEW_SIZE, 
-              color: ORDER_RECEIVE_CONSTANTS.ICONS.MUTED_COLOR, 
+            sx={{
+              fontSize: ORDER_RECEIVE_CONSTANTS.ICONS.RECEIPT_VIEW_SIZE,
+              color: ORDER_RECEIVE_CONSTANTS.ICONS.MUTED_COLOR,
               cursor: 'pointer',
               padding: '0.125rem', // 2px = 0.125rem
               borderRadius: '0.25rem', // 4px = 0.25rem
@@ -663,8 +693,8 @@ const OrderReceive: React.FC = () => {
             }}
             onClick={() => handleViewDetailsClick(row)}
           />
-          <span style={{ 
-            flex: 1, 
+          <span style={{
+            flex: 1,
             minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -769,9 +799,9 @@ const OrderReceive: React.FC = () => {
       header: "Credit available for supplier (₹)",
       headerRender: () => (
         <Tooltip title="Credit available for the supplier" arrow placement="top">
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
             alignItems: 'flex-start',
             lineHeight: 1.2,
             cursor: 'help',
@@ -792,9 +822,9 @@ const OrderReceive: React.FC = () => {
       key: "invoice_attachment",
       header: ORDER_RECEIVE_TABLE_HEADERS.INVOICE_ATTACHMENT,
       headerRender: () => (
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
           alignItems: 'flex-start',
           lineHeight: 1.2
         }}>
@@ -808,14 +838,14 @@ const OrderReceive: React.FC = () => {
         let isBase64 = false;
         let isImage = false;
         let fileName: string | undefined = undefined;
-        
+
         // Check for receipt_file_name to determine file type
         if (row.receipt_file_name) {
           fileName = row.receipt_file_name.toLowerCase();
           // Check if file is an image based on extension
           isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(fileName);
         }
-        
+
         if (row.invoice_attachment) {
           // Check if it's a base64 data URL (starts with data:)
           isBase64 = row.invoice_attachment.startsWith('data:');
@@ -832,7 +862,7 @@ const OrderReceive: React.FC = () => {
             }
           }
         }
-        
+
         // If no attachment URL from database, try to use receipt_file_url or construct from receiptId
         // Only try to get file if we have evidence that a file exists (receipt_file_name or receipt_file_url)
         if (!fileUrl && row.receiptId) {
@@ -849,21 +879,21 @@ const OrderReceive: React.FC = () => {
           // If no receipt_file_name or receipt_file_url, don't try to construct URL
           // This means no file has been uploaded for this receipt
         }
-        
+
         // If still no file URL, show "No attachment"
         // Also check explicitly if file fields are null to avoid trying to fetch non-existent files
         if (!fileUrl || (!row.receipt_file_name && !row.receipt_file_url && !row.invoice_attachment)) {
           return <span style={{ color: '#9CA3AF' }}>No attachment</span>;
         }
-        
+
         if (isImage) {
           // For images (base64 or server-stored), show a clickable thumbnail that opens in a new tab
           return (
-            <a 
-              href={fileUrl} 
-              target="_blank" 
+            <a
+              href={fileUrl}
+              target="_blank"
               rel="noopener noreferrer"
-              style={{ 
+              style={{
                 display: 'inline-block',
                 cursor: 'pointer'
               }}
@@ -874,8 +904,8 @@ const OrderReceive: React.FC = () => {
                 }
               }}
             >
-              <img 
-                src={fileUrl} 
+              <img
+                src={fileUrl}
                 alt="Invoice Receipt"
                 style={{
                   maxWidth: '6.25rem', // 100px = 6.25rem
@@ -900,12 +930,12 @@ const OrderReceive: React.FC = () => {
         } else {
           // For other file types (PDF, DOC, etc.) or new file URLs, show as clickable link
           return (
-            <a 
-              href={fileUrl} 
-              target="_blank" 
+            <a
+              href={fileUrl}
+              target="_blank"
               rel="noopener noreferrer"
-              style={{ 
-                color: '#3B82F6', 
+              style={{
+                color: '#3B82F6',
                 textDecoration: 'underline',
                 cursor: 'pointer'
               }}
@@ -933,7 +963,7 @@ const OrderReceive: React.FC = () => {
             <Box sx={{ display: 'flex', gap: '0.75rem' }}> {/* 12px = 0.75rem */}
               <Box
                 onClick={() => validateInlineEditing() ? handleSaveClick(row) : null}
-                sx={{ 
+                sx={{
                   cursor: validateInlineEditing() ? 'pointer' : 'not-allowed',
                   color: validateInlineEditing() ? ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR : '#9CA3AF',
                   display: 'flex',
@@ -955,10 +985,10 @@ const OrderReceive: React.FC = () => {
                 sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer', fontSize: 18, flexShrink: 0 }}
                 onClick={() => handleEditClick(row)}
               />
-              <Typography 
+              <Typography
                 onClick={() => handlePaymentDetailsClick(row)}
-                sx={{ 
-                  color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, 
+                sx={{
+                  color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR,
                   fontSize: '16px',
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -1125,7 +1155,7 @@ const OrderReceive: React.FC = () => {
               <>
                 <Box
                   sx={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     bgcolor: '#F6F8FB', borderRadius: '1.5625rem', border: '0.0625rem solid #E6ECF5', p: '0.75rem', // 25px = 1.5625rem, 1px = 0.0625rem, 12px = 0.75rem
                     gap: { xs: 2, sm: 4, md: 8 }, // Remove fixed large gap that was causing overflow 
                     mb: 2, mt: 2,
@@ -1165,7 +1195,7 @@ const OrderReceive: React.FC = () => {
                   />
                   <StandardButton
                     startIcon={
-                      showFilters 
+                      showFilters
                         ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
                         : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
                     }
@@ -1299,11 +1329,11 @@ const OrderReceive: React.FC = () => {
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', pt: '1.75rem' }}> {/* 28px = 1.75rem */}
                       <StandardButton
-                        onClick={() => { 
-                          setSearchTerm(''); 
-                          setFilters({}); 
+                        onClick={() => {
+                          setSearchTerm('');
+                          setFilters({});
                           setSupplierSearchTerm('');
-                          setDateRange({ startDate: null, endDate: null }); 
+                          setDateRange({ startDate: null, endDate: null });
                         }}
                         variant="secondary"
                         size="medium"
@@ -1337,7 +1367,7 @@ const OrderReceive: React.FC = () => {
                 currentSearchTerm={searchTerm}
                 onSearchChange={handleSearchChange}
                 showFilters={false}
-                onShowFiltersToggle={() => {}}
+                onShowFiltersToggle={() => { }}
                 currentFilterKey={""}
                 onFilterSelect={(key, value) => handleFilterChange(key, value)}
                 totalRows={sortedData.length}
@@ -1359,7 +1389,7 @@ const OrderReceive: React.FC = () => {
                   currentSearchTerm={searchTerm}
                   onSearchChange={handleSearchChange}
                   showFilters={false}
-                  onShowFiltersToggle={() => {}}
+                  onShowFiltersToggle={() => { }}
                   onFilterSelect={(key, value) => handleFilterChange(key, value)}
                   totalRows={sortedData.length}
                   rowsPerPage={rowsPerPage}
@@ -1370,48 +1400,104 @@ const OrderReceive: React.FC = () => {
                   selectedRows={selectedRows}
                   setSelectedRows={setSelectedRows}
                   currentFilter={currentFilterForTable}
-                  footerContent={sortedData.length > 0 && activeTab === 2 ? (() => {
+                  disableFooterWrapper={true}
+                  footerContent={sortedData.length > 0 && activeTab === 2 && currentPage === 1 ? (() => {
                     const orderReceiveData = sortedData as OrderReceiveRow[];
+                    const totalAmount = orderReceiveData.reduce((sum, row) => sum + (row.amt || 0), 0);
                     const totalAmountPaid = orderReceiveData.reduce((sum, row) => sum + (row.amountPaid || 0), 0);
                     const totalPendingAmount = orderReceiveData.reduce((sum, row) => sum + (row.pendingAmount || 0), 0);
                     const totalCreditAvailable = orderReceiveData.reduce((sum, row) => sum + (row.creditAvailable || 0), 0);
-                    const totalAmount = totalAmountPaid + totalPendingAmount + totalCreditAvailable;
-                    
+
                     return (
-                      <Box
+                      <TableRow
                         sx={{
-                          display: 'flex',
-                          justifyContent: 'flex-start',
-                          alignItems: 'center',
-                          padding: '8px 16px',
                           backgroundColor: '#F9FAFB',
                         }}
                       >
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                          <Typography
-                            sx={{
-                              fontFamily: "'Lexend', sans-serif",
-                              fontWeight: 600,
-                              fontSize: '14px',
-                              lineHeight: '20px',
-                              color: '#374151',
-                            }}
-                          >
-                            Total Amount
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontFamily: "'Lexend', sans-serif",
-                              fontWeight: 600,
-                              fontSize: '16px',
-                              lineHeight: '24px',
-                              color: '#1A212B',
-                            }}
-                          >
-                            ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </Typography>
-                        </Box>
-                      </Box>
+                        {/* Column 1: Total label */}
+                        <TableCell
+                          sx={{
+                            padding: '12px 16px',
+                            fontFamily: "'Lexend', sans-serif",
+                            fontWeight: 600,
+                            fontSize: '14px',
+                            lineHeight: '20px',
+                            color: '#374151',
+                          }}
+                        >
+                          Total:
+                        </TableCell>
+
+                        {/* Columns 2-5: Empty (PO, Supplier, Received, Created By) */}
+                        <TableCell sx={{ padding: '12px 16px' }} />
+                        <TableCell sx={{ padding: '12px 16px' }} />
+                        <TableCell sx={{ padding: '12px 16px' }} />
+                        <TableCell sx={{ padding: '12px 16px' }} />
+
+                        {/* Column 6: Total Amount value (under Total amount column) */}
+                        <TableCell
+                          sx={{
+                            padding: '12px 12px',
+                            textAlign: 'left',
+                            fontFamily: "'Lexend', sans-serif",
+                            fontWeight: 600,
+                            fontSize: '16px',
+                            lineHeight: '24px',
+                            color: '#1A212B',
+                          }}
+                        >
+                          ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+
+                        {/* Column 7: Amount Paid (under Amount paid column) */}
+                        <TableCell
+                          sx={{
+                            padding: '12px 12px',
+                            textAlign: 'left',
+                            fontFamily: "'Lexend', sans-serif",
+                            fontWeight: 600,
+                            fontSize: '16px',
+                            lineHeight: '24px',
+                            color: '#1A212B',
+                          }}
+                        >
+                          ₹{totalAmountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+
+                        {/* Column 8: Pending Amount (under Pending amount column) */}
+                        <TableCell
+                          sx={{
+                            padding: '12px 12px',
+                            textAlign: 'left',
+                            fontFamily: "'Lexend', sans-serif",
+                            fontWeight: 600,
+                            fontSize: '16px',
+                            lineHeight: '24px',
+                            color: '#1A212B',
+                          }}
+                        >
+                          ₹{totalPendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+
+                        {/* Column 9: Credit Available (under Credit available column) */}
+                        <TableCell
+                          sx={{
+                            padding: '12px 12px',
+                            textAlign: 'left',
+                            fontFamily: "'Lexend', sans-serif",
+                            fontWeight: 600,
+                            fontSize: '16px',
+                            lineHeight: '24px',
+                            color: '#1A212B',
+                          }}
+                        >
+                          ₹{totalCreditAvailable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+
+                        {/* Columns 10-11: Empty (Invoice Attachment, Actions) */}
+                        <TableCell sx={{ padding: '12px 16px' }} />
+                        <TableCell sx={{ padding: '12px 16px' }} />
+                      </TableRow>
                     );
                   })() : undefined}
                 />
@@ -1453,20 +1539,20 @@ const OrderReceive: React.FC = () => {
                 ? {
                   ...selectedProduct,
                   products: (receiptLines || []).map((line) => {
-                    const productName = line.product_name || 
-                                      (line.product_id && line.product_id > 0 ? productNameCache[line.product_id] : null) ||
-                                      (line.product_id && line.product_id > 0 ? `Product ID: ${line.product_id}` : 'Unknown Product');
-                    
+                    const productName = line.product_name ||
+                      (line.product_id && line.product_id > 0 ? productNameCache[line.product_id] : null) ||
+                      (line.product_id && line.product_id > 0 ? `Product ID: ${line.product_id}` : 'Unknown Product');
+
                     return {
                       lineId: line.receipt_line_id,
                       productName: productName,
-                      type: 'Medicine', 
+                      type: 'Medicine',
                       quantity: line.received_qty,
                       hsnCode: line.hsn_id || line.hsn_code || 'N/A',
                       amount: parseFloat(line.unit_price) || 0,
                       transaction_number: line.transaction_number || '',
                       payment_vendor: line.payment_vendor || '',
-                      invoice_date: '', 
+                      invoice_date: '',
                     };
                   }) as ProductItem[],
                 }

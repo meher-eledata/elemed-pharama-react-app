@@ -16,6 +16,7 @@ interface SaleConfirmationDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   isLoading?: boolean;
+  actionType?: 'save' | 'print';
 }
 
 const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
@@ -23,6 +24,7 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
   onClose,
   onConfirm,
   isLoading = false,
+  actionType = 'save',
 }) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -72,7 +74,9 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
           fontFamily: "'Lexend', sans-serif",
         }}
       >
-        {SALES_RECEIPT_LABELS.CONFIRM_SALE_TITLE}
+        {actionType === 'print' 
+          ? SALES_RECEIPT_LABELS.CONFIRM_PRINT_TITLE 
+          : SALES_RECEIPT_LABELS.CONFIRM_SALE_TITLE}
       </DialogTitle>
 
       {/* Content with Message Box */}
@@ -86,40 +90,57 @@ const SaleConfirmationDialog: React.FC<SaleConfirmationDialogProps> = ({
             boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)'
           }}
         >
-          <Typography
-            sx={{
-              fontSize: '15px',
-              color: '#374151',
-              marginBottom: '10px',
-              lineHeight: 1.7,
-              fontWeight: 500,
-            }}
-          >
-            {SALES_RECEIPT_LABELS.CONFIRM_SALE_MESSAGE_1}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '15px',
-              color: '#374151',
-              marginBottom: '12px',
-              lineHeight: 1.7,
-              fontWeight: 500,
-            }}
-          >
-            {SALES_RECEIPT_LABELS.CONFIRM_SALE_MESSAGE_2}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '13px',
-              color: '#DC2626',
-              textAlign: 'right',
-              fontStyle: 'italic',
-              fontWeight: 700,
-              marginTop: '8px',
-            }}
-          >
-            {SALES_RECEIPT_LABELS.IRREVERSIBLE_WARNING}
-          </Typography>
+          {actionType === 'print' ? (
+            <Typography
+              sx={{
+                fontSize: '15px',
+                color: '#374151',
+                marginBottom: '12px',
+                lineHeight: 1.7,
+                fontWeight: 500,
+                textAlign: 'center',
+              }}
+            >
+              {SALES_RECEIPT_LABELS.CONFIRM_PRINT_MESSAGE}
+            </Typography>
+          ) : (
+            <>
+              <Typography
+                sx={{
+                  fontSize: '15px',
+                  color: '#374151',
+                  marginBottom: '10px',
+                  lineHeight: 1.7,
+                  fontWeight: 500,
+                }}
+              >
+                {SALES_RECEIPT_LABELS.CONFIRM_SALE_MESSAGE_1}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '15px',
+                  color: '#374151',
+                  marginBottom: '12px',
+                  lineHeight: 1.7,
+                  fontWeight: 500,
+                }}
+              >
+                {SALES_RECEIPT_LABELS.CONFIRM_SALE_MESSAGE_2}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '13px',
+                  color: '#DC2626',
+                  textAlign: 'right',
+                  fontStyle: 'italic',
+                  fontWeight: 700,
+                  marginTop: '8px',
+                }}
+              >
+                {SALES_RECEIPT_LABELS.IRREVERSIBLE_WARNING}
+              </Typography>
+            </>
+          )}
         </Box>
       </DialogContent>
 

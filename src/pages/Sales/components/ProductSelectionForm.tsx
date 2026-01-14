@@ -32,7 +32,7 @@ interface ProductSelectionFormProps {
   onProductInputChange: (value: string) => void;
   onProductChange: (value: string | null) => void;
   onClearProduct: () => void;
-  
+
   // Brand
   showBrandDropdown: boolean;
   availableBrands: Array<{ id: number; brand_name: string }>;
@@ -40,7 +40,7 @@ interface ProductSelectionFormProps {
   brandId: number | null;
   onBrandChange: (brandId: number, brandName: string) => void;
   isBrandsLoading: boolean;
-  
+
   // Type
   showTypeDropdown: boolean;
   availableTypes: Array<{ type: string; product_id: number }>;
@@ -48,27 +48,27 @@ interface ProductSelectionFormProps {
   selectedTypeProductId: number | null;
   onTypeChange: (type: string, productId: number) => void;
   isTypesLoading: boolean;
-  
+
   // Batch
   showBatchDropdown: boolean;
   availableBatches: string[];
   batch: string;
   onBatchChange: (value: string) => void;
   isBatchesLoading: boolean;
-  
+
   // Quantity
   qty: number;
   onQtyChange: (value: number) => void;
-  
+
   // Discount
   discount: number;
   onDiscountChange: (value: number) => void;
-  
+
   // Discount Authorized By
   discountAuthorizedBy?: string;
   discountAuthorizedById?: number;
   onDiscountAuthorizedByChange: (value: string, doctorId?: number) => void;
-  
+
   // Add to Cart
   onAddToCart: () => void;
   isValidating: boolean;
@@ -115,28 +115,28 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
 }) => {
   const { data: doctorNames = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
   const [productSearchOpen, setProductSearchOpen] = React.useState(false);
-  
+
   // Reset dropdown state when product selection changes or products load
   React.useEffect(() => {
     if (isProductSelected) {
       setProductSearchOpen(false);
     }
   }, [isProductSelected]);
-  
+
   // Close dropdown when products are loading to prevent stale state
   React.useEffect(() => {
     if (isProductsLoading) {
       setProductSearchOpen(false);
     }
   }, [isProductsLoading]);
-  
+
   const handleOpen = () => {
-    // Only open if products are loaded and available
-    if (!isProductsLoading && productOptions.length > 0) {
+    // Only open if not loading - show no options text if empty
+    if (!isProductsLoading) {
       setProductSearchOpen(true);
     }
   };
-  
+
   return (
     <ProductSelectionContainer>
       <FormFieldsContainer>
@@ -153,9 +153,9 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             onOpen={handleOpen}
             onClose={() => setProductSearchOpen(false)}
             options={
-              isProductsLoading 
-                ? [] 
-                : productOptions.length > 0 
+              isProductsLoading
+                ? []
+                : productOptions.length > 0
                   ? productOptions.filter(option => option && typeof option === 'string')
                   : []
             }
@@ -188,30 +188,54 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 paddingBottom: '0px',
               }
             }}
+            componentsProps={{
+              paper: {
+                elevation: 0,
+                sx: {
+                  borderRadius: "12px",
+                  boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.1)",
+                  marginTop: "8px",
+                  border: "1px solid #E5E7EB",
+                  "& .MuiAutocomplete-listbox": {
+                    padding: "8px",
+                    "& .MuiAutocomplete-option": {
+                      borderRadius: "8px",
+                      margin: "2px 0",
+                      "&[aria-selected='true']": {
+                        backgroundColor: "#F3F4F6",
+                      },
+                      "&:hover": {
+                        backgroundColor: "#F9FAFB",
+                      },
+                    },
+                  },
+                }
+              }
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
                 placeholder={
-                  isProductsLoading 
-                    ? "Loading products..." 
+                  isProductsLoading
+                    ? "Loading products..."
                     : "Search for a product..."
                 }
                 variant="outlined"
                 sx={{
-                  width: "200px",
+                  width: "300px",
                   "& .MuiOutlinedInput-root": {
                     height: "40px",
                     borderRadius: "18px",
                     backgroundColor: "#FFFFFF",
                     border: "1px solid #D1D5DB",
-                    "& fieldset": { 
+                    "& fieldset": {
                       borderColor: "transparent",
                       display: "none",
                     },
-                    "&:hover fieldset": { 
+                    "&:hover fieldset": {
                       borderColor: "transparent",
                     },
-                    "&.Mui-focused fieldset": { 
+                    "&.Mui-focused fieldset": {
                       borderColor: "transparent",
                       outline: "none",
                     },
@@ -251,7 +275,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   endAdornment: (
                     <>
                       {isProductSelected && (
-                        <InputAdornment 
+                        <InputAdornment
                           position="end"
                           sx={{
                             opacity: 0,
@@ -267,10 +291,10 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                             },
                           }}
                         >
-                          <IconButton 
-                            size="small" 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               onClearProduct();
                             }}
                             sx={{ padding: 0, marginRight: '4px' }}
@@ -291,9 +315,9 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         {/* Quantity */}
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>{SALES_PAGE_LABELS.QUANTITY_LABEL}</Typography>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
             borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
             border: '1px solid #D1D5DB',
             overflow: 'hidden',
@@ -301,12 +325,12 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             height: '40px',
             outline: 'none',
           }}>
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={() => onQtyChange(Math.max(SALES_PAGE_CONSTANTS.MIN_QUANTITY, qty - 1))}
               disabled={!isProductSelected}
-              sx={{ 
-                bgcolor: 'grey.200', 
+              sx={{
+                bgcolor: 'grey.200',
                 color: 'black',
                 borderRadius: 0,
                 borderRight: '1px solid #D1D5DB',
@@ -324,7 +348,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
               disabled={!isProductSelected}
               size="small"
               variant="standard"
-              sx={{ 
+              sx={{
                 width: SALES_PAGE_CONSTANTS.QUANTITY_FIELD_WIDTH,
                 height: '40px',
                 '& .MuiInput-root': {
@@ -348,12 +372,12 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 }
               }}
             />
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={() => onQtyChange(qty + 1)}
               disabled={!isProductSelected}
-              sx={{ 
-                bgcolor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR, 
+              sx={{
+                bgcolor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
                 color: 'white',
                 borderRadius: 0,
                 borderLeft: '1px solid #D1D5DB',
@@ -527,8 +551,8 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   </MenuItem>
                 ) : (
                   availableBatches.map((batchNumber) => (
-                    <MenuItem 
-                      key={batchNumber} 
+                    <MenuItem
+                      key={batchNumber}
                       value={batchNumber}
                       sx={{
                         whiteSpace: 'nowrap',
@@ -572,7 +596,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             }}
             disabled={!isProductSelected}
             size="small"
-            sx={{ 
+            sx={{
               width: '80px',
               height: '40px',
               outline: 'none',
@@ -622,11 +646,11 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   onDiscountAuthorizedByChange('', undefined);
                   return;
                 }
-                
+
                 // Handle both object and string formats
                 if (typeof newValue === 'string') {
                   // If it's a string, try to find matching doctor
-                  const matchingDoctor = doctorNames.find(d => 
+                  const matchingDoctor = doctorNames.find(d =>
                     d.name.toLowerCase().trim() === newValue.toLowerCase().trim()
                   );
                   if (matchingDoctor) {
@@ -645,20 +669,20 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   onDiscountAuthorizedByChange('', undefined);
                   return;
                 }
-                
+
                 // Try exact match first
-                let matchingDoctor = doctorNames.find(d => 
+                let matchingDoctor = doctorNames.find(d =>
                   d.name.toLowerCase().trim() === newInputValue.toLowerCase().trim()
                 );
-                
+
                 // If exact match not found, try partial match
                 if (!matchingDoctor && newInputValue.length > 2) {
-                  matchingDoctor = doctorNames.find(d => 
+                  matchingDoctor = doctorNames.find(d =>
                     d.name.toLowerCase().trim().startsWith(newInputValue.toLowerCase().trim()) ||
                     newInputValue.toLowerCase().trim().startsWith(d.name.toLowerCase().trim())
                   );
                 }
-                
+
                 if (matchingDoctor) {
                   onDiscountAuthorizedByChange(matchingDoctor.name, parseInt(matchingDoctor.id));
                 } else {
@@ -687,14 +711,14 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                       borderRadius: "18px",
                       backgroundColor: "#FFFFFF",
                       border: "1px solid #D1D5DB",
-                      "& fieldset": { 
+                      "& fieldset": {
                         borderColor: "transparent",
                         display: "none",
                       },
-                      "&:hover fieldset": { 
+                      "&:hover fieldset": {
                         borderColor: "transparent",
                       },
-                      "&.Mui-focused fieldset": { 
+                      "&.Mui-focused fieldset": {
                         borderColor: "transparent",
                         outline: "none",
                       },

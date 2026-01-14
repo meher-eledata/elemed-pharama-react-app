@@ -166,6 +166,13 @@ const SalesReceipt: React.FC = () => {
     totalPayableAmount: string;
   } | null>(null);
 
+  // Clear form data from Redux when entering edit mode to prevent interference
+  useEffect(() => {
+    if (isEditMode || isReturnDetailsMode) {
+      dispatch(clearFormData());
+    }
+  }, [isEditMode, isReturnDetailsMode, dispatch]);
+
   useEffect(() => {
     if ((isEditMode || isReturnDetailsMode) && editModeData) {
       let invoiceId: number | null = null;
@@ -253,7 +260,7 @@ const SalesReceipt: React.FC = () => {
                 doctorEmail: result.doctor_email || editModeData.doctorEmail || '',
                 paymentMode: result.payment_mode || editModeData.paymentMode || 'Cash',
                 insuranceCompany: result.insurance_company || editModeData.insuranceCompany || '',
-                invoiceNumber: invoice.invoice_number?.toString() || result.invoice_number?.toString() || editModeData.invoiceNumber || '',
+                invoiceNumber: editModeData.invoiceNumber || (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || '',
                 invoiceDate: invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB').split('/').reverse().join('-') : (editModeData.invoiceDate || getTodayDate()),
                 salesItems: lines.length > 0 ? lines.map((line: any) => {
                   const unitPrice = parseFloat(line.rate || line.unit_price || '0');
@@ -634,29 +641,32 @@ const SalesReceipt: React.FC = () => {
     insuranceCompany,
     invoiceNumber,
     invoiceDate,
+    isEditMode, // Pass isEditMode to skip persistence in edit mode
     onFormDataLoaded: useCallback((formData) => {
-      // Only load form data if not in edit mode
-      if (!isEditMode) {
-        setCustomerName(formData.customerName);
-        setCustomerMobile(formData.customerMobile);
-        setCustomerCity(formData.customerCity);
-        setPatientType(formData.patientType || 'Out Patient');
-        setDoctorName(formData.doctorName);
-        setDoctorMobile(formData.doctorMobile);
-        setDoctorEmail(formData.doctorEmail);
-        setPaymentMode(formData.paymentMode);
-        setInsuranceCompany(formData.insuranceCompany);
-        if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
-        if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
-      }
-    }, [isEditMode]),
+      setCustomerName(formData.customerName);
+      setCustomerMobile(formData.customerMobile);
+      setCustomerCity(formData.customerCity);
+      setPatientType(formData.patientType || 'Out Patient');
+      setDoctorName(formData.doctorName);
+      setDoctorMobile(formData.doctorMobile);
+      setDoctorEmail(formData.doctorEmail);
+      // Set paymentMode from form data, or default to 'Cash' if empty
+      setPaymentMode(formData.paymentMode || 'Cash');
+      setInsuranceCompany(formData.insuranceCompany);
+      if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
+      if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
+    }, []),
     onCustomerRestored: useCallback((customer) => {
-      // Only restore customer if not in edit mode
-      if (!isEditMode) {
-        setSelectedCustomer(customer);
-      }
-    }, [isEditMode])
+      setSelectedCustomer(customer);
+    }, [])
   });
+
+  // Set default payment mode to 'Cash' if empty and not in edit mode
+  useEffect(() => {
+    if (!isEditMode && !paymentMode) {
+      setPaymentMode('Cash');
+    }
+  }, [isEditMode, paymentMode]);
 
   // Generate invoice number on mount (if not in edit mode and not already set)
   // This generates and reserves the invoice number immediately so it's visible to the user
@@ -850,9 +860,10 @@ const SalesReceipt: React.FC = () => {
       // Trigger browser print dialog
       printWindow.print();
       printWindow.onafterprint = () => {
+        // Only show success toast after print dialog closes (user may have printed or cancelled)
+        // Note: onafterprint fires even on cancel, so we show a generic message
         printWindow.close();
       };
-      showToast('Receipt printed successfully!', 'success');
     } else {
       showToast('Failed to open print window', 'error');
     }
@@ -1399,6 +1410,7 @@ const SalesReceipt: React.FC = () => {
           onClose={handleConfirmDialogClose}
           onConfirm={handleConfirmDialogConfirm}
           isLoading={isSubmittingSale || isUpdatingSale}
+          actionType={pendingAction || 'save'}
         />
       </SalesReceiptContainer>
     </>

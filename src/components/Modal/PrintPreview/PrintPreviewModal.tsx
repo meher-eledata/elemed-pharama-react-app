@@ -96,6 +96,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
     } catch (error) {
     }
   };
+
   return (
     <Box sx={{ padding: '0', maxHeight: '100%', overflow: 'auto' }}>
       {/* Print Preview Content */}
@@ -206,13 +207,13 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                 {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
               </Typography>
               <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-                {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', (paymentMode || '').trim())}
+                {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
               </Typography>
-              {paymentMode === 'Insurance' ? (
+              {paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
                 <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
-                  {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}
+                  {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}
                 </Typography>
-              ) : insuranceCompany && insuranceCompany.trim() ? (
+              ) : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
                 <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
                   {SALES_RECEIPT_LABELS.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}
                 </Typography>

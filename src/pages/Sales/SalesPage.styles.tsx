@@ -28,8 +28,10 @@ import { Box, styled } from '@mui/material';
 export const ProductSelectionContainer = styled(Box)({
   position: 'relative',
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'flex-end',
   justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: '16px',
   marginBottom: '32px',
   background: '#f7f9fc',
   padding: '24px',
@@ -40,7 +42,9 @@ export const ProductSelectionContainer = styled(Box)({
 export const FormFieldsContainer = styled(Box)({
   display: 'flex',
   alignItems: 'flex-end',
+  flexWrap: 'wrap',
   gap: '16px',
+  flex: 1,
 });
 
 // Container for bulk actions bar

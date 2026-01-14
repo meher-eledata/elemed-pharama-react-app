@@ -26,7 +26,7 @@ const PaymentTypePieChart: React.FC<PaymentTypePieChartProps> = ({ data }) => {
         textAnchor="middle"
         dominantBaseline="central"
         style={{
-          fontSize: '9px',
+          fontSize: '14px',
           fontWeight: 600,
           fontFamily: "'Lexend', sans-serif",
         }}
@@ -37,15 +37,15 @@ const PaymentTypePieChart: React.FC<PaymentTypePieChartProps> = ({ data }) => {
   };
 
   return (
-    <PieChart width={220} height={220}>
+    <PieChart width={380} height={380}>
       <Pie
         data={data}
         cx="50%"
         cy="50%"
         labelLine={false}
         label={renderCustomLabel}
-        outerRadius={90}
-        innerRadius={50}
+        outerRadius={150}
+        innerRadius={85}
         dataKey="value"
       >
         {data.map((entry, index) => (

@@ -16,20 +16,33 @@ export interface ReceiptLineItem {
 }
 
 export interface Receipt {
-  id: number;
+  receipt_id: number;
   po_id: number;
-  po_number?: string; // Add po_number field
-  supplier_name: string;
+  po_number: string;
+  supplier_id: number;
+  supplier_name: string | null;
   received_on: string;
   received_by: string;
   receipt_status: string;
-  total_amount: number;
-  transaction_number?: string;
-  payment_vendor?: string;
+  receipt_file_url: string | null;
+  receipt_file_type: string | null;
+  receipt_file_name: string | null;
+  receipt_file_uploaded_at: string | null;
+  po_total_amount: string;
+  total_paid: number;
+  amount_left_to_pay: number;
+  supplier_credit_available: string;
+  last_payment_at: string | null;
+  last_payment_method: string | null;
+  last_payment_vendor: string | null;
+  last_transaction_number: string | null;
+  // Legacy fields for backward compatibility
+  id?: number; // Alias for receipt_id
+  total_amount?: number; // Alias for po_total_amount (converted to number)
+  transaction_number?: string; // Alias for last_transaction_number
+  payment_vendor?: string; // Alias for last_payment_vendor
   invoice_date?: string; // Invoice date from form
   invoice_attachment?: string; // Invoice attachment (base64 data URL)
-  receipt_file_url?: string; // Receipt file URL from server
-  receipt_file_name?: string; // Receipt file name
 }
 
 export interface EditReceiptRequest {
@@ -268,16 +281,21 @@ export const receiveApi = createApi({
 
     // Submit receipt endpoint
     submitReceipt: builder.mutation<
-      { message: string; receiptId: number },
+      { 
+        message: string; 
+        po_id: number;
+        receipt_id: number;
+        total_amount: number;
+        amount_paid: number;
+        amount_due: number;
+        payment_status: string;
+        // Legacy field for backward compatibility
+        receiptId?: number;
+      },
       {
         supplier_name: string;
-        supplier_id?: number; // Make supplier_id optional
+        supplier_id: number;
         po_number: string;
-        payment_method: string;
-        payment_vendor: string;
-        transaction_number: string;
-        invoice_date?: string; // Invoice date in ISO format
-        invoice_attachment?: string; // Invoice attachment (base64 data URL)
         notes: string;
         created_by: string;
         lines: Array<{
@@ -383,6 +401,30 @@ export const receiveApi = createApi({
         },
       }),
     }),
+
+    // Upsert receipt payments endpoint
+    upsertReceiptPayments: builder.mutation<
+      { message: string },
+      {
+        receipt_id: number;
+        created_by: string;
+        payments: Array<{
+          payment_method: string;
+          payment_vendor: string | null;
+          transaction_number: string;
+          transaction_date: string;
+          payment_amount: number;
+          details: string;
+        }>;
+      }
+    >({
+      query: (body) => ({
+        url: "receive/upsert-receipt-payments",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Receive"],
+    }),
   }),
 });
 
@@ -402,6 +444,7 @@ export const {
   useGetProductsQuery,
   useUploadReceiptFileMutation,
   useGetReceiptFileQuery,
+  useUpsertReceiptPaymentsMutation,
 } = receiveApi;
 
 // Helper function to get receipt file URL (for iframe or direct link)

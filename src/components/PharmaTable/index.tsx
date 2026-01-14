@@ -77,6 +77,7 @@ interface ReusableTableProps<T> {
     currentFilter?: { [key: string]: string | null }; // Added this prop for better state management
     customSearchBarContent?: React.ReactNode; // Custom content to render next to search bar
     footerContent?: React.ReactNode; // Custom footer content
+    disableFooterWrapper?: boolean; // If true, footerContent is rendered directly inside TableFooter without wrapping in TableRow/TableCell
 }
 
 export const ReusableTable = <T,>({
@@ -101,6 +102,7 @@ export const ReusableTable = <T,>({
     currentFilter, // Destructure the new prop
     customSearchBarContent, // Custom content next to search bar
     footerContent, // Footer content
+    disableFooterWrapper = false,
 }: ReusableTableProps<T>) => {
     const theme = useTheme();
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -178,7 +180,7 @@ export const ReusableTable = <T,>({
         }
         const specialColumns = visibleColumns.filter(col => col.key === 'checkbox' || col.key === 'actions').length;
         const regularColumns = visibleColumns.length - specialColumns;
-        
+
         if (regularColumns > 0) {
             // Distribute width evenly, ensuring exactly 100% total
             const percentage = 100 / regularColumns;
@@ -429,11 +431,11 @@ export const ReusableTable = <T,>({
                 </Box>
             )}
 
-            <Box sx={{ 
-                borderRadius: totalRows > 0 ? '12px 12px 0 0' : '12px', 
-                border: '1px solid #E5E7EB', 
-                borderBottom: totalRows > 0 ? 'none' : '1px solid #E5E7EB', 
-                overflow: 'hidden', 
+            <Box sx={{
+                borderRadius: totalRows > 0 ? '12px 12px 0 0' : '12px',
+                border: '1px solid #E5E7EB',
+                borderBottom: totalRows > 0 ? 'none' : '1px solid #E5E7EB',
+                overflow: 'hidden',
                 width: '100%',
                 boxSizing: 'border-box',
             }}>
@@ -512,36 +514,36 @@ export const ReusableTable = <T,>({
                         },
                     }}
                 >
-                <Table stickyHeader sx={{ 
-                    width: '100%',
-                    tableLayout: 'auto', 
-                    margin: 0,
-                    padding: 0,
-                }}>
+                    <Table stickyHeader sx={{
+                        width: '100%',
+                        tableLayout: 'auto',
+                        margin: 0,
+                        padding: 0,
+                    }}>
                         <TableHead>
                             <TableRow>
                                 {visibleColumns.map((column, index) => (
-                                <TableCell
-                                    key={index}
-                                    sx={{
-                                        fontFamily: "'Lexend', sans-serif",
-                                        fontWeight: 600,
-                                        fontSize: '14px',
-                                        lineHeight: '18px',
-                                        color: '#374151',
-                                        padding: column.key === 'actions' ? '3px' : '4px 12px',
-                                        bgcolor: '#F9FAFB',
-                                        whiteSpace: 'nowrap',
-                                        width: column?.columnWidth || 'auto',
-                                        minWidth: column?.columnWidth || 'auto',
-                                        maxWidth: column?.columnWidth ? column.columnWidth : 'none',
-                                        cursor: 'default',
-                                        textAlign: column.key === 'actions' ? 'center' : 'left',
-                                        borderBottom: '1px solid #E5E7EB',
-                                        overflow: 'visible',
-                                        textOverflow: 'clip',
-                                    }}
-                                >
+                                    <TableCell
+                                        key={index}
+                                        sx={{
+                                            fontFamily: "'Lexend', sans-serif",
+                                            fontWeight: 600,
+                                            fontSize: '14px',
+                                            lineHeight: '18px',
+                                            color: '#374151',
+                                            padding: column.key === 'actions' ? '3px' : '4px 12px',
+                                            bgcolor: '#F9FAFB',
+                                            whiteSpace: 'nowrap',
+                                            width: column?.columnWidth || 'auto',
+                                            minWidth: column?.columnWidth || 'auto',
+                                            maxWidth: column?.columnWidth ? column.columnWidth : 'none',
+                                            cursor: 'default',
+                                            textAlign: column.key === 'actions' ? 'center' : 'left',
+                                            borderBottom: '1px solid #E5E7EB',
+                                            overflow: 'visible',
+                                            textOverflow: 'clip',
+                                        }}
+                                    >
                                         <Box display="flex" alignItems="center" gap={0.5}>
                                             {column.key === 'checkbox' && totalRows > 0 ? (
                                                 <Checkbox
@@ -635,39 +637,39 @@ export const ReusableTable = <T,>({
                                                 },
                                             }}
                                         >
-                                        {visibleColumns.map((column, colIndex) => (
-                                            <TableCell
-                                                key={colIndex}
-                                                sx={{
-                                                    fontFamily: "'Lexend', sans-serif",
-                                                    fontWeight: 400,
-                                                    fontSize: '14px',
-                                                    lineHeight: '20px',
-                                                    color: '#374151',
-                                                    padding: column.key === 'actions' ? '3px' : '12px 16px',
-                                                    whiteSpace: 'normal',
-                                                    wordBreak: 'break-word',
-                                                    width: column?.columnWidth || 'auto',
-                                                    minWidth: column?.columnWidth ? undefined : 'auto',
-                                                    maxWidth: column?.columnWidth || 'none',
-                                                    textAlign: column.key === 'actions' ? 'center' : 'left',
-                                                    borderBottom: '1px solid #F3F4F6',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    position: 'relative',
-                                                }}
-                                            >
-                                                {column.key === 'checkbox' && totalRows > 0 ? (
-                                                    <Checkbox
-                                                        checked={selectedRows.includes(actualRowIndex)}
-                                                        onChange={() => handleSelectRow(rowIndex)}
-                                                        sx={{ p: 0 }}
-                                                    />
-                                                ) : column.key !== 'checkbox' ? (
-                                                    column.render ? column.render(row) : (row as any)[column.key]
-                                                ) : null}
-                                            </TableCell>
-                                        ))}
+                                            {visibleColumns.map((column, colIndex) => (
+                                                <TableCell
+                                                    key={colIndex}
+                                                    sx={{
+                                                        fontFamily: "'Lexend', sans-serif",
+                                                        fontWeight: 400,
+                                                        fontSize: '14px',
+                                                        lineHeight: '20px',
+                                                        color: '#374151',
+                                                        padding: column.key === 'actions' ? '3px' : '12px 16px',
+                                                        whiteSpace: 'normal',
+                                                        wordBreak: 'break-word',
+                                                        width: column?.columnWidth || 'auto',
+                                                        minWidth: column?.columnWidth ? undefined : 'auto',
+                                                        maxWidth: column?.columnWidth || 'none',
+                                                        textAlign: column.key === 'actions' ? 'center' : 'left',
+                                                        borderBottom: '1px solid #F3F4F6',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        position: 'relative',
+                                                    }}
+                                                >
+                                                    {column.key === 'checkbox' && totalRows > 0 ? (
+                                                        <Checkbox
+                                                            checked={selectedRows.includes(actualRowIndex)}
+                                                            onChange={() => handleSelectRow(rowIndex)}
+                                                            sx={{ p: 0 }}
+                                                        />
+                                                    ) : column.key !== 'checkbox' ? (
+                                                        column.render ? column.render(row) : (row as any)[column.key]
+                                                    ) : null}
+                                                </TableCell>
+                                            ))}
                                         </TableRow>
                                     );
                                 })
@@ -683,17 +685,21 @@ export const ReusableTable = <T,>({
                         </TableBody>
                         {footerContent && (
                             <TableFooter>
-                                <TableRow>
-                                    <TableCell 
-                                        colSpan={visibleColumns.length}
-                                        sx={{
-                                            padding: 0,
-                                            border: 'none',
-                                        }}
-                                    >
-                                        {footerContent}
-                                    </TableCell>
-                                </TableRow>
+                                {disableFooterWrapper ? (
+                                    footerContent
+                                ) : (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={visibleColumns.length}
+                                            sx={{
+                                                padding: 0,
+                                                border: 'none',
+                                            }}
+                                        >
+                                            {footerContent}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableFooter>
                         )}
                     </Table>

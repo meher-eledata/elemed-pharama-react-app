@@ -14,10 +14,11 @@ import {
   Snackbar,
   Tooltip,
 } from "@mui/material";
-import { PharmaDatePicker } from "../../components/Common";
+import { PharmaDatePicker, StandardButton } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
 import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation, useUploadReceiptFileMutation, getReceiptFileUrl, useGetReceiptsQuery } from "../../redux/slices/receiveApi";
 import { useGetBatchesForProductMutation } from "../../redux/slices/inventoryApi";
 import SearchIcon from "@mui/icons-material/Search";
@@ -104,6 +105,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user } = useSelector((state: RootState) => state.auth);
   const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
   const [uploadReceiptFile] = useUploadReceiptFileMutation();
@@ -154,6 +156,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [supplierName, setSupplierName] = useState<string>(
     (isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier) || ""
   );
+  
+  // Fetch all receipts for supplier totals calculation (always fetch, filter in useEffect)
+  const { data: allReceiptsData } = useGetReceiptsQuery(undefined);
   const [poNumber, setPoNumber] = useState<string>(
     isEditMode && selectedOrder ? selectedOrder.poNo : selectedPO
   );
@@ -193,6 +198,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [isReceiptDeleteDialogOpen, setIsReceiptDeleteDialogOpen] = useState<boolean>(false);
   
   const [isUploadConfirmationDialogOpen, setIsUploadConfirmationDialogOpen] = useState<boolean>(false);
+  
+  const [isProceedToPaymentDialogOpen, setIsProceedToPaymentDialogOpen] = useState<boolean>(false);
   
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [invoiceFileName, setInvoiceFileName] = useState<string>("");
@@ -244,6 +251,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [supplierOptions, setSupplierOptions] = useState<{supplier_name: string, supplier_id: number}[]>([]);
   const [isSuppliersLoading, setIsSuppliersLoading] = useState<boolean>(false);
   const [suppliersError, setSuppliersError] = useState<string | null>(null);
+  
+  // Supplier totals state
+  const [supplierTotals, setSupplierTotals] = useState<{
+    amountPaid: number;
+    pendingAmount: number;
+    creditAvailable: number;
+  }>({
+    amountPaid: 0,
+    pendingAmount: 0,
+    creditAvailable: 0,
+  });
 
   const [productOptions, setProductOptions] = useState<string[]>([]);
   const [productOptionsWithIds, setProductOptionsWithIds] = useState<{name: string, id: number}[]>([]);
@@ -493,15 +511,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       throw new Error(`Supplier "${supplierName}" not found. Please select a supplier from the dropdown.`);
     }
 
+    // Get created_by from user, fallback to "meher"
+    const createdBy = user?.username || user?.first_name || "meher";
+    
     const payload: {
       supplier_name: string;
       supplier_id: number;
       po_number: string;
-      payment_method: string;
-      payment_vendor: string;
-      transaction_number: string;
-      invoice_date?: string;
-      invoice_attachment?: string;
       notes: string;
       created_by: string;
       lines: typeof lines;
@@ -509,13 +525,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       supplier_name: supplierName.trim(),
       supplier_id: selectedSupplierData.supplier_id,
       po_number: poNumber.trim(),
-      payment_method: paymentMethod || 'Cash',
-      payment_vendor: paymentVendor.trim(),
-      transaction_number: transactionNumber.trim(),
-      ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
-      // Don't send base64 attachment in payload - will upload file separately after receipt is created
       notes: "",
-      created_by: "meher",
+      created_by: createdBy,
       lines: lines
     };
 
@@ -761,7 +772,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       
       if (isEditMode && receiptId) {
         const editPayload = transformFormDataToEditPayload();
+        console.log('Edit receipt payload:', JSON.stringify(editPayload, null, 2));
         result = await editReceipt(editPayload).unwrap();
+        console.log('Edit receipt response:', result);
         finalReceiptId = receiptId;
       } else {
         let submitPayload;
@@ -775,7 +788,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         
         try {
           result = await submitReceipt(submitPayload).unwrap();
-          finalReceiptId = result.receiptId;
+          // Handle new API response structure: { message, po_id, receipt_id, total_amount, amount_paid, amount_due, payment_status }
+          finalReceiptId = result.receipt_id || (result as any).receiptId;
         } catch (rtkError) {
           
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
@@ -793,7 +807,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           }
 
           result = await response.json();
-          finalReceiptId = result.receiptId;
+          // Handle new API response structure
+          finalReceiptId = result.receipt_id || result.receiptId;
         }
       }
       
@@ -863,7 +878,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const handleSubmitReceipt = async () => {
-    // Check if user forgot to upload invoice file
+    // In edit mode, skip file check and save directly
+    if (isEditMode) {
+      await proceedWithSave();
+      return;
+    }
+    
+    // Check if user forgot to upload invoice file (only for new receipts)
     if (!invoiceFile && !invoiceAttachmentUrl) {
       // Show confirmation dialog asking if they want to upload
       setIsUploadConfirmationDialogOpen(true);
@@ -876,7 +897,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const handleUploadConfirmationYes = () => {
     setIsUploadConfirmationDialogOpen(false);
-    // Trigger file input click to allow user to select file
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -884,8 +904,165 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const handleUploadConfirmationNo = async () => {
     setIsUploadConfirmationDialogOpen(false);
-    // User chose to skip upload, proceed with save
-    await proceedWithSave();
+    setIsProceedToPaymentDialogOpen(true);
+  };
+
+  const handleProceedToPayment = async () => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      setSaveSuccess(false);
+
+      if (!supplierName.trim()) {
+        setSaveError('Please fill in the Supplier Name');
+        setIsSaving(false);
+        return;
+      }
+      
+      if (!poNumber.trim()) {
+        setSaveError('Please fill in the PO Number');
+        setIsSaving(false);
+        return;
+      }
+      
+      if (pharmaTableData.length === 0) {
+        setSaveError('Please add at least one product to the table');
+        setIsSaving(false);
+        return;
+      }
+      
+      const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
+      if (incompleteProducts.length > 0) {
+        setSaveError('Please complete all required fields for products (Product Name and Quantity Received)');
+        setIsSaving(false);
+        return;
+      }
+
+      let submitPayload;
+      try {
+        submitPayload = transformFormDataToApiPayload();
+      } catch (validationError: any) {
+        setSaveError(validationError.message || 'Invalid form data. Please ensure supplier is selected from dropdown.');
+        setIsSaving(false);
+        return;
+      }
+      
+      let result;
+      try {
+        result = await submitReceipt(submitPayload).unwrap();
+        // Handle new API response structure: { message, po_id, receipt_id, total_amount, amount_paid, amount_due, payment_status }
+        const newReceiptId = result.receipt_id || (result as any).receiptId;
+        
+        // Upload file if a file was selected
+        if (invoiceFile && newReceiptId) {
+          try {
+            await uploadReceiptFile({ receiptId: newReceiptId, file: invoiceFile }).unwrap();
+            console.log('Invoice file uploaded successfully');
+          } catch (uploadError) {
+            console.error('Failed to upload invoice file:', uploadError);
+            // Don't fail the entire save if file upload fails
+          }
+        }
+        
+        // Navigate to payment details page with receipt_id
+        navigate('/receive/payment-details', {
+          state: {
+            supplierName,
+            poNumber,
+            invoiceDate,
+            pharmaTableData,
+            isEditMode: false,
+            receiptId: newReceiptId,
+            receiptNumber: `RA${newReceiptId}`,
+          }
+        });
+      } catch (rtkError) {
+        // Fallback to direct fetch
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
+        const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(submitPayload)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        result = await response.json();
+        const newReceiptId = result.receipt_id || result.receiptId;
+        
+        // Upload file if a file was selected
+        if (invoiceFile && newReceiptId) {
+          try {
+            await uploadReceiptFile({ receiptId: newReceiptId, file: invoiceFile }).unwrap();
+            console.log('Invoice file uploaded successfully');
+          } catch (uploadError) {
+            console.error('Failed to upload invoice file:', uploadError);
+          }
+        }
+        
+        // Navigate to payment details page with receipt_id
+        navigate('/receive/payment-details', {
+          state: {
+            supplierName,
+            poNumber,
+            invoiceDate,
+            pharmaTableData,
+            isEditMode: false,
+            receiptId: newReceiptId,
+            receiptNumber: `RA${newReceiptId}`,
+          }
+        });
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to submit receipt';
+      
+      if (error?.data) {
+        if (typeof error.data === 'string') {
+          errorMessage = error.data;
+        } else if (error.data.message) {
+          errorMessage = error.data.message;
+        } else if (error.data.error) {
+          errorMessage = error.data.error;
+        } else if (Array.isArray(error.data.errors) && error.data.errors.length > 0) {
+          errorMessage = error.data.errors[0];
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.status) {
+        errorMessage = `Server error (${error.status}): ${error.status === 404 ? 'Endpoint not found' : error.status === 500 ? 'Internal server error' : 'Unknown error'}`;
+      }
+      
+      setSaveError(errorMessage);
+      setIsSaving(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleProceedToPaymentClick = () => {
+    // Check if user forgot to upload invoice file
+    if (!invoiceFile && !invoiceAttachmentUrl) {
+      // Show upload confirmation dialog first
+      setIsUploadConfirmationDialogOpen(true);
+      return;
+    }
+    
+    // If file exists, show proceed to payment confirmation dialog
+    setIsProceedToPaymentDialogOpen(true);
+  };
+
+  const handleConfirmProceedToPayment = () => {
+    setIsProceedToPaymentDialogOpen(false);
+    handleProceedToPayment();
+  };
+
+  const handleCancelProceedToPayment = () => {
+    setIsProceedToPaymentDialogOpen(false);
   };
 
   const addProductToTable = async (productName: string) => {
@@ -1149,6 +1326,40 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   }, [isEditMode, receiptId]);
 
+  // Calculate supplier totals from all receipts data
+  useEffect(() => {
+    if (!supplierName || !supplierName.trim() || !allReceiptsData) {
+      setSupplierTotals({ amountPaid: 0, pendingAmount: 0, creditAvailable: 0 });
+      return;
+    }
+
+    const receipts = Array.isArray(allReceiptsData) ? allReceiptsData : [];
+    
+    // Filter receipts for this supplier and calculate totals
+    const supplierReceipts = receipts.filter((receipt: any) => 
+      receipt.supplier_name && receipt.supplier_name.toLowerCase() === supplierName.toLowerCase()
+    );
+
+    const totalAmountPaid = supplierReceipts.reduce((sum: number, receipt: any) => 
+      sum + (receipt.total_paid || 0), 0
+    );
+    
+    const totalPendingAmount = supplierReceipts.reduce((sum: number, receipt: any) => 
+      sum + (receipt.amount_left_to_pay || 0), 0
+    );
+    
+    // Get credit available from the first receipt (should be same for all receipts from same supplier)
+    const creditAvailable = supplierReceipts.length > 0 && supplierReceipts[0].supplier_credit_available
+      ? parseFloat(supplierReceipts[0].supplier_credit_available)
+      : 0;
+
+    setSupplierTotals({
+      amountPaid: totalAmountPaid,
+      pendingAmount: totalPendingAmount,
+      creditAvailable: creditAvailable,
+    });
+  }, [supplierName, allReceiptsData]);
+
   const fetchReceiptLines = async () => {
     if (!receiptId) {
       return;
@@ -1307,14 +1518,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (receiptsData && receiptId) {
         const receipt = receiptsData.find((r: any) => r.id === receiptId);
         if (receipt) {
-          receiptFileName = receipt.receipt_file_name;
+          receiptFileName = receipt.receipt_file_name !== null ? receipt.receipt_file_name : undefined;
           hasReceiptFile = !!(receipt.receipt_file_url || receipt.receipt_file_name);
         }
       }
       
       // Fallback to selectedOrder data
       if (!receiptFileName && selectedOrder) {
-        receiptFileName = (selectedOrder as any).receipt_file_name;
+        const fileName = (selectedOrder as any).receipt_file_name;
+        receiptFileName = fileName !== null ? fileName : undefined;
         hasReceiptFile = !!(receiptFileName || (selectedOrder as any).receipt_file_url);
       }
       
@@ -2203,12 +2415,51 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             }}
             disableClearable={true}
             popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+            disableListWrap={true}
+            PaperComponent={({ children }) => (
+              <Box
+                sx={{
+                  padding: 0,
+                  marginTop: "4px",
+                  borderRadius: "12px",
+                  border: "1px solid #E5E7EB",
+                  backgroundColor: "#fff",
+                }}
+              >
+                {children}
+              </Box>
+            )}
+            slotProps={{
+              popper: {
+                sx: {
+                  "& .MuiPaper-root": {
+                    minWidth: "500px",
+                    width: "fit-content",
+                    padding: "0 !important",
+                    marginTop: "4px !important",
+                    maxHeight: "none !important",
+                    height: "auto !important",
+                    "& ul": {
+                      padding: "4px 0 !important",
+                      margin: "0 !important",
+                      maxHeight: "none !important",
+                      "& li:last-child": {
+                        marginBottom: "0 !important",
+                        paddingBottom: "8px !important",
+                      },
+                    },
+                  },
+                },
+              },
+            }}
             ListboxProps={{
-              style: {
-                maxHeight: '200px',
-                overflowY: 'auto',
-                paddingBottom: '0px',
-              }
+              sx: {
+                padding: "4px 0 !important",
+                maxHeight: "none !important",
+                "& li:last-child": {
+                  marginBottom: "0 !important",
+                },
+              },
             }}
                 renderOption={(props, option) => {
                   const isAddProduct = String(option) === orderLabels.addProducts;
@@ -2597,12 +2848,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               <Box
                 sx={{
                   display: 'flex',
-                  justifyContent: 'flex-start',
-                  alignItems: 'center',
+                  flexDirection: 'column',
+                  gap: '8px',
                   padding: '8px 16px',
                   backgroundColor: '#F9FAFB',
                 }}
               >
+                {/* Total Amount */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
                   <Typography
                     sx={{
@@ -2613,7 +2865,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                       color: '#374151',
                     }}
                   >
-                    Total Amount
+                    Total
                   </Typography>
                   <Typography
                     sx={{
@@ -2625,6 +2877,84 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
                     }}
                   >
                     ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+                
+                {/* Amount Paid */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: '20px',
+                      color: '#374151',
+                    }}
+                  >
+                    Amount Paid
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '16px',
+                      lineHeight: '24px',
+                      color: '#1A212B',
+                    }}
+                  >
+                    ₹{supplierTotals.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+                
+                {/* Pending Amount */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: '20px',
+                      color: '#374151',
+                    }}
+                  >
+                    Pending Amount
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '16px',
+                      lineHeight: '24px',
+                      color: '#1A212B',
+                    }}
+                  >
+                    ₹{supplierTotals.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+                
+                {/* Credit Available */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: '20px',
+                      color: '#374151',
+                    }}
+                  >
+                    Credit Available
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '16px',
+                      lineHeight: '24px',
+                      color: '#1A212B',
+                    }}
+                  >
+                    ₹{supplierTotals.creditAvailable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Typography>
                 </Box>
               </Box>
@@ -2699,56 +3029,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           >
             {orderLabels.cancelButton}
           </Button>
-          <Button
-            variant="contained"
-            disableRipple
-            disableElevation
-            disabled={!validateRequiredFields()}
-            onClick={() => {
-              // Navigate to payment details page with current form data
-              navigate('/receive/payment-details', {
-                state: {
-                  supplierName,
-                  poNumber,
-                  invoiceDate,
-                  pharmaTableData,
-                  isEditMode,
-                  receiptId,
-                  receiptNumber,
-                }
-              });
-            }}
-            sx={{
-              backgroundColor: "#5C17E5",
-              "&:hover": {
-                backgroundColor: "#4A14C7",
-                boxShadow: "none",
-              },
-              "&:focus": {
-                backgroundColor: "#4A14C7",
-                boxShadow: "none",
-              },
-              "&:active": {
-                backgroundColor: "#4A14C7",
-                boxShadow: "none",
-              },
-              "&:disabled": {
-                backgroundColor: "#D1D5DB",
-                color: "#9CA3AF",
-              },
-              borderRadius: "12px",
-              width: "86px",
-              height: "48px",
-              fontFamily: "'Lexend', sans-serif",
-              textTransform: "none",
-              boxShadow: "none",
-              fontWeight: 500,
-              fontSize: "16px",
-              lineHeight: "24px",
-            }}
+          <StandardButton
+            variant="primary"
+            size="large"
+            disabled={!validateRequiredFields() || isSaving || isSubmittingReceipt}
+            onClick={isEditMode ? handleSubmitReceipt : handleProceedToPaymentClick}
+            sx={{ height: "48px", width: "86px", fontSize: "12px" }}
           >
-            Next
-          </Button>
+            {isSaving || isSubmittingReceipt ? "Processing..." : isEditMode ? "Save" : "Proceed to Payment"}
+          </StandardButton>
         </Box>
         
         {isEditMode && (
@@ -2901,9 +3190,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onClose={handleUploadConfirmationNo}
         onConfirm={handleUploadConfirmationYes}
         title="Upload Invoice Receipt"
-        message="Did you forget to upload the invoice receipt? Would you like to upload it now?"
+        message="You haven't uploaded an invoice receipt. Would you like to upload it now?"
         confirmLabel="Yes, Upload"
-        cancelLabel="No, Save Without Upload"
+        cancelLabel="No, Proceed Without Upload"
+      />
+
+      <ConfirmationDialog
+        open={isProceedToPaymentDialogOpen}
+        onClose={handleCancelProceedToPayment}
+        onConfirm={handleConfirmProceedToPayment}
+        title="Proceed to Payment"
+        message="Proceeding to payment will create the receipt. Would you like to proceed?"
+        confirmLabel="Yes, Proceed"
+        cancelLabel="Cancel"
       />
 
       <NewSupplierModal

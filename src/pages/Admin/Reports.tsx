@@ -931,82 +931,82 @@ const DailySalesReport: React.FC = () => {
 
         {/* Sales by Payment Type Section */}
         <Grid item xs={12} md={6}>
-          <Box sx={{ ml: 20}}>
-            <Typography
+          <Typography
+            sx={{
+              fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
+              fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
+              color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+              mb: 2,
+              fontFamily: "'Lexend', sans-serif",
+            }}
+          >
+            {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.SALES_BY_PAYMENT_TYPE}
+          </Typography>
+          <Card
+            sx={{
+              p: 3,
+              width: '100%',
+              borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
+              boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
+              border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 3,
+              justifyContent: 'center',
+            }}
+          >
+            <Box
               sx={{
-                fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
-                fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
-                color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-                mb: 2,
-                fontFamily: "'Lexend', sans-serif",
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
               }}
             >
-              {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.SALES_BY_PAYMENT_TYPE}
-            </Typography>
-            <Card
-              sx={{
-                p: 2,
-                width: '100%',
-                maxWidth: '500px',
-                borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-                boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-                border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-start', ml: 1, mr: 1 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Suspense
-                    fallback={
-                      <Box
-                        sx={{
-                          width: 220,
-                          height: 220,
-                          display: 'flex',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <CircularProgress size={40} />
-                      </Box>
-                    }
+              <Suspense
+                fallback={
+                  <Box
+                    sx={{
+                      width: 380,
+                      height: 380,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
                   >
-                    <PaymentTypePieChart data={reportData.paymentTypeData} />
-                  </Suspense>
-                </Box>
-                <Box>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                    {reportData.paymentTypeData.map((item) => (
-                      <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box
-                          sx={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '2px',
-                            backgroundColor: item.color,
-                          }}
-                        />
-                        <Typography
-                          sx={{
-                            fontSize: '14px',
-                            color: '#1A212B',
-                            fontFamily: "'Lexend', sans-serif",
-                          }}
-                        >
-                          {item.label}
-                        </Typography>
-                      </Box>
-                    ))}
+                    <CircularProgress size={40} />
                   </Box>
-                </Box>
+                }
+              >
+                <PaymentTypePieChart data={reportData.paymentTypeData} />
+              </Suspense>
+            </Box>
+            <Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 1.5 }}>
+                {reportData.paymentTypeData.map((item) => (
+                  <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '2px',
+                        backgroundColor: item.color,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontSize: '14px',
+                        color: '#1A212B',
+                        fontFamily: "'Lexend', sans-serif",
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
-            </Card>
-          </Box>
+            </Box>
+          </Card>
         </Grid>
       </Grid>
 
@@ -1232,33 +1232,31 @@ const DailySalesReport: React.FC = () => {
 
         {/* Weekly Sales Trend Section */}
         <Grid item xs={12} md={6}>
-          <Box sx={{ ml: 20 }}>
-            <Typography
-              sx={{
-                fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
-                fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
-                color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
-                mb: 2,
-                fontFamily: "'Lexend', sans-serif",
-              }}
-            >
-              {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.WEEKLY_SALES_TREND}
-            </Typography>
-            <Card
-              sx={{
-                p: 2,
-                width: '100%',
-                maxWidth: '480px',
-                height: 'auto',
-                minHeight: '180px',
-                borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-                boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-                border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-            <Box sx={{ width: '100%', height: '160px', mt: 1 }}>
+          <Typography
+            sx={{
+              fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_SIZE,
+              fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.FONT_WEIGHT,
+              color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.SECTION_TITLE.COLOR,
+              mb: 2,
+              fontFamily: "'Lexend', sans-serif",
+            }}
+          >
+            {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.WEEKLY_SALES_TREND}
+          </Typography>
+          <Card
+            sx={{
+              p: 3,
+              width: '100%',
+              height: 'auto',
+              borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
+              boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
+              border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+            }}
+          >
+            <Box sx={{ width: '100%', height: '350px', mt: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <BarChart
                 xAxis={[
                   {
@@ -1302,9 +1300,9 @@ const DailySalesReport: React.FC = () => {
                     stack: 'total',
                   },
                 ]}
-                width={475}
-                height={200}
-                margin={{ top: 10, bottom: 50, left: 40, right: 20 }}
+                width={650}
+                height={320}
+                margin={{ top: 20, bottom: 60, left: 50, right: 10 }}
                 grid={{ vertical: false, horizontal: true }}
                 sx={{
                   '& .MuiChartsAxis-root': {
@@ -1327,7 +1325,6 @@ const DailySalesReport: React.FC = () => {
               />
             </Box>
           </Card>
-          </Box>
         </Grid>
       </Grid>
 

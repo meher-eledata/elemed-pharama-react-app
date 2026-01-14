@@ -127,6 +127,11 @@ export const generatePrintHTML = (data: {
               print-color-adjust: exact !important;
               color-adjust: exact !important;
             }
+            html, body {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
           }
           * {
             box-sizing: border-box;
@@ -169,7 +174,7 @@ export const generatePrintHTML = (data: {
             flex-direction: row;
             gap: 0px;
             width: 100%;
-          }
+          }  
           .detail-section { 
             flex: 1; 
             min-width: 180px;
@@ -222,9 +227,12 @@ export const generatePrintHTML = (data: {
             width: 100%; 
             border-collapse: separate;
             border-spacing: 0;
-            border: 2px solid #A5B4FC; 
+            border: 2px solid #A5B4FC !important; 
             border-radius: 8px; 
             overflow: hidden;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .items-table th { 
             background-color: #C7D2FE !important; 
@@ -233,11 +241,19 @@ export const generatePrintHTML = (data: {
             font-size: 11px; 
             text-align: left;
             color: #1A212B !important;
-            border-bottom: 2px solid #A5B4FC;
+            border-bottom: 2px solid #A5B4FC !important;
             white-space: nowrap;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+          }
+          @media print {
+            .items-table th {
+              background-color: #C7D2FE !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
           }
           .items-table td { 
             padding: 18px 12px; 
@@ -269,6 +285,23 @@ export const generatePrintHTML = (data: {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+          }
+          @media print {
+            .summary {
+              background-color: #C7D2FE !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            .detail-section {
+              background-color: #F9FAFB !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            .items-table {
+              border: 2px solid #A5B4FC !important;
+            }
           }
           .summary-left { 
             display: flex; 
@@ -334,10 +367,10 @@ export const generatePrintHTML = (data: {
           <div class="receipt-details-row">
             <div class="detail-section">
               <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', (paymentMode || '').trim())}</div>
-              ${paymentMode === 'Insurance' 
-                ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', (insuranceCompany || '').trim())}</div>`
-                : insuranceCompany && insuranceCompany.trim() 
+              <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>
+              ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
+                ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
+                : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() 
                   ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
                   : ''
               }

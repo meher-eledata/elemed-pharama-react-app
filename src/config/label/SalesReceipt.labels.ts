@@ -87,6 +87,8 @@ export const SALES_RECEIPT_LABELS = {
   CONFIRM_SALE_MESSAGE_1: "You are about to confirm this sale.",
   CONFIRM_SALE_MESSAGE_2: "Once confirmed, sale will be locked & Inventory will be updated",
   IRREVERSIBLE_WARNING: "*This action cannot be undone",
+  CONFIRM_PRINT_TITLE: "Print Receipt",
+  CONFIRM_PRINT_MESSAGE: "Would you like to print the receipt?",
   CONFIRM_BUTTON: "Confirm",
   CANCEL_CONFIRM_BUTTON: "Cancel",
   PROCESSING_TEXT: "Processing...",
