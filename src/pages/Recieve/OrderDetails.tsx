@@ -6,6 +6,7 @@ import {
   TextField,
   Divider,
   InputAdornment,
+  Select,
   MenuItem,
   Autocomplete,
   IconButton,
@@ -44,7 +45,6 @@ import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
-import { masterProducts, ProductMaster } from "../../data/masterData";
 import { useAddSupplierMutation } from "../../redux/slices/masterApi";
 
 interface OrderDetailsProps {
@@ -54,10 +54,10 @@ interface OrderDetailsProps {
 export interface PharmaTableRow {
   id?: string;
   productId: string;
-  product_id?: number; 
+  product_id?: number;
   batchNumber?: string;
   batch_id?: number;
-  po_line_id?: number; 
+  po_line_id?: number;
   qtyReceived: number;
   qtyFree: number;
   batch: Dayjs | null;
@@ -124,20 +124,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const [findProductTerm, setFindProductTerm] = useState<string>("");
   const [batchNumber, setBatchNumber] = useState<string>("");
-  
+
   const [isSupplierFocused, setIsSupplierFocused] = useState(false);
   const [isVendorFocused, setIsVendorFocused] = useState(false);
-  const [isFindProductFocused, setIsFindProductFocused] = useState(false);
-  const [isFindProductHovered, setIsFindProductHovered] = useState(false);
   const [isTransactionFocused, setIsTransactionFocused] = useState(false);
   const [isTransactionHovered, setIsTransactionHovered] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
   const [paymentVendor, setPaymentVendor] = useState<string>("");
-  const [supplierQuery, setSupplierQuery] = useState<string>("");
-  const [invoiceDate, setInvoiceDate] = useState<string>("");
-  const [transactionNumber, setTransactionNumber] = useState<string>("");
-
   const selectedSupplier = (location.state as any)?.selectedSupplier || "";
   const selectedPO = (location.state as any)?.selectedPO || "";
   const selectedOrder = (location.state as any)?.selectedOrder || null;
@@ -147,16 +141,26 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigationTransactionNumber = (location.state as any)?.transactionNumber || "";
   const navigationPaymentVendor = (location.state as any)?.paymentVendor || "";
   const navigationInvoiceDate = (location.state as any)?.invoiceDate || "";
-  
+  const [supplierOptions, setSupplierOptions] = useState<{ supplier_name: string, supplier_id: number }[]>([]);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState<string>("");
+  const [supplierName, setSupplierName] = useState<string>(
+    (isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier) || ""
+  );
+  const filteredSupplierOptions = useMemo(() => {
+    const options = supplierOptions.map(s => s.supplier_name);
+    const validOptions = options.filter(option => option && typeof option === 'string');
+    return [...validOptions, orderLabels.addNewSupplier];
+  }, [supplierOptions, orderLabels.addNewSupplier]);
+  const [invoiceDate, setInvoiceDate] = useState<string>("");
+  const [transactionNumber, setTransactionNumber] = useState<string>("");
+
+
   // Fetch receipt data when in edit mode to get receipt_file_name and receipt_file_url
   const { data: receiptsData } = useGetReceiptsQuery(undefined, {
     skip: !isEditMode || !receiptId, // Only fetch when in edit mode and receiptId exists
   });
-  
-  const [supplierName, setSupplierName] = useState<string>(
-    (isEditMode && selectedOrder ? selectedOrder.supplier : selectedSupplier) || ""
-  );
-  
+
+
   // Fetch all receipts for supplier totals calculation (always fetch, filter in useEffect)
   const { data: allReceiptsData } = useGetReceiptsQuery(undefined);
   const [poNumber, setPoNumber] = useState<string>(
@@ -166,9 +170,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
-  
+
   const [originalReceiptLines, setOriginalReceiptLines] = useState<PharmaTableRow[]>([]);
-  
+
   const [originalFormValues, setOriginalFormValues] = useState({
     supplierName: '',
     poNumber: '',
@@ -177,10 +181,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     paymentVendor: '',
     paymentMethod: 'Cash',
   });
-  
+
   const [originalInvoiceFile, setOriginalInvoiceFile] = useState<File | null>(null);
   const [originalInvoiceAttachmentUrl, setOriginalInvoiceAttachmentUrl] = useState<string>('');
-  
+
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<boolean>(false);
@@ -189,18 +193,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<PharmaTableRow>>({});
-  
+
   const [isProductSelected, setIsProductSelected] = useState<boolean>(false);
-  
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [rowToDeleteId, setRowToDeleteId] = useState<string | null>(null);
-  
+
   const [isReceiptDeleteDialogOpen, setIsReceiptDeleteDialogOpen] = useState<boolean>(false);
-  
+
   const [isUploadConfirmationDialogOpen, setIsUploadConfirmationDialogOpen] = useState<boolean>(false);
-  
+
   const [isProceedToPaymentDialogOpen, setIsProceedToPaymentDialogOpen] = useState<boolean>(false);
-  
+
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [invoiceFileName, setInvoiceFileName] = useState<string>("");
   const [invoiceAttachmentUrl, setInvoiceAttachmentUrl] = useState<string>("");
@@ -248,10 +252,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
   };
 
-  const [supplierOptions, setSupplierOptions] = useState<{supplier_name: string, supplier_id: number}[]>([]);
   const [isSuppliersLoading, setIsSuppliersLoading] = useState<boolean>(false);
   const [suppliersError, setSuppliersError] = useState<string | null>(null);
-  
+
   // Supplier totals state
   const [supplierTotals, setSupplierTotals] = useState<{
     amountPaid: number;
@@ -264,7 +267,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   });
 
   const [productOptions, setProductOptions] = useState<string[]>([]);
-  const [productOptionsWithIds, setProductOptionsWithIds] = useState<{name: string, id: number}[]>([]);
+  const [productOptionsWithIds, setProductOptionsWithIds] = useState<{ name: string, id: number }[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(false);
   const [productsError, setProductsError] = useState<string | null>(null);
 
@@ -283,12 +286,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         const uniqueOptions = Array.from(new Set(options));
         return uniqueOptions;
       }
-      
+
       const filtered = options.filter(option => {
         const optionStr = String(option).toLowerCase();
         return optionStr.includes(inputValue) || option === orderLabels.addProducts || option === "Loading products...";
       });
-      
+
       const uniqueFiltered = Array.from(new Set(filtered));
       return uniqueFiltered;
     };
@@ -298,7 +301,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     try {
       setIsSuppliersLoading(true);
       setSuppliersError(null);
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/unique-supplier-names`, {
         method: 'GET',
         headers: {
@@ -360,7 +363,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     try {
       setIsProductsLoading(true);
       setProductsError(null);
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-products`, {
         method: 'GET',
         headers: {
@@ -373,16 +376,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const products = await response.json();
-      
+
       const productData = products
         .filter((product: any) => product && Array.isArray(product) && product.length >= 2)
         .map((product: any) => ({
           name: product[0],
           id: product[1]
         }))
-        .filter((product: {name: string, id: number}) => product.name && product.name.trim() !== '' && product.id);
-      
-      setProductOptions(productData.map((p: {name: string; id: number}) => p.name) as string[]);
+        .filter((product: { name: string, id: number }) => product.name && product.name.trim() !== '' && product.id);
+
+      setProductOptions(productData.map((p: { name: string; id: number }) => p.name) as string[]);
       setProductOptionsWithIds(productData);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
@@ -403,7 +406,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     // Find supplier with case-insensitive matching
     const normalize = (str: string) => str.trim().toLowerCase();
     const normalizedSupplierName = normalize(supplierName);
-    const selectedSupplierData = supplierOptions.find(s => 
+    const selectedSupplierData = supplierOptions.find(s =>
       normalize(s.supplier_name) === normalizedSupplierName
     );
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
@@ -421,25 +424,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
         return null;
       }
-      
+
       const normalize = (str: string) => str.trim().toLowerCase();
       const normalizedProductName = normalize(productName);
-      
+
       let product = productOptionsWithIds.find(p => normalize(p.name) === normalizedProductName);
-      
+
       if (!product) {
-        product = productOptionsWithIds.find(p => 
-          normalize(p.name).includes(normalizedProductName) || 
+        product = productOptionsWithIds.find(p =>
+          normalize(p.name).includes(normalizedProductName) ||
           normalizedProductName.includes(normalize(p.name))
         );
       }
-      
+
       return product ? product.id : null;
     };
 
     const lines = pharmaTableData.map((row, index) => {
       const productId = getProductIdFromName(row.productId);
-      
+
       // Format expiry_date to ISO format (YYYY-MM-DD) as expected by backend
       // Always provide a value - use today's date as fallback if not provided
       let expiryDateFormatted: string;
@@ -513,7 +516,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     // Get created_by from user, fallback to "meher"
     const createdBy = user?.username || user?.first_name || "meher";
-    
+
     const payload: {
       supplier_name: string;
       supplier_id: number;
@@ -539,7 +542,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const detectChanges = () => {
     const originalIds = new Set(originalReceiptLines.map(row => row.id));
     const currentIds = new Set(pharmaTableData.map(row => row.id));
-    
+
     const isDatabaseId = (id: string | undefined) => {
       if (!id) return false;
       return /^\d+$/.test(id) && parseInt(id) < 1000000000000;
@@ -549,19 +552,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
         return null;
       }
-      
+
       const normalize = (str: string) => str.trim().toLowerCase();
       const normalizedProductName = normalize(productName);
-      
+
       let product = productOptionsWithIds.find(p => normalize(p.name) === normalizedProductName);
-      
+
       if (!product) {
-        product = productOptionsWithIds.find(p => 
-          normalize(p.name).includes(normalizedProductName) || 
+        product = productOptionsWithIds.find(p =>
+          normalize(p.name).includes(normalizedProductName) ||
           normalizedProductName.includes(normalize(p.name))
         );
       }
-      
+
       return product ? product.id : null;
     };
 
@@ -572,11 +575,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
       return '';
     };
-    
+
     const deleted = originalReceiptLines
       .filter(originalRow => !currentIds.has(originalRow.id))
       .map(row => ({ receipt_line_id: parseInt(row.id || '0') }));
-    
+
     const added = pharmaTableData
       .filter(currentRow => {
         if (!originalIds.has(currentRow.id)) return true;
@@ -585,7 +588,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       })
       .map(row => {
         const productId = row.product_id || getProductIdFromName(row.productId);
-        
+
         return {
           product: row.productId,
           product_id: productId || 0,
@@ -600,20 +603,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           discount: typeof row.disc === 'number' ? row.disc : 0
         };
       });
-    
+
     const edited = pharmaTableData
       .filter(currentRow => {
         if (!isDatabaseId(currentRow.id)) return false;
-        
+
         const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
         if (!originalRow) return false;
-        
-        const expiryDateChanged = 
+
+        const expiryDateChanged =
           (originalRow.expiryDate === null && currentRow.expiryDate !== null) ||
           (originalRow.expiryDate !== null && currentRow.expiryDate === null) ||
-          (originalRow.expiryDate && currentRow.expiryDate && 
-           !originalRow.expiryDate.isSame(currentRow.expiryDate, 'day'));
-        
+          (originalRow.expiryDate && currentRow.expiryDate &&
+            !originalRow.expiryDate.isSame(currentRow.expiryDate, 'day'));
+
         return (
           originalRow.productId !== currentRow.productId ||
           originalRow.qtyReceived !== currentRow.qtyReceived ||
@@ -629,10 +632,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       .map(row => {
         const originalRow = originalReceiptLines.find(orig => orig.id === row.id);
         const productId = row.product_id || originalRow?.product_id || getProductIdFromName(row.productId);
-        
+
         // Format expiry_date - use empty string if not provided (backend may handle this)
         const expiryDateFormatted = formatExpiryDate(row);
-        
+
         return {
           receipt_line_id: parseInt(row.id || '0'),
           po_line_id: row.po_line_id || originalRow?.po_line_id || 0,
@@ -721,9 +724,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       setDeleteSuccess(true);
-      
+
       dispatch(receiveApi.util.invalidateTags(['Receive']));
-      
+
       setTimeout(() => {
         navigate('/receive/order-receive');
       }, 2000);
@@ -747,19 +750,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setIsSaving(false);
         return;
       }
-      
+
       if (!poNumber.trim()) {
         setSaveError('Please fill in the PO Number');
         setIsSaving(false);
         return;
       }
-      
+
       if (pharmaTableData.length === 0) {
         setSaveError('Please add at least one product to the table');
         setIsSaving(false);
         return;
       }
-      
+
       const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
       if (incompleteProducts.length > 0) {
         setSaveError('Please complete all required fields for products (Product Name and Quantity Received)');
@@ -769,7 +772,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       let result;
       let finalReceiptId: number | null = null;
-      
+
       if (isEditMode && receiptId) {
         const editPayload = transformFormDataToEditPayload();
         console.log('Edit receipt payload:', JSON.stringify(editPayload, null, 2));
@@ -785,13 +788,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           setIsSaving(false);
           return;
         }
-        
+
         try {
           result = await submitReceipt(submitPayload).unwrap();
           // Handle new API response structure: { message, po_id, receipt_id, total_amount, amount_paid, amount_due, payment_status }
           finalReceiptId = result.receipt_id || (result as any).receiptId;
         } catch (rtkError) {
-          
+
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
           const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
             method: 'POST',
@@ -811,7 +814,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           finalReceiptId = result.receipt_id || result.receiptId;
         }
       }
-      
+
       // Upload file if a file was selected and we have a receipt ID
       if (invoiceFile && finalReceiptId) {
         try {
@@ -822,7 +825,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           // Don't fail the entire save if file upload fails - just log the error
         }
       }
-      
+
       if (!isEditMode) {
         const receiptData = {
           poNumber: poNumber,
@@ -831,9 +834,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         };
         localStorage.setItem('lastReceiptData', JSON.stringify(receiptData));
       }
-      
+
       setSaveSuccess(true);
-      
+
       setTimeout(() => {
         setPharmaTableData([]);
         setFindProductTerm("");
@@ -854,7 +857,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     } catch (error: any) {
       let errorMessage = 'Failed to submit receipt';
-      
+
       if (error?.data) {
         if (typeof error.data === 'string') {
           errorMessage = error.data;
@@ -870,7 +873,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       } else if (error?.status) {
         errorMessage = `Server error (${error.status}): ${error.status === 404 ? 'Endpoint not found' : error.status === 500 ? 'Internal server error' : 'Unknown error'}`;
       }
-      
+
       setSaveError(errorMessage);
     } finally {
       setIsSaving(false);
@@ -883,14 +886,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       await proceedWithSave();
       return;
     }
-    
+
     // Check if user forgot to upload invoice file (only for new receipts)
     if (!invoiceFile && !invoiceAttachmentUrl) {
       // Show confirmation dialog asking if they want to upload
       setIsUploadConfirmationDialogOpen(true);
       return;
     }
-    
+
     // If file exists or user chose to skip, proceed with save
     await proceedWithSave();
   };
@@ -918,19 +921,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setIsSaving(false);
         return;
       }
-      
+
       if (!poNumber.trim()) {
         setSaveError('Please fill in the PO Number');
         setIsSaving(false);
         return;
       }
-      
+
       if (pharmaTableData.length === 0) {
         setSaveError('Please add at least one product to the table');
         setIsSaving(false);
         return;
       }
-      
+
       const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
       if (incompleteProducts.length > 0) {
         setSaveError('Please complete all required fields for products (Product Name and Quantity Received)');
@@ -946,13 +949,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setIsSaving(false);
         return;
       }
-      
+
       let result;
       try {
         result = await submitReceipt(submitPayload).unwrap();
         // Handle new API response structure: { message, po_id, receipt_id, total_amount, amount_paid, amount_due, payment_status }
         const newReceiptId = result.receipt_id || (result as any).receiptId;
-        
+
         // Upload file if a file was selected
         if (invoiceFile && newReceiptId) {
           try {
@@ -963,7 +966,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             // Don't fail the entire save if file upload fails
           }
         }
-        
+
         // Navigate to payment details page with receipt_id
         navigate('/receive/payment-details', {
           state: {
@@ -994,7 +997,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
         result = await response.json();
         const newReceiptId = result.receipt_id || result.receiptId;
-        
+
         // Upload file if a file was selected
         if (invoiceFile && newReceiptId) {
           try {
@@ -1004,7 +1007,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             console.error('Failed to upload invoice file:', uploadError);
           }
         }
-        
+
         // Navigate to payment details page with receipt_id
         navigate('/receive/payment-details', {
           state: {
@@ -1020,7 +1023,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
     } catch (error: any) {
       let errorMessage = 'Failed to submit receipt';
-      
+
       if (error?.data) {
         if (typeof error.data === 'string') {
           errorMessage = error.data;
@@ -1036,7 +1039,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       } else if (error?.status) {
         errorMessage = `Server error (${error.status}): ${error.status === 404 ? 'Endpoint not found' : error.status === 500 ? 'Internal server error' : 'Unknown error'}`;
       }
-      
+
       setSaveError(errorMessage);
       setIsSaving(false);
     } finally {
@@ -1051,7 +1054,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setIsUploadConfirmationDialogOpen(true);
       return;
     }
-    
+
     // If file exists, show proceed to payment confirmation dialog
     setIsProceedToPaymentDialogOpen(true);
   };
@@ -1074,8 +1077,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       const normalizedName = normalize(name);
       let product = productOptionsWithIds.find(p => normalize(p.name) === normalizedName);
       if (!product) {
-        product = productOptionsWithIds.find(p => 
-          normalize(p.name).includes(normalizedName) || 
+        product = productOptionsWithIds.find(p =>
+          normalize(p.name).includes(normalizedName) ||
           normalizedName.includes(normalize(p.name))
         );
       }
@@ -1083,10 +1086,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     };
 
     const resolvedProductId = getProductIdFromName(productName);
-    
+
     const productMRP = 0;
     const productSellingPrice = 0;
-    
+
     const newProduct: PharmaTableRow = {
       id: Date.now().toString(),
       productId: productName,
@@ -1119,7 +1122,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const startEditing = (row: PharmaTableRow) => {
     setEditingRowId(row.id!);
-    setEditingData({ 
+    setEditingData({
       ...row,
       batchNumber: row.batchNumber || '', // Ensure batchNumber is included
       expiryDate: row.expiryDate || null, // Explicitly ensure expiryDate is copied (can be null)
@@ -1142,7 +1145,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         const sgst = typeof cleanedData.sgst === 'number' ? cleanedData.sgst : parseFloat(String(cleanedData.sgst)) || 0;
         const igst = typeof cleanedData.igst === 'number' ? cleanedData.igst : parseFloat(String(cleanedData.igst)) || 0;
         const discount = typeof cleanedData.disc === 'number' ? cleanedData.disc : parseFloat(String(cleanedData.disc)) || 0;
-        
+
         const baseAmount = unitPrice * qty;
         const discountAmount = baseAmount * (discount / 100);
         const amountAfterDiscount = baseAmount - discountAmount;
@@ -1151,10 +1154,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       } else {
         cleanedData.amount = typeof cleanedData.amount === 'number' ? cleanedData.amount : parseFloat(String(cleanedData.amount)) || 0;
       }
-      
-      setPharmaTableData(prev => 
-        prev.map(row => 
-          row.id === editingRowId 
+
+      setPharmaTableData(prev =>
+        prev.map(row =>
+          row.id === editingRowId
             ? { ...row, ...cleanedData, isEditing: false }
             : row
         )
@@ -1200,24 +1203,24 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     if (!poNumber.trim()) {
       return false;
     }
-    
+
     if (pharmaTableData.length === 0) {
       return false;
     }
-    
+
     const hasValidProducts = pharmaTableData.some(row => {
-      const isValid = row.productId && row.productId.trim() !== '' && 
-             row.qtyReceived && row.qtyReceived > 0;
+      const isValid = row.productId && row.productId.trim() !== '' &&
+        row.qtyReceived && row.qtyReceived > 0;
       return isValid;
     });
-    
+
     return hasValidProducts;
   };
 
   const isProductRowComplete = (row: PharmaTableRow) => {
     const hasProductName = row.productId && row.productId.trim() !== '';
     const hasValidQuantity = row.qtyReceived && row.qtyReceived > 0;
-    
+
     return hasProductName && hasValidQuantity;
   };
 
@@ -1226,7 +1229,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       return true;
     }
 
-    const formFieldsChanged = 
+    const formFieldsChanged =
       supplierName !== originalFormValues.supplierName ||
       poNumber !== originalFormValues.poNumber ||
       invoiceDate !== originalFormValues.invoiceDate ||
@@ -1238,7 +1241,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     // Check if invoice file changed (new file uploaded or file removed)
     // If user only wants to upload/replace invoice file, save button should be enabled
-    const invoiceFileChanged = 
+    const invoiceFileChanged =
       (invoiceFile !== null && invoiceFile !== originalInvoiceFile) || // New file uploaded
       (invoiceFile === null && invoiceAttachmentUrl !== originalInvoiceAttachmentUrl && originalInvoiceAttachmentUrl !== ''); // File removed
 
@@ -1295,30 +1298,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      const autocompleteElement = document.querySelector('[data-product-search]');
-      const popperElement = document.querySelector('.MuiAutocomplete-popper');
-      
-      if (autocompleteElement && autocompleteElement.contains(target)) {
-        return;
-      }
-      if (popperElement && popperElement.contains(target)) {
-        return;
-      }
-      
-      setIsFindProductFocused(false);
-      setIsFindProductHovered(false);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
     if (isEditMode && receiptId) {
       // Clear existing data before fetching to prevent duplicates
       setPharmaTableData([]);
@@ -1334,20 +1313,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     }
 
     const receipts = Array.isArray(allReceiptsData) ? allReceiptsData : [];
-    
+
     // Filter receipts for this supplier and calculate totals
-    const supplierReceipts = receipts.filter((receipt: any) => 
+    const supplierReceipts = receipts.filter((receipt: any) =>
       receipt.supplier_name && receipt.supplier_name.toLowerCase() === supplierName.toLowerCase()
     );
 
-    const totalAmountPaid = supplierReceipts.reduce((sum: number, receipt: any) => 
+    const totalAmountPaid = supplierReceipts.reduce((sum: number, receipt: any) =>
       sum + (receipt.total_paid || 0), 0
     );
-    
-    const totalPendingAmount = supplierReceipts.reduce((sum: number, receipt: any) => 
+
+    const totalPendingAmount = supplierReceipts.reduce((sum: number, receipt: any) =>
       sum + (receipt.amount_left_to_pay || 0), 0
     );
-    
+
     // Get credit available from the first receipt (should be same for all receipts from same supplier)
     const creditAvailable = supplierReceipts.length > 0 && supplierReceipts[0].supplier_credit_available
       ? parseFloat(supplierReceipts[0].supplier_credit_available)
@@ -1382,7 +1361,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       const receiptLinesData = await response.json();
       let receiptLines = Array.isArray(receiptLinesData) ? receiptLinesData : [];
-      
+
       // Deduplicate receipt lines by receipt_line_id to prevent duplicates
       const seenIds = new Set();
       receiptLines = receiptLines.filter((line: any) => {
@@ -1396,9 +1375,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         }
         return true;
       });
-      
+
       console.log('Fetched receipt lines:', receiptLines.length, receiptLines);
-      
+
       if (receiptLines && receiptLines.length > 0) {
         const firstLine = receiptLines[0];
         if (firstLine.transaction_number) {
@@ -1422,12 +1401,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           setPaymentVendor(navigationPaymentVendor);
         }
       }
-      
+
       if (navigationInvoiceDate && navigationInvoiceDate.trim() !== '') {
         setInvoiceDate(navigationInvoiceDate);
       }
-      
-     
+
+
       const productBatchMap = new Map<string, { product_id: number; batch_number: string }>();
       receiptLines.forEach((line: any) => {
         if (line.product_id && line.batch_number) {
@@ -1459,23 +1438,23 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         const batchKey = line.product_id && line.batch_number ? `${line.product_id}_${line.batch_number}` : null;
         const expiryDateFromBatch = batchKey ? batchExpiryMap.get(batchKey) : null;
         const expiryDateRaw = expiryDateFromBatch || line.expiry_date || line.expiryDate || line.expiry || null;
-        
-        const expiryDateValue = (expiryDateRaw !== null && expiryDateRaw !== undefined && expiryDateRaw !== '' && expiryDateRaw !== 'null' && expiryDateRaw !== 'undefined') 
+
+        const expiryDateValue = (expiryDateRaw !== null && expiryDateRaw !== undefined && expiryDateRaw !== '' && expiryDateRaw !== 'null' && expiryDateRaw !== 'undefined')
           ? (() => {
-              let parsed = dayjs(expiryDateRaw, 'YYYY-MM-DD', true); 
-              if (!parsed.isValid()) {
-                parsed = dayjs(expiryDateRaw, 'DD/MM/YYYY', true); 
-              }
-              if (!parsed.isValid()) {
-                parsed = dayjs(expiryDateRaw, 'MM/DD/YYYY', true);
-              }
-              if (!parsed.isValid()) {
-                parsed = dayjs(expiryDateRaw); 
-              }
-              return parsed.isValid() ? parsed : null;
-            })()
+            let parsed = dayjs(expiryDateRaw, 'YYYY-MM-DD', true);
+            if (!parsed.isValid()) {
+              parsed = dayjs(expiryDateRaw, 'DD/MM/YYYY', true);
+            }
+            if (!parsed.isValid()) {
+              parsed = dayjs(expiryDateRaw, 'MM/DD/YYYY', true);
+            }
+            if (!parsed.isValid()) {
+              parsed = dayjs(expiryDateRaw);
+            }
+            return parsed.isValid() ? parsed : null;
+          })()
           : null;
-        
+
         return {
           id: line.receipt_line_id?.toString() || line.id?.toString() || index.toString(),
           productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
@@ -1505,15 +1484,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       setPharmaTableData(transformedLines);
       setOriginalReceiptLines(transformedLines);
-      
+
       // Load invoice attachment if available
       // Priority: 1) Receipt data from API (receipt_file_url, receipt_file_name)
       //           2) selectedOrder data (invoice_attachment, receipt_file_name)
       //           3) receiptId only (construct URL)
-      
+
       let receiptFileName: string | undefined = undefined;
       let hasReceiptFile: boolean = false;
-      
+
       // First, try to get receipt data from API
       if (receiptsData && receiptId) {
         const receipt = receiptsData.find((r: any) => r.id === receiptId);
@@ -1522,17 +1501,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           hasReceiptFile = !!(receipt.receipt_file_url || receipt.receipt_file_name);
         }
       }
-      
+
       // Fallback to selectedOrder data
       if (!receiptFileName && selectedOrder) {
         const fileName = (selectedOrder as any).receipt_file_name;
         receiptFileName = fileName !== null ? fileName : undefined;
         hasReceiptFile = !!(receiptFileName || (selectedOrder as any).receipt_file_url);
       }
-      
+
       // Check for old format (base64) in selectedOrder
       const attachmentUrl = selectedOrder ? (selectedOrder as any).invoice_attachment : undefined;
-      
+
       if (attachmentUrl && attachmentUrl.startsWith('data:')) {
         // Old format: base64 data URL
         setInvoiceAttachmentUrl(attachmentUrl);
@@ -1560,10 +1539,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setInvoiceFileName('');
         setIsExistingFile(false);
       }
-      
+
       // Reset original invoice file (no file selected initially in edit mode)
       setOriginalInvoiceFile(null);
-      
+
       setOriginalFormValues({
         supplierName: supplierName,
         poNumber: poNumber,
@@ -1600,7 +1579,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           />
         ) : (
           <Tooltip title={row.productId} arrow placement="top">
-            <span style={{ 
+            <span style={{
               display: 'inline-block',
               maxWidth: '100px',
               overflow: 'hidden',
@@ -1838,7 +1817,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             const sgst = typeof editingData.sgst === 'number' ? editingData.sgst : (typeof row.sgst === 'number' ? row.sgst : parseFloat(String(editingData.sgst || row.sgst)) || 0);
             const igst = typeof editingData.igst === 'number' ? editingData.igst : (typeof row.igst === 'number' ? row.igst : parseFloat(String(editingData.igst || row.igst)) || 0);
             const discount = typeof editingData.disc === 'number' ? editingData.disc : (typeof row.disc === 'number' ? row.disc : parseFloat(String(editingData.disc || row.disc)) || 0);
-            
+
             const baseAmount = unitPrice * qty;
             const discountAmount = baseAmount * (discount / 100);
             const amountAfterDiscount = baseAmount - discountAmount;
@@ -1847,7 +1826,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           };
 
           const defaultAmount = calculateAmount();
-          const amountValue = editingData.amount !== undefined 
+          const amountValue = editingData.amount !== undefined
             ? ((editingData.amount as any) === "" || editingData.amount === null ? "" : Number(editingData.amount))
             : defaultAmount;
 
@@ -1872,23 +1851,23 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           const sgst = typeof row.sgst === 'number' ? row.sgst : parseFloat(String(row.sgst)) || 0;
           const igst = typeof row.igst === 'number' ? row.igst : parseFloat(String(row.igst)) || 0;
           const discount = typeof row.disc === 'number' ? row.disc : parseFloat(String(row.disc)) || 0;
-          
+
           // Calculate base amount
           const baseAmount = unitPrice * qty;
-          
+
           // Apply discount (assuming percentage)
           const discountAmount = baseAmount * (discount / 100);
           const amountAfterDiscount = baseAmount - discountAmount;
-          
+
           // Apply taxes (assuming percentage)
           const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
-          
+
           // Row total = base - discount + taxes
           // Use stored amount if available, otherwise calculate
           const rowTotal = (row as any).amount !== undefined && (row as any).amount !== null
             ? parseFloat(String((row as any).amount))
             : amountAfterDiscount + taxAmount;
-          
+
           return (
             <span>
               ₹{rowTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1902,13 +1881,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       header: orderLabels.actions,
       sortable: false,
       render: (row) => (
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center',marginRight: '10px' }}>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', marginRight: '10px' }}>
           {editingRowId === row.id ? (
             <>
               <IconButton
                 size="small"
                 onClick={saveRow}
-                sx={{ 
+                sx={{
                   padding: '4px',
                   color: '#10B981',
                   '&:hover': {
@@ -1922,7 +1901,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               <IconButton
                 size="small"
                 onClick={cancelEditing}
-                sx={{ 
+                sx={{
                   padding: '4px',
                   color: '#EF4444',
                   '&:hover': {
@@ -1939,7 +1918,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               <IconButton
                 size="small"
                 onClick={() => startEditing(row)}
-                sx={{ 
+                sx={{
                   padding: '4px',
                   color: '#6B7280',
                   '&:hover': {
@@ -1953,7 +1932,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               <IconButton
                 size="small"
                 onClick={() => deleteRow(row.id!)}
-                sx={{ 
+                sx={{
                   padding: '4px',
                   color: '#6B7280',
                   '&:hover': {
@@ -1999,7 +1978,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
     const currentSortKey = sortConfig.key || 'productName';
     const currentDirection = sortConfig.key ? sortConfig.direction : 'asc';
-    
+
     sortableItems.sort((a, b) => {
       const aValue = a[currentSortKey as keyof PharmaTableRow];
       const bValue = b[currentSortKey as keyof PharmaTableRow];
@@ -2071,146 +2050,170 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             {orderLabels.supplierName}
           </Typography>
           <Autocomplete
-            freeSolo
-            forcePopupIcon
-            options={isSuppliersLoading ? ["Loading suppliers..."] : transformedSupplierOptions}
-            value={supplierName}
-            onInputChange={(_, v) => setSupplierName(v)}
-            onChange={(_, v) => {
-              if (v === orderLabels.addNewSupplier) {
+            options={isSuppliersLoading ? ["Loading suppliers..."] : filteredSupplierOptions}
+            value={supplierName || null}
+            onChange={(_, newValue) => {
+              if (newValue === orderLabels.addNewSupplier) {
                 setIsNewSupplierModalOpen(true);
-                setSupplierName("");
-              } else if (v !== "Loading suppliers...") {
-                setSupplierName(v || "");
+              } else if (newValue && newValue !== "Loading suppliers...") {
+                setSupplierName(newValue);
+              } else if (newValue === null) {
+                setSupplierName('');
               }
             }}
-            onFocus={() => setIsSupplierFocused(true)}
-            onBlur={() => {
-              setTimeout(() => {
-                if (!isSuppliersLoading) {
-                  setIsSupplierFocused(false);
-                }
-              }, 150);
+            onInputChange={(_, newInputValue) => setSupplierSearchTerm(newInputValue)}
+            inputValue={supplierSearchTerm}
+            disableListWrap={true}
+            getOptionDisabled={(option) => option === "Loading suppliers..."}
+            PaperComponent={({ children }) => (
+              <Box
+                sx={{
+                  padding: 0,
+                  marginTop: "4px",
+                  borderRadius: "12px",
+                  border: "1px solid #E6ECF5",
+                  backgroundColor: "#fff",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                }}
+              >
+                {children}
+              </Box>
+            )}
+            slotProps={{
+              popper: {
+                sx: {
+                  "& .MuiPaper-root": {
+                    minWidth: "274px",
+                    width: "fit-content",
+                    padding: "0 !important",
+                    marginTop: "4px !important",
+                    maxHeight: "300px !important",
+                    height: "auto !important",
+                    "& ul": {
+                      padding: "4px 0 !important",
+                      margin: "0 !important",
+                    },
+                  },
+                },
+              },
             }}
-            loading={isSuppliersLoading}
-            disabled={isSuppliersLoading}
-            isOptionEqualToValue={(option, value) => option === value}
-            getOptionLabel={(option) => String(option)}
-            disableClearable={!supplierName}
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             renderOption={(props, option) => {
-              const isLoading = String(option) === "Loading suppliers...";
-              const isAddNewSupplier = String(option) === orderLabels.addNewSupplier;
+              const isAddNewSupplier = option === orderLabels.addNewSupplier;
+              const isLoading = option === "Loading suppliers...";
+              const { key, ...optionProps } = props as any;
               return (
-                <li 
-                  {...props} 
-                  key={String(option)}
-                  style={{
-                    ...props.style,
-                    cursor: isLoading ? 'default' : 'pointer',
-                    opacity: isLoading ? 0.7 : 1,
-                    backgroundColor: isLoading ? '#f5f5f5' : (isAddNewSupplier ? '#5C17E5' : 'transparent'),
-                    margin: isAddNewSupplier ? '4px 8px' : '0',
-                    borderRadius: isAddNewSupplier ? '8px' : '0',
+                <Box
+                  key={key}
+                  component="li"
+                  {...optionProps}
+                  sx={{
+                    borderRadius: "8px",
+                    margin: "2px 8px !important",
+                    fontSize: "14px",
+                    fontFamily: "'Lexend', sans-serif",
+                    ...(isAddNewSupplier ? {
+                      backgroundColor: '#5C17E5 !important',
+                      color: '#ffffff !important',
+                      fontWeight: 500,
+                      '&:hover': {
+                        backgroundColor: '#4A14C7 !important',
+                      }
+                    } : {
+                      '&:hover': {
+                        backgroundColor: "#F3E8FF",
+                        color: "#5C17E5",
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: "#5C17E5",
+                        color: "#ffffff",
+                        '&:hover': {
+                          backgroundColor: '#4A14C7',
+                        },
+                      },
+                    })
                   }}
                 >
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'flex-start',
-                    gap: 1, 
-                    width: isAddNewSupplier ? 'calc(100% - 16px)' : '100%',
-                    height: isAddNewSupplier ? '40px' : 'auto',
-                    minHeight: isAddNewSupplier ? '40px' : 'auto',
-                    padding: isLoading ? '8px 16px' : (isAddNewSupplier ? '8px 16px' : '0px'),
-                    fontStyle: isLoading ? 'italic' : 'normal',
-                    color: isAddNewSupplier ? '#FFFFFF' : 'inherit',
-                    fontWeight: isAddNewSupplier ? 500 : 'normal',
-                    boxSizing: 'border-box',
-                  }}>
-                    {isLoading && <CircularProgress size={16} color="primary" />}
-                    <span>{String(option)}</span>
-                  </Box>
-                </li>
+                  {isLoading && <CircularProgress size={16} sx={{ mr: 1 }} color="primary" />}
+                  {option}
+                </Box>
               );
+            }}
+            sx={{
+              width: "274px",
+              "& .MuiOutlinedInput-root": {
+                height: "44px",
+                borderRadius: "30px",
+                backgroundColor: "#FFFFFF",
+                padding: "0 16px",
+                "& fieldset": {
+                  borderColor: suppliersError ? "#d32f2f" : "#D1D5DB",
+                },
+                "&:hover fieldset": {
+                  borderColor: suppliersError ? "#d32f2f" : "#D1D5DB",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: suppliersError ? "#d32f2f" : "#5C17E5",
+                  borderWidth: "2px",
+                },
+              },
             }}
             renderInput={(params) => (
               <TextField
                 {...params}
-                placeholder={
-                  isSuppliersLoading 
-                    ? "Loading suppliers..." 
-                    : suppliersError 
-                    ? "Error loading suppliers" 
-                    : orderLabels.enterSupplierName
-                }
-                variant="outlined"
-                fullWidth
-                error={!!suppliersError}
-                helperText={
-                  suppliersError ? (
-                    <Box 
-                      component="span" 
-                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
-                    >
-                      <span>{suppliersError}</span>
-                      <Button 
-                        size="small" 
-                        onClick={retryFetchSuppliers}
-                        sx={{ 
-                          minWidth: 'auto', 
-                          padding: '2px 8px',
-                          fontSize: '12px',
-                          textTransform: 'none'
-                        }}
-                      >
-                        Retry
-                      </Button>
-                    </Box>
-                  ) : ""
-                }
-                FormHelperTextProps={{
-                  component: 'div'
+                placeholder={isSuppliersLoading ? "Loading suppliers..." : orderLabels.enterSupplierName}
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <React.Fragment>
+                      <InputAdornment position="start" sx={{ ml: 1.5, mr: 1.5 }}>
+                        <SearchIcon sx={{ color: '#9CA3AF', fontSize: '20px' }} />
+                      </InputAdornment>
+                      {params.InputProps.startAdornment}
+                    </React.Fragment>
+                  ),
                 }}
                 sx={{
+                  "& .MuiInputBase-input": {
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "#1A212B",
+                    ml: 1,
+                  },
                   "& .MuiOutlinedInput-root": {
-                    borderRadius: "18px",
-                    height: "44px",
-                    backgroundColor: "#FFFFFF",
-                    "& fieldset": {
-                      borderColor: suppliersError ? "#d32f2f" : "#D1D5DB",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: suppliersError ? "#d32f2f" : "#D1D5DB",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: suppliersError ? "#d32f2f" : "#728197",
-                      borderWidth: "2px",
-                      outline: "none",
-                    },
-                    "&.Mui-focused": {
-                      outline: "none",
-                    },
-                  },
-                  "& .MuiOutlinedInput-input": {
-                    padding: "12px 16px",
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: "16px",
-                    lineHeight: "24px",
-                    color: "#728197",
-                  },
-                  "& .MuiAutocomplete-endAdornment": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
-                  "& .MuiAutocomplete-popupIndicator": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
+                    paddingLeft: '0 !important',
+                  }
                 }}
               />
             )}
           />
+          {suppliersError && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mt: 0.5,
+                ml: 1.5,
+                color: '#d32f2f',
+                fontSize: '0.75rem'
+              }}
+            >
+              <span>{suppliersError}</span>
+              <Button
+                size="small"
+                onClick={retryFetchSuppliers}
+                sx={{
+                  minWidth: 'auto',
+                  padding: '0px 4px',
+                  fontSize: '10px',
+                  textTransform: 'none',
+                  color: '#5C17E5'
+                }}
+              >
+                Retry
+              </Button>
+            </Box>
+          )}
         </Box>
 
         <Box
@@ -2233,7 +2236,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             {orderLabels.poNumber}
           </Typography>
 
-          <TextField 
+          <TextField
             variant="outlined"
             fullWidth
             value={poNumber}
@@ -2292,11 +2295,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
           <PharmaDatePicker
             value={
-              invoiceDate 
+              invoiceDate
                 ? (() => {
-                    const parsed = dayjs(invoiceDate, 'DD/MM/YYYY');
-                    return parsed.isValid() ? parsed : null;
-                  })()
+                  const parsed = dayjs(invoiceDate, 'DD/MM/YYYY');
+                  return parsed.isValid() ? parsed : null;
+                })()
                 : null
             }
             onChange={(newValue: Dayjs | null) => {
@@ -2347,442 +2350,321 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             >
               {orderLabels.findProduct}
             </Typography>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: "32px",
-            }}
-          >
-          <Box
-            onMouseEnter={() => setIsFindProductHovered(true)}
-            onMouseLeave={() => setIsFindProductHovered(false)}
-            sx={{ display: 'inline-block', width: '500px' }}
-            data-product-search
-          >
-          <Autocomplete
-            freeSolo
-            forcePopupIcon
-            options={autocompleteOptions}
-            filterOptions={filterOptions}
-            inputValue={findProductTerm}
-            onInputChange={(_, v) => {
-              setFindProductTerm(v);
-            }}
-            value={findProductTerm || ""}
-            isOptionEqualToValue={(option, value) => {
-              if (!value) return false;
-              return option === value;
-            }}
-            onChange={(_, v) => {
-              if (v === orderLabels.addProducts) {
-                setIsNewProductModalOpen(true);
-                setFindProductTerm(""); 
-                setIsProductSelected(false);
-                return;
-              }
-              const value = (v as string) || "";
-              if (value && value !== orderLabels.addProducts && value !== "Loading products...") {
-                const isFromDropdown = productOptions.includes(value);
-                
-                if (isFromDropdown) {
-                  setIsProductSelected(true);
-                  addProductToTable(value);
-                  setFindProductTerm(value);
-                  setIsProductSelected(false);
-                } else {
-                  setFindProductTerm(value);
-                  setIsProductSelected(false);
-                }
-              } else {
-                setFindProductTerm(value);
-                setIsProductSelected(false);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && findProductTerm && findProductTerm !== orderLabels.addProducts) {
-                e.preventDefault();
-                addProductToTable(findProductTerm);
-                setFindProductTerm("");
-                setIsProductSelected(false);
-              }
-            }}
-            onFocus={() => setIsFindProductFocused(true)}
-            onBlur={() => {
-              setIsFindProductFocused(false);
-              setIsFindProductHovered(false);
-            }}
-            disableClearable={true}
-            popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
-            disableListWrap={true}
-            PaperComponent={({ children }) => (
-              <Box
-                sx={{
-                  padding: 0,
-                  marginTop: "4px",
-                  borderRadius: "12px",
-                  border: "1px solid #E5E7EB",
-                  backgroundColor: "#fff",
-                }}
-              >
-                {children}
-              </Box>
-            )}
-            slotProps={{
-              popper: {
-                sx: {
-                  "& .MuiPaper-root": {
-                    minWidth: "500px",
-                    width: "fit-content",
-                    padding: "0 !important",
-                    marginTop: "4px !important",
-                    maxHeight: "none !important",
-                    height: "auto !important",
-                    "& ul": {
-                      padding: "4px 0 !important",
-                      margin: "0 !important",
-                      maxHeight: "none !important",
-                      "& li:last-child": {
-                        marginBottom: "0 !important",
-                        paddingBottom: "8px !important",
-                      },
-                    },
-                  },
-                },
-              },
-            }}
-            ListboxProps={{
-              sx: {
-                padding: "4px 0 !important",
-                maxHeight: "none !important",
-                "& li:last-child": {
-                  marginBottom: "0 !important",
-                },
-              },
-            }}
-                renderOption={(props, option) => {
-                  const isAddProduct = String(option) === orderLabels.addProducts;
-              return (
-                <li 
-                  {...props} 
-                  key={String(option)}
-                  style={{
-                    ...props.style,
-                    backgroundColor: isAddProduct ? "#5C17E5" : "transparent",
-                    color: isAddProduct ? "#ffffff" : "inherit",
-                    fontWeight: isAddProduct ? "600" : "normal",
-                    padding: isAddProduct ? "8px 12px" : "8px 16px",
-                    borderRadius: isAddProduct ? "6px" : "0px",
-                    margin: isAddProduct ? "2px 8px" : "0px",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    fontSize: "14px",
-                    minHeight: "auto",
-                    lineHeight: "1.4",
-                    position: isAddProduct ? "sticky" : "relative",
-                    bottom: isAddProduct ? "0" : "auto",
-                    zIndex: isAddProduct ? "10" : "1",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (isAddProduct) {
-                      e.currentTarget.style.backgroundColor = "#4A14C7";
-                    } else {
-                      e.currentTarget.style.backgroundColor = "#f5f5f5";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (isAddProduct) {
-                      e.currentTarget.style.backgroundColor = "#5C17E5";
-                    } else {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }
-                  }}
-                >
-                  {String(option)}
-                </li>
-              );
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder={
-                  isProductsLoading 
-                    ? "Loading products..." 
-                    : productsError 
-                    ? "Error loading products" 
-                    : orderLabels.search
-                }
-                variant="outlined"
-                sx={{
-                  width: "500px",
-                  "& .MuiOutlinedInput-root": {
-                    height: "40px",
-                    borderRadius: "8px",
-                    backgroundColor: "#FFFFFF",
-                    border: "1px solid #D1D5DB",
-                    "& fieldset": { 
-                      borderColor: "transparent",
-                      display: "none",
-                    },
-                    "&:hover fieldset": { 
-                      borderColor: "transparent",
-                    },
-                    "&.Mui-focused fieldset": { 
-                      borderColor: "transparent",
-                      outline: "none",
-                    },
-                    "&.Mui-focused": {
-                      outline: "none",
-                      border: "1px solid #D1D5DB",
-                    },
-                    "&:hover": {
-                      border: "1px solid #D1D5DB",
-                    },
-                  },
-                  "& .MuiInputBase-input": {
-                    padding: "10px 14px",
-                    paddingLeft: "6px",
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: "14px",
-                    fontWeight: 400,
-                    lineHeight: "20px",
-                    color: "#6B7280",
-                    "&::placeholder": {
-                      color: "#9CA3AF",
-                      opacity: 1,
-                      fontSize: "14px",
-                    },
-                  },
-                  "& .MuiAutocomplete-endAdornment": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
-                  "& .MuiAutocomplete-popupIndicator": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                  },
-                  "& .MuiAutocomplete-clearIndicator": {
-                    display: "flex !important",
-                    visibility: "visible !important",
-                    color: "#6B7280",
-                    "&:hover": {
-                      color: "#374151",
-                    },
-                  },
-                }}
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: !(findProductTerm && findProductTerm.trim() !== "") ? (
-                    <InputAdornment position="start" sx={{ marginRight: "0px" }}>
-                      <SearchIcon sx={{ color: "#9CA3AF", fontSize: "24px" }} />
-                    </InputAdornment>
-                  ) : null,
-                  endAdornment: (
-                    <>
-                      {findProductTerm && findProductTerm.trim() !== "" && (isFindProductFocused || isFindProductHovered) ? (
-                        <InputAdornment position="end" sx={{ marginRight: "8px" }}>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              const productToRemove = pharmaTableData.find(row => row.productId === findProductTerm);
-                              if (productToRemove && productToRemove.id) {
-                                setPharmaTableData(prev => prev.filter(row => row.id !== productToRemove.id));
-                                if (editingRowId === productToRemove.id) {
-                                  setEditingRowId(null);
-                                  setEditingData({});
-                                }
-                              }
-                              setFindProductTerm("");
-                              setIsProductSelected(false);
-                            }}
-                            sx={{
-                              padding: "4px",
-                              color: "#6B7280",
-                              "&:hover": {
-                                color: "#374151",
-                                backgroundColor: "transparent",
-                              },
-                            }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </InputAdornment>
-                      ) : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  // File size limit: 15MB (15 * 1024 * 1024 bytes) - matches backend limit
-                  const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
-                  
-                  if (file.size > MAX_FILE_SIZE) {
-                    setSaveError(`File size exceeds the limit. Maximum file size is 15MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
-                    // Reset file input
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = '';
-                    }
-                    setInvoiceFile(null);
-                    setInvoiceFileName('');
-                    setInvoiceAttachmentUrl('');
-                    return;
-                  }
-                  
-                  setInvoiceFile(file);
-                  setInvoiceFileName(file.name);
-                  setIsExistingFile(false); // New file selected, not from server
-                  
-                  // Convert file to base64 data URL for storage and display
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    const base64String = reader.result as string;
-                    setInvoiceAttachmentUrl(base64String);
-                    
-                  };
-                  reader.onerror = () => {
-                    setSaveError('Failed to read the invoice file');
-                  };
-                  reader.readAsDataURL(file);
-                  
-                  // Close the confirmation dialog if it was open
-                  if (isUploadConfirmationDialogOpen) {
-                    setIsUploadConfirmationDialogOpen(false);
-                  }
-                }
-              }}
-            />
-            <Button
-              variant="outlined"
-              startIcon={<UploadIcon />}
-              onClick={() => fileInputRef.current?.click()}
+            <Box
               sx={{
-                height: "40px",
-                borderRadius: "6px",
-                backgroundColor: "#FFFFFF",
-                color: "#374151",
-                borderColor: "#D1D5DB",
-                borderWidth: "1px",
-                fontFamily: "'Lexend', sans-serif",
-                fontSize: "14px",
-                fontWeight: 500,
-                textTransform: "none",
-                "&:hover": {
-                  backgroundColor: "#FFFFFF",
-                  borderColor: "#9CA3AF",
-                },
-                "&:focus": {
-                  borderColor: "#9AA8BC",
-                },
-                whiteSpace: "nowrap",
-                padding: "8px 16px",
-                boxShadow: "none",
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: "32px",
               }}
             >
-              {invoiceFileName 
-                ? (isExistingFile 
-                    ? `Current: ${invoiceFileName.length > 18 ? invoiceFileName.substring(0, 18) + '...' : invoiceFileName}` 
-                    : `Uploaded: ${invoiceFileName.length > 18 ? invoiceFileName.substring(0, 18) + '...' : invoiceFileName}`)
-                : "Upload Invoice Receipt"}
-            </Button>
-            {(invoiceFileName || invoiceAttachmentUrl) && (
-              <IconButton
-                size="small"
-                onClick={() => {
-                  // Clear the current file selection
-                  setInvoiceFile(null);
-                  setInvoiceFileName("");
-                  setInvoiceAttachmentUrl("");
-                  setIsExistingFile(false);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                  // Note: If there was an original file, clearing it will enable save button
-                  // When saved, the new file (null) will replace the old one on the server
-                }}
-                sx={{
-                  marginLeft: "8px",
-                  color: "#6B7280",
-                  "&:hover": {
-                    color: "#374151",
-                    backgroundColor: "transparent",
-                  },
-                }}
+              <Box
+                sx={{ display: 'inline-block', width: '500px' }}
+                data-product-search
               >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-          
-          {isEditMode && (
-            <TextField
-              placeholder="Search for items in the table below..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              variant="outlined"
-              sx={{
-                width: "500px",
-                "& .MuiOutlinedInput-root": {
-                  height: "40px",
-                  borderRadius: "12px",
-                  backgroundColor: "#FFFFFF",
-                  border: "1px solid #D1D5DB",
-                  "& fieldset": { 
-                    borderColor: "transparent",
-                    display: "none",
-                  },
-                  "&:hover fieldset": { 
-                    borderColor: "#5C17E5",
-                  },
-                  "&.Mui-focused fieldset": { 
-                    borderColor: "#5C17E5",
-                  },
-                },
-                "& .MuiInputBase-input": {
-                  padding: "10px 14px",
-                  paddingLeft: "6px",
-                  fontFamily: "'Lexend', sans-serif",
-                  fontSize: "14px",
-                  fontWeight: 400,
-                  lineHeight: "20px",
-                  color: "#6B7280",
-                  "&::placeholder": {
-                    color: "#9CA3AF",
-                    opacity: 1,
+                <Autocomplete
+                  options={isProductsLoading ? ["Loading products..."] : autocompleteOptions}
+                  value={findProductTerm || null}
+                  onChange={(_, newValue) => {
+                    if (newValue === orderLabels.addProducts) {
+                      setIsNewProductModalOpen(true);
+                      setFindProductTerm("");
+                    } else if (newValue && newValue !== "Loading products...") {
+                      setFindProductTerm(newValue);
+                      addProductToTable(newValue);
+                    } else if (newValue === null) {
+                      setFindProductTerm("");
+                    }
+                  }}
+                  disableListWrap={true}
+                  getOptionDisabled={(option) => option === "Loading products..."}
+                  PaperComponent={({ children }) => (
+                    <Box
+                      sx={{
+                        padding: 0,
+                        marginTop: "4px",
+                        borderRadius: "12px",
+                        border: "1px solid #E6ECF5",
+                        backgroundColor: "#fff",
+                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                      }}
+                    >
+                      {children}
+                    </Box>
+                  )}
+                  slotProps={{
+                    popper: {
+                      sx: {
+                        "& .MuiPaper-root": {
+                          minWidth: "500px",
+                          width: "fit-content",
+                          padding: "0 !important",
+                          marginTop: "4px !important",
+                          maxHeight: "300px !important",
+                          height: "auto !important",
+                          "& ul": {
+                            padding: "4px 0 !important",
+                            margin: "0 !important",
+                          },
+                        },
+                      },
+                    },
+                  }}
+                  renderOption={(props, option) => {
+                    const isAddProduct = option === orderLabels.addProducts;
+                    const isLoading = option === "Loading products...";
+                    const { key, ...optionProps } = props as any;
+                    return (
+                      <Box
+                        key={key}
+                        component="li"
+                        {...optionProps}
+                        sx={{
+                          borderRadius: "8px",
+                          margin: "2px 8px !important",
+                          fontSize: "14px",
+                          fontFamily: "'Lexend', sans-serif",
+                          ...(isAddProduct ? {
+                            backgroundColor: '#5C17E5 !important',
+                            color: '#ffffff !important',
+                            fontWeight: 500,
+                            '&:hover': {
+                              backgroundColor: '#4A14C7 !important',
+                            }
+                          } : {
+                            '&:hover': {
+                              backgroundColor: "#F3E8FF",
+                              color: "#5C17E5",
+                            },
+                            '&.Mui-selected': {
+                              backgroundColor: "#5C17E5",
+                              color: "#ffffff",
+                              '&:hover': {
+                                backgroundColor: '#4A14C7',
+                              },
+                            },
+                          })
+                        }}
+                      >
+                        {isLoading && <CircularProgress size={16} sx={{ mr: 1 }} color="primary" />}
+                        {option}
+                      </Box>
+                    );
+                  }}
+                  sx={{
+                    width: "500px",
+                    "& .MuiOutlinedInput-root": {
+                      height: "44px",
+                      borderRadius: "22px",
+                      backgroundColor: "#FFFFFF",
+                      paddingLeft: '4px !important',
+                      "& fieldset": {
+                        borderColor: "#E5E7EB",
+                        borderWidth: '1.5px',
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "#D1D5DB",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#5C17E5",
+                        borderWidth: "2px",
+                      },
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder={isProductsLoading ? "Loading products..." : orderLabels.search}
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <React.Fragment>
+                            <InputAdornment position="start" sx={{ ml: 1.5, mr: 1.5 }}>
+                              <SearchIcon sx={{ color: '#9CA3AF', fontSize: '20px' }} />
+                            </InputAdornment>
+                            {params.InputProps.startAdornment}
+                          </React.Fragment>
+                        ),
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: "14px",
+                          fontWeight: 500,
+                          color: "#1A212B",
+                          ml: 1,
+                        },
+                        "& .MuiOutlinedInput-root": {
+                          paddingLeft: '0 !important',
+                        }
+                      }}
+                    />
+                  )}
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      // File size limit: 15MB (15 * 1024 * 1024 bytes) - matches backend limit
+                      const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+
+                      if (file.size > MAX_FILE_SIZE) {
+                        setSaveError(`File size exceeds the limit. Maximum file size is 15MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                        // Reset file input
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                        setInvoiceFile(null);
+                        setInvoiceFileName('');
+                        setInvoiceAttachmentUrl('');
+                        return;
+                      }
+
+                      setInvoiceFile(file);
+                      setInvoiceFileName(file.name);
+                      setIsExistingFile(false); // New file selected, not from server
+
+                      // Convert file to base64 data URL for storage and display
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const base64String = reader.result as string;
+                        setInvoiceAttachmentUrl(base64String);
+
+                      };
+                      reader.onerror = () => {
+                        setSaveError('Failed to read the invoice file');
+                      };
+                      reader.readAsDataURL(file);
+
+                      // Close the confirmation dialog if it was open
+                      if (isUploadConfirmationDialogOpen) {
+                        setIsUploadConfirmationDialogOpen(false);
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<UploadIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  sx={{
+                    height: "40px",
+                    borderRadius: "6px",
+                    backgroundColor: "#FFFFFF",
+                    color: "#374151",
+                    borderColor: "#D1D5DB",
+                    borderWidth: "1px",
+                    fontFamily: "'Lexend', sans-serif",
                     fontSize: "14px",
-                  },
-                },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start" sx={{ marginRight: "0px" }}>
-                    <SearchIcon sx={{ color: "#9CA3AF", fontSize: "24px" }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          )}
-          </Box>
+                    fontWeight: 500,
+                    textTransform: "none",
+                    "&:hover": {
+                      backgroundColor: "#FFFFFF",
+                      borderColor: "#9CA3AF",
+                    },
+                    "&:focus": {
+                      borderColor: "#9AA8BC",
+                    },
+                    whiteSpace: "nowrap",
+                    padding: "8px 16px",
+                    boxShadow: "none",
+                  }}
+                >
+                  {invoiceFileName
+                    ? (isExistingFile
+                      ? `Current: ${invoiceFileName.length > 18 ? invoiceFileName.substring(0, 18) + '...' : invoiceFileName}`
+                      : `Uploaded: ${invoiceFileName.length > 18 ? invoiceFileName.substring(0, 18) + '...' : invoiceFileName}`)
+                    : "Upload Invoice Receipt"}
+                </Button>
+                {(invoiceFileName || invoiceAttachmentUrl) && (
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      // Clear the current file selection
+                      setInvoiceFile(null);
+                      setInvoiceFileName("");
+                      setInvoiceAttachmentUrl("");
+                      setIsExistingFile(false);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                      }
+                      // Note: If there was an original file, clearing it will enable save button
+                      // When saved, the new file (null) will replace the old one on the server
+                    }}
+                    sx={{
+                      marginLeft: "8px",
+                      color: "#6B7280",
+                      "&:hover": {
+                        color: "#374151",
+                        backgroundColor: "transparent",
+                      },
+                    }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+
+              {isEditMode && (
+                <TextField
+                  placeholder="Search for items in the table below..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  variant="outlined"
+                  sx={{
+                    width: "500px",
+                    "& .MuiOutlinedInput-root": {
+                      height: "40px",
+                      borderRadius: "12px",
+                      backgroundColor: "#FFFFFF",
+                      border: "1px solid #D1D5DB",
+                      "& fieldset": {
+                        borderColor: "transparent",
+                        display: "none",
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "#5C17E5",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#5C17E5",
+                      },
+                    },
+                    "& .MuiInputBase-input": {
+                      padding: "10px 14px",
+                      paddingLeft: "6px",
+                      fontFamily: "'Lexend', sans-serif",
+                      fontSize: "14px",
+                      fontWeight: 400,
+                      lineHeight: "20px",
+                      color: "#6B7280",
+                      "&::placeholder": {
+                        color: "#9CA3AF",
+                        opacity: 1,
+                        fontSize: "14px",
+                      },
+                    },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start" sx={{ marginRight: "0px" }}>
+                        <SearchIcon sx={{ color: "#9CA3AF", fontSize: "24px" }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+            </Box>
           </Box>
         </Box>
       </Box>
 
-      <Box sx={{ 
+      <Box sx={{
         marginTop: "24px",
         overflowX: "auto",
         overflowY: "visible",
@@ -2804,162 +2686,21 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         <ReusableTable
           columns={pharmaTableColumns}
           selectedRows={[]}
-          setSelectedRows={() => {}}
+          setSelectedRows={() => { }}
           data={sortedData}
           searchAndFilterConfig={{ filterOptions: [] }}
           currentSearchTerm={searchTerm}
           onSearchChange={handleSearchChange}
           showFilters={false}
-          onShowFiltersToggle={() => {}}
+          onShowFiltersToggle={() => { }}
           currentFilterKey={""}
-          onFilterSelect={() => {}}
+          onFilterSelect={() => { }}
           totalRows={sortedData.length}
           rowsPerPage={rowsPerPage}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
           onSortRequest={handleSortRequest}
           sortConfig={sortConfig}
-          footerContent={sortedData.length > 0 ? (() => {
-            const totalAmount = sortedData.reduce((sum, row) => {
-              const unitPrice = typeof row.pp === 'number' ? row.pp : parseFloat(String(row.pp)) || 0;
-              const qty = row.qtyReceived || 0;
-              const cgst = typeof row.cgst === 'number' ? row.cgst : parseFloat(String(row.cgst)) || 0;
-              const sgst = typeof row.sgst === 'number' ? row.sgst : parseFloat(String(row.sgst)) || 0;
-              const igst = typeof row.igst === 'number' ? row.igst : parseFloat(String(row.igst)) || 0;
-              const discount = typeof row.disc === 'number' ? row.disc : parseFloat(String(row.disc)) || 0;
-              
-              // Calculate base amount
-              const baseAmount = unitPrice * qty;
-              
-              // Apply discount (assuming percentage)
-              const discountAmount = baseAmount * (discount / 100);
-              const amountAfterDiscount = baseAmount - discountAmount;
-              
-              // Apply taxes (assuming percentage)
-              const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
-              
-              // Row total = base - discount + taxes
-              const rowTotal = amountAfterDiscount + taxAmount;
-              
-              return sum + rowTotal;
-            }, 0);
-            
-            return (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  padding: '8px 16px',
-                  backgroundColor: '#F9FAFB',
-                }}
-              >
-                {/* Total Amount */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      color: '#374151',
-                    }}
-                  >
-                    Total
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '16px',
-                      lineHeight: '24px',
-                      color: '#1A212B',
-                    }}
-                  >
-                    ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-                
-                {/* Amount Paid */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      color: '#374151',
-                    }}
-                  >
-                    Amount Paid
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '16px',
-                      lineHeight: '24px',
-                      color: '#1A212B',
-                    }}
-                  >
-                    ₹{supplierTotals.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-                
-                {/* Pending Amount */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      color: '#374151',
-                    }}
-                  >
-                    Pending Amount
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '16px',
-                      lineHeight: '24px',
-                      color: '#1A212B',
-                    }}
-                  >
-                    ₹{supplierTotals.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-                
-                {/* Credit Available */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      color: '#374151',
-                    }}
-                  >
-                    Credit Available
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '16px',
-                      lineHeight: '24px',
-                      color: '#1A212B',
-                    }}
-                  >
-                    ₹{supplierTotals.creditAvailable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-              </Box>
-            );
-          })() : undefined}
         />
       </Box>
 
@@ -2979,14 +2720,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               setTransactionNumber("");
               setPaymentVendor("");
               setIsProductSelected(false);
-              
+
               navigate('/receive/order-receive');
             }}
             sx={{
               borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
               color: themeColors.cancelButtonBorder || "#27313F",
               backgroundColor: "transparent",
-              "&:hover": { 
+              "&:hover": {
                 backgroundColor: "transparent",
                 borderColor: themeColors.cancelButtonBorder || "#CBD4E1",
                 color: themeColors.cancelButtonBorder || "#27313F",
@@ -3039,7 +2780,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             {isSaving || isSubmittingReceipt ? "Processing..." : isEditMode ? "Save" : "Proceed to Payment"}
           </StandardButton>
         </Box>
-        
+
         {isEditMode && (
           <Button
             variant="contained"
@@ -3050,7 +2791,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               backgroundColor: "#EF4444",
               color: "#FFFFFF",
               border: "2px solid #EF4444",
-              "&:hover": { 
+              "&:hover": {
                 backgroundColor: "#DC2626",
                 borderColor: "#DC2626",
                 color: "#FFFFFF",
@@ -3109,9 +2850,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onClose={() => setSaveError(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSaveError(null)} 
-          severity="error" 
+        <Alert
+          onClose={() => setSaveError(null)}
+          severity="error"
           sx={{ width: '100%' }}
         >
           {saveError}
@@ -3124,9 +2865,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onClose={() => setSaveSuccess(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSaveSuccess(false)} 
-          severity="success" 
+        <Alert
+          onClose={() => setSaveSuccess(false)}
+          severity="success"
           sx={{ width: '100%' }}
         >
           Receipt submitted successfully!
@@ -3139,9 +2880,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onClose={() => setDeleteError(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setDeleteError(null)} 
-          severity="error" 
+        <Alert
+          onClose={() => setDeleteError(null)}
+          severity="error"
           sx={{ width: '100%' }}
         >
           {deleteError}
@@ -3154,9 +2895,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onClose={() => setDeleteSuccess(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setDeleteSuccess(false)} 
-          severity="success" 
+        <Alert
+          onClose={() => setDeleteSuccess(false)}
+          severity="success"
           sx={{ width: '100%' }}
         >
           Receipt deleted successfully!
@@ -3169,7 +2910,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         onConfirm={handleConfirmDelete}
         title="Delete Product"
         message={
-          rowToDeleteId 
+          rowToDeleteId
             ? `Are you sure you want to delete "${pharmaTableData.find(row => row.id === rowToDeleteId)?.productId || 'this product'}" from the table?`
             : "Are you sure you want to delete this product from the table?"
         }

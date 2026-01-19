@@ -508,53 +508,56 @@ const AuditLog: React.FC = () => {
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
                 popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                sx={{
+                  width: 220,
+                  "& .MuiOutlinedInput-root": {
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: '#ffffff',
+                    paddingRight: '32px !important',
+                    "& fieldset": { borderColor: "#D1D5DB" },
+                    "&:hover fieldset": { borderColor: "#D1D5DB" },
+                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                  },
+                }}
+                slotProps={{
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        borderRadius: "12px",
+                        marginTop: "4px",
+                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                        border: "1px solid #E6ECF5",
+                        height: "auto", // Ensure height matches content
+                      },
+                    },
+                  },
+                }}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: "250px", // Prevent it from being too tall
+                    padding: "4px",
+                    "& .MuiAutocomplete-option": {
+                      fontSize: "14px",
+                      borderRadius: "8px",
+                      margin: "2px 0",
+                      "&:hover": {
+                        backgroundColor: "#F3E8FF",
+                        color: "#5C17E5",
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: "#5C17E5",
+                        color: "#ffffff",
+                      },
+                    },
+                  },
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder="Search username..."
-                    sx={{
-                      width: 220,
-                      height: '40px',
-                      borderRadius: '12px',
-                      backgroundColor: '#ffffff',
-                      '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        borderRadius: '12px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: '1px solid #D1D5DB',
-                        },
-                        '&:hover': {
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                        '&.Mui-focused': {
-                          outline: 'none',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                      },
-                      '& .MuiInputBase-input': {
-                        color: '#1A212B',
-                        fontWeight: 500,
-                      },
-                    }}
                   />
                 )}
-                ListboxProps={{
-                  sx: {
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid #E6ECF5',
-                    '& .MuiAutocomplete-option': {
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        color: '#ffffff',
-                      }
-                    }
-                  }
-                }}
               />
             </Box>
 
@@ -572,53 +575,56 @@ const AuditLog: React.FC = () => {
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
                 popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                sx={{
+                  width: 220,
+                  "& .MuiOutlinedInput-root": {
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: '#ffffff',
+                    paddingRight: '32px !important',
+                    "& fieldset": { borderColor: "#D1D5DB" },
+                    "&:hover fieldset": { borderColor: "#D1D5DB" },
+                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                  },
+                }}
+                slotProps={{
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        borderRadius: "12px",
+                        marginTop: "4px",
+                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                        border: "1px solid #E6ECF5",
+                        height: "auto",
+                      },
+                    },
+                  },
+                }}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: "250px",
+                    padding: "4px",
+                    "& .MuiAutocomplete-option": {
+                      fontSize: "14px",
+                      borderRadius: "8px",
+                      margin: "2px 0",
+                      "&:hover": {
+                        backgroundColor: "#F3E8FF",
+                        color: "#5C17E5",
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: "#5C17E5",
+                        color: "#ffffff",
+                      },
+                    },
+                  },
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder="Search access level..."
-                    sx={{
-                      width: 220,
-                      height: '40px',
-                      borderRadius: '12px',
-                      backgroundColor: '#ffffff',
-                      '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        borderRadius: '12px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: '1px solid #D1D5DB',
-                        },
-                        '&:hover': {
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                        '&.Mui-focused': {
-                          outline: 'none',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                      },
-                      '& .MuiInputBase-input': {
-                        color: '#1A212B',
-                        fontWeight: 500,
-                      },
-                    }}
                   />
                 )}
-                ListboxProps={{
-                  sx: {
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid #E6ECF5',
-                    '& .MuiAutocomplete-option': {
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        color: '#ffffff',
-                      }
-                    }
-                  }
-                }}
               />
             </Box>
 
@@ -636,53 +642,56 @@ const AuditLog: React.FC = () => {
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
                 popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                sx={{
+                  width: 220,
+                  "& .MuiOutlinedInput-root": {
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: '#ffffff',
+                    paddingRight: '32px !important',
+                    "& fieldset": { borderColor: "#D1D5DB" },
+                    "&:hover fieldset": { borderColor: "#D1D5DB" },
+                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                  },
+                }}
+                slotProps={{
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        borderRadius: "12px",
+                        marginTop: "4px",
+                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                        border: "1px solid #E6ECF5",
+                        height: "auto",
+                      },
+                    },
+                  },
+                }}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: "250px",
+                    padding: "4px",
+                    "& .MuiAutocomplete-option": {
+                      fontSize: "14px",
+                      borderRadius: "8px",
+                      margin: "2px 0",
+                      "&:hover": {
+                        backgroundColor: "#F3E8FF",
+                        color: "#5C17E5",
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: "#5C17E5",
+                        color: "#ffffff",
+                      },
+                    },
+                  },
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder="Search module..."
-                    sx={{
-                      width: 220,
-                      height: '40px',
-                      borderRadius: '12px',
-                      backgroundColor: '#ffffff',
-                      '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        borderRadius: '12px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: '1px solid #D1D5DB',
-                        },
-                        '&:hover': {
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                        '&.Mui-focused': {
-                          outline: 'none',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                      },
-                      '& .MuiInputBase-input': {
-                        color: '#1A212B',
-                        fontWeight: 500,
-                      },
-                    }}
                   />
                 )}
-                ListboxProps={{
-                  sx: {
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid #E6ECF5',
-                    '& .MuiAutocomplete-option': {
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        color: '#ffffff',
-                      }
-                    }
-                  }
-                }}
               />
             </Box>
 
@@ -700,53 +709,56 @@ const AuditLog: React.FC = () => {
                 disableClearable={false}
                 isOptionEqualToValue={(option, value) => option === value}
                 popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                sx={{
+                  width: 220,
+                  "& .MuiOutlinedInput-root": {
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: '#ffffff',
+                    paddingRight: '32px !important',
+                    "& fieldset": { borderColor: "#D1D5DB" },
+                    "&:hover fieldset": { borderColor: "#D1D5DB" },
+                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                  },
+                }}
+                slotProps={{
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        borderRadius: "12px",
+                        marginTop: "4px",
+                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                        border: "1px solid #E6ECF5",
+                        height: "auto",
+                      },
+                    },
+                  },
+                }}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: "250px",
+                    padding: "4px",
+                    "& .MuiAutocomplete-option": {
+                      fontSize: "14px",
+                      borderRadius: "8px",
+                      margin: "2px 0",
+                      "&:hover": {
+                        backgroundColor: "#F3E8FF",
+                        color: "#5C17E5",
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: "#5C17E5",
+                        color: "#ffffff",
+                      },
+                    },
+                  },
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder="Search event type..."
-                    sx={{
-                      width: 220,
-                      height: '40px',
-                      borderRadius: '12px',
-                      backgroundColor: '#ffffff',
-                      '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        borderRadius: '12px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: '1px solid #D1D5DB',
-                        },
-                        '&:hover': {
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                        '&.Mui-focused': {
-                          outline: 'none',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                      },
-                      '& .MuiInputBase-input': {
-                        color: '#1A212B',
-                        fontWeight: 500,
-                      },
-                    }}
                   />
                 )}
-                ListboxProps={{
-                  sx: {
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid #E6ECF5',
-                    '& .MuiAutocomplete-option': {
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        color: '#ffffff',
-                      }
-                    }
-                  }
-                }}
               />
             </Box>
 

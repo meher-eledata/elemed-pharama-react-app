@@ -11,6 +11,7 @@ import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
+import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
 
 // Lazy-loaded Pie Chart Component
 const PaymentTypePieChart = lazy(() => import('../../components/Charts/PaymentTypePieChart'));
@@ -167,98 +168,106 @@ const DailySalesReport: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const csvLinkRef = useRef<any>(null);
 
-  const reportData = {
-    totalBills: 24,
-    totalSales: 18007,
-    totalDiscount: 0,
-    totalTaxCollected: 1891.36,
-    totalBillsBreakdown: {
-      inpatient: 10,
-      outpatient: 14,
-    },
-    totalSalesBreakdown: {
-      inpatient: 8500,
-      outpatient: 9507,
-    },
-    totalDiscountBreakdown: {
-      inpatient: 0,
-      outpatient: 0,
-    },
-    totalTaxCollectedBreakdown: {
-      inpatient: 892.50,
-      outpatient: 998.86,
-    },
-    cashSales: {
-      amount: 4993,
-      bills: 4,
-      breakdown: {
-        inpatient: 2000,
-        outpatient: 2993,
-      },
-    },
-    otherSales: {
-      amount: 0,
-      bills: 20,
-      breakdown: {
-        inpatient: 0,
-        outpatient: 0,
-      },
-    },
-    cardSales: {
-      amount: 3000,
-      bills: 8,
-      breakdown: {
-        inpatient: 1500,
-        outpatient: 1500,
-      },
-    },
-    upiSales: {
-      amount: 2500,
-      bills: 6,
-      breakdown: {
-        inpatient: 1000,
-        outpatient: 1500,
-      },
-    },
-    insuranceSales: {
-      amount: 1500,
-      bills: 2,
-      breakdown: {
-        inpatient: 800,
-        outpatient: 700,
-      },
-    },
-    paymentTypeData: [
-      { id: 0, value: 4993, label: 'Cash', color: '#3B82F6' },
-      { id: 1, value: 3000, label: 'Card', color: '#EF4444' },
-      { id: 2, value: 2500, label: 'UPI', color: '#F59E0B' },
-      { id: 3, value: 6514, label: 'Insurance', color: '#60A5FA' },
-      { id: 4, value: 1000, label: 'Credit', color: '#9CA3AF' },
-    ],
-    taxSummary: {
-      totalTax: 891.36,
-      cgst: 945.68,
-      sgst: 95,
-      igst: 0,
-    },
-    weeklyTrend: {
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      values: [28, 30, 26, 32, 38, 36, 50],
-      inpatient: [12, 14, 11, 15, 18, 16, 22],
-      outpatient: [16, 16, 15, 17, 20, 20, 28],
-    },
+  const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
+    { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
+    { skip: !selectedDate }
+  );
+
+  const { data: weeklyApiData } = useGetWeeklyBillCountsQuery(
+    { end_date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
+    { skip: !selectedDate }
+  );
+
+  const PAYMENT_METHOD_COLORS: Record<string, string> = {
+    'Cash': '#3B82F6',
+    'Card': '#EF4444',
+    'UPI': '#F59E0B',
+    'Insurance': '#60A5FA',
+    'Credit': '#9CA3AF',
+    'Bank Transfer': '#10B981',
+    'Cheque': '#8B5CF6',
+    'Credit Card': '#EC4899',
+    'Others': '#D1D5DB'
   };
+
+  const reportData = useMemo(() => {
+    if (!apiData) return null;
+
+    const parseVal = (val: any) => {
+      if (val === null || val === undefined) return 0;
+      const parsed = typeof val === 'string' ? parseFloat(val) : val;
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    return {
+      totalBills: parseVal(apiData.total_bills),
+      totalSales: parseVal(apiData.total_sales),
+      totalDiscount: parseVal(apiData.total_discount),
+      totalTaxCollected: parseVal(apiData.total_tax),
+      totalBillsBreakdown: {
+        inpatient: parseVal(apiData.inpatient_bills),
+        outpatient: parseVal(apiData.outpatient_bills),
+      },
+      totalSalesBreakdown: {
+        inpatient: parseVal(apiData.inpatient_sales),
+        outpatient: parseVal(apiData.outpatient_sales),
+      },
+      totalDiscountBreakdown: {
+        inpatient: parseVal(apiData.inpatient_discount),
+        outpatient: parseVal(apiData.outpatient_discount),
+      },
+      totalTaxCollectedBreakdown: {
+        inpatient: parseVal(apiData.inpatient_tax),
+        outpatient: parseVal(apiData.outpatient_tax),
+      },
+      cashSales: {
+        amount: parseVal(apiData.cash_in_hand_total),
+        bills: apiData.payment_method_breakdown.find(p => p.payment_method === 'Cash')?.count || 0,
+        breakdown: {
+          inpatient: parseVal(apiData.cash_in_hand_inpatient),
+          outpatient: parseVal(apiData.cash_in_hand_outpatient),
+        },
+      },
+      paymentTypeData: apiData.payment_method_breakdown.map((item, index) => ({
+        id: index,
+        value: parseVal(item.total_amount),
+        label: item.payment_method,
+        color: PAYMENT_METHOD_COLORS[item.payment_method] || PAYMENT_METHOD_COLORS['Others']
+      })),
+      taxSummary: {
+        totalTax: parseVal(apiData.total_tax),
+        cgst: parseVal(apiData.total_cgst),
+        sgst: parseVal(apiData.total_sgst),
+        igst: parseVal(apiData.total_igst),
+      },
+      weeklyTrend: {
+        days: weeklyApiData ? weeklyApiData.map(item => dayjs(item.day).format('ddd')) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        values: weeklyApiData ? weeklyApiData.map(item => parseVal(item.total_bills)) : [0, 0, 0, 0, 0, 0, 0],
+        inpatient: weeklyApiData ? weeklyApiData.map(item => parseVal(item.inpatient_bills)) : [0, 0, 0, 0, 0, 0, 0],
+        outpatient: weeklyApiData ? weeklyApiData.map(item => parseVal(item.outpatient_bills)) : [0, 0, 0, 0, 0, 0, 0],
+      },
+    };
+  }, [apiData, weeklyApiData]);
 
   const formatCurrency = (amount: number) => {
     return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Calculate total for percentage calculation
-  const totalPaymentValue = reportData.paymentTypeData.reduce((sum, item) => sum + item.value, 0);
+  const totalPaymentValue = useMemo(() => 
+    reportData?.paymentTypeData.reduce((sum, item) => sum + item.value, 0) || 0
+  , [reportData]);
+
+  // Calculate max for Y axis
+  const maxBills = useMemo(() => {
+    if (!reportData?.weeklyTrend.values.length) return 60;
+    const maxValue = Math.max(...reportData.weeklyTrend.values);
+    return Math.ceil((maxValue + 5) / 10) * 10; // Round up to nearest 10 with some padding
+  }, [reportData]);
 
   // Prepare CSV data
   const csvData = useMemo(() => {
-    const dateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
+    if (!reportData) return [];
     
     const csvRows = [
       // Summary Section
@@ -269,11 +278,12 @@ const DailySalesReport: React.FC = () => {
       { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
       
       // Sales Breakdown Section
-      { Section: 'Sales Breakdown', Metric: 'Cash Sales (₹)', Value: reportData.cashSales.amount.toFixed(2), Details: `From ${reportData.cashSales.bills} bills` },
-      { Section: 'Sales Breakdown', Metric: 'Other Sales (₹)', Value: reportData.otherSales.amount.toFixed(2), Details: `From ${reportData.otherSales.bills} bills` },
-      { Section: 'Sales Breakdown', Metric: 'Card Sales (₹)', Value: reportData.cardSales.amount.toFixed(2), Details: `From ${reportData.cardSales.bills} bills` },
-      { Section: 'Sales Breakdown', Metric: 'UPI Sales (₹)', Value: reportData.upiSales.amount.toFixed(2), Details: `From ${reportData.upiSales.bills} bills` },
-      { Section: 'Sales Breakdown', Metric: 'Insurance Sales (₹)', Value: reportData.insuranceSales.amount.toFixed(2), Details: `From ${reportData.insuranceSales.bills} bills` },
+      ...reportData.paymentTypeData.map(item => ({
+        Section: 'Sales Breakdown',
+        Metric: `${item.label} Sales (₹)`,
+        Value: item.value.toFixed(2),
+        Details: ''
+      })),
       { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
       
       // Payment Type Breakdown
@@ -281,7 +291,7 @@ const DailySalesReport: React.FC = () => {
         Section: 'Payment Type Breakdown',
         Metric: item.label,
         Value: item.value.toFixed(2),
-        Details: `${((item.value / totalPaymentValue) * 100).toFixed(2)}%`
+        Details: totalPaymentValue > 0 ? `${((item.value / totalPaymentValue) * 100).toFixed(2)}%` : '0%'
       })),
       { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
       
@@ -290,19 +300,10 @@ const DailySalesReport: React.FC = () => {
       { Section: 'Tax Summary', Metric: 'CGST (₹)', Value: reportData.taxSummary.cgst.toFixed(2), Details: '' },
       { Section: 'Tax Summary', Metric: 'SGST (₹)', Value: reportData.taxSummary.sgst.toFixed(2), Details: '' },
       { Section: 'Tax Summary', Metric: 'IGST (₹)', Value: reportData.taxSummary.igst.toFixed(2), Details: '' },
-      { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
-      
-      // Weekly Trend
-      ...reportData.weeklyTrend.days.map((day, index) => ({
-        Section: 'Weekly Sales Trend',
-        Metric: day,
-        Value: reportData.weeklyTrend.values[index].toString(),
-        Details: 'Sales count'
-      })),
     ];
     
     return csvRows;
-  }, [reportData, selectedDate, totalPaymentValue]);
+  }, [reportData, totalPaymentValue]);
 
   // Generate filename with selected date
   const csvFilename = useMemo(() => {
@@ -313,6 +314,29 @@ const DailySalesReport: React.FC = () => {
   const handleDownloadCSV = () => {
     csvLinkRef.current?.link?.click();
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+        <CircularProgress size={40} />
+      </Box>
+    );
+  }
+
+  if (isError || !reportData) {
+    return (
+      <Box sx={{ textAlign: 'center', mt: 4 }}>
+        <Typography color="error">Failed to load report data. Please try again later.</Typography>
+        <Box sx={{ mt: 2 }}>
+          <PharmaDatePicker
+            value={selectedDate}
+            onChange={setSelectedDate}
+            width={200}
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -594,338 +618,42 @@ const DailySalesReport: React.FC = () => {
             {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.SALES_BREAKDOWN}
           </Typography>
           <Grid container spacing={2.5}>
-            {/* Cash Sales Card */}
-            <Grid item xs={12} sm={6} md={6}>
-              <Card
-                sx={{
-                  p: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.PADDING,
-                  borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-                  boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-                  border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-                  backgroundColor: '#F9FAFB',
-                }}
-              >
-                <Typography
+            {reportData.paymentTypeData.map((item) => (
+              <Grid item xs={12} sm={6} md={6} key={item.id}>
+                <Card
                   sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
+                    p: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.PADDING,
+                    borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
+                    boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
+                    border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
+                    backgroundColor: '#F9FAFB',
                   }}
                 >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.CASH_SALES}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 0.5,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {formatCurrency(reportData.cashSales.amount)}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.cashSales.bills} bills
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
                   <Typography
                     sx={{
-                      fontSize: '12px',
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_SIZE,
+                      fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_WEIGHT,
+                      color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
+                      mb: 1,
                       fontFamily: "'Lexend', sans-serif",
-                      color: '#3B82F6',
                     }}
                   >
-                    In Patient: {formatCurrency(reportData.cashSales.breakdown.inpatient)}
+                    {item.label} Sales
                   </Typography>
                   <Typography
                     sx={{
-                      fontSize: '12px',
+                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_SIZE,
+                      fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_WEIGHT,
+                      color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
+                      mb: 0.5,
                       fontFamily: "'Lexend', sans-serif",
-                      color: '#10B981',
                     }}
                   >
-                    Out Patient: {formatCurrency(reportData.cashSales.breakdown.outpatient)}
+                    {formatCurrency(item.value)}
                   </Typography>
-                </Box>
-              </Card>
-            </Grid>
-
-            {/* Other Sales Card */}
-            <Grid item xs={12} sm={6} md={6}>
-              <Card
-                sx={{
-                  p: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.PADDING,
-                  borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-                  boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-                  border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-                  backgroundColor: '#F9FAFB',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.OTHER_SALES}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 0.5,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {formatCurrency(reportData.otherSales.amount)}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.otherSales.bills} bills
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#3B82F6',
-                    }}
-                  >
-                    In Patient: {formatCurrency(reportData.otherSales.breakdown.inpatient)}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#10B981',
-                    }}
-                  >
-                    Out Patient: {formatCurrency(reportData.otherSales.breakdown.outpatient)}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-
-            {/* Card Sales Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  p: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.PADDING,
-                  borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-                  boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-                  border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-                  height: '100%',
-                  backgroundColor: '#F9FAFB',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.CARD_SALES}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 0.5,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {formatCurrency(reportData.cardSales.amount)}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.cardSales.bills} bills
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#3B82F6',
-                    }}
-                  >
-                    In Patient: {formatCurrency(reportData.cardSales.breakdown.inpatient)}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#10B981',
-                    }}
-                  >
-                    Out Patient: {formatCurrency(reportData.cardSales.breakdown.outpatient)}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-
-            {/* UPI Sales Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  p: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.PADDING,
-                  borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-                  boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-                  border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-                  height: '100%',
-                  backgroundColor: '#F9FAFB',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.UPI_SALES}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 0.5,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {formatCurrency(reportData.upiSales.amount)}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.upiSales.bills} bills
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#3B82F6',
-                    }}
-                  >
-                    In Patient: {formatCurrency(reportData.upiSales.breakdown.inpatient)}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#10B981',
-                    }}
-                  >
-                    Out Patient: {formatCurrency(reportData.upiSales.breakdown.outpatient)}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-
-            {/* Insurance Sales Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  p: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.PADDING,
-                  borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-                  boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-                  border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-                  height: '100%',
-                  backgroundColor: '#F9FAFB',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.TITLE_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.INSURANCE_SALES}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_SIZE,
-                    fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.AMOUNT_FONT_WEIGHT,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.METRIC_VALUE.COLOR,
-                    mb: 0.5,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {formatCurrency(reportData.insuranceSales.amount)}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_FONT_SIZE,
-                    color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.SALES_CARD.SUBTEXT_COLOR,
-                    mb: 1,
-                    fontFamily: "'Lexend', sans-serif",
-                  }}
-                >
-                  {REPORTS_LABELS.DAILY_SALES_REPORT.SALES.FROM_BILLS} {reportData.insuranceSales.bills} bills
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#3B82F6',
-                    }}
-                  >
-                    In Patient: {formatCurrency(reportData.insuranceSales.breakdown.inpatient)}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                      color: '#10B981',
-                    }}
-                  >
-                    Out Patient: {formatCurrency(reportData.insuranceSales.breakdown.outpatient)}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
         </Grid>
 
@@ -959,27 +687,64 @@ const DailySalesReport: React.FC = () => {
             <Box
               sx={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'center',
                 alignItems: 'center',
+                position: 'relative',
               }}
             >
-              <Suspense
-                fallback={
-                  <Box
+              {totalPaymentValue > 0 ? (
+                <Suspense
+                  fallback={
+                    <Box
+                      sx={{
+                        width: 380,
+                        height: 380,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <CircularProgress size={40} />
+                    </Box>
+                  }
+                >
+                  <PaymentTypePieChart data={reportData.paymentTypeData} />
+                </Suspense>
+              ) : (
+                <Box
+                  sx={{
+                    width: 380,
+                    height: 380,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    border: '2px dashed #E5E7EB',
+                    borderRadius: '50%',
+                    backgroundColor: '#F9FAFB',
+                  }}
+                >
+                  <Typography
                     sx={{
-                      width: 380,
-                      height: 380,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
+                      color: '#9CA3AF',
+                      fontSize: '14px',
+                      fontFamily: "'Lexend', sans-serif",
+                      fontWeight: 500,
                     }}
                   >
-                    <CircularProgress size={40} />
-                  </Box>
-                }
-              >
-                <PaymentTypePieChart data={reportData.paymentTypeData} />
-              </Suspense>
+                    No sales data
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: '#9CA3AF',
+                      fontSize: '12px',
+                      fontFamily: "'Lexend', sans-serif",
+                    }}
+                  >
+                    for this date
+                  </Typography>
+                </Box>
+              )}
             </Box>
             <Box>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 1.5 }}>
@@ -1282,8 +1047,8 @@ const DailySalesReport: React.FC = () => {
                       fontFamily: "'Lexend', sans-serif",
                     },
                     min: 0,
-                    max: 60,
-                    tickInterval: [0, 20, 40, 60],
+                    max: maxBills,
+                    tickInterval: [0, Math.floor(maxBills / 3), Math.floor((maxBills * 2) / 3), maxBills],
                   },
                 ]}
                 series={[

@@ -73,10 +73,10 @@ const LoginForm: React.FC = () => {
         username: username.trim(),
         password: password.trim(),
       }).unwrap();
-      
+
       // Set credentials before navigating
       dispatch(setCredentials(response));
-      
+
       const userRole = response?.user?.role;
       const roleLower = typeof userRole === 'string' ? userRole.toLowerCase() : '';
       if (roleLower === 'admin') {
@@ -104,7 +104,8 @@ const LoginForm: React.FC = () => {
         width: "100%",
         maxWidth: "100%",
         alignItems: "center",
-        marginBlock: "auto",
+        // marginBlock: "auto", // Removed essentially to allow custom top spacing
+        marginTop: "6.5rem", // 104px = 6.5rem - Custom top spacing
       }}
     >
       <Typography
@@ -208,9 +209,9 @@ const LoginForm: React.FC = () => {
               display: "none",
             },
             "& input::-webkit-contacts-auto-fill-button, & input::-webkit-credentials-auto-fill-button":
-              {
-                display: "none",
-              },
+            {
+              display: "none",
+            },
             "& .MuiInputBase-root": {
               color: "#1A212B",
               borderRadius: "0.75rem", // 12px = 0.75rem - rounded corners
@@ -254,7 +255,7 @@ const LoginForm: React.FC = () => {
           <Link to="/forgot-password" style={{ textDecoration: "none" }}>
             <Typography
               variant="caption"
-              sx={{ fontSize: "1rem", cursor: "pointer" ,color:'#5C17E5'}} // 16px = 1rem
+              sx={{ fontSize: "1rem", cursor: "pointer", color: '#5C17E5' }} // 16px = 1rem
             >
               {LOGIN_LABELS.FORGOT_PASSWORD}
             </Typography>
@@ -268,13 +269,13 @@ const LoginForm: React.FC = () => {
           disabled={isLoading}
           disableRipple
           sx={{
-            height:'3.5rem', // 56px = 3.5rem
+            height: '3.5rem', // 56px = 3.5rem
             textTransform: "none",
             bgcolor: "#5C17E5",
             borderRadius: "0.75rem", // 12px = 0.75rem
-            fontSize:"1rem", // 16px = 1rem
-            boxShadow:'none',
-             "&:hover":{bgcolor: "#5C17E5",boxShadow:'none'}
+            fontSize: "1rem", // 16px = 1rem
+            boxShadow: 'none',
+            "&:hover": { bgcolor: "#5C17E5", boxShadow: 'none' }
           }}
         >
           {isLoading

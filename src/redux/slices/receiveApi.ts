@@ -173,6 +173,34 @@ export interface DeleteReceiptLineResponse {
   message: string;
 }
 
+export interface GetPurchaseOrderPaymentsRequest {
+  po_id: number;
+}
+
+export interface PurchaseOrderPayment {
+  id: number;
+  payment_method: string;
+  payment_vendor: string | null;
+  transaction_number: string;
+  payment_status: string;
+  payment_amount: number;
+  payment_currency: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GetPurchaseOrderPaymentsResponse {
+  po: {
+    po_id: number;
+    po_number: string;
+    supplier_id: number;
+    total_amount: string;
+  };
+  payments: PurchaseOrderPayment[];
+  total_paid: number;
+  amount_left_to_pay: number;
+}
+
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "../baseQuery";
 
@@ -425,6 +453,18 @@ export const receiveApi = createApi({
       }),
       invalidatesTags: ["Receive"],
     }),
+
+    getPurchaseOrderPayments: builder.mutation<
+      GetPurchaseOrderPaymentsResponse,
+      GetPurchaseOrderPaymentsRequest
+    >({
+      query: (body) => ({
+        url: "receive/get-purchase-order-payments",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Receive"],
+    }),
   }),
 });
 
@@ -445,6 +485,7 @@ export const {
   useUploadReceiptFileMutation,
   useGetReceiptFileQuery,
   useUpsertReceiptPaymentsMutation,
+  useGetPurchaseOrderPaymentsMutation,
 } = receiveApi;
 
 // Helper function to get receipt file URL (for iframe or direct link)

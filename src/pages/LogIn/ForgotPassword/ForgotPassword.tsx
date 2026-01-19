@@ -15,7 +15,7 @@ const ForgotPassword: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  
+
   const [passwordRecovery, { isLoading }] = usePasswordRecoveryMutation();
 
   const validateUsername = (value: string) => {
@@ -40,7 +40,7 @@ const ForgotPassword: React.FC = () => {
       } catch (error: any) {
         console.error('Password recovery error:', error);
         let errorMsg = FORGOT_PASSWORD_LABELS.ERROR_MESSAGE;
-        
+
         if (error?.status === 404) {
           errorMsg = 'Password reset endpoint not found. Please contact support or check if the backend server is running.';
         } else if (error?.data?.message) {
@@ -50,7 +50,7 @@ const ForgotPassword: React.FC = () => {
         } else if (error?.message) {
           errorMsg = error.message;
         }
-        
+
         setErrorMessage(errorMsg);
         setShowError(true);
       }
@@ -66,7 +66,8 @@ const ForgotPassword: React.FC = () => {
         alignItems: 'center',
         width: FORGOT_PASSWORD_CONSTANTS.MAX_WIDTH,
         mx: 'auto',
-        marginBlock: 'auto',
+        // marginBlock: 'auto', // Removed for consistency with Login page
+        marginTop: '6.5rem', // 104px = 6.5rem
       }}
     >
       <Typography
@@ -193,9 +194,9 @@ const ForgotPassword: React.FC = () => {
         onClose={() => setShowSuccess(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={() => setShowSuccess(false)} 
-          severity="success" 
+        <Alert
+          onClose={() => setShowSuccess(false)}
+          severity="success"
           sx={{ width: '100%' }}
         >
           {FORGOT_PASSWORD_LABELS.SUCCESS_MESSAGE}
@@ -209,9 +210,9 @@ const ForgotPassword: React.FC = () => {
         onClose={() => setShowError(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={() => setShowError(false)} 
-          severity="error" 
+        <Alert
+          onClose={() => setShowError(false)}
+          severity="error"
           sx={{ width: '100%' }}
         >
           {errorMessage}

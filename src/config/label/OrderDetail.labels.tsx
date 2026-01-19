@@ -12,7 +12,7 @@ export const orderLabels = {
   findProduct: 'Find product',
   
   // Placeholders
-  enterSupplierName: 'Enter supplier name and GSTIN',
+  enterSupplierName: 'Enter supplier name ',
   enterPoNumber: 'Enter PO number',
   dateFormat: 'DD/MM/YYYY',
   selectBankVendor: 'Select bank / vendor',

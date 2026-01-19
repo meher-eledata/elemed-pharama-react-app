@@ -23,14 +23,15 @@ const LoginRight: React.FC<LoginRightProps> = ({ className }) => {
       //   margin: 0,
       // }}
       sx={{
-         display: { xs: 'none', md: 'flex' }, // Hides below 960px
+        display: { xs: 'none', md: 'flex' }, // Hides below 960px
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 0,
         boxSizing: 'border-box',
         width: '100%',
-        height: '100%',
+        // height: '100%', // Removed key constraint
+        minHeight: '100%', // Ensure it fills at least the parent height
         overflow: 'hidden',
         borderBottomRightRadius: '1.25rem', // 20px = 1.25rem
         borderTopRightRadius: '1.25rem', // 20px = 1.25rem

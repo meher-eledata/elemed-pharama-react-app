@@ -556,7 +556,7 @@ const InventoryAdjustment: React.FC = () => {
           batch_number: batchNumber, // Use batch_number (string or number) for API as backend expects
           old_qty: batch.oldQuantity,
           new_qty: batch.quantity,
-          expiry_date: batch.expiryDate ? new Date(batch.expiryDate).toISOString() : new Date().toISOString(),
+          expiry_date: batch.expiryDate || dayjs().format('YYYY-MM-DD'),
         };
       });
 

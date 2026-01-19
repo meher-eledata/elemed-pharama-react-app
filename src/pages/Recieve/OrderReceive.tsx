@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, ChangeEvent } from "react";
-import { Box, Typography, Snackbar, Alert, TextField, InputAdornment, Select, MenuItem, Autocomplete, IconButton, Tooltip, TableCell, TableRow } from "@mui/material";
+import { Box, Typography, Snackbar, Alert, TextField, InputAdornment, Autocomplete, Select, MenuItem, IconButton, Tooltip, TableCell, TableRow } from "@mui/material";
 import { StandardButton, PharmaDatePicker } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
 import { useNavigate } from "react-router-dom";
@@ -102,6 +102,7 @@ export interface OrderReceiveRow {
   receiptId: number;
   reNo: string;
   poNo: string;
+  po_id: number;
   supplier: string;
   received: string;
   status: string;
@@ -262,6 +263,7 @@ const OrderReceive: React.FC = () => {
           receiptId: receiptId,
           reNo: `RA${receiptId}`,
           poNo: receipt.po_number || String(receipt.po_id),
+          po_id: receipt.po_id,
           supplier: supplierName,
           received: (receipt as any).invoice_date
             ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A')
@@ -518,8 +520,11 @@ const OrderReceive: React.FC = () => {
   };
 
   const uniqueSuppliers = useMemo(() => {
-    return Array.from(new Set(tableData.map(r => r.supplier))).sort();
-  }, [tableData]);
+    const suppliers = Array.from(new Set(tableData.map(r => r.supplier))).sort();
+    return suppliers.filter(supplier =>
+      supplier.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+    );
+  }, [tableData, supplierSearchTerm]);
 
   const handleSupplierChange = (event: any, newValue: string | null) => {
     handleFilterChange('supplier', newValue);
@@ -1022,12 +1027,16 @@ const OrderReceive: React.FC = () => {
       state: {
         supplierName: row.supplier,
         poNumber: row.poNo,
+        poId: row.po_id,
         invoiceDate: row.invoice_date || "",
         receiptId: row.receiptId,
         receiptNumber: row.reNo,
         isEditMode: true,
         transactionNumber: row.transaction_number || "",
         paymentVendor: row.payment_vendor || "",
+        paymentMethod: (row as any).last_payment_method || "Cash",
+        amount: row.amt || "",
+        creditAvailable: row.creditAvailable || 0,
         pharmaTableData: [], // Can be populated from receipt lines if needed
       }
     });
@@ -1222,91 +1231,101 @@ const OrderReceive: React.FC = () => {
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>Supplier Name</Typography> {/* 12px = 0.75rem */}
                         <Autocomplete
-                          value={filters.supplier}
-                          onChange={handleSupplierChange}
-                          onInputChange={handleSupplierInputChange}
-                          inputValue={supplierSearchTerm}
                           options={uniqueSuppliers}
-                          freeSolo
-                          forcePopupIcon
-                          disableClearable={!filters.supplier}
-                          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '1.5rem' }} />}
-                          componentsProps={{
+                          value={filters.supplier || null}
+                          onChange={(_, newValue) => handleSupplierChange(null, newValue)}
+                          onInputChange={(_, newInputValue) => setSupplierSearchTerm(newInputValue)}
+                          inputValue={supplierSearchTerm}
+                          disableListWrap={true}
+                          PaperComponent={({ children }) => (
+                            <Box
+                              sx={{
+                                padding: 0,
+                                marginTop: "4px",
+                                borderRadius: "12px",
+                                border: "1px solid #E5E7EB",
+                                backgroundColor: "#fff",
+                                boxShadow: '0 0.125rem 0.5rem rgba(2, 6, 23, 0.08)',
+                              }}
+                            >
+                              {children}
+                            </Box>
+                          )}
+                          slotProps={{
                             popper: {
                               sx: {
-                                '& .MuiAutocomplete-listbox': {
-                                  '& .MuiAutocomplete-option': {
-                                    '&:hover': {
-                                      backgroundColor: '#5C17E5',
-                                      color: '#ffffff',
-                                    }
-                                  }
-                                }
-                              }
-                            }
+                                "& .MuiPaper-root": {
+                                  minWidth: "15rem",
+                                  width: "fit-content",
+                                  padding: "0 !important",
+                                  marginTop: "4px !important",
+                                  maxHeight: "300px !important",
+                                  height: "auto !important",
+                                  "& ul": {
+                                    padding: "4px 0 !important",
+                                    margin: "0 !important",
+                                  },
+                                },
+                              },
+                            },
+                          }}
+                          sx={{
+                            width: '15rem',
+                            '& .MuiOutlinedInput-root': {
+                              height: '2.5rem',
+                              borderRadius: '30px',
+                              backgroundColor: '#ffffff',
+                              padding: '2px 14px',
+                              '& fieldset': {
+                                border: '1px solid #D1D5DB',
+                              },
+                              '&:hover fieldset': {
+                                border: '1px solid #D1D5DB',
+                              },
+                              '&.Mui-focused fieldset': {
+                                border: '1px solid #D1D5DB',
+                              },
+                            },
                           }}
                           renderInput={(params) => (
                             <TextField
                               {...params}
                               placeholder="Search supplier..."
+                              InputProps={{
+                                ...params.InputProps,
+                                startAdornment: (
+                                  <React.Fragment>
+                                    <InputAdornment position="start" sx={{ ml: 1.5, mr: 1.5 }}>
+                                      <SearchIcon sx={{ color: '#9CA3AF', fontSize: '20px' }} />
+                                    </InputAdornment>
+                                    {params.InputProps.startAdornment}
+                                  </React.Fragment>
+                                ),
+                              }}
                               sx={{
-                                width: '15rem', // 240px = 15rem
-                                height: '2.5rem', // 40px = 2.5rem
-                                borderRadius: '0.75rem', // 12px = 0.75rem
-                                backgroundColor: '#ffffff',
                                 '& .MuiOutlinedInput-root': {
-                                  height: '2.5rem', // 40px = 2.5rem
-                                  borderRadius: '0.75rem', // 12px = 0.75rem
-                                  '& .MuiOutlinedInput-notchedOutline': {
-                                    border: '1px solid #D1D5DB',
+                                  paddingLeft: '0 !important',
+                                  '& fieldset': {
+                                    borderColor: '#E5E7EB',
+                                    borderWidth: '1.5px',
                                   },
-                                  '&:hover': {
-                                    '& .MuiOutlinedInput-notchedOutline': {
-                                      border: '1px solid #D1D5DB',
-                                    },
+                                  '&:hover fieldset': {
+                                    borderColor: '#D1D5DB',
                                   },
-                                  '&.Mui-focused': {
-                                    outline: 'none',
-                                    '& .MuiOutlinedInput-notchedOutline': {
-                                      border: '1px solid #D1D5DB',
-                                    },
+                                  '&.Mui-focused fieldset': {
+                                    borderColor: '#5C17E5',
+                                    borderWidth: '2px',
                                   },
                                 },
                                 '& .MuiInputBase-input': {
-                                  color: '#1A212B',
+                                  fontSize: '14px',
                                   fontWeight: 500,
-                                  cursor: 'text',
-                                },
-                                '& .MuiAutocomplete-endAdornment': {
-                                  right: '0.5rem', // 8px = 0.5rem
-                                },
-                              }}
-                              InputProps={{
-                                ...params.InputProps,
+                                  color: '#1A212B',
+                                  ml: 1,
+                                }
                               }}
                             />
                           )}
-                          renderOption={(props, option) => (
-                            <Box component="li" {...props}>
-                              {option}
-                            </Box>
-                          )}
-                          ListboxProps={{
-                            sx: {
-                              borderRadius: '0.75rem', // 12px = 0.75rem
-                              boxShadow: '0 0.25rem 1.25rem rgba(0, 0, 0, 0.15)', // 4px = 0.25rem, 20px = 1.25rem
-                              border: '1px solid #E6ECF5',
-                              '& .MuiAutocomplete-option': {
-                                '&:hover': {
-                                  backgroundColor: '#5C17E5',
-                                  color: '#ffffff',
-                                  '&:hover': {
-                                    backgroundColor: '#4A14C7',
-                                  }
-                                }
-                              }
-                            }
-                          }}
                         />
                       </Box>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

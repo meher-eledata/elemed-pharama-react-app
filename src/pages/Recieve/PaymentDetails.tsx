@@ -24,7 +24,34 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { paymentMethods, paymentVendors, themeColors } from "../../config/constants/OrderDetail.constants";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
-import { useUpsertReceiptPaymentsMutation } from "../../redux/slices/receiveApi";
+import { 
+  useUpsertReceiptPaymentsMutation, 
+  useGetPurchaseOrderPaymentsMutation 
+} from "../../redux/slices/receiveApi";
+
+const TickMarkIcon = (props: any) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+    style={{ 
+      pointerEvents: "none", 
+      color: "currentColor",
+      overflow: "visible" 
+    }}
+  >
+    <path
+      d="M5 13l4 4L19 7"
+      stroke="currentColor"
+      strokeWidth="3.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 interface PaymentRow {
   id: string;
@@ -42,11 +69,13 @@ const PaymentDetails: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
   const [upsertReceiptPayments, { isLoading: isSavingPayments }] = useUpsertReceiptPaymentsMutation();
+  const [getPurchaseOrderPayments, { isLoading: isFetchingPayments }] = useGetPurchaseOrderPaymentsMutation();
   
   // Get data from navigation state
   const navigationState = location.state as any;
   const supplierName = navigationState?.supplierName || "";
   const poNumber = navigationState?.poNumber || "";
+  const poId = navigationState?.poId || null;
   const invoiceDate = navigationState?.invoiceDate || "";
   const pharmaTableData = navigationState?.pharmaTableData || [];
   const isEditMode = navigationState?.isEditMode || false;
@@ -54,6 +83,34 @@ const PaymentDetails: React.FC = () => {
   const receiptNumber = navigationState?.receiptNumber || "";
 
   const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([]);
+
+  // Fetch current payments on mount if poId is available
+  useEffect(() => {
+    const fetchPayments = async () => {
+      if (poId) {
+        try {
+          const response = await getPurchaseOrderPayments({ po_id: poId }).unwrap();
+          if (response && response.payments) {
+            const mappedPayments: PaymentRow[] = response.payments.map((p) => ({
+              id: p.id.toString(),
+              transactionNumber: p.transaction_number,
+              transactionDate: dayjs(p.created_at).format("DD/MM/YYYY"),
+              paymentMethod: p.payment_method,
+              paymentVendor: p.payment_vendor || "",
+              amount: p.payment_amount,
+              details: "", // Details might not be in the get-payments response
+            }));
+            setPaymentRows(mappedPayments);
+          }
+        } catch (err) {
+          console.error("Failed to fetch payments:", err);
+          setSaveError("Failed to fetch existing payments for this purchase order.");
+        }
+      }
+    };
+
+    fetchPayments();
+  }, [poId, getPurchaseOrderPayments]);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<PaymentRow>>({});
   const [isSaveConfirmationOpen, setIsSaveConfirmationOpen] = useState<boolean>(false);
@@ -65,13 +122,15 @@ const PaymentDetails: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
   // Form fields for adding new payment
-  const [transactionNumber, setTransactionNumber] = useState<string>("");
-  const [transactionDate, setTransactionDate] = useState<Dayjs | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
-  const [paymentVendor, setPaymentVendor] = useState<string>("");
-  const [amount, setAmount] = useState<string>("");
+  const [transactionNumber, setTransactionNumber] = useState<string>(navigationState?.transactionNumber || "");
+  const [transactionDate, setTransactionDate] = useState<Dayjs | null>(
+    navigationState?.invoiceDate ? dayjs(navigationState.invoiceDate) : dayjs()
+  );
+  const [paymentMethod, setPaymentMethod] = useState<string>(navigationState?.paymentMethod || "Cash");
+  const [paymentVendor, setPaymentVendor] = useState<string>(navigationState?.paymentVendor || "");
+  const [amount, setAmount] = useState<string>(navigationState?.amount?.toString() || "");
   const [details, setDetails] = useState<string>("");
-  const [creditAvailable, setCreditAvailable] = useState<number>(5906); // This should come from API
+  const [creditAvailable, setCreditAvailable] = useState<number>(navigationState?.creditAvailable || 0);
 
   const paymentTableColumns: TableColumn<PaymentRow>[] = [
     {
@@ -223,38 +282,40 @@ const PaymentDetails: React.FC = () => {
         <Box sx={{ display: "flex", gap: "8px", alignItems: "center" }}>
           {editingRowId === row.id ? (
             <>
-              <Button
-                size="small"
-                variant="contained"
+              <Box
                 onClick={() => {
                   setPendingSaveId(row.id);
                   setIsSaveConfirmationOpen(true);
                 }}
                 sx={{
-                  backgroundColor: "#5C17E5",
-                  color: "#FFFFFF",
-                  textTransform: "none",
-                  fontSize: "12px",
-                  padding: "4px 12px",
-                  minWidth: "auto",
-                  height: "28px",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7",
-                  },
+                  cursor: 'pointer',
+                  color: "#10B981",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '6px',
+                  '&:hover': { opacity: 0.8 }
                 }}
               >
-                Save Changes
-              </Button>
-              <IconButton
-                size="small"
+                <TickMarkIcon />
+              </Box>
+              <Box
                 onClick={() => {
                   setEditingRowId(null);
                   setEditingData({});
                 }}
-                sx={{ color: "#728197" }}
+                sx={{ 
+                  cursor: 'pointer',
+                  color: "#EF4444",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '6px',
+                  '&:hover': { opacity: 0.8 }
+                }}
               >
-                <CloseIcon fontSize="small" />
-              </IconButton>
+                <CloseIcon sx={{ fontSize: '18px' }} />
+              </Box>
             </>
           ) : (
             <>

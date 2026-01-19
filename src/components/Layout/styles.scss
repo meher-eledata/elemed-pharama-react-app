@@ -44,12 +44,23 @@ body {
   align-items: stretch;
   width: 100%;
   max-width: 1200px;
+  /* Default for good screens (100% scale) */
   min-height: 90vh;
-  height: 90vh;
+  height: auto;
+
   background: white;
   box-shadow: 0 8px 32px rgba(60, 60, 100, 0.08);
   border-radius: 20px;
   margin: 0 auto;
+
+  /* For screens with less vertical space (e.g. 125% scale on 1080p, or laptops) */
+  @media (max-height: 900px) {
+    min-height: 650px;
+    /* Slightly taller */
+    max-width: 1000px;
+    /* Slightly narrower */
+    margin: auto;
+  }
 
   @media (max-width: 1024px) {
     max-width: 95%;
@@ -77,16 +88,18 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: none;
+  background: white;
   box-sizing: border-box;
-  width: 100%;
+  flex: 1;
+  /* Take 50% space properly */
   height: 100%;
-  padding: 24px;
+  padding: 40px;
+  /* Increased padding to match design */
 
   @media (max-width: 768px) {
     min-height: auto;
     width: 100%;
-    padding: 16px;
+    padding: 24px;
   }
 
   @media (max-width: 320px) {
@@ -97,8 +110,8 @@ body {
 .right-section {
   display: flex;
   flex-direction: row;
-  width: 100%;
-  height: 100%;
+  flex: 1;
+  /* Take 50% space properly */
   overflow: hidden;
 
   @media (max-width: 768px) {
