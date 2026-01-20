@@ -233,6 +233,12 @@ export const executeSave = async ({
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
       customer_id: customerId, // Must be valid number > 0
+      customer_name: customerName,
+      customer_mobile: customerMobile,
+      customer_city: customerCity,
+      doctor_name: doctorName,
+      doctor_mobile: doctorMobile,
+      doctor_email: doctorEmail,
       patient_type: patientTypeNumber, // 0 for "In Patient", 1 for "Out Patient"
       invoice_number: invoiceNumberForBackend, // Send numeric part only (e.g., "12" instead of "INV12")
       // doctor_id: undefined, // Optional - can be added later if needed

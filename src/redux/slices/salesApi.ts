@@ -205,6 +205,10 @@ export interface SubmitSaleRequest {
   customer_id?: number; // Optional - backend may accept name/mobile instead
   customer_name?: string; // Send name if ID not available
   customer_mobile?: string; // Send mobile if ID not available
+  customer_city?: string; // Send city if ID not available
+  doctor_name?: string; // Name of the doctor
+  doctor_mobile?: string; // Mobile of the doctor
+  doctor_email?: string; // Email of the doctor
   invoice_number?: string | null; // Invoice number entered by user (for return flow - invoice already stored in DB)
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   patient_type?: number; // 0 for "In Patient", 1 for "Out Patient"

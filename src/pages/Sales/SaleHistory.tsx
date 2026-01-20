@@ -34,11 +34,17 @@ export interface SalesHistoryItem {
   invoiceDate: string;
   customerName: string;
   customerMobile: string;
+  customerCity: string;
   doctorName: string;
+  doctorMobile: string;
+  doctorEmail: string;
   username: string;
   patientType?: string; // Patient type: "In Patient" or "Out Patient"
   totalAmount: number;
-  // Return information (to be populated from API)
+  totalReturnedAmount: number;
+  // Return information (populated directly from backend list)
+  hasReturn: boolean;
+  lastReturnStatus: string | null;
   returnInfo?: {
     totalItems: number; // Total items in invoice
     returnedItems: number; // Total items returned
@@ -122,10 +128,16 @@ export default function SaleHistory() {
       invoiceDate: item.invoiceDate || '',
       customerName: item.customerName || '',
       customerMobile: item.customerMobile || '',
+      customerCity: item.customerCity || '',
       doctorName: item.doctorName || '',
+      doctorMobile: item.doctorMobile || '',
+      doctorEmail: item.doctorEmail || '',
       username: item.username || 'Guest',
       patientType: item.patientType || 'Out Patient', // Default to "Out Patient" if not specified
       totalAmount: item.totalAmount || 0,
+      totalReturnedAmount: 0,
+      hasReturn: false,
+      lastReturnStatus: null,
     }));
     const savedItemsMap = new Map<string, SalesHistoryItem>();
     savedItems.forEach(item => {
@@ -198,35 +210,64 @@ export default function SaleHistory() {
         invoiceNumber: formattedInvoiceNumber, // Use "INV" format, not "RB"
         invoiceDate: invoiceDate,
         customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
-        customerMobile: 'N/A',
+        customerMobile: invoice.customer_mobile || 'N/A',
+        customerCity: invoice.customer_city || 'N/A',
         doctorName: invoice.doctor_name || (invoice.doctor_id ? `Doctor ${invoice.doctor_id}` : 'N/A'),
-        username: `User ${invoice.created_by}`,
+        doctorMobile: invoice.doctor_mobile || 'N/A',
+        doctorEmail: invoice.doctor_email || 'N/A',
+        username: invoice.created_by ? (isNaN(Number(invoice.created_by)) ? invoice.created_by : `User ${invoice.created_by}`) : 'Guest',
         patientType: patientType,
         totalAmount: parseFloat(invoice.total_amount) || 0,
+        totalReturnedAmount: parseFloat(invoice.total_returned_amount) || 0,
+        hasReturn: invoice.has_return || false,
+        lastReturnStatus: invoice.last_return_status || null,
       };
     });
     
-    // Combine and remove duplicates (prefer savedItems over apiItems for same invoice number)
-    // Use Map for efficient O(1) lookup instead of Set + array iteration
+    // Combine and remove duplicates
+    // STRATEGY: 
+    // 1. Add API items first (these are the source of truth for return status)
+    // 2. Add saved items ONLY if they don't exist in the API yet (e.g., new sales not yet synced)
     const resultMap = new Map<string, SalesHistoryItem>();
     
-    // First add all saved items (these take priority)
-    uniqueSavedItems.forEach(item => {
+    // First add all API items (source of truth for return status)
+    apiItems.forEach(item => {
       if (item.invoiceNumber) {
-        resultMap.set(item.invoiceNumber, item);
+        // Look for this item in local storage to see if we have names the API might be missing
+        const savedItem = uniqueSavedItems.find(s => s.invoiceNumber === item.invoiceNumber);
+        
+        if (savedItem) {
+          resultMap.set(item.invoiceNumber, {
+            ...item,
+            // If API has null names/mobile, use the ones from local storage
+            customerName: (item.customerName === 'N/A' || !item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
+            customerMobile: (item.customerMobile === 'N/A' || !item.customerMobile) ? (savedItem.customerMobile || item.customerMobile) : item.customerMobile,
+            customerCity: (item.customerCity === 'N/A' || !item.customerCity) ? (savedItem.customerCity || item.customerCity) : item.customerCity,
+            doctorName: (item.doctorName === 'N/A' || !item.doctorName) ? (savedItem.doctorName || item.doctorName) : item.doctorName,
+            doctorMobile: (item.doctorMobile === 'N/A' || !item.doctorMobile) ? (savedItem.doctorMobile || item.doctorMobile) : item.doctorMobile,
+            doctorEmail: (item.doctorEmail === 'N/A' || !item.doctorEmail) ? (savedItem.doctorEmail || item.doctorEmail) : item.doctorEmail,
+          });
+        } else {
+          resultMap.set(item.invoiceNumber, item);
+        }
       }
     });
     
-    // Then add api items that don't have duplicates in saved items
-    apiItems.forEach(item => {
+    // Then add saved items that aren't in the API yet
+    uniqueSavedItems.forEach(item => {
       if (item.invoiceNumber && !resultMap.has(item.invoiceNumber)) {
-        resultMap.set(item.invoiceNumber, item);
+        // Add default return info for local-only items
+        resultMap.set(item.invoiceNumber, {
+          ...item,
+          hasReturn: false,
+          lastReturnStatus: null
+        });
       }
     });
     
     const finalItems = Array.from(resultMap.values());
     
-    // Add return info from returnInfoMap
+    // Merge extra return info from returnInfoMap if available (from detailed fetch)
     return finalItems.map(item => {
       const returnInfo = returnInfoMap.get(item.id);
       if (returnInfo) {
@@ -323,34 +364,77 @@ export default function SaleHistory() {
   
 
   useEffect(() => {
-    if (selectedInvoiceId) {
-      const savedItem = savedHistory.find((item: any) => item.id === selectedInvoiceId);
-      
-      if (savedItem) {
-        setInvoiceDetails(savedItem);
-      } else {
-        const currentInvoice = salesHistoryData.find(item => item.id === selectedInvoiceId);
-        const mockInvoice = {
-          customerName: currentInvoice?.customerName || 'N/A',
-          customerMobile: currentInvoice?.customerMobile || 'N/A',
-          customerCity: '',
-          doctorName: currentInvoice?.doctorName || 'N/A',
-          doctorMobile: '',
-          doctorEmail: '',
-          paymentMode: 'Cash',
-          insuranceCompany: '',
-          invoiceNumber: currentInvoice?.invoiceNumber || '',
-          invoiceDate: currentInvoice?.invoiceDate || '',
-          totalValue: (currentInvoice?.totalAmount || 0).toString(),
-          totalDiscount: '0',
-          taxAmount: '0',
-          totalPayableAmount: (currentInvoice?.totalAmount || 0).toString(),
-          items: []
-        };
-        setInvoiceDetails(mockInvoice);
+    const fetchFullDetails = async () => {
+      if (!selectedInvoiceId) return;
+
+      // 1. Start with what we have in the merged list
+      const mergedItem = salesHistoryData.find(item => item.id === selectedInvoiceId);
+      if (!mergedItem) return;
+
+      const initialDetails = {
+        customerName: mergedItem.customerName || 'N/A',
+        customerMobile: mergedItem.customerMobile || 'N/A',
+        customerCity: mergedItem.customerCity || '',
+        doctorName: mergedItem.doctorName || 'N/A',
+        doctorMobile: mergedItem.doctorMobile === 'N/A' ? '' : (mergedItem.doctorMobile || ''),
+        doctorEmail: mergedItem.doctorEmail === 'N/A' ? '' : (mergedItem.doctorEmail || ''),
+        paymentMode: (mergedItem as any).paymentMode || 'Cash',
+        insuranceCompany: (mergedItem as any).insuranceCompany || '',
+        invoiceNumber: mergedItem.invoiceNumber || '',
+        invoiceDate: mergedItem.invoiceDate || '',
+        totalValue: (mergedItem.totalAmount || 0).toString(),
+        totalDiscount: (mergedItem as any).totalDiscount || '0',
+        taxAmount: (mergedItem as any).taxAmount || '0',
+        totalPayableAmount: (mergedItem.totalAmount || 0).toString(),
+        items: (mergedItem as any).items || []
+      };
+
+      setInvoiceDetails(initialDetails);
+
+      // 2. Fetch full details from API to get fields missing from the main list (like doctor mobile/email)
+      try {
+        console.log('🔍 Fetching full invoice details for preview:', selectedInvoiceId);
+        const result = await getInvoiceDetails({ invoice_id: selectedInvoiceId }).unwrap();
+        
+        if (result) {
+          console.log('✅ Full details received:', result);
+          setInvoiceDetails((prev: any) => ({
+            ...prev,
+            customerName: result.customer_name || prev.customerName,
+            customerMobile: result.customer_mobile || prev.customerMobile,
+            customerCity: result.customer_city || prev.customerCity,
+            doctorName: result.doctor_name || prev.doctorName,
+            doctorMobile: result.doctor_mobile || prev.doctorMobile,
+            doctorEmail: result.doctor_email || prev.doctorEmail,
+            paymentMode: result.payment_mode || prev.paymentMode,
+            insuranceCompany: result.insurance_company || prev.insuranceCompany,
+            totalValue: result.invoice?.total_amount?.toString() || result.total_value?.toString() || prev.totalValue,
+            totalDiscount: result.invoice?.discount?.toString() || result.total_discount?.toString() || prev.totalDiscount,
+            taxAmount: result.tax_amount?.toString() || prev.taxAmount,
+            totalPayableAmount: result.invoice?.total_amount?.toString() || result.total_payable_amount?.toString() || prev.totalPayableAmount,
+            items: result.lines ? result.lines.map((line: any) => ({
+              id: line.invoice_line_id?.toString() || line.id?.toString() || '',
+              productName: line.name || line.product_name || '',
+              quantity: line.quantity?.toString() || '0',
+              unitPrice: line.rate?.toString() || '0',
+              mrp: line.mrp?.toString() || '0',
+              discountPercent: line.discount_percent?.toString() || '0',
+              cgstPercent: line.cgst_percent?.toString() || '0',
+              sgstPercent: line.sgst_percent?.toString() || '0',
+              igstPercent: line.igst_percent?.toString() || '0',
+              amount: line.selling_price?.toString() || '0',
+              batch: line.batch_number || '',
+              type: line.product_type || 'N/A'
+            })) : prev.items
+          }));
+        }
+      } catch (error) {
+        console.error('❌ Error fetching full invoice details:', error);
       }
-    }
-  }, [selectedInvoiceId, savedHistory, salesHistoryData]);
+    };
+
+    fetchFullDetails();
+  }, [selectedInvoiceId, salesHistoryData, getInvoiceDetails]);
 
   const filteredData = useMemo(() => {
     let filtered = [...salesHistoryData];
@@ -464,14 +548,48 @@ export default function SaleHistory() {
   // Table columns configuration
   // Helper function to get return status
   const getReturnStatus = (item: SalesHistoryItem) => {
-    if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
-      return { status: 'none', label: 'No return', returned: 0, total: item.returnInfo?.totalItems || 0 };
+    // Priority 1: Use direct status from backend list if available
+    if (item.hasReturn && item.lastReturnStatus) {
+      let statusText = item.lastReturnStatus;
+      const statusLower = statusText.toLowerCase();
+      
+      // If backend just says "Completed", let's try to be more specific
+      if (statusLower === 'completed' || statusLower === 'paid') {
+        // Use a small tolerance (0.01) for decimal comparison
+        const isFullByAmount = Math.abs(item.totalReturnedAmount - item.totalAmount) < 0.01 && item.totalAmount > 0;
+        
+        if (isFullByAmount) {
+          statusText = 'Fully Returned';
+        } else if (item.returnInfo) {
+          // Fallback to detailed returnInfo if available
+          statusText = item.returnInfo.isFullReturn ? 'Fully Returned' : 'Partly Returned';
+        } else {
+          statusText = 'Partly Returned';
+        }
+      }
+
+      const isFull = statusText.toLowerCase().includes('full');
+      const returned = item.returnInfo?.returnedItems || 0;
+      const total = item.returnInfo?.totalItems || 0;
+      
+      return { 
+        status: isFull ? 'full' as const : 'partial' as const, 
+        label: statusText, 
+        returned, 
+        total 
+      };
     }
+
+    // Priority 2: Fallback to calculated returnInfo if API detail fetching is enabled
+    if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
+      return { status: 'none' as const, label: 'No return', returned: 0, total: 0 };
+    }
+    
     const { returnedItems, totalItems, isFullReturn } = item.returnInfo;
     if (isFullReturn) {
-      return { status: 'full', label: 'All items returned', returned: returnedItems, total: totalItems };
+      return { status: 'full' as const, label: 'All items returned', returned: returnedItems, total: totalItems };
     }
-    return { status: 'partial', label: 'Some items returned', returned: returnedItems, total: totalItems };
+    return { status: 'partial' as const, label: 'Some items returned', returned: returnedItems, total: totalItems };
   };
   
   // Handler to navigate to return details
@@ -704,7 +822,7 @@ export default function SaleHistory() {
                 placement="top"
               >
                 <Badge
-                  badgeContent={returnStatus.status === 'partial' ? `${returnStatus.returned}/${returnStatus.total}` : '!'}
+                  badgeContent={returnStatus.status === 'partial' && returnStatus.total > 0 ? `${returnStatus.returned}/${returnStatus.total}` : '!'}
                   color={returnStatus.status === 'full' ? 'error' : 'warning'}
                   sx={{
                     '& .MuiBadge-badge': {
