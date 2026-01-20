@@ -222,7 +222,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 }
                 variant="outlined"
                 sx={{
-                  width: "300px",
+                  width: "200px",
                   "& .MuiOutlinedInput-root": {
                     height: "40px",
                     borderRadius: "18px",
@@ -313,7 +313,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         </Box>
 
         {/* Quantity */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>{SALES_PAGE_LABELS.QUANTITY_LABEL}</Typography>
           <Box sx={{
             display: 'flex',
@@ -394,7 +394,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
 
         {/* Brand Dropdown */}
         {showBrandDropdown && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>Brand</Typography>
             <FormControl size="small" sx={{ minWidth: '140px', width: '140px', height: '40px' }}>
               <Select
@@ -450,7 +450,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
 
         {/* Type Dropdown */}
         {showTypeDropdown && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>{SALES_PAGE_LABELS.TYPE_LABEL}</Typography>
             <FormControl size="small" sx={{ minWidth: '140px', width: '140px', height: '40px' }}>
               <Select
@@ -506,9 +506,9 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
 
         {/* Batch Dropdown */}
         {showBatchDropdown && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>Batch Number</Typography>
-            <FormControl size="small" sx={{ minWidth: '180px', width: '180px', height: '40px' }}>
+            <FormControl size="small" sx={{ minWidth: '160px', width: '160px', height: '40px' }}>
               <Select
                 value={batch || ""}
                 onChange={(e) => onBatchChange(e.target.value)}
@@ -570,7 +570,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         )}
 
         {/* Discount */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>{SALES_PAGE_LABELS.DISCOUNT_LABEL}</Typography>
           <TextField
             value={discount}
@@ -624,7 +624,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
 
         {/* Discount Authorized By - appears when discount > 0 (mandatory) */}
         {discount > 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
               Discount Authorized by <span style={{ color: 'red' }}>*</span>
             </Typography>
@@ -705,7 +705,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   placeholder="Search doctor name..."
                   variant="outlined"
                   sx={{
-                    width: "240px",
+                    width: "200px",
                     "& .MuiOutlinedInput-root": {
                       height: "40px",
                       borderRadius: "18px",
@@ -768,7 +768,6 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         variant="primary"
         size="medium"
         sx={{
-          marginTop: '20px',
           borderRadius: '12px',
           opacity: (!!validationError || !validatedData) ? 0.6 : 1, // Visual indicator when disabled
         }}

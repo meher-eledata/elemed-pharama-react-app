@@ -4,6 +4,7 @@ export const SALES_HISTORY_LABELS = {
   SHOW_FILTERS: 'Show filters',
   HIDE_FILTERS: 'Hide filters',
   FILTER_DOCTOR_NAME: 'Doctor Name',
+  FILTER_CUSTOMER_NAME: 'Customer Name',
   FILTER_USERNAME: 'Username',
   FILTER_DATE_RANGE: 'Date Range',
   FILTER_RESET: 'Reset filters',

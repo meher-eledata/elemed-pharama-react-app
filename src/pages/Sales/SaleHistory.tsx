@@ -1,12 +1,13 @@
 import React, { useState, useMemo, ChangeEvent, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Box, Typography, IconButton, Autocomplete, TextField, InputAdornment, Badge, Tooltip, Chip } from '@mui/material';
+import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip, Chip, FormControl, Autocomplete } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import dayjs, { Dayjs } from 'dayjs';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
+import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
@@ -92,6 +93,7 @@ export default function SaleHistory() {
   });
 
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   
@@ -368,6 +370,12 @@ export default function SaleHistory() {
       );
     }
 
+    if (selectedCustomer) {
+      filtered = filtered.filter(item => 
+        item.customerName.toLowerCase().includes(selectedCustomer.toLowerCase())
+      );
+    }
+
     if (selectedUsername) {
       filtered = filtered.filter(item => 
         item.username.toLowerCase().includes(selectedUsername.toLowerCase())
@@ -410,6 +418,11 @@ export default function SaleHistory() {
     return doctors.sort();
   }, [salesHistoryData]);
 
+  const getUniqueCustomers = useMemo(() => {
+    const customers = [...new Set(salesHistoryData.map(item => item.customerName))];
+    return customers.sort();
+  }, [salesHistoryData]);
+
   const getUniqueUsernames = useMemo(() => {
     const usernames = [...new Set(salesHistoryData.map(item => item.username))];
     return usernames.sort();
@@ -417,6 +430,7 @@ export default function SaleHistory() {
 
   const clearAllFilters = () => {
     setSelectedDoctor(null);
+    setSelectedCustomer(null);
     setSelectedUsername(null);
     setDateRange([null, null]);
     setCurrentSearchTerm('');
@@ -1127,69 +1141,82 @@ export default function SaleHistory() {
           <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             {/* Doctor Name Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_DOCTOR_NAME}</Typography> {/* 12px = 0.75rem */}
+              <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_DOCTOR_NAME}</Typography>
               <Autocomplete
-                value={selectedDoctor}
-                onChange={(event, newValue) => setSelectedDoctor(newValue)}
                 options={getUniqueDoctors}
-                freeSolo
-                forcePopupIcon
-                clearOnEscape
-                disableClearable={false}
-                isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                value={selectedDoctor}
+                onChange={(_, newValue) => setSelectedDoctor(newValue)}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder={SALES_HISTORY_LABELS.SEARCH_DOCTOR_PLACEHOLDER}
+                    size="small"
                     sx={{
                       width: 220,
-                      height: '40px',
-                      borderRadius: '12px',
-                      backgroundColor: '#ffffff',
                       '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        borderRadius: '12px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: '1px solid #D1D5DB',
-                        },
-                        '&:hover': {
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                        '&.Mui-focused': {
-                          outline: 'none',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                      },
-                      '& .MuiInputBase-input': {
+                        height: 'auto',
+                        borderRadius: '30px',
+                        backgroundColor: '#ffffff',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontSize: '14px',
                         color: '#1A212B',
-                        fontWeight: 500,
-                      },
-                    }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
+                        '& fieldset': { borderColor: '#D1D5DB' },
+                        '&:hover fieldset': { borderColor: '#D1D5DB' },
+                        '&.Mui-focused fieldset': { borderColor: '#D1D5DB' },
+                      }
                     }}
                   />
                 )}
                 ListboxProps={{
                   sx: {
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid #E6ECF5',
+                    maxHeight: '300px',
                     '& .MuiAutocomplete-option': {
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      '&:hover': { backgroundColor: '#5C17E5', color: '#ffffff' },
+                      '&[aria-selected="true"]': { backgroundColor: '#F3F4F6' }
+                    }
+                  }
+                }}
+              />
+            </Box>
+
+            {/* Customer Name Filter */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_CUSTOMER_NAME}</Typography>
+              <Autocomplete
+                options={getUniqueCustomers}
+                value={selectedCustomer}
+                onChange={(_, newValue) => setSelectedCustomer(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search customer..."
+                    size="small"
+                    sx={{
+                      width: 220,
+                      '& .MuiOutlinedInput-root': {
+                        height: 'auto',
+                        borderRadius: '30px',
+                        backgroundColor: '#ffffff',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontSize: '14px',
+                        color: '#1A212B',
+                        '& fieldset': { borderColor: '#D1D5DB' },
+                        '&:hover fieldset': { borderColor: '#D1D5DB' },
+                        '&.Mui-focused fieldset': { borderColor: '#D1D5DB' },
                       }
+                    }}
+                  />
+                )}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: '300px',
+                    '& .MuiAutocomplete-option': {
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      '&:hover': { backgroundColor: '#5C17E5', color: '#ffffff' },
+                      '&[aria-selected="true"]': { backgroundColor: '#F3F4F6' }
                     }
                   }
                 }}
@@ -1198,69 +1225,40 @@ export default function SaleHistory() {
 
             {/* Username Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Typography sx={{ fontSize: '12px', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_USERNAME}</Typography>
+              <Typography sx={{ fontSize: '12px', color: '#728197' }}>{SALES_HISTORY_LABELS.FILTER_USERNAME}</Typography>
               <Autocomplete
-                value={selectedUsername}
-                onChange={(event, newValue) => setSelectedUsername(newValue)}
                 options={getUniqueUsernames}
-                freeSolo
-                forcePopupIcon
-                clearOnEscape
-                disableClearable={false}
-                isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                value={selectedUsername}
+                onChange={(_, newValue) => setSelectedUsername(newValue)}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     placeholder={SALES_HISTORY_LABELS.SEARCH_USERNAME_PLACEHOLDER}
+                    size="small"
                     sx={{
                       width: 220,
-                      height: '40px',
-                      borderRadius: '12px',
-                      backgroundColor: '#ffffff',
                       '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        borderRadius: '12px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          border: '1px solid #D1D5DB',
-                        },
-                        '&:hover': {
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                        '&.Mui-focused': {
-                          outline: 'none',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #D1D5DB',
-                          },
-                        },
-                      },
-                      '& .MuiInputBase-input': {
+                        height: 'auto',
+                        borderRadius: '30px',
+                        backgroundColor: '#ffffff',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontSize: '14px',
                         color: '#1A212B',
-                        fontWeight: 500,
-                      },
-                    }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
+                        '& fieldset': { borderColor: '#D1D5DB' },
+                        '&:hover fieldset': { borderColor: '#D1D5DB' },
+                        '&.Mui-focused fieldset': { borderColor: '#D1D5DB' },
+                      }
                     }}
                   />
                 )}
                 ListboxProps={{
                   sx: {
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid #E6ECF5',
+                    maxHeight: '300px',
                     '& .MuiAutocomplete-option': {
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        color: '#ffffff',
-                      }
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      '&:hover': { backgroundColor: '#5C17E5', color: '#ffffff' },
+                      '&[aria-selected="true"]': { backgroundColor: '#F3F4F6' }
                     }
                   }
                 }}

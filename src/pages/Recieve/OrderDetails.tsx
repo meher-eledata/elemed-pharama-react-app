@@ -14,6 +14,8 @@ import {
   Alert,
   Snackbar,
   Tooltip,
+  TableCell,
+  TableRow,
 } from "@mui/material";
 import { PharmaDatePicker, StandardButton } from "../../components/Common";
 import dayjs, { Dayjs } from "dayjs";
@@ -2701,6 +2703,86 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           onPageChange={setCurrentPage}
           onSortRequest={handleSortRequest}
           sortConfig={sortConfig}
+          disableFooterWrapper={true}
+          footerContent={sortedData.length > 0 && currentPage === 1 ? (() => {
+            const totalAmount = sortedData.reduce((sum, row) => {
+              let rowTotal = 0;
+              if (editingRowId === row.id) {
+                const unitPrice = typeof editingData.pp === 'number' ? editingData.pp : (typeof row.pp === 'number' ? row.pp : parseFloat(String(editingData.pp || row.pp)) || 0);
+                const qty = editingData.qtyReceived !== undefined ? editingData.qtyReceived : (row.qtyReceived || 0);
+                const cgst = typeof editingData.cgst === 'number' ? editingData.cgst : (typeof row.cgst === 'number' ? row.cgst : parseFloat(String(editingData.cgst || row.cgst)) || 0);
+                const sgst = typeof editingData.sgst === 'number' ? editingData.sgst : (typeof row.sgst === 'number' ? row.sgst : parseFloat(String(editingData.sgst || row.sgst)) || 0);
+                const igst = typeof editingData.igst === 'number' ? editingData.igst : (typeof row.igst === 'number' ? row.igst : parseFloat(String(editingData.igst || row.igst)) || 0);
+                const discount = typeof editingData.disc === 'number' ? editingData.disc : (typeof row.disc === 'number' ? row.disc : parseFloat(String(editingData.disc || row.disc)) || 0);
+
+                const baseAmount = unitPrice * qty;
+                const discountAmount = baseAmount * (discount / 100);
+                const amountAfterDiscount = baseAmount - discountAmount;
+                const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+                rowTotal = amountAfterDiscount + taxAmount;
+              } else {
+                const unitPrice = typeof row.pp === 'number' ? row.pp : parseFloat(String(row.pp)) || 0;
+                const qty = row.qtyReceived || 0;
+                const cgst = typeof row.cgst === 'number' ? row.cgst : parseFloat(String(row.cgst)) || 0;
+                const sgst = typeof row.sgst === 'number' ? row.sgst : parseFloat(String(row.sgst)) || 0;
+                const igst = typeof row.igst === 'number' ? row.igst : parseFloat(String(row.igst)) || 0;
+                const discount = typeof row.disc === 'number' ? row.disc : parseFloat(String(row.disc)) || 0;
+
+                const baseAmount = unitPrice * qty;
+                const discountAmount = baseAmount * (discount / 100);
+                const amountAfterDiscount = baseAmount - discountAmount;
+                const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+                rowTotal = (row as any).amount !== undefined && (row as any).amount !== "" && (row as any).amount !== null
+                  ? parseFloat(String((row as any).amount))
+                  : amountAfterDiscount + taxAmount;
+              }
+              return sum + rowTotal;
+            }, 0);
+
+            return (
+              <TableRow
+                sx={{
+                  backgroundColor: '#F9FAFB',
+                }}
+              >
+                <TableCell
+                  sx={{
+                    padding: '12px 16px',
+                    fontFamily: "'Lexend', sans-serif",
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    color: '#374151',
+                  }}
+                >
+                  Total:
+                </TableCell>
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell sx={{ padding: '12px 16px' }} />
+                <TableCell
+                  sx={{
+                    padding: '12px 12px',
+                    textAlign: 'left',
+                    fontFamily: "'Lexend', sans-serif",
+                    fontWeight: 600,
+                    fontSize: '16px',
+                    lineHeight: '24px',
+                    color: '#1A212B',
+                  }}
+                >
+                  ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </TableCell>
+                <TableCell sx={{ padding: '12px 16px' }} />
+              </TableRow>
+            );
+          })() : undefined}
         />
       </Box>
 

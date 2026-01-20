@@ -30,7 +30,7 @@ export const ProductSelectionContainer = styled(Box)({
   display: 'flex',
   alignItems: 'flex-end',
   justifyContent: 'space-between',
-  flexWrap: 'wrap',
+  flexWrap: 'nowrap',
   gap: '16px',
   marginBottom: '32px',
   background: '#f7f9fc',
@@ -42,7 +42,7 @@ export const ProductSelectionContainer = styled(Box)({
 export const FormFieldsContainer = styled(Box)({
   display: 'flex',
   alignItems: 'flex-end',
-  flexWrap: 'wrap',
+  flexWrap: 'nowrap',
   gap: '16px',
   flex: 1,
 });
