@@ -7,6 +7,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import theme from './components/Theme/Theme';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import 'dayjs/locale/en-gb';
 import './styles/global.scss'; // Global responsive styles
 // Removed applyDisplayScale - rem units now handle scaling naturally
 // import { applyDisplayScale } from './hooks/useDisplayScale';
@@ -21,7 +22,7 @@ ReactDOM.createRoot(root).render(
     <ThemeProvider theme={theme}>
 
     <Provider store={store}>  
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
         <App />
       </LocalizationProvider>
     </Provider>

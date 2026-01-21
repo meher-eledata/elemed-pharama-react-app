@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, TextField, IconButton, Tooltip, Select, MenuItem, FormControl, CircularProgress } from '@mui/material';
+import React from 'react';
+import { Box, TextField, IconButton, Tooltip } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
@@ -9,7 +9,6 @@ import { SALES_PAGE_CONSTANTS } from '../../config/constants/SalesPage.constants
 import DeleteNewIcon from '../../assets/DeleteNew.svg';
 import { AppDispatch } from '../../redux/store';
 import { updateItemDetails } from '../../redux/slices/cartSlice';
-import { useGetDoctorsQuery } from '../../redux/slices/salesApi';
 
 interface GetTableColumnsParams {
   editingRowId: string | null;
@@ -22,113 +21,45 @@ interface GetTableColumnsParams {
   apiProducts: any[];
 }
 
-// Discount Field Component with Authorization
+// Discount Field Component
 const DiscountField: React.FC<{
   item: Product;
   dispatch: AppDispatch;
   isEditing: boolean;
 }> = ({ item, dispatch, isEditing }) => {
-  // Note: get-doctors endpoint returns 404, so we skip this query
-  // For now, we'll work with doctor names only - ID will be undefined
-  const { data: doctors = [], isLoading: isLoadingDoctors } = useGetDoctorsQuery(undefined, { skip: true });
-
   if (!isEditing) {
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        <span>{item.discount}%</span>
-        {item.discount >= 1 && item.discountAuthorizedBy && (
-          <span style={{ fontSize: '11px', color: '#728197' }}>
-            Auth: {item.discountAuthorizedBy}
-          </span>
-        )}
-      </Box>
-    );
+    return <span>{item.discount}</span>;
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center' }}>
-      <TextField
-        value={item.discount}
-        onChange={(e) => {
-          const value = parseInt(e.target.value) || 0;
-          dispatch(updateItemDetails({
-            id: item.id,
-            updates: {
-              discount: Math.max(0, Math.min(100, value)),
-              // Clear discountAuthorizedBy and discountAuthorizedById if discount is set to 0
-              ...(value < 1 && {
-                discountAuthorizedBy: undefined,
-                discountAuthorizedById: undefined
-              })
-            }
-          }));
-        }}
-        size="small"
-        type="number"
-        inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
-        sx={{
-          width: 80,
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '8px',
-            height: '32px',
-            '&:hover fieldset': {
-              borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-            },
-            '&.Mui-focused fieldset': {
-              borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-            },
+    <TextField
+      value={item.discount}
+      onChange={(e) => {
+        const value = parseInt(e.target.value) || 0;
+        dispatch(updateItemDetails({
+          id: item.id,
+          updates: {
+            discount: Math.max(0, Math.min(100, value)),
+          }
+        }));
+      }}
+      size="small"
+      type="number"
+      inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
+      sx={{
+        width: 80,
+        '& .MuiOutlinedInput-root': {
+          borderRadius: '8px',
+          height: '32px',
+          '&:hover fieldset': {
+            borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
           },
-        }}
-      />
-      {item.discount >= 1 && (
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <Select
-            value={item.discountAuthorizedById || ""}
-            onChange={(e) => {
-              const selectedDoctor = doctors.find(d => d.id === Number(e.target.value));
-              dispatch(updateItemDetails({
-                id: item.id,
-                updates: {
-                  discountAuthorizedBy: selectedDoctor?.name || '',
-                  discountAuthorizedById: selectedDoctor?.id
-                }
-              }));
-            }}
-            displayEmpty
-            sx={{
-              height: '32px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#D1D5DB',
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
-              },
-            }}
-          >
-            <MenuItem value="">
-              <em>Discount Authorized by</em>
-            </MenuItem>
-            {isLoadingDoctors ? (
-              <MenuItem disabled>
-                <CircularProgress size={16} sx={{ mr: 1 }} />
-                Loading doctors...
-              </MenuItem>
-            ) : (
-              doctors.map((doctor) => (
-                <MenuItem key={doctor.id} value={doctor.id}>
-                  {doctor.name}
-                </MenuItem>
-              ))
-            )}
-          </Select>
-        </FormControl>
-      )}
-    </Box>
+          '&.Mui-focused fieldset': {
+            borderColor: SALES_PAGE_CONSTANTS.PRIMARY_COLOR,
+          },
+        },
+      }}
+    />
   );
 };
 

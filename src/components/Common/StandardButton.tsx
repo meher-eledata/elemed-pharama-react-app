@@ -144,6 +144,10 @@ const StandardButton: React.FC<StandardButtonProps> = ({
         textTransform: 'none',
         borderRadius: '12px',
         boxShadow: 'none',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        lineHeight: 1.5,
         '&.Mui-focusVisible': {
           ...variantStyles['&:focus'],
         },

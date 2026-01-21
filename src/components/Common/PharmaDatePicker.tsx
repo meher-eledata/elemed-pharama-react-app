@@ -3,6 +3,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
+import "dayjs/locale/en-gb";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
 export interface PharmaDatePickerProps {
@@ -22,7 +23,7 @@ export interface PharmaDatePickerProps {
 const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
   value,
   onChange,
-  placeholder = "MM/DD/YYYY",
+  placeholder = "DD/MM/YYYY",
   label,
   minDate,
   maxDate,
@@ -397,7 +398,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
   }, []);
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
       <div 
         ref={containerRef}
         onClick={(e) => {
@@ -423,7 +424,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           onClose={() => setOpen(false)}
           openTo="day"
           views={["year", "month", "day"]}
-          format="MM/DD/YYYY"
+          format="DD/MM/YYYY"
           slots={{
             openPickerIcon: CalendarTodayIcon,
           }}

@@ -6,6 +6,7 @@ export const orderLabels = {
   supplierName: 'Supplier Name',
   poNumber: 'PO Number',
   invoiceDate: 'Invoice Date',
+  invoiceAttachment: 'Invoice Attachment',
   paymentMethod: 'Payment method',
   paymentVendor: 'Payment vendor',
   transactionNumber: 'Transaction Number',
@@ -14,6 +15,8 @@ export const orderLabels = {
   // Placeholders
   enterSupplierName: 'Enter supplier name ',
   enterPoNumber: 'Enter PO number',
+  enterBatchNumber: 'Enter batch number',
+  searchByProductName: 'Search by product name',
   dateFormat: 'DD/MM/YYYY',
   selectBankVendor: 'Select bank / vendor',
   search: 'Search',
@@ -33,7 +36,12 @@ export const orderLabels = {
   
   // Buttons
   cancelButton: 'Cancel',
+  cancel: 'Cancel',
   saveButton: 'Save',
+  saveReceipt: 'Save Receipt',
+  updateReceipt: 'Update Receipt',
+  deleteReceipt: 'Delete Receipt',
+  proceedToPayment: 'Proceed to Payment',
   orderReceivedButton: 'Order Received',
   
   // Table data

@@ -237,15 +237,21 @@ export default function SaleHistory() {
         const savedItem = uniqueSavedItems.find(s => s.invoiceNumber === item.invoiceNumber);
         
         if (savedItem) {
+          // Helper to check if a value is a fallback placeholder (e.g., "Customer 123", "Doctor 456", "User 10")
+          const isFallbackValue = (value: string) => {
+            return !value || value === 'N/A' || /^Customer\s+\d+$/i.test(value) || /^Doctor\s+\d+$/i.test(value) || /^User\s+\d+$/i.test(value);
+          };
+          
           resultMap.set(item.invoiceNumber, {
             ...item,
-            // If API has null names/mobile, use the ones from local storage
-            customerName: (item.customerName === 'N/A' || !item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
+            // If API has null names/mobile or fallback placeholders, use the ones from local storage
+            customerName: isFallbackValue(item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
             customerMobile: (item.customerMobile === 'N/A' || !item.customerMobile) ? (savedItem.customerMobile || item.customerMobile) : item.customerMobile,
             customerCity: (item.customerCity === 'N/A' || !item.customerCity) ? (savedItem.customerCity || item.customerCity) : item.customerCity,
-            doctorName: (item.doctorName === 'N/A' || !item.doctorName) ? (savedItem.doctorName || item.doctorName) : item.doctorName,
+            doctorName: isFallbackValue(item.doctorName) ? (savedItem.doctorName || item.doctorName) : item.doctorName,
             doctorMobile: (item.doctorMobile === 'N/A' || !item.doctorMobile) ? (savedItem.doctorMobile || item.doctorMobile) : item.doctorMobile,
             doctorEmail: (item.doctorEmail === 'N/A' || !item.doctorEmail) ? (savedItem.doctorEmail || item.doctorEmail) : item.doctorEmail,
+            username: isFallbackValue(item.username) ? (savedItem.username || item.username) : item.username,
           });
         } else {
           resultMap.set(item.invoiceNumber, item);

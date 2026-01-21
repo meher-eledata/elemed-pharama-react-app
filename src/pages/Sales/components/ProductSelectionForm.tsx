@@ -762,7 +762,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
 
       {/* Add to Cart Button */}
       <StandardButton
-        startIcon={<img src={AddCartIcon} alt="Add to Cart" style={{ width: '16px', height: '16px' }} />}
+        startIcon={<img src={AddCartIcon} alt="Add to Cart" style={{ width: '16px', height: '16px', flexShrink: 0 }} />}
         onClick={onAddToCart}
         disabled={isValidating} // Only disable when actively validating, allow clicks to show warnings
         variant="primary"
@@ -770,6 +770,8 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         sx={{
           borderRadius: '12px',
           opacity: (!!validationError || !validatedData) ? 0.6 : 1, // Visual indicator when disabled
+          minWidth: '140px', // Fixed width to prevent layout shift across systems
+          flexShrink: 0, // Prevent button from shrinking
         }}
       >
         {isValidating ? 'Validating...' : SALES_PAGE_LABELS.ADD_TO_CART_BUTTON}
