@@ -267,50 +267,43 @@ const SalesReceipt: React.FC = () => {
                   const quantity = parseFloat(line.quantity || '1');
                   const baseAmount = unitPrice * quantity;
                   
-                  // Calculate discount percentage - API returns absolute discount amount
+                  // Calculate discount percentage - API now returns percentage values (0-100)
                   let discountPercentValue = '0';
                   if (line.discount_percent !== undefined && line.discount_percent !== null) {
                     discountPercentValue = line.discount_percent.toString();
                   } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
                     discountPercentValue = line.discountPercent.toString();
-                  } else if (line.discount !== undefined && line.discount !== null && baseAmount > 0) {
-                    // API returns absolute discount amount, calculate percentage
-                    const discountAmount = parseFloat(line.discount);
-                    // If discount amount is greater than base amount, it's likely already a percentage value
-                    if (discountAmount > baseAmount) {
-                      discountPercentValue = discountAmount.toString();
-                    } else {
-                      // Calculate percentage from absolute amount
-                      discountPercentValue = ((discountAmount / baseAmount) * 100).toFixed(2);
-                    }
+                  } else if (line.discount !== undefined && line.discount !== null) {
+                    // API returns percentage value directly (e.g., 2 for 2%)
+                    discountPercentValue = parseFloat(line.discount).toString();
                   }
 
                   // Calculate discounted amount (base amount after discount)
-                  const discountAmount = parseFloat(line.discount || '0');
-                  const discountedAmount = baseAmount - discountAmount;
+                  const discountPercent = parseFloat(discountPercentValue || '0');
+                  const discountedAmount = baseAmount * (1 - discountPercent / 100);
                   
                   let cgstPercent = '0';
                   if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
                     cgstPercent = line.cgst_percent.toString();
-                  } else if (line.cgst !== undefined && line.cgst !== null && discountedAmount > 0) {
-                    const cgstAmount = parseFloat(line.cgst);
-                    cgstPercent = ((cgstAmount / discountedAmount) * 100).toFixed(2);
+                  } else if (line.cgst !== undefined && line.cgst !== null) {
+                    // API returns percentage value directly (e.g., 9 for 9%)
+                    cgstPercent = parseFloat(line.cgst).toString();
                   }
 
                   let sgstPercent = '0';
                   if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
                     sgstPercent = line.sgst_percent.toString();
-                  } else if (line.sgst !== undefined && line.sgst !== null && discountedAmount > 0) {
-                    const sgstAmount = parseFloat(line.sgst);
-                    sgstPercent = ((sgstAmount / discountedAmount) * 100).toFixed(2);
+                  } else if (line.sgst !== undefined && line.sgst !== null) {
+                    // API returns percentage value directly (e.g., 9 for 9%)
+                    sgstPercent = parseFloat(line.sgst).toString();
                   }
 
                   let igstPercent = '0';
                   if (line.igst_percent !== undefined && line.igst_percent !== null) {
                     igstPercent = line.igst_percent.toString();
-                  } else if (line.igst !== undefined && line.igst !== null && discountedAmount > 0) {
-                    const igstAmount = parseFloat(line.igst);
-                    igstPercent = ((igstAmount / discountedAmount) * 100).toFixed(2);
+                  } else if (line.igst !== undefined && line.igst !== null) {
+                    // API returns percentage value directly (e.g., 0 for 0%)
+                    igstPercent = parseFloat(line.igst).toString();
                   }
 
                   const originalQty = parseFloat(line.quantity || '0');

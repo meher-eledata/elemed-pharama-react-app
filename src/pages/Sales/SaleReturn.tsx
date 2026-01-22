@@ -130,6 +130,13 @@ export default function SaleReturn() {
       }
     }
     
+    // IMPORTANT: Log what data we have to debug the issue
+    console.log('📋 invoiceData received:', {
+      invoiceId: invoiceData.invoiceId,
+      invoiceNumber: invoiceData.invoiceNumber,
+      invoiceIdToFetch,
+    });
+    
     if (!invoiceIdToFetch && invoiceData.invoiceNumber) {
       let cleanedNumber = invoiceData.invoiceNumber
         .replace(/^(RB|INV-?)/i, '') 
@@ -254,8 +261,8 @@ export default function SaleReturn() {
               } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
                 discountPercentValue = line.discountPercent.toString();
               } else if (line.discount !== undefined && line.discount !== null) {
-                const discountValue = parseFloat(line.discount);
-                discountPercentValue = (discountValue > 1 ? discountValue : discountValue * 100).toString();
+                // API now returns percentage value directly (e.g., 3 for 3%)
+                discountPercentValue = parseFloat(line.discount).toString();
               }
 
           
@@ -290,10 +297,9 @@ export default function SaleReturn() {
                 cgstPercentValue = line.cgst_percent.toString();
               } else if (line.cgstPercent !== undefined && line.cgstPercent !== null) {
                 cgstPercentValue = line.cgstPercent.toString();
-              } else if (line.cgst !== undefined && line.cgst !== null && discountedAmount > 0) {
-                const cgstAmount = parseFloat(line.cgst);
-                cgstPercentValue = ((cgstAmount / discountedAmount) * 100).toFixed(2);
-                console.log('📊 Calculated CGST percent from absolute amount:', cgstPercentValue);
+              } else if (line.cgst !== undefined && line.cgst !== null) {
+                // API now returns percentage value directly (e.g., 9 for 9%)
+                cgstPercentValue = parseFloat(line.cgst).toString();
               }
               
               let sgstPercentValue = '0';
@@ -304,11 +310,9 @@ export default function SaleReturn() {
                 sgstPercentValue = line.sgst_percent.toString();
               } else if (line.sgstPercent !== undefined && line.sgstPercent !== null) {
                 sgstPercentValue = line.sgstPercent.toString();
-              } else if (line.sgst !== undefined && line.sgst !== null && discountedAmount > 0) {
-                // Calculate percentage from absolute amount (fallback)
-                const sgstAmount = parseFloat(line.sgst);
-                sgstPercentValue = ((sgstAmount / discountedAmount) * 100).toFixed(2);
-                console.log('📊 Calculated SGST percent from absolute amount:', sgstPercentValue);
+              } else if (line.sgst !== undefined && line.sgst !== null) {
+                // API now returns percentage value directly (e.g., 9 for 9%)
+                sgstPercentValue = parseFloat(line.sgst).toString();
               }
               
               let igstPercentValue = '0';
@@ -319,10 +323,9 @@ export default function SaleReturn() {
                 igstPercentValue = line.igst_percent.toString();
               } else if (line.igstPercent !== undefined && line.igstPercent !== null) {
                 igstPercentValue = line.igstPercent.toString();
-              } else if (line.igst !== undefined && line.igst !== null && discountedAmount > 0) {
-                const igstAmount = parseFloat(line.igst);
-                igstPercentValue = ((igstAmount / discountedAmount) * 100).toFixed(2);
-                console.log('📊 Calculated IGST percent from absolute amount:', igstPercentValue);
+              } else if (line.igst !== undefined && line.igst !== null) {
+                // API now returns percentage value directly (e.g., 0 for 0%)
+                igstPercentValue = parseFloat(line.igst).toString();
               }
 
               const returnQty = originalQty || quantity || 0;
@@ -414,6 +417,21 @@ export default function SaleReturn() {
               
               return finalItem;
             });
+            
+            // Detailed debugging before setting returnItems
+            console.group('🔍 DEBUG: About to set returnItems');
+            console.log(`Total items from API: ${items.length}`);
+            items.forEach((item, idx) => {
+              console.log(`Return Item ${idx}:`, {
+                productName: item.productName,
+                invoice_line_id: item.invoice_line_id,
+                id: item.id,
+                hasInvoiceLineId: !!item.invoice_line_id,
+                type: typeof item.invoice_line_id,
+              });
+            });
+            console.groupEnd();
+            
             setReturnItems(items);
             return; // Successfully loaded from API, exit early
           }
@@ -704,6 +722,20 @@ export default function SaleReturn() {
 
     console.log('✅ Validation passed, processing return...');
     console.log('📋 Selected items:', selectedItems);
+    
+    // Detailed debugging of selected items and their invoice_line_ids
+    console.group('🔍 DEBUG: Selected Items Details');
+    selectedItems.forEach((item, idx) => {
+      console.log(`Item ${idx}:`, {
+        productName: item.productName,
+        invoice_line_id: item.invoice_line_id,
+        id: item.id,
+        returnQuantity: item.returnQuantity,
+        type_invoice_line_id: typeof item.invoice_line_id,
+        hasInvoiceLineId: !!item.invoice_line_id,
+      });
+    });
+    console.groupEnd();
 
     try {
       // Try to get invoice_line_id from the item
@@ -745,7 +777,7 @@ export default function SaleReturn() {
           }
           
           const line = {
-            invoice_line_id: item.invoice_line_id,
+            invoice_line_id: Number(item.invoice_line_id),
             batch_number: item.batch || '',
             quantity: parseInt(item.returnQuantity) || 0,
             restock_action: 'RESTOCK', 
@@ -754,7 +786,11 @@ export default function SaleReturn() {
           return line;
         })
         .filter((line): line is NonNullable<typeof line> => line !== null)
-        .filter(line => line.invoice_line_id > 0 && line.quantity > 0);
+        .filter(line => {
+          const hasValidId = line.invoice_line_id && Number(line.invoice_line_id) > 0;
+          const hasValidQty = line.quantity && line.quantity > 0;
+          return hasValidId && hasValidQty;
+        });
 
       console.log('📦 Processed lines:', lines);
 
@@ -1003,8 +1039,38 @@ export default function SaleReturn() {
         <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
           Select returned products
         </Typography>
+        
+        {/* Check if all items have been returned */}
+        {returnItems.length > 0 && returnItems.every(item => {
+          const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
+            ? item.refundable_quantity
+            : parseInt(item.originalQuantity) || 0;
+          return refundableQty === 0;
+        }) && (
+          <Box sx={{
+            mb: 2,
+            p: 2,
+            bgcolor: '#FEF3C7',
+            border: '1px solid #FCD34D',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5
+          }}>
+            <Typography variant="body2" sx={{ color: '#92400E', fontWeight: 500 }}>
+              ℹ️ All items in this invoice have already been fully returned. No further returns are possible.
+            </Typography>
+          </Box>
+        )}
+        
         <ReusableTable
-          data={returnItems}
+          data={returnItems.filter(item => {
+            // Filter to show only items with refundable quantity > 0
+            const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
+              ? item.refundable_quantity
+              : parseInt(item.originalQuantity) || 0;
+            return refundableQty > 0;
+          })}
           columns={[
             {
               key: 'checkbox',

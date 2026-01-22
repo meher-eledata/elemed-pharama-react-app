@@ -194,7 +194,7 @@ export const executeSave = async ({
         batch_number: batchNumber, // Required by backend
         mrp: parseFloat(item.mrp || '0'),
         sp: parseFloat(item.unitPrice || '0'),
-        discount: parseFloat(item.discountPercent || '0') / 100,
+        discount: parseFloat(item.discountPercent || '0'),
         discount_authority: item.discountAuthorizedBy || undefined, // Send name instead of ID
         cgst: cgstPercent, // Tax percentage (e.g., 1 for 1%)
         sgst: sgstPercent, // Tax percentage (e.g., 1 for 1%)
@@ -212,14 +212,9 @@ export const executeSave = async ({
       console.log('📝 Generated invoice number during save (should not happen normally):', finalInvoiceNumber);
     }
     
-    // Extract numeric part from invoice number (backend expects just the number, not "INV12")
-    // Frontend generates "INV12", but backend should receive just "12" or the full string
-    // Based on backend code, it accepts string, so we'll send the numeric part only
+    // Send invoice number as-is to backend (format: "INV1", "INV2", etc.)
+    // Backend expects the full formatted string with "INV" prefix
     let invoiceNumberForBackend = finalInvoiceNumber.trim();
-    // Remove "INV" prefix if present to get just the numeric part
-    if (invoiceNumberForBackend.toUpperCase().startsWith('INV')) {
-      invoiceNumberForBackend = invoiceNumberForBackend.replace(/^INV/i, '').trim();
-    }
     
     // Build payload according to backend expectations
     // Backend expects: disc, payment_method, payment_amount, created_by, customer_id, doctor_id (optional), lines
@@ -228,7 +223,7 @@ export const executeSave = async ({
     const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
     
     const submitSalePayload = {
-      disc: totalDiscountPercent / 100,
+      disc: totalDiscountPercent,
       payment_method: paymentMode || 'Cash',
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
