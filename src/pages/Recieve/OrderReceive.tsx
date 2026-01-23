@@ -32,6 +32,7 @@ import { OrderReceiveRow, PurchaseOrderRow, ProductItem } from "./types";
 import { useOrderReceiveData } from "./hooks/useOrderReceiveData";
 import { useOrderReceiveFilters } from "./hooks/useOrderReceiveFilters";
 import { useOrderReceiveActions } from "./hooks/useOrderReceiveActions";
+import { ReceiptLine } from "../../redux/slices/receiveApi";
 import { getOrderReceiveColumns, getPurchaseOrderColumns } from "./components/TableColumns";
 import OrderReceiveFooter from "./components/OrderReceiveFooter";
 
@@ -493,7 +494,9 @@ const OrderReceive: React.FC = () => {
               selectedProduct
                 ? {
                   ...selectedProduct,
-                  products: (receiptLines || []).map((line) => {
+                  products: Array.from(
+                    new Map((receiptLines || []).map(line => [line.receipt_line_id, line])).values()
+                  ).map((line: ReceiptLine) => {
                     const productName = line.product_name ||
                       (line.product_id && line.product_id > 0 ? productNameCache[line.product_id] : null) ||
                       (line.product_id && line.product_id > 0 ? `Product ID: ${line.product_id}` : 'Unknown Product');

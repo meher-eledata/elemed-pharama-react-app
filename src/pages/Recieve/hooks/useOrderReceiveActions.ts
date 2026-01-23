@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
-import { 
-  useEditReceiptMutation, 
+import {
+  useEditReceiptMutation,
   useDeleteReceiptMutation,
   EditReceiptRequest,
   Receipt
@@ -197,7 +197,7 @@ export const useOrderReceiveActions = (
         transactionNumber: row.transaction_number || "",
         paymentVendor: row.payment_vendor || "",
         paymentMethod: (row as any).last_payment_method || "Cash",
-        amount: row.amt || "",
+        amount: row.amountPaid || "",
         creditAvailable: row.creditAvailable || 0,
         pharmaTableData: [],
       }

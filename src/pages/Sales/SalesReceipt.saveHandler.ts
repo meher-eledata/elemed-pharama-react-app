@@ -8,16 +8,16 @@ import { extractErrorMessage, logError } from '../../utils/errorUtils';
 // Helper function to format stock error messages in a user-friendly way
 const formatStockErrorMessage = (errorMessage: string): string => {
   if (!errorMessage) return errorMessage;
-  
+
   // Check for "No stock found" patterns
   const noStockPattern = /no stock found/i;
   const productIdPattern = /product_id\s*(\d+)/i;
   const batchPattern = /batch_number\s*([^\s,]+)/i;
-  
+
   if (noStockPattern.test(errorMessage)) {
     const productIdMatch = errorMessage.match(productIdPattern);
     const batchMatch = errorMessage.match(batchPattern);
-    
+
     if (productIdMatch && batchMatch) {
       return `⚠️ Insufficient stock: The selected batch "${batchMatch[1]}" for this product is not available. Please select a different batch or reduce the quantity.`;
     } else if (productIdMatch) {
@@ -26,12 +26,12 @@ const formatStockErrorMessage = (errorMessage: string): string => {
       return `⚠️ Insufficient stock: The selected product/batch is not available. Please select a different batch or reduce the quantity.`;
     }
   }
-  
+
   // Check for other stock-related errors
   if (/insufficient|not available|out of stock|stock.*not found/i.test(errorMessage)) {
     return `⚠️ ${errorMessage}`;
   }
-  
+
   return errorMessage;
 };
 
@@ -105,7 +105,7 @@ export const executeSave = async ({
       showToast('Please enter or select a customer name', 'warning');
       return;
     }
-    
+
     if (!customerMobile || !customerMobile.trim()) {
       showToast('Please enter a customer mobile number', 'warning');
       return;
@@ -115,7 +115,7 @@ export const executeSave = async ({
     // If customer was created via modal, it will have a valid ID
     // Otherwise, we'll send customer_id = 0 and let backend handle validation
     let customerId: number = 0;
-    
+
     if (selectedCustomer && selectedCustomer.id && selectedCustomer.id > 0) {
       customerId = selectedCustomer.id;
       console.log('✅ Using customer ID from selected customer:', customerId);
@@ -149,15 +149,15 @@ export const executeSave = async ({
     }
 
     const totalQuantity = salesItems.reduce((sum, item) => sum + parseFloat(item.quantity || '0'), 0);
-    const totalDiscountPercent = salesItems.length > 0 
+    const totalDiscountPercent = salesItems.length > 0
       ? salesItems.reduce((sum, item) => sum + parseFloat(item.discountPercent || '0'), 0) / salesItems.length
       : 0;
-    
+
     const lines = salesItems.map((item, index) => {
       // Use product_id from cart item if available (more reliable than looking up by name)
       // Fallback to lookup by name if product_id is not available
       let productId: number | null = null;
-      
+
       if (item.product_id && item.product_id > 0) {
         productId = item.product_id;
         console.log(`✅ Using product_id from cart item: ${productId} for "${item.productName}"`);
@@ -166,7 +166,7 @@ export const executeSave = async ({
         productId = getProductIdFromName(item.productName, apiProducts);
         console.log(`⚠️ Product ID not in cart item, looking up by name: ${productId} for "${item.productName}"`);
       }
-      
+
       if (!productId || productId <= 0) {
         logError(`Product ID not found for: ${item.productName}`, 'SalesReceipt');
         throw new Error(`Product ID not found for product: "${item.productName}". Please check if the product name matches exactly.`);
@@ -200,7 +200,7 @@ export const executeSave = async ({
         sgst: sgstPercent, // Tax percentage (e.g., 1 for 1%)
         igst: igstPercent, // Tax percentage (e.g., 2 for 2%)
       };
-      
+
       return lineItem;
     });
 
@@ -211,17 +211,17 @@ export const executeSave = async ({
       finalInvoiceNumber = generateNextInvoiceNumber();
       console.log('📝 Generated invoice number during save (should not happen normally):', finalInvoiceNumber);
     }
-    
+
     // Send invoice number as-is to backend (format: "INV1", "INV2", etc.)
     // Backend expects the full formatted string with "INV" prefix
     let invoiceNumberForBackend = finalInvoiceNumber.trim();
-    
+
     // Build payload according to backend expectations
     // Backend expects: disc, payment_method, payment_amount, created_by, customer_id, doctor_id (optional), lines
     // For return flow: invoice_number and invoice_date should be included when available (invoice already stored in DB)
     // Convert patient type: "In Patient" -> 0, "Out Patient" -> 1
     const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
-    
+
     const submitSalePayload = {
       disc: totalDiscountPercent,
       payment_method: paymentMode || 'Cash',
@@ -241,7 +241,7 @@ export const executeSave = async ({
       ...(invoiceDate && invoiceDate.trim() ? { invoice_date: invoiceDate.trim() } : {}),
       lines: lines, // Already in correct format from lines.map above
     };
-    
+
     // In edit mode, skip API call and just update localStorage (no backend endpoint)
     if (isEditMode && invoiceId) {
       // Edit mode: Just update localStorage, skip all API calls
@@ -251,77 +251,91 @@ export const executeSave = async ({
       // New sale mode: Call the submitSale API endpoint
       // Debug: Log the payload to verify discount_authority is being sent
       console.log('New sale: Submitting sale with payload:', JSON.stringify(submitSalePayload, null, 2));
-      
+
       let result;
       try {
         console.log('🔄 Calling backend API: POST /api/sales/submit-sale');
         console.log('📦 Payload:', JSON.stringify(submitSalePayload, null, 2));
-        
+
         result = await submitSale(submitSalePayload).unwrap();
-        
+
         console.log('✅ Backend API Response:', JSON.stringify(result, null, 2));
         console.log('📊 Response status: Success');
-        
+
         // Validate that the API call was successful
         if (!result) {
           console.error('❌ No response received from server');
           throw new Error('No response received from server. Sale may not have been saved to database.');
         }
-        
+
         // Check if response indicates success (has message or invoice/invoice_number)
         // Backend response structure: { invoice: { id, invoice_number, ... }, lines: [...], ... }
         const hasInvoice = result.invoice && (result.invoice.id !== undefined || result.invoice.invoice_number !== undefined);
         const hasMessage = result.message;
         const hasTopLevelInvoiceNumber = result.invoice_number !== undefined;
-        
+
         if (hasMessage || hasInvoice || hasTopLevelInvoiceNumber) {
           // PRIORITY 1: Get database invoice ID from response (this is the actual database ID)
           // Backend response structure: { invoice: { id: 1, invoice_number: "1", ... }, ... }
           let dbInvoiceId: number | undefined = undefined;
-          
+
           // Check nested invoice.id first (most common structure)
           if (result.invoice && result.invoice.id !== undefined && result.invoice.id !== null) {
-            dbInvoiceId = typeof result.invoice.id === 'number' 
-              ? result.invoice.id 
+            dbInvoiceId = typeof result.invoice.id === 'number'
+              ? result.invoice.id
               : parseInt(String(result.invoice.id), 10);
             console.log('✅ Found invoice.id in response:', dbInvoiceId);
-          } 
+          }
           // Check for top-level invoice_id
           else if (result.invoice_id !== undefined && result.invoice_id !== null) {
-            dbInvoiceId = typeof result.invoice_id === 'number' 
-              ? result.invoice_id 
+            dbInvoiceId = typeof result.invoice_id === 'number'
+              ? result.invoice_id
               : parseInt(String(result.invoice_id), 10);
             console.log('✅ Found invoice_id in response:', dbInvoiceId);
-          } 
+          }
           // Check for top-level id as fallback
           else if (result.id !== undefined && result.id !== null) {
-            dbInvoiceId = typeof result.id === 'number' 
-              ? result.id 
+            dbInvoiceId = typeof result.id === 'number'
+              ? result.id
               : parseInt(String(result.id), 10);
             console.log('✅ Found id in response:', dbInvoiceId);
           }
-          
+
           // Use invoice number from response if provided, otherwise use the one we generated
           let savedInvoiceNumber: string;
           let numericInvoiceNumber: number = 0;
-          
+
           // Check nested invoice.invoice_number first
           if (result.invoice && result.invoice.invoice_number !== undefined && result.invoice.invoice_number !== null) {
             // Backend returns invoice_number as string (e.g., "1"), format it as "INV1"
-            numericInvoiceNumber = typeof result.invoice.invoice_number === 'number' 
-              ? result.invoice.invoice_number 
+            const parsed = typeof result.invoice.invoice_number === 'number'
+              ? result.invoice.invoice_number
               : parseInt(String(result.invoice.invoice_number), 10);
-            savedInvoiceNumber = `INV${numericInvoiceNumber}`;
-            console.log('✅ Found invoice.invoice_number in response:', savedInvoiceNumber);
+
+            if (!isNaN(parsed) && parsed > 0) {
+              numericInvoiceNumber = parsed;
+              savedInvoiceNumber = `INV${numericInvoiceNumber}`;
+              console.log('✅ Found valid invoice.invoice_number in response:', savedInvoiceNumber);
+            } else {
+              savedInvoiceNumber = finalInvoiceNumber;
+              console.warn('⚠️ Invalid invoice.invoice_number in response, using generated:', savedInvoiceNumber);
+            }
           }
           // Check top-level invoice_number
           else if (result.invoice_number !== undefined && result.invoice_number !== null) {
-            numericInvoiceNumber = typeof result.invoice_number === 'number' 
-              ? result.invoice_number 
+            const parsed = typeof result.invoice_number === 'number'
+              ? result.invoice_number
               : parseInt(String(result.invoice_number), 10);
-            savedInvoiceNumber = `INV${numericInvoiceNumber}`;
-            console.log('✅ Found invoice_number in response:', savedInvoiceNumber);
-          } 
+
+            if (!isNaN(parsed) && parsed > 0) {
+              numericInvoiceNumber = parsed;
+              savedInvoiceNumber = `INV${numericInvoiceNumber}`;
+              console.log('✅ Found valid invoice_number in response:', savedInvoiceNumber);
+            } else {
+              savedInvoiceNumber = finalInvoiceNumber;
+              console.warn('⚠️ Invalid invoice_number in response, using generated:', savedInvoiceNumber);
+            }
+          }
           // Fallback to generated invoice number
           else {
             savedInvoiceNumber = finalInvoiceNumber;
@@ -330,17 +344,17 @@ export const executeSave = async ({
             numericInvoiceNumber = parseInt(cleaned, 10) || 0;
             console.log('⚠️ Using generated invoice number:', savedInvoiceNumber);
           }
-          
+
           // Save the invoice number to ensure counter is at least this number
           // (This is a safety check - the counter should already be incremented from mount)
           saveInvoiceNumber(savedInvoiceNumber);
           console.log('💾 Verified invoice number in storage:', savedInvoiceNumber);
           console.log('💾 Database invoice ID from response:', dbInvoiceId);
           console.log('💾 Numeric invoice number:', numericInvoiceNumber);
-          
+
           // Update finalInvoiceNumber for use in history
           finalInvoiceNumber = savedInvoiceNumber;
-          
+
           // CRITICAL: Always use database invoice_id for history storage if available
           // This ensures the saved history has the correct database invoice ID
           // DO NOT use the invoice number as the ID - they are different!
@@ -354,7 +368,7 @@ export const executeSave = async ({
             // Fallback: use invoice number as ID (but this is wrong - should never happen)
             invoiceId = numericInvoiceNumber;
           }
-          
+
           console.log('✅ Sale successfully saved to database. Invoice number:', savedInvoiceNumber);
           console.log('📋 Response message:', result.message || 'Success');
         } else {
@@ -371,9 +385,9 @@ export const executeSave = async ({
         console.error('❌ Error data:', submitError?.data);
         console.error('❌ Full error object:', JSON.stringify(submitError, null, 2));
         logError(submitError, 'SalesReceipt.submitSale');
-        
+
         let errorMessage = 'Failed to submit sale. Please try again.';
-        
+
         if (submitError?.data) {
           if (typeof submitError.data === 'string') {
             errorMessage = submitError.data;
@@ -387,13 +401,13 @@ export const executeSave = async ({
         } else if (submitError?.message) {
           errorMessage = submitError.message;
         }
-        
+
         // Format stock error messages to be more user-friendly
         const formattedErrorMessage = formatStockErrorMessage(errorMessage);
         throw new Error(formattedErrorMessage);
       }
     }
-    
+
     const historyItem = {
       invoiceNumber: finalInvoiceNumber, // Use the final invoice number (generated or from API)
       invoiceDate,
@@ -415,29 +429,29 @@ export const executeSave = async ({
       totalPayableAmount,
     };
     saveSalesHistoryToStorage(historyItem, invoiceId);
-    
-    const successMessage = isEditMode 
-      ? 'Sale updated successfully!' 
+
+    const successMessage = isEditMode
+      ? 'Sale updated successfully!'
       : 'Sale submitted successfully!';
-    
+
     requestAnimationFrame(() => {
       setTimeout(() => {
         showToast(successMessage, 'success');
       }, 200);
     });
-    
+
     setTimeout(() => {
       resetForm();
       clearCart();
-      
+
       // Navigate to sales history page (/sales) - the sale details will appear in the table
       navigate('/sales');
     }, 1000);
   } catch (error: unknown) {
     logError(error, 'SalesReceipt.executeSave');
-    
+
     const errorMessage = extractErrorMessage(error, 'Failed to save receipt. Please try again.');
-    
+
     showToast(errorMessage, 'error');
   }
 };

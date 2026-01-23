@@ -4,13 +4,13 @@ export interface SalesReceiptItem {
   id: string;
   productName: string;
   product_id?: number; // Product ID from cart item - important for batch validation
-  manufacturer: string;
+  manufacturer?: string;
   batch: string;
-  expiryDate: string;
+  expiryDate?: string;
   quantity: string;
   type: string;
   unitPrice: string;
-  mrp: string;
+  mrp?: string;
   discount: string;
   discountPercent: string;
   discountAuthorizedBy?: string; // Doctor name who authorized the discount

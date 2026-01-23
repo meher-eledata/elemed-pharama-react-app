@@ -100,11 +100,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const loadReceiptLines = async () => {
     try {
+      // Set supplier and PO from navigation state immediately
+      if (form.selectedOrder) {
+        form.setSupplierName(form.selectedOrder.supplier || '');
+        form.setSupplierSearchTerm(form.selectedOrder.supplier || '');
+        form.setPoNumber(form.selectedOrder.poNo || '');
+      }
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/receipt-lines/${form.receiptId}`,
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-receipt-lines`,
         {
-          method: 'GET',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ receipt_id: form.receiptId })
         }
       );
 
@@ -112,17 +120,39 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       const receiptLines = await response.json();
 
-      // Set supplier and PO from navigation state
-      if (form.selectedOrder) {
-        form.setSupplierName(form.selectedOrder.supplier || '');
-        form.setSupplierSearchTerm(form.selectedOrder.supplier || '');
-        form.setPoNumber(form.selectedOrder.poNo || '');
+      // Deduplicate receipt lines by receipt_line_id to handle backend join issues
+      const uniqueLinesMap = new Map();
+      if (Array.isArray(receiptLines)) {
+        receiptLines.forEach((line: any) => {
+          const lineId = line.receipt_line_id || line.id;
+          if (lineId && !uniqueLinesMap.has(lineId)) {
+            uniqueLinesMap.set(lineId, line);
+          } else if (!lineId) {
+            // If no ID, keep it just in case, but use the object as key (not ideal but safe)
+            uniqueLinesMap.set(line, line);
+          }
+        });
       }
+      const uniqueReceiptLines = Array.from(uniqueLinesMap.values());
 
       // Set transaction and payment details
-      if (receiptLines && receiptLines.length > 0) {
-        form.setTransactionNumber(receiptLines[0].transaction_number || form.navigationTransactionNumber || '');
-        form.setPaymentVendor(receiptLines[0].payment_vendor || form.navigationPaymentVendor || '');
+      if (uniqueReceiptLines && uniqueReceiptLines.length > 0) {
+        const firstLine = uniqueReceiptLines[0];
+        form.setTransactionNumber(
+          firstLine.transaction_number ||
+          firstLine.last_transaction_number ||
+          form.navigationTransactionNumber ||
+          ''
+        );
+        form.setPaymentVendor(
+          firstLine.payment_vendor ||
+          firstLine.last_payment_vendor ||
+          form.navigationPaymentVendor ||
+          ''
+        );
+      } else {
+        form.setTransactionNumber(form.navigationTransactionNumber || '');
+        form.setPaymentVendor(form.navigationPaymentVendor || '');
       }
 
       if (form.navigationInvoiceDate) {
@@ -130,14 +160,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       // Transform receipt lines to table format
-      const transformedLines: PharmaTableRow[] = receiptLines.map((line: any, index: number) => {
+      const transformedLines: PharmaTableRow[] = uniqueReceiptLines.map((line: any, index: number) => {
         const expiryDateRaw = line.expiry_date || line.expiryDate || null;
         const expiryDateValue = expiryDateRaw
           ? (() => {
-              let parsed = dayjs(expiryDateRaw, 'YYYY-MM-DD', true);
-              if (!parsed.isValid()) parsed = dayjs(expiryDateRaw);
-              return parsed.isValid() ? parsed : null;
-            })()
+            let parsed = dayjs(expiryDateRaw, 'YYYY-MM-DD', true);
+            if (!parsed.isValid()) parsed = dayjs(expiryDateRaw);
+            return parsed.isValid() ? parsed : null;
+          })()
           : null;
 
         return {
@@ -346,14 +376,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           columns={productColumns}
           data={table.sortedData}
           selectedRows={[]}
-          setSelectedRows={() => {}}
+          setSelectedRows={() => { }}
           searchAndFilterConfig={{ filterOptions: [] }}
           currentSearchTerm={table.searchTerm}
           onSearchChange={table.handleSearchChange}
           showFilters={false}
-          onShowFiltersToggle={() => {}}
+          onShowFiltersToggle={() => { }}
           currentFilterKey={""}
-          onFilterSelect={() => {}}
+          onFilterSelect={() => { }}
           emptyMessage="No products added yet"
           totalRows={table.sortedData.length}
           rowsPerPage={table.rowsPerPage}
@@ -418,7 +448,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             size="large"
             disabled={!validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
             onClick={form.isEditMode ? handleSubmitReceipt : handleProceedToPaymentClick}
-            sx={{ height: "48px", width: "86px", fontSize: "12px" }}
+            sx={{ height: "48px", width: "160px", fontSize: "12px" }}
           >
             {form.isSaving || submit.isSubmittingReceipt ? "Processing..." : form.isEditMode ? "Save" : "Proceed to Payment"}
           </StandardButton>
@@ -498,6 +528,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         open={form.isUploadConfirmationDialogOpen}
         onClose={() => form.setIsUploadConfirmationDialogOpen(false)}
         onConfirm={handleUploadConfirmationYes}
+        onCancel={handleUploadConfirmationNo}
         title="Upload Invoice?"
         message="You haven't uploaded an invoice file. Would you like to upload one now?"
         confirmLabel="Yes, Upload"

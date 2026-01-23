@@ -317,20 +317,23 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           result = await submitReceipt(submitPayload).unwrap();
           finalReceiptId = result.receipt_id || (result as any).receiptId;
         } catch (rtkError) {
-          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-          const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(submitPayload)
-          });
+          // Only attempt manual fetch if we didn't already get a result
+          if (!finalReceiptId) {
+            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
+            const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(submitPayload)
+            });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            result = await response.json();
+            finalReceiptId = result.receipt_id || result.receiptId;
           }
-
-          result = await response.json();
-          finalReceiptId = result.receipt_id || result.receiptId;
         }
       }
 
@@ -402,46 +405,32 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       }
 
       let result;
+      let newReceiptId: number | null = null;
       try {
         result = await submitReceipt(submitPayload).unwrap();
-        const newReceiptId = result.receipt_id || (result as any).receiptId;
-
-        if (invoiceFile && newReceiptId) {
-          try {
-            await uploadReceiptFile({ receiptId: newReceiptId, file: invoiceFile }).unwrap();
-          } catch (uploadError) {
-            console.error('Failed to upload invoice file:', uploadError);
-          }
-        }
-
-        navigate('/receive/payment-details', {
-          state: {
-            supplierName,
-            poNumber,
-            invoiceDate,
-            pharmaTableData,
-            isEditMode: false,
-            receiptId: newReceiptId,
-            receiptNumber: `RA${newReceiptId}`,
-          }
-        });
+        newReceiptId = result.receipt_id || (result as any).receiptId;
       } catch (rtkError) {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-        const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitPayload)
-        });
+        // Only attempt manual fetch if we didn't already get a result
+        if (!newReceiptId) {
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
+          const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(submitPayload)
+          });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+
+          result = await response.json();
+          newReceiptId = result.receipt_id || result.receiptId;
         }
+      }
 
-        result = await response.json();
-        const newReceiptId = result.receipt_id || result.receiptId;
-
-        if (invoiceFile && newReceiptId) {
+      if (newReceiptId) {
+        if (invoiceFile) {
           try {
             await uploadReceiptFile({ receiptId: newReceiptId, file: invoiceFile }).unwrap();
           } catch (uploadError) {

@@ -17,6 +17,7 @@ interface ConfirmationDialogProps {
   message: string;
   onClose: () => void;
   onConfirm: () => void;
+  onCancel?: () => void;
   confirmLabel?: string;
   cancelLabel?: string;
   itemName?: string;
@@ -28,6 +29,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   message,
   onClose,
   onConfirm,
+  onCancel,
   confirmLabel = 'Yes',
   cancelLabel = 'Cancel',
   itemName,
@@ -52,11 +54,11 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       aria-describedby="alert-dialog-description"
     >
 
-      <DialogTitle 
+      <DialogTitle
         id="alert-dialog-title"
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           pb: 1,
           px: 3,
@@ -84,10 +86,10 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ px: 3, py: 3, minHeight: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography 
+        <Typography
           id="alert-dialog-description"
-          sx={{ 
-            color: '#374151', 
+          sx={{
+            color: '#374151',
             textAlign: 'center',
             fontSize: '15px',
             lineHeight: 1.7,
@@ -101,7 +103,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
 
       <DialogActions sx={{ px: 3, pb: 3, pt: 0, justifyContent: 'center', gap: 2 }}>
         <StandardButton
-          onClick={onClose}
+          onClick={onCancel || onClose}
           variant="secondary"
           size="medium"
           sx={{

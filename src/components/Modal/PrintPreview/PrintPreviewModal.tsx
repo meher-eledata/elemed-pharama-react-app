@@ -3,20 +3,7 @@ import { Box, Typography } from '@mui/material';
 import { StandardButton } from '../../Common';
 import html2pdf from 'html2pdf.js';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
-
-interface SalesReceiptItem {
-  id: string;
-  productName: string;
-  batch: string;
-  quantity: string;
-  type: string;
-  unitPrice: string;
-  discountPercent: string;
-  cgstPercent: string;
-  sgstPercent: string;
-  igstPercent: string;
-  amount: string;
-}
+import { SalesReceiptItem } from '../../../pages/Sales/SalesReceipt.types';
 
 interface PrintPreviewModalProps {
   salesItems: SalesReceiptItem[];
@@ -64,29 +51,29 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   hideActionButtons = false,
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
-  
+
   const handleSaveAsPDF = async () => {
     if (!printContentRef.current) return;
-    
+
     try {
       const filename = `sales-receipt-${invoiceNumber || Date.now()}.pdf`;
-      
+
       const options = {
         margin: 10,
         filename: filename,
         image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { 
+        html2canvas: {
           scale: 2,
           useCORS: true,
           logging: false
         },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
           orientation: 'portrait' as const
         }
       };
-      
+
       await html2pdf().set(options).from(printContentRef.current).save();
       if (onAfterSave) {
         setTimeout(() => {
@@ -100,7 +87,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   return (
     <Box sx={{ padding: '0', maxHeight: '100%', overflow: 'auto' }}>
       {/* Print Preview Content */}
-      <Box ref={printContentRef} sx={{ 
+      <Box ref={printContentRef} sx={{
         padding: '24px',
         backgroundColor: '#FFFFFF',
         borderRadius: '8px',
@@ -110,9 +97,9 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
       }}>
         {/* Receipt Header */}
         <Box sx={{ textAlign: 'left', marginBottom: '24px' }}>
-          <Typography sx={{ 
-            fontSize: '24px', 
-            fontWeight: 700, 
+          <Typography sx={{
+            fontSize: '24px',
+            fontWeight: 700,
             color: '#1A212B',
             marginBottom: '0'
           }}>
@@ -121,24 +108,24 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         </Box>
 
         {/* Four Section Layout - 2x2 Grid */}
-        <Box sx={{ 
-          display: 'flex', 
+        <Box sx={{
+          display: 'flex',
           flexDirection: 'column',
-          gap: '12px', 
+          gap: '12px',
           marginBottom: '24px'
         }}>
           {/* First Row: Customer Details and Doctor Details */}
-          <Box sx={{ 
+          <Box sx={{
             display: 'flex',
             flexDirection: 'row',
             gap: '12px',
             width: '100%'
           }}>
             {/* Customer Details */}
-            <Box sx={{ 
-              flex: 1, 
+            <Box sx={{
+              flex: 1,
               minWidth: '180px',
-              backgroundColor: '#F9FAFB', 
+              backgroundColor: '#F9FAFB',
               padding: '12px 8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
@@ -160,10 +147,10 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             </Box>
 
             {/* Doctor Details */}
-            <Box sx={{ 
-              flex: 1, 
+            <Box sx={{
+              flex: 1,
               minWidth: '180px',
-              backgroundColor: '#F9FAFB', 
+              backgroundColor: '#F9FAFB',
               padding: '12px 8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
@@ -186,17 +173,17 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           </Box>
 
           {/* Second Row: Payment Details and Invoice Details */}
-          <Box sx={{ 
+          <Box sx={{
             display: 'flex',
             flexDirection: 'row',
             gap: '12px',
             width: '100%'
           }}>
             {/* Payment Details */}
-            <Box sx={{ 
-              flex: 1, 
+            <Box sx={{
+              flex: 1,
               minWidth: '180px',
-              backgroundColor: '#F9FAFB', 
+              backgroundColor: '#F9FAFB',
               padding: '12px 8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
@@ -221,10 +208,10 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             </Box>
 
             {/* Invoice Details */}
-            <Box sx={{ 
-              flex: 1, 
+            <Box sx={{
+              flex: 1,
               minWidth: '180px',
-              backgroundColor: '#F9FAFB', 
+              backgroundColor: '#F9FAFB',
               padding: '12px 8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
@@ -249,27 +236,28 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#1A212B', marginBottom: '16px' }}>
             {SALES_RECEIPT_LABELS.ITEMS_SECTION_TITLE}
           </Typography>
-          <Box sx={{ 
-            border: '1px solid #E5E7EB', 
-            borderRadius: '8px', 
+          <Box sx={{
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
             overflow: 'hidden',
-            maxHeight: '400px',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
           }}>
             {/* Fixed Header */}
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: '2fr 0.8fr 0.8fr 1fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr',
-              columnGap: '12px',
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 0.7fr 0.7fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr',
+              columnGap: '8px',
               backgroundColor: '#F9FAFB',
-              padding: '16px',
-              fontSize: '13px',
+              padding: '12px 16px',
+              fontSize: '12px',
               fontWeight: 600,
               color: '#1A212B',
               flexShrink: 0,
-              borderBottom: '2px solid #E5E7EB'
+              borderBottom: '2px solid #E5E7EB',
+              minHeight: '44px',
+              alignItems: 'center'
             }}>
               <Box>Product</Box>
               <Box>Qty</Box>
@@ -283,9 +271,9 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               <Box>Amt</Box>
             </Box>
             {/* Scrollable Products List */}
-            <Box sx={{ 
+            <Box sx={{
               overflowY: 'auto',
-              maxHeight: '400px',
+              maxHeight: salesItems && salesItems.length > 0 ? '300px' : 'auto',
               '&::-webkit-scrollbar': {
                 width: '8px',
               },
@@ -300,37 +288,51 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                 },
               },
             }}>
-              {salesItems.map((item, index) => (
-                <Box key={item.id} sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '2fr 0.8fr 0.8fr 1fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr',
-                  columnGap: '12px',
-                  padding: '16px',
-                  fontSize: '13px',
-                  color: '#374151',
-                  backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
-                  borderTop: index > 0 ? '1px solid #E5E7EB' : 'none'
+              {salesItems && salesItems.length > 0 ? (
+                salesItems.map((item, index) => (
+                  <Box key={item.id} sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 0.7fr 0.7fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr',
+                    columnGap: '8px',
+                    padding: '12px 16px',
+                    fontSize: '12px',
+                    color: '#374151',
+                    backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
+                    borderTop: '1px solid #E5E7EB',
+                    minHeight: '44px',
+                    alignItems: 'center',
+                    wordBreak: 'break-word'
+                  }}>
+                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</Box>
+                    <Box>{item.quantity}</Box>
+                    <Box>{item.type}</Box>
+                    <Box>{item.batch}</Box>
+                    <Box>{item.unitPrice}</Box>
+                    <Box>{item.discountPercent}%</Box>
+                    <Box>{item.cgstPercent}%</Box>
+                    <Box>{item.sgstPercent}%</Box>
+                    <Box>{item.igstPercent}%</Box>
+                    <Box sx={{ fontWeight: 600 }}>{item.amount}</Box>
+                  </Box>
+                ))
+              ) : (
+                <Box sx={{
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  color: '#9CA3AF',
+                  fontSize: '13px'
                 }}>
-                  <Box>{item.productName}</Box>
-                  <Box>{item.quantity}</Box>
-                  <Box>{item.type}</Box>
-                  <Box>{item.batch}</Box>
-                  <Box>{item.unitPrice}</Box>
-                  <Box>{item.discountPercent}%</Box>
-                  <Box>{item.cgstPercent}%</Box>
-                  <Box>{item.sgstPercent}%</Box>
-                  <Box>{item.igstPercent}%</Box>
-                  <Box>{item.amount}</Box>
+                  No items added
                 </Box>
-              ))}
+              )}
             </Box>
           </Box>
         </Box>
 
         {/* Summary */}
-        <Box sx={{ 
-          backgroundColor: '#F9FAFB', 
-          padding: '20px 24px', 
+        <Box sx={{
+          backgroundColor: '#F9FAFB',
+          padding: '20px 24px',
           borderRadius: '8px',
           display: 'flex',
           justifyContent: 'space-between',
