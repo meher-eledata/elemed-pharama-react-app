@@ -1,7 +1,7 @@
 import { Customer, AddCustomerRequest } from '../../redux/slices/salesApi';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
-import { saveSalesHistoryToStorage, generateNextInvoiceNumber, saveInvoiceNumber } from '../../utils/cartStorage';
+import { saveSalesHistoryToStorage, generateNextInvoiceNumber, saveInvoiceNumber, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
 
 
@@ -443,6 +443,9 @@ export const executeSave = async ({
     setTimeout(() => {
       resetForm();
       clearCart();
+      // Explicitly clear local storage to prevent stale data on refresh/next sale
+      clearCartFromStorage();
+      clearFormDataFromStorage();
 
       // Navigate to sales history page (/sales) - the sale details will appear in the table
       navigate('/sales');

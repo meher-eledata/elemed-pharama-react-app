@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback, ChangeEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Box, 
-  Typography, 
-  TextField, 
+import {
+  Box,
+  Typography,
+  TextField,
   Autocomplete
 } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -17,7 +17,6 @@ import {
   DialogContent,
   DialogActions,
 } from '@mui/material';
-import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSubmitSalesReturnMutation, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { useSelector } from 'react-redux';
@@ -41,17 +40,24 @@ export default function SaleReturn() {
     invoiceDate: string;
     customerName: string;
     customerMobile: string;
+    customerCity?: string;
     doctorName: string;
+    doctorMobile?: string;
+    doctorEmail?: string;
     username: string;
     totalAmount: number;
+    totalDiscount?: number;
+    taxAmount?: number;
+    totalPayableAmount?: number;
     items?: SalesReceiptItem[];
     paymentMode?: string;
+    insuranceCompany?: string;
   } | null;
 
   const user = useSelector((state: RootState) => state.auth.user);
   const [submitSalesReturn, { isLoading: isSubmittingReturn }] = useSubmitSalesReturnMutation();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
-  
+
   const [returnDate, setReturnDate] = useState<Dayjs | null>(dayjs());
   const [returnPaymentType, setReturnPaymentType] = useState<string>('Cash');
   const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
@@ -86,20 +92,20 @@ export default function SaleReturn() {
     const cgstPercent = parseFloat(item.cgstPercent) || 0;
     const sgstPercent = parseFloat(item.sgstPercent) || 0;
     const igstPercent = parseFloat(item.igstPercent) || 0;
-    
+
     const baseAmount = unitPrice * quantity;
-    
+
     const discountMultiplier = 1 - (discountPercent / 100);
     const discountedAmount = baseAmount * discountMultiplier;
-    
+
     const discountAmount = (unitPrice * discountPercent / 100 * quantity).toFixed(2);
-    
+
     const cgstAmount = discountedAmount * cgstPercent / 100;
     const sgstAmount = discountedAmount * sgstPercent / 100;
     const igstAmount = discountedAmount * igstPercent / 100;
-    
+
     const finalAmount = discountedAmount + cgstAmount + sgstAmount + igstAmount;
-    
+
     return {
       amount: finalAmount.toFixed(2),
       discount: discountAmount,
@@ -117,35 +123,36 @@ export default function SaleReturn() {
 
     let isMounted = true;
 
- 
+
     let invoiceIdToFetch: number | null = null;
-    
+
     if (invoiceData.invoiceId) {
-      const idValue = typeof invoiceData.invoiceId === 'number' 
-        ? invoiceData.invoiceId 
+      const idValue = typeof invoiceData.invoiceId === 'number'
+        ? invoiceData.invoiceId
         : parseInt(String(invoiceData.invoiceId || '0'), 10);
-      if (!isNaN(idValue) && idValue > 0 && idValue < 1000000) {
+      // Remove arbitrary 1,000,000 limit - trust the ID passed
+      if (!isNaN(idValue) && idValue > 0) {
         invoiceIdToFetch = idValue;
         console.log('✅ Using invoiceId from state (database ID):', invoiceIdToFetch);
       }
     }
-    
+
     // IMPORTANT: Log what data we have to debug the issue
     console.log('📋 invoiceData received:', {
       invoiceId: invoiceData.invoiceId,
       invoiceNumber: invoiceData.invoiceNumber,
       invoiceIdToFetch,
     });
-    
+
     if (!invoiceIdToFetch && invoiceData.invoiceNumber) {
       let cleanedNumber = invoiceData.invoiceNumber
-        .replace(/^(RB|INV-?)/i, '') 
+        .replace(/^(RB|INV-?)/i, '')
         .replace(/[^0-9]/g, '') //
         .trim();
-      
+
       if (cleanedNumber) {
         const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
+        if (!isNaN(parsed) && parsed > 0) {
           invoiceIdToFetch = parsed;
           console.log('⚠️ Using parsed invoice number as ID (fallback):', invoiceIdToFetch);
         }
@@ -154,17 +161,19 @@ export default function SaleReturn() {
 
     const fetchInvoiceDetails = async () => {
       const invoiceNumber = invoiceData.invoiceNumber;
-      
+
       if (!invoiceNumber && !invoiceIdToFetch) {
-        loadItemsFromStateOrStorage();
+        // loadItemsFromStateOrStorage(); // Removed
+        alert('Invalid invoice data passed to return page.');
+        navigate('/sales');
         return;
       }
 
       try {
-        
+
         let result;
         let lastError: any = null;
-        
+
         if (invoiceIdToFetch) {
           console.log('🔍 Fetching invoice details for return using invoice_id (database ID):', invoiceIdToFetch);
           try {
@@ -174,406 +183,301 @@ export default function SaleReturn() {
             lastError = err;
             console.log('❌ Invoice not found by invoice_id, trying with invoice_number...');
             if (invoiceNumber && err?.status === 404) {
-              let numericInvoiceNumber = invoiceNumber;
-              if (typeof invoiceNumber === 'string') {
-                const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-                numericInvoiceNumber = cleaned || invoiceNumber;
-              }
-              
-              console.log('🔍 Trying with invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
+              // Priority 1: Try with the original invoice number string (e.g. "INV26")
+              console.log('🔍 Trying with original invoice_number:', invoiceNumber);
               try {
-                result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
-                console.log('✅ Invoice found using invoice_number');
-              } catch (err2: any) {
-                lastError = err2;
-                throw err2; 
+                result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
+                console.log('✅ Invoice found using original invoice_number');
+              } catch (errOriginal: any) {
+                // Priority 2: Try with cleaned numeric part (e.g. "26")
+                let numericInvoiceNumber = invoiceNumber;
+                if (typeof invoiceNumber === 'string') {
+                  const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+                  numericInvoiceNumber = cleaned || invoiceNumber;
+                }
+
+                if (numericInvoiceNumber !== invoiceNumber) {
+                  console.log('🔍 Trying with cleaned invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
+                  try {
+                    result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
+                    console.log('✅ Invoice found using cleaned invoice_number');
+                  } catch (err2: any) {
+                    lastError = err2;
+                    throw err2;
+                  }
+                } else {
+                  throw errOriginal;
+                }
               }
             } else {
               throw err;
             }
           }
         } else if (invoiceNumber) {
-          let numericInvoiceNumber = invoiceNumber;
-          if (typeof invoiceNumber === 'string') {
-            const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-            numericInvoiceNumber = cleaned || invoiceNumber;
-          }
-          
-          console.log('🔍 Fetching invoice details for return using invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
+          // Priority 1: Try with original invoice number
+          console.log('🔍 Fetching invoice details using original invoice_number:', invoiceNumber);
           try {
-            result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
-            console.log('✅ Invoice found using invoice_number');
+            result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
+            console.log('✅ Invoice found using original invoice_number');
           } catch (err: any) {
-            lastError = err;
-            throw err;
+            // Priority 2: Try with cleaned numeric part
+            let numericInvoiceNumber = invoiceNumber;
+            if (typeof invoiceNumber === 'string') {
+              const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+              numericInvoiceNumber = cleaned || invoiceNumber;
+            }
+
+            if (numericInvoiceNumber !== invoiceNumber) {
+              console.log('🔍 Original failed, trying with cleaned invoice_number:', numericInvoiceNumber);
+              try {
+                result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
+                console.log('✅ Invoice found using cleaned invoice_number');
+              } catch (err2: any) {
+                lastError = err2;
+                throw err; // Throw original error or err2
+              }
+            } else {
+              lastError = err;
+              throw err;
+            }
           }
         } else {
           throw new Error('No invoice_id or invoice_number available');
         }
         console.log('Invoice details response:', result);
-        
-        if (result && isMounted) {
-          const invoice = result.invoice || {};
-          const lines = result.lines || [];
-          
-          if (invoice.id) {
-            setInvoiceIdFromApi(invoice.id);
-            setInvoiceNumberFromApi(invoice.invoice_number);
-            console.log('📝 Stored invoice id from API response:', invoice.id);
-            console.log('📝 Invoice number from API response:', invoice.invoice_number);
-          }
-          
-          console.log('📋 Invoice lines from API (full details):', lines);
-          console.log('📋 Invoice lines summary:', lines.map((line: any) => ({
-            invoice_line_id: line.invoice_line_id,
-            invoice_id: line.invoice_id,
-            id: line.id,
-            product_name: line.name || line.product_name,
-            is_same_as_invoice_id: line.invoice_line_id === line.invoice_id,
-          })));
-          const payments = result.payments || [];
-          const totalRefunded = result.total_refunded || 0;
-          const netPaid = result.net_paid || 0;
-          
-          if (payments.length > 0 || totalRefunded > 0) {
-            console.log('Invoice payment info:', { payments, totalRefunded, netPaid });
-          }
-          const originalItemsFromState = invoiceData.items || [];
-          const originalItemsMap = new Map<string, any>();
-          originalItemsFromState.forEach((item: any) => {
-            const key = item.invoice_line_id?.toString() || item.id?.toString() || '';
-            if (key) {
-              originalItemsMap.set(key, item);
-            }
-          });
-          
-          if (lines.length > 0) {
-            const items: ReturnItem[] = lines.map((line: any) => {
-              const lineId = line.invoice_line_id?.toString() || line.id?.toString() || '';
-              const originalItem = originalItemsMap.get(lineId);
-              const productId = line.product_id || line.productId;
-              
-              const productName = line.name || line.product_name || line.productName || (productId ? `Product ID: ${productId}` : 'Unknown Product');
-              
-              let discountPercentValue = '0';
-              if (line.discount_percent !== undefined && line.discount_percent !== null) {
-                discountPercentValue = line.discount_percent.toString();
-              } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
-                discountPercentValue = line.discountPercent.toString();
-              } else if (line.discount !== undefined && line.discount !== null) {
-                // API now returns percentage value directly (e.g., 3 for 3%)
-                discountPercentValue = parseFloat(line.discount).toString();
-              }
 
-          
-              const quantityValue = line.quantity !== undefined && line.quantity !== null 
-                ? (typeof line.quantity === 'number' ? line.quantity : parseFloat(String(line.quantity)))
-                : (line.qty !== undefined && line.qty !== null 
+        if (result && isMounted) {
+          try {
+            const invoice = result.invoice || {};
+            const lines = result.lines || [];
+
+            if (invoice.id) {
+              setInvoiceIdFromApi(invoice.id);
+              setInvoiceNumberFromApi(invoice.invoice_number);
+              console.log('📝 Stored invoice id from API response:', invoice.id);
+              console.log('📝 Invoice number from API response:', invoice.invoice_number);
+            }
+
+            console.log('📋 Invoice lines from API (full details):', lines);
+            console.log('📋 Invoice lines summary:', lines.map((line: any) => ({
+              invoice_line_id: line.invoice_line_id,
+              invoice_id: line.invoice_id,
+              id: line.id,
+              product_name: line.name || line.product_name,
+              is_same_as_invoice_id: line.invoice_line_id === line.invoice_id,
+            })));
+            const payments = result.payments || [];
+            const totalRefunded = result.total_refunded || 0;
+            const netPaid = result.net_paid || 0;
+
+            if (payments.length > 0 || totalRefunded > 0) {
+              console.log('Invoice payment info:', { payments, totalRefunded, netPaid });
+            }
+            const originalItemsFromState = invoiceData.items || [];
+            const originalItemsMap = new Map<string, any>();
+            originalItemsFromState.forEach((item: any) => {
+              const key = item.invoice_line_id?.toString() || item.id?.toString() || '';
+              if (key) {
+                originalItemsMap.set(key, item);
+              }
+            });
+
+            if (lines.length > 0) {
+              const items: ReturnItem[] = lines.map((line: any) => {
+                const lineId = line.invoice_line_id?.toString() || line.id?.toString() || '';
+                const originalItem = originalItemsMap.get(lineId);
+                const productId = line.product_id || line.productId;
+
+                const productName = line.name || line.product_name || line.productName || (productId ? `Product ID: ${productId}` : 'Unknown Product');
+
+                let discountPercentValue = '0';
+                if (line.discount_percent !== undefined && line.discount_percent !== null) {
+                  discountPercentValue = line.discount_percent.toString();
+                } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
+                  discountPercentValue = line.discountPercent.toString();
+                } else if (line.discount !== undefined && line.discount !== null) {
+                  // API now returns percentage value directly (e.g., 3 for 3%)
+                  discountPercentValue = parseFloat(line.discount).toString();
+                }
+
+
+                const quantityValue = line.quantity !== undefined && line.quantity !== null
+                  ? (typeof line.quantity === 'number' ? line.quantity : parseFloat(String(line.quantity)))
+                  : (line.qty !== undefined && line.qty !== null
                     ? (typeof line.qty === 'number' ? line.qty : parseFloat(String(line.qty)))
                     : 0);
-              const originalQty = isNaN(quantityValue) ? 0 : quantityValue;
-              const returnedQty = parseInt(line.returned_quantity || '0');
-              const refundableQty = line.refundable_quantity !== undefined && line.refundable_quantity !== null
-                ? parseInt(line.refundable_quantity)
-                : Math.max(0, originalQty - returnedQty);
+                const originalQty = isNaN(quantityValue) ? 0 : quantityValue;
+                const returnedQty = parseInt(line.returned_quantity || '0');
+                const refundableQty = line.refundable_quantity !== undefined && line.refundable_quantity !== null
+                  ? parseInt(line.refundable_quantity)
+                  : Math.max(0, originalQty - returnedQty);
 
-              const unitPrice = parseFloat(line.rate || line.unit_price || '0');
-              const quantity = originalQty > 0 ? originalQty : (parseFloat(line.quantity || line.qty || '1'));
-              const baseAmount = unitPrice * quantity;
-              
-              // Use refundable quantity for initial return quantity (not original quantity)
-              // If refundable is 0, start with 0; otherwise start with refundable quantity
-              const initialReturnQty = refundableQty;
-              
-              const discountAmount = parseFloat(line.discount || '0');
-              const discountedAmount = baseAmount - discountAmount;
-              
-              
-              let cgstPercentValue = '0';
-              if (originalItem && originalItem.cgstPercent) {
-                cgstPercentValue = originalItem.cgstPercent.toString();
-                console.log('✅ Using original CGST percent from location state:', cgstPercentValue);
-              } else if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
-                cgstPercentValue = line.cgst_percent.toString();
-              } else if (line.cgstPercent !== undefined && line.cgstPercent !== null) {
-                cgstPercentValue = line.cgstPercent.toString();
-              } else if (line.cgst !== undefined && line.cgst !== null) {
-                // API now returns percentage value directly (e.g., 9 for 9%)
-                cgstPercentValue = parseFloat(line.cgst).toString();
-              }
-              
-              let sgstPercentValue = '0';
-              if (originalItem && originalItem.sgstPercent) {
-                sgstPercentValue = originalItem.sgstPercent.toString();
-                console.log('✅ Using original SGST percent from location state:', sgstPercentValue);
-              } else if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
-                sgstPercentValue = line.sgst_percent.toString();
-              } else if (line.sgstPercent !== undefined && line.sgstPercent !== null) {
-                sgstPercentValue = line.sgstPercent.toString();
-              } else if (line.sgst !== undefined && line.sgst !== null) {
-                // API now returns percentage value directly (e.g., 9 for 9%)
-                sgstPercentValue = parseFloat(line.sgst).toString();
-              }
-              
-              let igstPercentValue = '0';
-              if (originalItem && originalItem.igstPercent) {
-                igstPercentValue = originalItem.igstPercent.toString();
-                console.log('✅ Using original IGST percent from location state:', igstPercentValue);
-              } else if (line.igst_percent !== undefined && line.igst_percent !== null) {
-                igstPercentValue = line.igst_percent.toString();
-              } else if (line.igstPercent !== undefined && line.igstPercent !== null) {
-                igstPercentValue = line.igstPercent.toString();
-              } else if (line.igst !== undefined && line.igst !== null) {
-                // API now returns percentage value directly (e.g., 0 for 0%)
-                igstPercentValue = parseFloat(line.igst).toString();
-              }
+                const unitPrice = parseFloat(line.rate || line.unit_price || '0');
+                const quantity = originalQty > 0 ? originalQty : (parseFloat(line.quantity || line.qty || '1'));
+                const baseAmount = unitPrice * quantity;
 
-              const returnQty = originalQty || quantity || 0;
-              
-              const tempItem: ReturnItem = {
-                // Use invoice_line_id as the id (this is the unique identifier for the line item)
-                // DO NOT use line.id as fallback - it might be the invoice_id, not invoice_line_id
-                id: line.invoice_line_id?.toString() || '',
-                productName: productName || (productId ? `Product ID: ${productId}` : 'Unknown Product'),
-                manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name'
-                batch: line.batch_number || line.batch || '',
-                expiryDate: line.expiry_date || line.expiryDate || '',
-                quantity: String(returnQty),
-                type: line.product_type || line.type || 'N/A', // API returns 'product_type'
-                // Map backend 'rate' to 'unit_price', also check for 'unit_price' as fallback
-                unitPrice: line.rate?.toString() || line.unit_price?.toString() || line.unitPrice?.toString() || '0',
-                mrp: line.mrp?.toString() || '0',
-                // Use calculated discount percentage
-                discountPercent: discountPercentValue,
-                // Use calculated tax percentages
-                cgstPercent: cgstPercentValue,
-                sgstPercent: sgstPercentValue,
-                igstPercent: igstPercentValue,
-                // Temporary values - will be recalculated
-                amount: '0',
-                discount: '0',
-                cgst: '0',
-                sgst: '0',
-                igst: '0',
-                returnQuantity: String(initialReturnQty), // Start with refundable quantity (0 if all returned)
-                originalQuantity: String(originalQty),
-                // Use selling_price for originalAmount as well
-                originalAmount: line.selling_price?.toString() || line.amount?.toString() || line.total?.toString() || '0',
-                // CRITICAL: Only use invoice_line_id from API response
-                // DO NOT fallback to line.id - it might be invoice_id, not invoice_line_id
-                // If invoice_line_id is missing, log an error and set to undefined
-                invoice_line_id: (() => {
-                  if (line.invoice_line_id !== undefined && line.invoice_line_id !== null) {
-                    const id = Number(line.invoice_line_id);
-                    const invoiceId = line.invoice_id ? Number(line.invoice_id) : null;
-                    
-                    // Note: invoice_line_id can sometimes match invoice_id if there's only one line item
-                    // This is acceptable - we'll use the invoice_line_id as provided by the backend
-                    if (invoiceId && id === invoiceId) {
-                      console.warn(`⚠️ WARNING: invoice_line_id (${id}) matches invoice_id (${invoiceId})`);
-                      console.warn(`   This can happen with single-line invoices. Proceeding with invoice_line_id: ${id}`);
+                // Use refundable quantity for initial return quantity (not original quantity)
+                // If refundable is 0, start with 0; otherwise start with refundable quantity
+                const initialReturnQty = refundableQty;
+
+                const discountAmount = parseFloat(line.discount || '0');
+                const discountedAmount = baseAmount - discountAmount;
+
+
+                let cgstPercentValue = '0';
+                if (originalItem && originalItem.cgstPercent) {
+                  cgstPercentValue = originalItem.cgstPercent.toString();
+                  console.log('✅ Using original CGST percent from location state:', cgstPercentValue);
+                } else if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
+                  cgstPercentValue = line.cgst_percent.toString();
+                } else if (line.cgstPercent !== undefined && line.cgstPercent !== null) {
+                  cgstPercentValue = line.cgstPercent.toString();
+                } else if (line.cgst !== undefined && line.cgst !== null) {
+                  // API now returns percentage value directly (e.g., 9 for 9%)
+                  cgstPercentValue = parseFloat(line.cgst).toString();
+                }
+
+                let sgstPercentValue = '0';
+                if (originalItem && originalItem.sgstPercent) {
+                  sgstPercentValue = originalItem.sgstPercent.toString();
+                  console.log('✅ Using original SGST percent from location state:', sgstPercentValue);
+                } else if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
+                  sgstPercentValue = line.sgst_percent.toString();
+                } else if (line.sgstPercent !== undefined && line.sgstPercent !== null) {
+                  sgstPercentValue = line.sgstPercent.toString();
+                } else if (line.sgst !== undefined && line.sgst !== null) {
+                  // API now returns percentage value directly (e.g., 9 for 9%)
+                  sgstPercentValue = parseFloat(line.sgst).toString();
+                }
+
+                let igstPercentValue = '0';
+                if (originalItem && originalItem.igstPercent) {
+                  igstPercentValue = originalItem.igstPercent.toString();
+                  console.log('✅ Using original IGST percent from location state:', igstPercentValue);
+                } else if (line.igst_percent !== undefined && line.igst_percent !== null) {
+                  igstPercentValue = line.igst_percent.toString();
+                } else if (line.igstPercent !== undefined && line.igstPercent !== null) {
+                  igstPercentValue = line.igstPercent.toString();
+                } else if (line.igst !== undefined && line.igst !== null) {
+                  // API now returns percentage value directly (e.g., 0 for 0%)
+                  igstPercentValue = parseFloat(line.igst).toString();
+                }
+
+                const returnQty = originalQty || quantity || 0;
+
+                const tempItem: ReturnItem = {
+                  // Use invoice_line_id as the id (this is the unique identifier for the line item)
+                  // DO NOT use line.id as fallback - it might be the invoice_id, not invoice_line_id
+                  id: line.invoice_line_id?.toString() || '',
+                  productName: productName || (productId ? `Product ID: ${productId}` : 'Unknown Product'),
+                  manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name'
+                  batch: line.batch_number || line.batch || '',
+                  expiryDate: line.expiry_date || line.expiryDate || '',
+                  quantity: String(returnQty),
+                  type: line.product_type || line.type || 'N/A', // API returns 'product_type'
+                  // Map backend 'rate' to 'unit_price', also check for 'unit_price' as fallback
+                  unitPrice: line.rate?.toString() || line.unit_price?.toString() || line.unitPrice?.toString() || '0',
+                  mrp: line.mrp?.toString() || '0',
+                  // Use calculated discount percentage
+                  discountPercent: discountPercentValue,
+                  // Use calculated tax percentages
+                  cgstPercent: cgstPercentValue,
+                  sgstPercent: sgstPercentValue,
+                  igstPercent: igstPercentValue,
+                  // Temporary values - will be recalculated
+                  amount: '0',
+                  discount: '0',
+                  cgst: '0',
+                  sgst: '0',
+                  igst: '0',
+                  returnQuantity: String(initialReturnQty), // Start with refundable quantity (0 if all returned)
+                  originalQuantity: String(originalQty),
+                  // Use selling_price for originalAmount as well
+                  originalAmount: line.selling_price?.toString() || line.amount?.toString() || line.total?.toString() || '0',
+                  // CRITICAL: Only use invoice_line_id from API response
+                  // DO NOT fallback to line.id - it might be invoice_id, not invoice_line_id
+                  // If invoice_line_id is missing, log an error and set to undefined
+                  invoice_line_id: (() => {
+                    if (line.invoice_line_id !== undefined && line.invoice_line_id !== null) {
+                      const id = Number(line.invoice_line_id);
+                      const invoiceId = line.invoice_id ? Number(line.invoice_id) : null;
+
+                      // Note: invoice_line_id can sometimes match invoice_id if there's only one line item
+                      // This is acceptable - we'll use the invoice_line_id as provided by the backend
+                      if (invoiceId && id === invoiceId) {
+                        console.warn(`⚠️ WARNING: invoice_line_id (${id}) matches invoice_id (${invoiceId})`);
+                        console.warn(`   This can happen with single-line invoices. Proceeding with invoice_line_id: ${id}`);
+                      }
+
+                      console.log(`✅ Setting invoice_line_id from API: ${id} for product ${productName}`, {
+                        invoice_line_id: id,
+                        invoice_id: invoiceId,
+                        status: 'OK',
+                      });
+                      return id;
+                    } else {
+                      console.error(`❌ Missing invoice_line_id in API response for product ${productName}:`, line);
+                      return undefined;
                     }
-                    
-                    console.log(`✅ Setting invoice_line_id from API: ${id} for product ${productName}`, {
-                      invoice_line_id: id,
-                      invoice_id: invoiceId,
-                      status: 'OK',
-                    });
-                    return id;
-                  } else {
-                    console.error(`❌ Missing invoice_line_id in API response for product ${productName}:`, line);
-                    return undefined;
-                  }
-                })(),
-                refundable_quantity: refundableQty, // Use calculated refundable quantity from API
-                product_id: productId, // Store product_id for later lookup if needed
-                discountAuthorizedBy: line.discount_authority || undefined, // Map discount_authority if present
-              };
-              
-              // Recalculate amount based on the return quantity (which starts as refundable quantity)
-              const calculated = recalculateItemAmount(tempItem, initialReturnQty);
-              
-              // Return the item with calculated values
-              const finalItem = {
-                ...tempItem,
-                amount: calculated.amount,
-                discount: calculated.discount,
-                cgst: calculated.cgst,
-                sgst: calculated.sgst,
-                igst: calculated.igst,
-              };
-              
-              // Debug: Log the invoice_line_id to verify it's correct
-              console.log('📋 Created return item:', {
-                productName: finalItem.productName,
-                invoice_line_id: finalItem.invoice_line_id,
-                id: finalItem.id,
-                quantity: finalItem.returnQuantity,
-                // Warn if invoice_line_id looks suspicious (might be invoice_id instead)
-                warning: finalItem.invoice_line_id && finalItem.invoice_line_id > 10 
-                  ? '⚠️ invoice_line_id seems high, might be invoice_id!' 
-                  : 'OK',
+                  })(),
+                  refundable_quantity: refundableQty, // Use calculated refundable quantity from API
+                  product_id: productId, // Store product_id for later lookup if needed
+                  discountAuthorizedBy: line.discount_authority || undefined, // Map discount_authority if present
+                };
+
+                // Recalculate amount based on the return quantity (which starts as refundable quantity)
+                const calculated = recalculateItemAmount(tempItem, initialReturnQty);
+
+                // Return the item with calculated values
+                const finalItem = {
+                  ...tempItem,
+                  amount: calculated.amount,
+                  discount: calculated.discount,
+                  cgst: calculated.cgst,
+                  sgst: calculated.sgst,
+                  igst: calculated.igst,
+                };
+
+                // Debug: Log the invoice_line_id to verify it's correct
+                console.log('📋 Created return item:', {
+                  productName: finalItem.productName,
+                  invoice_line_id: finalItem.invoice_line_id,
+                  id: finalItem.id,
+                  quantity: finalItem.returnQuantity,
+                  // Warn if invoice_line_id looks suspicious (might be invoice_id instead)
+                  warning: finalItem.invoice_line_id && finalItem.invoice_line_id > 10
+                    ? '⚠️ invoice_line_id seems high, might be invoice_id!'
+                    : 'OK',
+                });
+
+                return finalItem;
               });
-              
-              return finalItem;
-            });
-            
-            // Detailed debugging before setting returnItems
-            console.group('🔍 DEBUG: About to set returnItems');
-            console.log(`Total items from API: ${items.length}`);
-            items.forEach((item, idx) => {
-              console.log(`Return Item ${idx}:`, {
-                productName: item.productName,
-                invoice_line_id: item.invoice_line_id,
-                id: item.id,
-                hasInvoiceLineId: !!item.invoice_line_id,
-                type: typeof item.invoice_line_id,
+
+              // Detailed debugging before setting returnItems
+              console.group('🔍 DEBUG: About to set returnItems');
+              console.log(`Total items from API: ${items.length}`);
+              items.forEach((item, idx) => {
+                console.log(`Return Item ${idx}:`, {
+                  productName: item.productName,
+                  invoice_line_id: item.invoice_line_id,
+                  id: item.id,
+                  hasInvoiceLineId: !!item.invoice_line_id,
+                  type: typeof item.invoice_line_id,
+                });
               });
-            });
-            console.groupEnd();
-            
-            setReturnItems(items);
-            return; // Successfully loaded from API, exit early
+              console.groupEnd();
+
+              setReturnItems(items);
+            }
+          } catch (processError: any) {
+            console.error('Error processing invoice data for return:', processError);
+            alert(`Error processing invoice data: ${processError?.message || 'Unknown processing error'}`);
           }
         }
       } catch (error: any) {
         console.error('Error fetching invoice details for return:', error);
-        console.log('Falling back to location state or storage data...');
-        // Continue to fallback below - don't return here
-      }
-      
-      // Fallback: Load from location state or storage if API call fails or returns no data
-      if (isMounted) {
-        loadItemsFromStateOrStorage();
-      }
-    };
-
-    const loadItemsFromStateOrStorage = () => {
-      console.log('Loading items from location state or storage...');
-      if (invoiceData.items && invoiceData.items.length > 0) {
-        console.log('Loading items from location state:', invoiceData.items.length, 'items');
-        const items: ReturnItem[] = invoiceData.items.map((item: SalesReceiptItem) => {
-         
-          const invoiceLineId = (item as any).invoice_line_id 
-            ? Number((item as any).invoice_line_id)
-            : undefined;
-          
-          if (!invoiceLineId) {
-            console.warn('⚠️ Item from state missing invoice_line_id - cannot use for return:', {
-              productName: item.productName,
-              id: item.id,
-              invoice_line_id: (item as any).invoice_line_id,
-            });
-          }
-          
-          console.log('Loading item from state:', {
-            productName: item.productName,
-            id: item.id,
-            invoice_line_id: (item as any).invoice_line_id,
-            resolved_invoice_line_id: invoiceLineId,
-          });
-          
-          // For fallback items from storage, we don't have returned_quantity info
-          // So we'll set returnQuantity to 0 and let user enter the correct value
-          // The refundable_quantity will be calculated when API is called
-          const fallbackRefundableQty = parseInt(item.quantity) || 0;
-          return {
-            ...item,
-            returnQuantity: '0', // Start with 0 for fallback items (user must enter correct value)
-            originalQuantity: item.quantity,
-            originalAmount: item.amount,
-            invoice_line_id: invoiceLineId,
-            refundable_quantity: fallbackRefundableQty,
-          };
-        });
-        setReturnItems(items);
-        console.log('Items loaded from location state:', items.length);
-      } else {
-        // If no items in state, try to get from storage
-        console.log('No items in location state, checking storage...');
-        const savedHistory = getSalesHistoryFromStorage();
-        const savedInvoice = savedHistory.find((item: any) => item.id === invoiceData.invoiceId);
-        
-        if (savedInvoice && savedInvoice.items && savedInvoice.items.length > 0) {
-          console.log('Loading items from storage (items):', savedInvoice.items.length, 'items');
-          const items: ReturnItem[] = savedInvoice.items.map((item: SalesReceiptItem) => {
-            // CRITICAL: Only use invoice_line_id if it exists in the item
-            // DO NOT use item.id as fallback - it might be invoice_id, not invoice_line_id
-            const invoiceLineId = (item as any).invoice_line_id 
-              ? Number((item as any).invoice_line_id)
-              : undefined;
-            
-            if (!invoiceLineId) {
-              console.warn('⚠️ Item from storage missing invoice_line_id - cannot use for return:', {
-                productName: item.productName,
-                id: item.id,
-                invoice_line_id: (item as any).invoice_line_id,
-              });
-            }
-            
-            console.log('Loading item from storage (items):', {
-              productName: item.productName,
-              id: item.id,
-              invoice_line_id: (item as any).invoice_line_id,
-              resolved_invoice_line_id: invoiceLineId,
-            });
-            
-            // For fallback items from storage, we don't have returned_quantity info
-            // So we'll set returnQuantity to 0 and let user enter the correct value
-            const fallbackRefundableQty = parseInt(item.quantity) || 0;
-            return {
-              ...item,
-              returnQuantity: '0', // Start with 0 for fallback items (user must enter correct value)
-              originalQuantity: item.quantity,
-              originalAmount: item.amount,
-              invoice_line_id: invoiceLineId, // Will be undefined if not present
-              refundable_quantity: fallbackRefundableQty,
-            };
-          });
-          setReturnItems(items);
-          console.log('Items loaded from storage:', items.length);
-        } else if (savedInvoice && savedInvoice.salesItems && savedInvoice.salesItems.length > 0) {
-          console.log('Loading items from storage (salesItems):', savedInvoice.salesItems.length, 'items');
-          const items: ReturnItem[] = savedInvoice.salesItems.map((item: SalesReceiptItem) => {
-            // CRITICAL: Only use invoice_line_id if it exists in the item
-            // DO NOT use item.id as fallback - it might be invoice_id, not invoice_line_id
-            const invoiceLineId = (item as any).invoice_line_id 
-              ? Number((item as any).invoice_line_id)
-              : undefined;
-            
-            if (!invoiceLineId) {
-              console.warn('⚠️ Item from storage missing invoice_line_id - cannot use for return:', {
-                productName: item.productName,
-                id: item.id,
-                invoice_line_id: (item as any).invoice_line_id,
-              });
-            }
-            
-            console.log('Loading item from storage (salesItems):', {
-              productName: item.productName,
-              id: item.id,
-              invoice_line_id: (item as any).invoice_line_id,
-              resolved_invoice_line_id: invoiceLineId,
-            });
-            
-            // For fallback items from storage, we don't have returned_quantity info
-            // So we'll set returnQuantity to 0 and let user enter the correct value
-            const fallbackRefundableQty = parseInt(item.quantity) || 0;
-            return {
-              ...item,
-              returnQuantity: '0', // Start with 0 for fallback items (user must enter correct value)
-              originalQuantity: item.quantity,
-              originalAmount: item.amount,
-              invoice_line_id: invoiceLineId, // Will be undefined if not present
-              refundable_quantity: fallbackRefundableQty,
-            };
-          });
-          setReturnItems(items);
-          console.log('Items loaded from storage:', items.length);
-        } else {
-          console.warn('No invoice items found for return in state or storage');
-          setReturnItems([]);
-        }
+        alert(`Failed to fetch invoice details: ${error?.data?.error || error?.message || 'Unknown error'}`);
+        navigate('/sales');
       }
     };
 
@@ -598,19 +502,19 @@ export default function SaleReturn() {
       : originalQty;
     // Clamp between 0 and refundable quantity
     const clampedValue = Math.max(0, Math.min(numValue, refundableQty));
-    
+
     setReturnItems(items => {
       const newItems = [...items];
       const item = newItems[index];
       newItems[index].returnQuantity = clampedValue.toString();
-      
+
       const calculated = recalculateItemAmount(item, clampedValue);
       newItems[index].amount = calculated.amount;
       newItems[index].discount = calculated.discount;
       newItems[index].cgst = calculated.cgst;
       newItems[index].sgst = calculated.sgst;
       newItems[index].igst = calculated.igst;
-      
+
       return newItems;
     });
   };
@@ -621,10 +525,10 @@ export default function SaleReturn() {
       const item = newItems[index];
       const numValue = parseFloat(value) || 0;
       const clampedValue = Math.max(0, Math.min(numValue, 100)); // Clamp between 0 and 100
-      
+
       // Update the discount percentage
       newItems[index].discountPercent = clampedValue.toString();
-      
+
       // Recalculate amount, discount, and taxes with new discount percentage
       const quantity = parseInt(item.returnQuantity) || 0;
       const calculated = recalculateItemAmount(newItems[index], quantity);
@@ -633,7 +537,7 @@ export default function SaleReturn() {
       newItems[index].cgst = calculated.cgst;
       newItems[index].sgst = calculated.sgst;
       newItems[index].igst = calculated.igst;
-      
+
       return newItems;
     });
   };
@@ -643,7 +547,7 @@ export default function SaleReturn() {
       const newItems = [...items];
       const item = newItems[index];
       const numValue = parseFloat(value) || 0;
-      const clampedValue = Math.max(0, Math.min(numValue, 100)); 
+      const clampedValue = Math.max(0, Math.min(numValue, 100));
       // Update the tax percentage
       if (taxType === 'cgst') {
         newItems[index].cgstPercent = clampedValue.toString();
@@ -652,7 +556,7 @@ export default function SaleReturn() {
       } else if (taxType === 'igst') {
         newItems[index].igstPercent = clampedValue.toString();
       }
-      
+
       // Recalculate amount and taxes with new tax percentage
       const quantity = parseInt(item.returnQuantity) || 0;
       const calculated = recalculateItemAmount(newItems[index], quantity);
@@ -661,7 +565,7 @@ export default function SaleReturn() {
       newItems[index].cgst = calculated.cgst;
       newItems[index].sgst = calculated.sgst;
       newItems[index].igst = calculated.igst;
-      
+
       return newItems;
     });
   };
@@ -702,7 +606,7 @@ export default function SaleReturn() {
 
   const handleConfirmReturn = async () => {
     console.log(' handleConfirmReturn called');
-    
+
     if (!invoiceData) {
       console.error('❌ No invoiceData found');
       return;
@@ -722,7 +626,7 @@ export default function SaleReturn() {
 
     console.log('✅ Validation passed, processing return...');
     console.log('📋 Selected items:', selectedItems);
-    
+
     // Detailed debugging of selected items and their invoice_line_ids
     console.group('🔍 DEBUG: Selected Items Details');
     selectedItems.forEach((item, idx) => {
@@ -747,25 +651,25 @@ export default function SaleReturn() {
             console.warn('⚠️ Item has zero return quantity:', item.productName);
             return false;
           }
-          
+
           // Validate return quantity doesn't exceed refundable quantity
           const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
             ? item.refundable_quantity
             : parseInt(item.originalQuantity) || 0;
-          
+
           if (returnQty > refundableQty) {
             console.error(`❌ Return quantity (${returnQty}) exceeds refundable quantity (${refundableQty}) for item:`, item.productName);
             alert(`Return quantity (${returnQty}) cannot exceed available quantity (${refundableQty}) for ${item.productName}`);
             return false;
           }
-          
+
           // CRITICAL: Only proceed if invoice_line_id exists
           // Do NOT use item.id as fallback - it might be invoice_id, not invoice_line_id
           if (!item.invoice_line_id) {
             console.error('❌ Item missing invoice_line_id:', item);
             return false;
           }
-          
+
           return true;
         })
         .map(item => {
@@ -775,12 +679,12 @@ export default function SaleReturn() {
             console.error('❌ Missing invoice_line_id for item:', item);
             return null;
           }
-          
+
           const line = {
             invoice_line_id: Number(item.invoice_line_id),
             batch_number: item.batch || '',
             quantity: parseInt(item.returnQuantity) || 0,
-            restock_action: 'RESTOCK', 
+            restock_action: 'RESTOCK',
           };
           console.log('✅ Created line:', line);
           return line;
@@ -808,7 +712,7 @@ export default function SaleReturn() {
       // Get invoice number from API response (for new invoices, invoice_number should always be set)
       // For new invoices only - invoice_number should exist in the database
       let invoiceNumber: string | number = '';
-      
+
       // Priority 1: Use invoice_number from API response (this is what's stored in the database)
       // For new invoices, this should always be available
       if (invoiceNumberFromApi !== null && invoiceNumberFromApi !== undefined) {
@@ -824,20 +728,20 @@ export default function SaleReturn() {
           .replace(/^(RB|INV-?)/i, '') // Remove RB or INV- prefix
           .replace(/[^0-9]/g, '') // Remove all non-numeric characters
           .trim();
-        
+
         // If there's still a number after cleaning, use it
         if (cleanedNumber) {
           invoiceNumber = cleanedNumber; // Keep as string to match backend format
           console.log('📝 Using parsed invoiceNumber from location state (PRIORITY 2):', invoiceNumber);
         }
       }
-      
+
       console.log('📄 Invoice number resolved:', invoiceNumber, {
         fromApi: invoiceNumberFromApi,
         fromInvoiceNumber: invoiceData.invoiceNumber,
         fromInvoiceId: invoiceData.invoiceId,
       });
-      
+
       if (!invoiceNumber || (typeof invoiceNumber === 'string' && invoiceNumber.trim() === '')) {
         console.error('❌ Invoice number resolution failed - invoice_number is required for new invoices:', {
           invoiceNumberFromApi: invoiceNumberFromApi,
@@ -847,11 +751,11 @@ export default function SaleReturn() {
         alert('Invalid invoice number. Cannot submit return. Please ensure the invoice has a valid invoice number (new invoices should always have one).');
         return;
       }
-      
+
       const createdBy = user?.username || invoiceData.username || 'system';
       console.log('👤 Created by:', createdBy);
 
-      
+
       // Send invoice_number exactly as stored in database (for new invoices)
       // Backend expects string format matching what's in the database
       const payload = {
@@ -864,8 +768,8 @@ export default function SaleReturn() {
       };
 
       console.log('📝 Using invoice_number for return:', invoiceNumber, {
-        source: invoiceNumberFromApi !== null && invoiceNumberFromApi !== undefined 
-          ? 'API response' 
+        source: invoiceNumberFromApi !== null && invoiceNumberFromApi !== undefined
+          ? 'API response'
           : 'Location state (parsed)',
         originalFromApi: invoiceNumberFromApi
       });
@@ -877,7 +781,7 @@ export default function SaleReturn() {
 
       console.log('✅ Return submitted successfully:', result);
       setIsConfirmDialogOpen(false);
-      
+
       // Navigate back to sale history after successful return
       navigate('/sales');
     } catch (error: any) {
@@ -893,36 +797,36 @@ export default function SaleReturn() {
     }
   };
 
-  const selectedItems = useMemo(() => 
+  const selectedItems = useMemo(() =>
     selectedRows.map(index => returnItems[index]).filter(Boolean),
     [selectedRows, returnItems]
   );
 
-  const totalProducts = useMemo(() => 
+  const totalProducts = useMemo(() =>
     selectedItems.length,
     [selectedItems]
   );
 
-  const totalQuantityReturned = useMemo(() => 
+  const totalQuantityReturned = useMemo(() =>
     selectedItems.reduce((sum, item) => sum + (parseInt(item.returnQuantity) || 0), 0),
     [selectedItems]
   );
 
-  const totalAmountReturned = useMemo(() => 
+  const totalAmountReturned = useMemo(() =>
     selectedItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
     [selectedItems, returnItems] // Include returnItems to recalculate when amounts change
   );
 
   // Calculate total taxes for selected items
-  const totalTaxAmount = useMemo(() => 
-    selectedItems.reduce((sum, item) => 
+  const totalTaxAmount = useMemo(() =>
+    selectedItems.reduce((sum, item) =>
       sum + (parseFloat(item.cgst || '0') + parseFloat(item.sgst || '0') + parseFloat(item.igst || '0')), 0
-    ), 
+    ),
     [selectedItems, returnItems]
   );
 
   // Calculate total discount for selected items
-  const totalDiscountAmount = useMemo(() => 
+  const totalDiscountAmount = useMemo(() =>
     selectedItems.reduce((sum, item) => sum + (parseFloat(item.discount || '0')), 0),
     [selectedItems, returnItems]
   );
@@ -934,11 +838,11 @@ export default function SaleReturn() {
   return (
     <Box sx={{ p: 3, backgroundColor: '#F6F8FB', minHeight: '100vh' }}>
       {/* Header with Payment Type Section */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'flex-start',
-        mb: 3 
+        mb: 3
       }}>
         {/* Title Section */}
         <Box>
@@ -948,9 +852,9 @@ export default function SaleReturn() {
         </Box>
 
         {/* Payment Type Section - Right Side */}
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 3, 
+        <Box sx={{
+          display: 'flex',
+          gap: 3,
           alignItems: 'flex-start'
         }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -1028,7 +932,7 @@ export default function SaleReturn() {
       </Box>
 
       {/* Product Selection Table */}
-      <Box sx={{ 
+      <Box sx={{
         mb: 3,
         mt: 3,
         backgroundColor: '#FFFFFF',
@@ -1039,7 +943,7 @@ export default function SaleReturn() {
         <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
           Select returned products
         </Typography>
-        
+
         {/* Check if all items have been returned */}
         {returnItems.length > 0 && returnItems.every(item => {
           const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
@@ -1047,22 +951,22 @@ export default function SaleReturn() {
             : parseInt(item.originalQuantity) || 0;
           return refundableQty === 0;
         }) && (
-          <Box sx={{
-            mb: 2,
-            p: 2,
-            bgcolor: '#FEF3C7',
-            border: '1px solid #FCD34D',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5
-          }}>
-            <Typography variant="body2" sx={{ color: '#92400E', fontWeight: 500 }}>
-              ℹ️ All items in this invoice have already been fully returned. No further returns are possible.
-            </Typography>
-          </Box>
-        )}
-        
+            <Box sx={{
+              mb: 2,
+              p: 2,
+              bgcolor: '#FEF3C7',
+              border: '1px solid #FCD34D',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5
+            }}>
+              <Typography variant="body2" sx={{ color: '#92400E', fontWeight: 500 }}>
+                ℹ️ All items in this invoice have already been fully returned. No further returns are possible.
+              </Typography>
+            </Box>
+          )}
+
         <ReusableTable
           data={returnItems.filter(item => {
             // Filter to show only items with refundable quantity > 0
@@ -1092,7 +996,7 @@ export default function SaleReturn() {
                   ? item.refundable_quantity
                   : parseInt(item.originalQuantity) || 0;
                 const isAllReturned = refundableQty === 0;
-                
+
                 return (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                     <TextField
@@ -1100,8 +1004,8 @@ export default function SaleReturn() {
                       value={item.returnQuantity}
                       onChange={(e) => handleQuantityChange(index, e.target.value)}
                       disabled={isAllReturned}
-                      inputProps={{ 
-                        min: 0, 
+                      inputProps={{
+                        min: 0,
                         max: refundableQty,
                         style: { textAlign: 'center', padding: '4px 8px' }
                       }}
@@ -1119,9 +1023,9 @@ export default function SaleReturn() {
                       }}
                     />
                     {isAllReturned && (
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
+                      <Typography
+                        variant="caption"
+                        sx={{
                           color: '#DC2626',
                           fontSize: '11px',
                           fontWeight: 500,
@@ -1155,121 +1059,41 @@ export default function SaleReturn() {
               key: 'discount',
               header: 'Disc (%)',
               sortable: false,
-              render: (item: ReturnItem) => {
-                const index = returnItems.findIndex(i => i.id === item.id);
-                return (
-                  <TextField
-                    type="number"
-                    value={item.discountPercent}
-                    onChange={(e) => handleDiscountPercentChange(index, e.target.value)}
-                    inputProps={{
-                      min: 0,
-                      max: 100,
-                      style: { textAlign: 'center', padding: '4px 8px' }
-                    }}
-                    sx={{
-                      width: '80px',
-                      '& .MuiOutlinedInput-root': {
-                        height: '32px',
-                        borderRadius: '8px',
-                        '& input': {
-                          padding: '4px 8px',
-                        },
-                      },
-                    }}
-                  />
-                );
-              },
+              render: (item: ReturnItem) => (
+                <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
+                  {item.discountPercent}%
+                </Typography>
+              ),
             },
             {
               key: 'cgst',
               header: 'CGST (%)',
               sortable: false,
-              render: (item: ReturnItem) => {
-                const index = returnItems.findIndex(i => i.id === item.id);
-                return (
-                  <TextField
-                    type="number"
-                    value={item.cgstPercent}
-                    onChange={(e) => handleTaxPercentChange(index, 'cgst', e.target.value)}
-                    inputProps={{
-                      min: 0,
-                      max: 100,
-                      style: { textAlign: 'center', padding: '4px 8px' }
-                    }}
-                    sx={{
-                      width: '80px',
-                      '& .MuiOutlinedInput-root': {
-                        height: '32px',
-                        borderRadius: '8px',
-                        '& input': {
-                          padding: '4px 8px',
-                        },
-                      },
-                    }}
-                  />
-                );
-              },
+              render: (item: ReturnItem) => (
+                <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
+                  {item.cgstPercent}%
+                </Typography>
+              ),
             },
             {
               key: 'sgst',
               header: 'SGST (%)',
               sortable: false,
-              render: (item: ReturnItem) => {
-                const index = returnItems.findIndex(i => i.id === item.id);
-                return (
-                  <TextField
-                    type="number"
-                    value={item.sgstPercent}
-                    onChange={(e) => handleTaxPercentChange(index, 'sgst', e.target.value)}
-                    inputProps={{
-                      min: 0,
-                      max: 100,
-                      style: { textAlign: 'center', padding: '4px 8px' }
-                    }}
-                    sx={{
-                      width: '80px',
-                      '& .MuiOutlinedInput-root': {
-                        height: '32px',
-                        borderRadius: '8px',
-                        '& input': {
-                          padding: '4px 8px',
-                        },
-                      },
-                    }}
-                  />
-                );
-              },
+              render: (item: ReturnItem) => (
+                <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
+                  {item.sgstPercent}%
+                </Typography>
+              ),
             },
             {
               key: 'igst',
               header: 'IGST (%)',
               sortable: false,
-              render: (item: ReturnItem) => {
-                const index = returnItems.findIndex(i => i.id === item.id);
-                return (
-                  <TextField
-                    type="number"
-                    value={item.igstPercent}
-                    onChange={(e) => handleTaxPercentChange(index, 'igst', e.target.value)}
-                    inputProps={{
-                      min: 0,
-                      max: 100,
-                      style: { textAlign: 'center', padding: '4px 8px' }
-                    }}
-                    sx={{
-                      width: '80px',
-                      '& .MuiOutlinedInput-root': {
-                        height: '32px',
-                        borderRadius: '8px',
-                        '& input': {
-                          padding: '4px 8px',
-                        },
-                      },
-                    }}
-                  />
-                );
-              },
+              render: (item: ReturnItem) => (
+                <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
+                  {item.igstPercent}%
+                </Typography>
+              ),
             },
             {
               key: 'amount',
@@ -1303,7 +1127,7 @@ export default function SaleReturn() {
       </Box>
 
       {/* Summary Section */}
-      <Box sx={{ 
+      <Box sx={{
         backgroundColor: '#E0EDFF',
         borderRadius: '12px',
         padding: '16px',

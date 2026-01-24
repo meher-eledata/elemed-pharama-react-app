@@ -35,46 +35,9 @@ export const getTableColumns = ({
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_PRODUCT,
       sortable: true,
       render: (item) => (
-        (isReturnDetailsMode || editingRowId !== item.id) ? (
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.productName}
-          </Typography>
-        ) : (
-          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
-            <TextField
-              value={item.productName}
-              onChange={(e) => {
-                setSalesItems(prev => prev.map(product =>
-                  product.id === item.id ? { ...product, productName: e.target.value } : product
-                ));
-              }}
-              size="small"
-              sx={{
-                width: 150,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  height: '32px',
-                  '&:hover fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                },
-                '& .MuiOutlinedInput-input': {
-                  padding: '8px 12px',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                },
-                '& .MuiInputBase-root': {
-                  overflow: 'visible',
-                },
-              }}
-            />
-          </Box>
-        )
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {item.productName}
+        </Typography>
       )
     },
     {
@@ -132,97 +95,18 @@ export const getTableColumns = ({
       key: 'batch',
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_BATCH,
       render: (item) => (
-        (isReturnDetailsMode || editingRowId !== item.id) ? (
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.batch}
-          </Typography>
-        ) : (
-          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
-            <TextField
-              value={item.batch}
-              onChange={(e) => {
-                setSalesItems(prev => prev.map(product =>
-                  product.id === item.id ? { ...product, batch: e.target.value } : product
-                ));
-              }}
-              size="small"
-              sx={{
-                width: 100,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  height: '32px',
-                  '&:hover fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                },
-                '& .MuiOutlinedInput-input': {
-                  padding: '8px 12px',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                },
-                '& .MuiInputBase-root': {
-                  overflow: 'visible',
-                },
-              }}
-            />
-          </Box>
-        )
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {item.batch}
+        </Typography>
       )
     },
     {
       key: 'unitPrice',
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_UNIT_PRICE,
       render: (item) => (
-        (isReturnDetailsMode || editingRowId !== item.id) ? (
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.unitPrice}
-          </Typography>
-        ) : (
-          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
-            <TextField
-              value={item.unitPrice}
-              onChange={(e) => {
-                setSalesItems(prev => prev.map(product => {
-                  if (product.id === item.id) {
-                    const updated = { ...product, unitPrice: e.target.value };
-                    return recalculateSalesItemAmount(updated);
-                  }
-                  return product;
-                }));
-              }}
-              size="small"
-              type="number"
-              sx={{
-                width: 100,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  height: '32px',
-                  '&:hover fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                },
-                '& .MuiOutlinedInput-input': {
-                  padding: '8px 12px',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                },
-                '& .MuiInputBase-root': {
-                  overflow: 'visible',
-                },
-              }}
-            />
-          </Box>
-        )
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {item.unitPrice}
+        </Typography>
       )
     },
     {
@@ -286,242 +170,36 @@ export const getTableColumns = ({
       key: 'cgst',
       header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_CGST} (%)`,
       render: (item) => (
-        (isReturnDetailsMode || editingRowId !== item.id) ? (
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.cgstPercent}
-          </Typography>
-        ) : (
-          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
-            <TextField
-              value={item.cgstPercent}
-              onChange={(e) => {
-                const newCgstPercent = e.target.value;
-
-                if (applyGstToAll) {
-                  // Update first row and apply to ALL products at once
-                  setSalesItems(prev => {
-                    return prev.map(product => {
-                      const updated = { ...product, cgstPercent: newCgstPercent };
-                      return recalculateSalesItemAmount(updated);
-                    });
-                  });
-                } else {
-                  // Only update the current item
-                  setSalesItems(prev => prev.map(product => {
-                    if (product.id === item.id) {
-                      const updated = { ...product, cgstPercent: newCgstPercent };
-                      return recalculateSalesItemAmount(updated);
-                    }
-                    return product;
-                  }));
-                }
-              }}
-              size="small"
-              type="number"
-              inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
-              sx={{
-                width: 70,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  height: '32px',
-                  '&:hover fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                },
-                '& .MuiOutlinedInput-input': {
-                  padding: '8px 12px',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                },
-                '& .MuiInputBase-root': {
-                  overflow: 'visible',
-                },
-              }}
-            />
-          </Box>
-        )
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {item.cgstPercent}
+        </Typography>
       )
     },
     {
       key: 'sgst',
       header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_SGST} (%)`,
       render: (item) => (
-        (isReturnDetailsMode || editingRowId !== item.id) ? (
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.sgstPercent}
-          </Typography>
-        ) : (
-          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
-            <TextField
-              value={item.sgstPercent}
-              onChange={(e) => {
-                const newSgstPercent = e.target.value;
-
-                if (applyGstToAll) {
-                  // Update first row and apply to ALL products at once
-                  setSalesItems(prev => {
-                    return prev.map(product => {
-                      const updated = { ...product, sgstPercent: newSgstPercent };
-                      return recalculateSalesItemAmount(updated);
-                    });
-                  });
-                } else {
-                  // Only update the current item
-                  setSalesItems(prev => prev.map(product => {
-                    if (product.id === item.id) {
-                      const updated = { ...product, sgstPercent: newSgstPercent };
-                      return recalculateSalesItemAmount(updated);
-                    }
-                    return product;
-                  }));
-                }
-              }}
-              size="small"
-              type="number"
-              inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
-              sx={{
-                width: 70,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  height: '32px',
-                  '&:hover fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                },
-                '& .MuiOutlinedInput-input': {
-                  padding: '8px 12px',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                },
-                '& .MuiInputBase-root': {
-                  overflow: 'visible',
-                },
-              }}
-            />
-          </Box>
-        )
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {item.sgstPercent}
+        </Typography>
       )
     },
     {
       key: 'igst',
       header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_IGST} (%)`,
       render: (item) => (
-        (isReturnDetailsMode || editingRowId !== item.id) ? (
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.igstPercent}
-          </Typography>
-        ) : (
-          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
-            <TextField
-              value={item.igstPercent}
-              onChange={(e) => {
-                const newIgstPercent = e.target.value;
-
-                if (applyGstToAll) {
-                  // Update first row and apply to ALL products at once
-                  setSalesItems(prev => {
-                    return prev.map(product => {
-                      const updated = { ...product, igstPercent: newIgstPercent };
-                      return recalculateSalesItemAmount(updated);
-                    });
-                  });
-                } else {
-                  // Only update the current item
-                  setSalesItems(prev => prev.map(product => {
-                    if (product.id === item.id) {
-                      const updated = { ...product, igstPercent: newIgstPercent };
-                      return recalculateSalesItemAmount(updated);
-                    }
-                    return product;
-                  }));
-                }
-              }}
-              size="small"
-              type="number"
-              inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
-              sx={{
-                width: 70,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  height: '32px',
-                  '&:hover fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                },
-                '& .MuiOutlinedInput-input': {
-                  padding: '8px 12px',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                },
-                '& .MuiInputBase-root': {
-                  overflow: 'visible',
-                },
-              }}
-            />
-          </Box>
-        )
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {item.igstPercent}
+        </Typography>
       )
     },
     {
       key: 'amount',
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_AMOUNT,
       render: (item) => (
-        (isReturnDetailsMode || editingRowId !== item.id) ? (
-          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            ₹{item.amount}
-          </Typography>
-        ) : (
-          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
-            <TextField
-              value={item.amount}
-              onChange={(e) => {
-                setSalesItems(prev => prev.map(product =>
-                  product.id === item.id ? { ...product, amount: e.target.value } : product
-                ));
-              }}
-              size="small"
-              type="number"
-              sx={{
-                width: 100,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  height: '32px',
-                  '&:hover fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#5C17E5',
-                  },
-                },
-                '& .MuiOutlinedInput-input': {
-                  padding: '8px 12px',
-                  overflow: 'visible',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                },
-                '& .MuiInputBase-root': {
-                  overflow: 'visible',
-                },
-              }}
-            />
-          </Box>
-        )
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          ₹{item.amount}
+        </Typography>
       )
     },
     {

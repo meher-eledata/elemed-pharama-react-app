@@ -60,6 +60,12 @@ export interface SalesHistoryItem {
       returnDate?: string;
     }>;
   };
+  // Extra fields for Edit/View/Print details
+  paymentMode?: string;
+  insuranceCompany?: string;
+  totalDiscount?: number | string;
+  taxAmount?: number | string;
+  totalPayableAmount?: number | string;
 }
 
 export interface InvoiceDetails {
@@ -248,6 +254,11 @@ export default function SaleHistory() {
         returnStatus: invoice.return_status || null,
         hasReturn: invoice.has_return || (invoice.returned_qty && parseFloat(invoice.returned_qty) > 0) || (invoice.returned_quantity && parseFloat(invoice.returned_quantity) > 0) || false,
         lastReturnStatus: invoice.last_return_status || invoice.return_status || null,
+        paymentMode: invoice.payment_mode || 'Cash',
+        insuranceCompany: invoice.insurance_company || '',
+        totalDiscount: invoice.discount || invoice.total_discount || 0,
+        taxAmount: invoice.tax_amount || 0,
+        totalPayableAmount: invoice.total_payable_amount || invoice.total_amount || 0,
       };
     });
 
@@ -305,6 +316,11 @@ export default function SaleHistory() {
             doctorEmail: savedItem.doctorEmail || item.doctorEmail,
             username: savedItem.username || item.username,
             totalAmount: (savedItem.totalAmount !== undefined && savedItem.totalAmount !== null) ? savedItem.totalAmount : item.totalAmount,
+            paymentMode: savedItem.paymentMode || item.paymentMode,
+            insuranceCompany: savedItem.insuranceCompany || item.insuranceCompany,
+            totalDiscount: savedItem.totalDiscount || item.totalDiscount,
+            taxAmount: savedItem.taxAmount || item.taxAmount,
+            totalPayableAmount: savedItem.totalPayableAmount || item.totalPayableAmount,
           };
 
           resultMap.set(item.invoiceNumber, mergedItem);
@@ -695,6 +711,37 @@ export default function SaleHistory() {
       );
       const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
 
+      // Validate that we have invoice items with invoice_line_id
+      if (invoiceItems.length === 0) {
+        console.error('❌ Cannot process return: No invoice items found');
+        alert(
+          `Cannot return Invoice ${invoice.invoiceNumber}\n\n` +
+          `Reason: Invoice line items are not available.\n\n` +
+          `This happens when:\n` +
+          `• The invoice was created in a previous session\n` +
+          `• Local storage was cleared\n` +
+          `• The invoice wasn't properly saved\n\n` +
+          `Solution: Contact support or re-create the sale.`
+        );
+        return;
+      }
+
+      // Validate that items have invoice_line_id (required for returns)
+      const hasInvoiceLineIds = invoiceItems.every((item: any) => item.invoice_line_id);
+      if (!hasInvoiceLineIds) {
+        console.error('❌ Cannot process return: Some items missing invoice_line_id');
+        console.warn('Items:', invoiceItems);
+        alert(
+          `Cannot return Invoice ${invoice.invoiceNumber}\n\n` +
+          `Reason: Invoice line items are missing required IDs.\n\n` +
+          `This is a data integrity issue. The invoice may not have been\n` +
+          `properly saved to the database.\n\n` +
+          `Solution: Contact support to investigate this invoice.`
+        );
+        return;
+      }
+
+
       // Navigate to SalesReceipt in return details mode
       navigate('/sales/receipt', {
         state: {
@@ -1012,148 +1059,64 @@ export default function SaleHistory() {
       console.log('🔍 Edit invoice clicked:', {
         frontendInvoiceId: invoiceId,
         invoiceNumber: invoice.invoiceNumber,
-        customerName: invoice.customerName,
-        totalAmount: invoice.totalAmount
       });
 
-
-      let savedItem = null;
-      if (typeof invoiceId === 'string') {
-        const idStr = invoiceId as string;
-        if (idStr.startsWith('saved_')) {
-          const index = parseInt(idStr.split('_')[1], 10);
-          if (!isNaN(index) && index >= 0 && index < savedHistory.length) {
-            savedItem = savedHistory[index];
-            console.log('✅ Found saved item by synthetic ID index:', index);
-          }
-        }
-      } else {
-        savedItem = savedHistory.find((item: any) =>
-          String(item.id) === String(invoiceId) ||
-          (item.invoiceNumber && item.invoiceNumber === invoice.invoiceNumber)
-        );
-      }
-
-      let databaseInvoiceId: number = 0;
-
-      if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
-        databaseInvoiceId = savedItem.id;
-        console.log('✅ Using database invoice ID from saved item:', databaseInvoiceId);
-      }
-      else if (invoice.invoiceNumber) {
-        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
-        const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
-          databaseInvoiceId = parsed;
-          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
-        }
-      }
-      else if (typeof invoiceId === 'number' && (invoiceId as number) < 1000000) {
-        databaseInvoiceId = invoiceId as number;
-      }
-
-
-      if (savedItem) {
-        const invoiceData = {
-          customerName: savedItem.customerName || invoice.customerName,
-          customerMobile: savedItem.customerMobile || invoice.customerMobile,
-          customerCity: savedItem.customerCity || '',
-          doctorName: savedItem.doctorName || invoice.doctorName,
-          doctorMobile: savedItem.doctorMobile || '',
-          doctorEmail: savedItem.doctorEmail || '',
-          paymentMode: savedItem.paymentMode || 'Cash',
-          insuranceCompany: savedItem.insuranceCompany || '',
-          invoiceNumber: savedItem.invoiceNumber || invoice.invoiceNumber,
-          invoiceDate: savedItem.invoiceDate || invoice.invoiceDate,
-          salesItems: savedItem.items || savedItem.salesItems || [],
-          totalValue: savedItem.totalValue || savedItem.totalPayableAmount || invoice.totalAmount.toString(),
-          totalDiscount: savedItem.totalDiscount || '0',
-          taxAmount: savedItem.taxAmount || '0',
-          totalPayableAmount: savedItem.totalPayableAmount || invoice.totalAmount.toString(),
-        };
-
-        navigate('/sales/receipt', {
-          state: {
-            isEditMode: true,
-            invoiceId: databaseInvoiceId || invoice.id,
-            invoice_id: databaseInvoiceId || invoice.id,
-            ...invoiceData
-          }
-        });
-      } else {
-        const invoiceData = {
-          customerName: invoice.customerName,
-          customerMobile: invoice.customerMobile,
-          customerCity: '',
-          doctorName: invoice.doctorName,
-          doctorMobile: '',
-          doctorEmail: '',
-          paymentMode: 'Cash',
-          insuranceCompany: '',
+      // Simple navigation - let the target page handle fetching
+      navigate('/sales/receipt', {
+        state: {
+          isEditMode: true,
+          invoiceId: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
-          salesItems: [],
-          totalValue: invoice.totalAmount.toString(),
-          totalDiscount: '0',
-          taxAmount: '0',
-          totalPayableAmount: invoice.totalAmount.toString(),
-        };
-
-        navigate('/sales/receipt', {
-          state: {
-            isEditMode: true,
-            invoiceId: databaseInvoiceId || invoice.id,
-            invoice_id: databaseInvoiceId || invoice.id,
-            ...invoiceData
-          }
-        });
-      }
+          customerName: invoice.customerName,
+          customerMobile: invoice.customerMobile,
+          customerCity: invoice.customerCity,
+          doctorName: invoice.doctorName,
+          doctorMobile: invoice.doctorMobile,
+          doctorEmail: invoice.doctorEmail,
+          paymentMode: invoice.paymentMode,
+          insuranceCompany: invoice.insuranceCompany,
+          totalAmount: invoice.totalAmount,
+          totalDiscount: invoice.totalDiscount,
+          taxAmount: invoice.taxAmount,
+          totalPayableAmount: invoice.totalPayableAmount
+        }
+      });
     }
   };
 
-  const handleReturnInvoice = useCallback((invoiceId: number | string) => {
+  const handleReturnInvoice = (invoiceId: number | string) => {
     const invoice = salesHistoryData.find(item => String(item.id) === String(invoiceId));
     if (invoice) {
-      const savedItem = savedHistory.find((item: any) =>
-        String(item.id) === String(invoiceId) ||
-        (item.invoiceNumber && item.invoiceNumber === invoice.invoiceNumber)
-      );
-      const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
+      console.log('🔍 Return invoice clicked:', {
+        frontendInvoiceId: invoiceId,
+        invoiceNumber: invoice.invoiceNumber,
+      });
 
-      let databaseInvoiceId: number = 0;
-
-      if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
-        databaseInvoiceId = savedItem.id;
-      }
-      else if (invoice.invoiceNumber) {
-        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-        const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
-          databaseInvoiceId = parsed;
-          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
-        }
-      }
-      else if (typeof invoiceId === 'number' && (invoiceId as number) < 1000000) {
-        databaseInvoiceId = invoiceId as number;
-      }
-
-
+      // Simple navigation - let the target page handle fetching
       navigate('/sales/sale-return', {
         state: {
-          invoiceId: databaseInvoiceId || invoice.id,
+          invoiceId: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
           customerName: invoice.customerName,
           customerMobile: invoice.customerMobile,
+          customerCity: invoice.customerCity,
           doctorName: invoice.doctorName,
+          doctorMobile: invoice.doctorMobile,
+          doctorEmail: invoice.doctorEmail,
+          paymentMode: invoice.paymentMode,
+          insuranceCompany: invoice.insuranceCompany,
           username: invoice.username,
           totalAmount: invoice.totalAmount,
-          items: invoiceItems,
-          paymentMode: savedItem?.paymentMode || 'Cash'
+          totalDiscount: invoice.totalDiscount,
+          taxAmount: invoice.taxAmount,
+          totalPayableAmount: invoice.totalPayableAmount,
+          // Do NOT pass items - let the return page fetch them
         }
       });
     }
-  }, [salesHistoryData, savedHistory, navigate]);
+  };
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setCurrentSearchTerm(event.target.value);

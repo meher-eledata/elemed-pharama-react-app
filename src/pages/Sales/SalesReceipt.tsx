@@ -186,7 +186,7 @@ const SalesReceipt: React.FC = () => {
 
       if (!invoiceId) {
         const stateId = editModeData.invoiceId || editModeData.invoice_id;
-        if (stateId && typeof stateId === 'number' && stateId > 0 && stateId < 1000000) {
+        if (stateId && typeof stateId === 'number' && stateId > 0) {
           invoiceId = stateId;
           if (!invoiceNumber) {
             invoiceNumber = stateId.toString();
@@ -242,92 +242,94 @@ const SalesReceipt: React.FC = () => {
               const lines = result.lines || [];
 
 
+              const mappedSalesItems = lines.length > 0 ? lines.map((line: any) => {
+                const unitPrice = parseFloat(line.rate || line.unit_price || '0');
+                const quantity = parseFloat(line.quantity || '1');
+                const baseAmount = unitPrice * quantity;
+
+                // Calculate discount percentage - API now returns percentage values (0-100)
+                let discountPercentValue = '0';
+                if (line.discount_percent !== undefined && line.discount_percent !== null) {
+                  discountPercentValue = line.discount_percent.toString();
+                } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
+                  discountPercentValue = line.discountPercent.toString();
+                } else if (line.discount !== undefined && line.discount !== null) {
+                  // API returns percentage value directly (e.g., 2 for 2%)
+                  discountPercentValue = parseFloat(line.discount).toString();
+                }
+
+                // Calculate discounted amount (base amount after discount)
+                const discountPercent = parseFloat(discountPercentValue || '0');
+                const discountedAmount = baseAmount * (1 - discountPercent / 100);
+
+                let cgstPercent = '0';
+                if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
+                  cgstPercent = line.cgst_percent.toString();
+                } else if (line.cgst !== undefined && line.cgst !== null) {
+                  // API returns percentage value directly (e.g., 9 for 9%)
+                  cgstPercent = parseFloat(line.cgst).toString();
+                }
+
+                let sgstPercent = '0';
+                if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
+                  sgstPercent = line.sgst_percent.toString();
+                } else if (line.sgst !== undefined && line.sgst !== null) {
+                  // API returns percentage value directly (e.g., 9 for 9%)
+                  sgstPercent = parseFloat(line.sgst).toString();
+                }
+
+                let igstPercent = '0';
+                if (line.igst_percent !== undefined && line.igst_percent !== null) {
+                  igstPercent = line.igst_percent.toString();
+                } else if (line.igst !== undefined && line.igst !== null) {
+                  // API returns percentage value directly (e.g., 0 for 0%)
+                  igstPercent = parseFloat(line.igst).toString();
+                }
+
+                const originalQty = parseFloat(line.quantity || '0');
+                const returnedQty = parseFloat(line.returned_quantity || '0');
+
+                return {
+                  id: line.invoice_line_id?.toString() || line.id?.toString() || '',
+                  productName: line.name || line.product_name || line.productName || '', // API returns 'name' field
+                  product_id: line.product_id || undefined, // Preserve product_id from API (important for batch validation)
+                  manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name' field
+                  batch: line.batch_number || line.batch || '',
+                  expiryDate: line.expiry_date || line.expiryDate || '',
+                  quantity: (line.quantity || line.qty || '1').toString(),
+                  unitPrice: line.rate?.toString() || line.unit_price?.toString() || '0',
+                  mrp: line.mrp?.toString() || '0',
+                  discount: line.discount?.toString() || '0',
+                  discountPercent: discountPercentValue,
+                  cgst: line.cgst?.toString() || '0',
+                  cgstPercent: cgstPercent,
+                  sgst: line.sgst?.toString() || '0',
+                  sgstPercent: sgstPercent,
+                  igst: line.igst?.toString() || '0',
+                  igstPercent: igstPercent,
+                  amount: line.selling_price?.toString() || line.amount?.toString() || '0',
+                  discountAuthorizedBy: line.discount_authority || undefined,
+                  // Store return information for return details view
+                  returned_quantity: returnedQty,
+                  original_quantity: originalQty,
+                };
+              }) : [];
+
               const invoiceData = {
-                customerName: result.customer_name || editModeData.customerName || '',
-                customerMobile: result.customer_mobile || editModeData.customerMobile || '',
-                customerCity: result.customer_city || editModeData.customerCity || '',
-                doctorName: result.doctor_name || editModeData.doctorName || '',
-                doctorMobile: result.doctor_mobile || editModeData.doctorMobile || '',
-                doctorEmail: result.doctor_email || editModeData.doctorEmail || '',
-                paymentMode: result.payment_mode || editModeData.paymentMode || 'Cash',
-                insuranceCompany: result.insurance_company || editModeData.insuranceCompany || '',
+                customerName: result.customer_name || result.invoice?.customer_name || editModeData.customerName || '',
+                customerMobile: result.customer_mobile || result.invoice?.customer_mobile || editModeData.customerMobile || '',
+                customerCity: result.customer_city || result.invoice?.customer_city || editModeData.customerCity || '',
+                doctorName: result.doctor_name || result.invoice?.doctor_name || editModeData.doctorName || '',
+                doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || editModeData.doctorMobile || '',
+                doctorEmail: result.doctor_email || result.invoice?.doctor_email || editModeData.doctorEmail || '',
+                paymentMode: result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || 'Cash',
+                insuranceCompany: result.insurance_company || result.invoice?.insurance_company || editModeData.insuranceCompany || '',
                 invoiceNumber: editModeData.invoiceNumber || (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || '',
                 invoiceDate: invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB').split('/').reverse().join('-') : (editModeData.invoiceDate || getTodayDate()),
-                salesItems: lines.length > 0 ? lines.map((line: any) => {
-                  const unitPrice = parseFloat(line.rate || line.unit_price || '0');
-                  const quantity = parseFloat(line.quantity || '1');
-                  const baseAmount = unitPrice * quantity;
-
-                  // Calculate discount percentage - API now returns percentage values (0-100)
-                  let discountPercentValue = '0';
-                  if (line.discount_percent !== undefined && line.discount_percent !== null) {
-                    discountPercentValue = line.discount_percent.toString();
-                  } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
-                    discountPercentValue = line.discountPercent.toString();
-                  } else if (line.discount !== undefined && line.discount !== null) {
-                    // API returns percentage value directly (e.g., 2 for 2%)
-                    discountPercentValue = parseFloat(line.discount).toString();
-                  }
-
-                  // Calculate discounted amount (base amount after discount)
-                  const discountPercent = parseFloat(discountPercentValue || '0');
-                  const discountedAmount = baseAmount * (1 - discountPercent / 100);
-
-                  let cgstPercent = '0';
-                  if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
-                    cgstPercent = line.cgst_percent.toString();
-                  } else if (line.cgst !== undefined && line.cgst !== null) {
-                    // API returns percentage value directly (e.g., 9 for 9%)
-                    cgstPercent = parseFloat(line.cgst).toString();
-                  }
-
-                  let sgstPercent = '0';
-                  if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
-                    sgstPercent = line.sgst_percent.toString();
-                  } else if (line.sgst !== undefined && line.sgst !== null) {
-                    // API returns percentage value directly (e.g., 9 for 9%)
-                    sgstPercent = parseFloat(line.sgst).toString();
-                  }
-
-                  let igstPercent = '0';
-                  if (line.igst_percent !== undefined && line.igst_percent !== null) {
-                    igstPercent = line.igst_percent.toString();
-                  } else if (line.igst !== undefined && line.igst !== null) {
-                    // API returns percentage value directly (e.g., 0 for 0%)
-                    igstPercent = parseFloat(line.igst).toString();
-                  }
-
-                  const originalQty = parseFloat(line.quantity || '0');
-                  const returnedQty = parseFloat(line.returned_quantity || '0');
-
-                  return {
-                    id: line.invoice_line_id?.toString() || line.id?.toString() || '',
-                    productName: line.name || line.product_name || line.productName || '', // API returns 'name' field
-                    product_id: line.product_id || undefined, // Preserve product_id from API (important for batch validation)
-                    manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name' field
-                    batch: line.batch_number || line.batch || '',
-                    expiryDate: line.expiry_date || line.expiryDate || '',
-                    quantity: (line.quantity || line.qty || '1').toString(),
-                    unitPrice: line.rate?.toString() || line.unit_price?.toString() || '0',
-                    mrp: line.mrp?.toString() || '0',
-                    discount: line.discount?.toString() || '0',
-                    discountPercent: discountPercentValue,
-                    cgst: line.cgst?.toString() || '0',
-                    cgstPercent: cgstPercent,
-                    sgst: line.sgst?.toString() || '0',
-                    sgstPercent: sgstPercent,
-                    igst: line.igst?.toString() || '0',
-                    igstPercent: igstPercent,
-                    amount: line.selling_price?.toString() || line.amount?.toString() || '0',
-                    discountAuthorizedBy: line.discount_authority || undefined,
-                    // Store return information for return details view
-                    returned_quantity: returnedQty,
-                    original_quantity: originalQty,
-                  };
-                }) : [],
+                salesItems: mappedSalesItems,
                 finalSalesItems: (editModeData.salesItems && editModeData.salesItems.length > 0)
                   ? editModeData.salesItems
-                  : (lines.length > 0 ? invoiceData.salesItems : []),
+                  : mappedSalesItems,
                 totalValue: (editModeData.salesItems && editModeData.salesItems.length > 0)
                   ? (editModeData.totalValue || editModeData.totalAmount?.toString() || '0')
                   : (invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || '0'),
@@ -426,85 +428,17 @@ const SalesReceipt: React.FC = () => {
               errorStatus: (error as any)?.status,
               errorData: (error as any)?.data,
             });
-            // Fall through to use location state data as fallback
+            // Do NOT use fallback data from location state
+            alert(`Failed to load invoice details from server: ${(error as any)?.data?.error || (error as any)?.message || 'Unknown error'}`);
+            navigate('/sales');
+            return;
           }
         };
 
         fetchInvoiceDetails();
       }
-
-      // Fallback: Use location state data if API call fails or invoiceId is not available
-      // Pre-populate form fields
-      if (editModeData.customerName) setCustomerName(editModeData.customerName);
-      if (editModeData.customerMobile) setCustomerMobile(editModeData.customerMobile);
-      if (editModeData.customerCity) setCustomerCity(editModeData.customerCity);
-      if (editModeData.doctorName) {
-        setDoctorName(editModeData.doctorName);
-        setSelectedDoctor(editModeData.doctorName);
-        // Trigger doctor info fetch
-        shouldFetchDoctorInfoRef.current = true;
-      }
-      if (editModeData.doctorMobile) setDoctorMobile(editModeData.doctorMobile);
-      if (editModeData.doctorEmail) setDoctorEmail(editModeData.doctorEmail);
-      if (editModeData.paymentMode) setPaymentMode(editModeData.paymentMode);
-      if (editModeData.insuranceCompany) setInsuranceCompany(editModeData.insuranceCompany);
-      if (editModeData.invoiceNumber) setInvoiceNumber(editModeData.invoiceNumber);
-      if (editModeData.invoiceDate) setInvoiceDate(editModeData.invoiceDate);
-
-      // Pre-populate sales items if available
-      if (editModeData.salesItems && Array.isArray(editModeData.salesItems) && editModeData.salesItems.length > 0) {
-        const recalculatedItems = editModeData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item));
-        setSalesItems(recalculatedItems);
-
-        // Recalculate summary
-        const correctedSummary = calculateFinancialSummary(recalculatedItems);
-        setTotalValue(correctedSummary.totalValue);
-        setTotalDiscount(correctedSummary.totalDiscount);
-        setTaxAmount(correctedSummary.taxAmount);
-        setTotalPayableAmount(correctedSummary.totalPayableAmount);
-      } else if (editModeData.totalValue) {
-        // If no items but have totals, set the totals
-        setTotalValue(editModeData.totalValue || '0');
-        setTotalDiscount(editModeData.totalDiscount || '0');
-        setTaxAmount(editModeData.taxAmount || '0');
-        setTotalPayableAmount(editModeData.totalPayableAmount || '0');
-      }
-
-      // Set customer if available
-      if (editModeData.customerName && editModeData.customerMobile) {
-        const customer: Customer = {
-          id: 0,
-          name: editModeData.customerName,
-          mobile: editModeData.customerMobile,
-          city: editModeData.customerCity || '',
-        };
-        setSelectedCustomer(customer);
-      }
-
-      // Store original data for comparison
-      const originalItems = editModeData.salesItems && Array.isArray(editModeData.salesItems) && editModeData.salesItems.length > 0
-        ? editModeData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item))
-        : [];
-
-      setOriginalInvoiceData({
-        customerName: editModeData.customerName || '',
-        customerMobile: editModeData.customerMobile || '',
-        customerCity: editModeData.customerCity || '',
-        doctorName: editModeData.doctorName || '',
-        doctorMobile: editModeData.doctorMobile || '',
-        doctorEmail: editModeData.doctorEmail || '',
-        paymentMode: editModeData.paymentMode || '',
-        insuranceCompany: editModeData.insuranceCompany || '',
-        invoiceNumber: editModeData.invoiceNumber || '',
-        invoiceDate: editModeData.invoiceDate || '',
-        salesItems: originalItems,
-        totalValue: editModeData.totalValue || '0',
-        totalDiscount: editModeData.totalDiscount || '0',
-        taxAmount: editModeData.taxAmount || '0',
-        totalPayableAmount: editModeData.totalPayableAmount || '0',
-      });
     }
-  }, [isEditMode, editModeData, getInvoiceDetails]);
+  }, [location.state, getInvoiceDetails, navigate]);
 
   // Load cart items (only if not in edit mode)
   useCartLoader({

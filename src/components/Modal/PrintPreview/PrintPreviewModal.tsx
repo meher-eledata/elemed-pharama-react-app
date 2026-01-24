@@ -312,7 +312,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                     <Box>{item.cgstPercent}%</Box>
                     <Box>{item.sgstPercent}%</Box>
                     <Box>{item.igstPercent}%</Box>
-                    <Box sx={{ fontWeight: 600 }}>{item.amount}</Box>
+                    <Box sx={{ fontWeight: 600 }}>{parseFloat(item.amount || '0').toFixed(1)}</Box>
                   </Box>
                 ))
               ) : (
@@ -343,15 +343,15 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           <Box sx={{ display: 'flex', gap: '60px', fontSize: '13px', color: '#1A212B' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TOTAL_VALUE_LABEL}</Box>
-              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{totalValue}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(totalValue || '0').toFixed(1)}</Box>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TOTAL_DISCOUNT_LABEL}</Box>
-              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{totalDiscount}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(totalDiscount || '0').toFixed(1)}</Box>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TAX_AMOUNT_LABEL}</Box>
-              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{taxAmount}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(taxAmount || '0').toFixed(1)}</Box>
             </Box>
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
@@ -359,7 +359,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               {SALES_RECEIPT_LABELS.TOTAL_PAYABLE_LABEL}
             </Box>
             <Box sx={{ fontSize: '20px', fontWeight: 700, color: '#1A212B' }}>
-              {totalPayableAmount}
+              {parseFloat(totalPayableAmount || '0').toFixed(1)}
             </Box>
           </Box>
         </Box>

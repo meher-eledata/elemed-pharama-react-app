@@ -254,7 +254,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     }
 
     return {
-      receipt_id: receiptId,
+      receipt_id: receiptId!,
       po_id: parseInt(poNumber) || 1,
       supplier_name: supplierName,
       supplier_id: supplierId,
@@ -273,7 +273,6 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
   const validateForm = (): string | null => {
     if (!supplierName.trim()) return 'Please fill in the Supplier Name';
-    if (!poNumber.trim()) return 'Please fill in the PO Number';
     if (pharmaTableData.length === 0) return 'Please add at least one product to the table';
 
     const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));

@@ -115,17 +115,12 @@ export const useOrderReceiveActions = (
 
   const validateInlineEditing = () => {
     if (!editingDraft) return false;
-    return !!(editingDraft.poNo?.trim() && editingDraft.amt && editingDraft.amt > 0);
+    return !!(editingDraft.amt && editingDraft.amt > 0);
   };
 
   const handleSaveClick = async (row: OrderReceiveRow) => {
     if (!editingDraft) {
       setEditingRowId(null);
-      return;
-    }
-
-    if (!editingDraft.poNo?.trim()) {
-      showSnackbar('Please fill in the PO Number', 'error');
       return;
     }
 
