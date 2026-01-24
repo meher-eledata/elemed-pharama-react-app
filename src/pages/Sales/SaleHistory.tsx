@@ -185,7 +185,8 @@ export default function SaleHistory() {
       }
 
       const safeInvoiceId = (invoice.id && !isNaN(Number(invoice.id))) ? Number(invoice.id) : null;
-      const dbInvoiceId = safeInvoiceId || parseInt(invoice.invoice_number) || index + 1000;
+      const numericInvoiceNumber = invoice.invoice_number ? parseInt(String(invoice.invoice_number).replace(/^INV/i, '')) : null;
+      const dbInvoiceId = safeInvoiceId || numericInvoiceNumber || index + 1000;
 
       // Handle invoice_number formatting - use invoice_number if available, otherwise use invoice.id
       let formattedInvoiceNumber: string;
@@ -242,10 +243,10 @@ export default function SaleHistory() {
         patientType: patientType,
         totalAmount: parseFloat(invoice.total_amount) || 0,
         totalReturnedAmount: parseFloat(invoice.total_returned_amount) || 0,
-        soldQty: parseFloat(invoice.sold_qty) || 0,
-        returnedQty: parseFloat(invoice.returned_qty) || 0,
+        soldQty: parseFloat(invoice.sold_qty || invoice.quantity || invoice.qty) || 0,
+        returnedQty: parseFloat(invoice.returned_qty || invoice.returned_quantity || invoice.return_qty) || 0,
         returnStatus: invoice.return_status || null,
-        hasReturn: invoice.has_return || (invoice.returned_qty && parseFloat(invoice.returned_qty) > 0) || false,
+        hasReturn: invoice.has_return || (invoice.returned_qty && parseFloat(invoice.returned_qty) > 0) || (invoice.returned_quantity && parseFloat(invoice.returned_quantity) > 0) || false,
         lastReturnStatus: invoice.last_return_status || invoice.return_status || null,
       };
     });
@@ -293,16 +294,17 @@ export default function SaleHistory() {
               /^User\s+\d+$/i.test(strVal);
           };
 
-          // Prioritize saved data if API data is missing or fallback
+          // Prioritize saved data if available - this is the source of truth for the user's submission
           const mergedItem = {
             ...item,
-            customerName: isFallbackValue(item.customerName) && savedItem.customerName ? savedItem.customerName : item.customerName,
-            customerMobile: (isFallbackValue(item.customerMobile) || !item.customerMobile) && savedItem.customerMobile ? savedItem.customerMobile : item.customerMobile,
-            customerCity: (isFallbackValue(item.customerCity) || !item.customerCity) && savedItem.customerCity ? savedItem.customerCity : item.customerCity,
-            doctorName: isFallbackValue(item.doctorName) && savedItem.doctorName ? savedItem.doctorName : item.doctorName,
-            doctorMobile: (isFallbackValue(item.doctorMobile) || !item.doctorMobile) && savedItem.doctorMobile ? savedItem.doctorMobile : item.doctorMobile,
-            doctorEmail: (isFallbackValue(item.doctorEmail) || !item.doctorEmail) && savedItem.doctorEmail ? savedItem.doctorEmail : item.doctorEmail,
-            username: isFallbackValue(item.username) && savedItem.username ? savedItem.username : item.username,
+            customerName: savedItem.customerName || item.customerName,
+            customerMobile: savedItem.customerMobile || item.customerMobile,
+            customerCity: savedItem.customerCity || item.customerCity,
+            doctorName: savedItem.doctorName || item.doctorName,
+            doctorMobile: savedItem.doctorMobile || item.doctorMobile,
+            doctorEmail: savedItem.doctorEmail || item.doctorEmail,
+            username: savedItem.username || item.username,
+            totalAmount: (savedItem.totalAmount !== undefined && savedItem.totalAmount !== null) ? savedItem.totalAmount : item.totalAmount,
           };
 
           resultMap.set(item.invoiceNumber, mergedItem);
@@ -345,7 +347,7 @@ export default function SaleHistory() {
 
   // Fetch return information for all invoices
   // TODO: Enable this when the API is ready
-  const ENABLE_RETURN_STATUS_API = false; // Set to true when API is ready
+  const ENABLE_RETURN_STATUS_API = true; // Set to true when API is ready
 
   useEffect(() => {
     if (!ENABLE_RETURN_STATUS_API) {
@@ -381,8 +383,8 @@ export default function SaleHistory() {
             let returnedItems = 0;
 
             lines.forEach((line: any) => {
-              const soldQty = parseFloat(line.quantity || '0');
-              const returnedQty = parseFloat(line.returned_quantity || '0');
+              const soldQty = parseFloat(line.quantity || line.sold_qty || line.qty || '0');
+              const returnedQty = parseFloat(line.returned_quantity || line.returned_qty || line.return_qty || '0');
               totalItems += soldQty;
               returnedItems += returnedQty;
             });
@@ -390,21 +392,12 @@ export default function SaleHistory() {
             // Check if all items are returned: returnedItems should equal or exceed totalItems
             // Using >= to handle edge cases, but typically they should be equal
             const isFullReturn = totalItems > 0 && returnedItems > 0 && returnedItems >= totalItems;
-            const mapKey = invoiceId || parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0;
-            newReturnInfoMap.set(mapKey, {
-              totalItems: Math.round(totalItems),
-              returnedItems: Math.round(returnedItems),
-              isFullReturn
-            });
-
-            // Debug log for fully returned items
             if (isFullReturn) {
-              console.log('✅ Full return detected for invoice:', {
-                invoiceId,
-                invoiceNumber,
-                totalItems,
-                returnedItems,
-                mapKey
+              const mapKey = invoiceId || parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0;
+              newReturnInfoMap.set(mapKey, {
+                totalItems: Math.round(totalItems),
+                returnedItems: Math.round(returnedItems),
+                isFullReturn
               });
             }
           }
@@ -415,7 +408,6 @@ export default function SaleHistory() {
 
       await Promise.all(promises);
       setReturnInfoMap(newReturnInfoMap);
-      console.log('📊 Return info map updated:', Array.from(newReturnInfoMap.entries()));
     };
 
     fetchReturnInfo();
@@ -535,11 +527,13 @@ export default function SaleHistory() {
     let filtered = [...salesHistoryData];
 
     if (currentSearchTerm) {
-      const searchLower = currentSearchTerm.toLowerCase();
+      const searchLower = currentSearchTerm.trim().toLowerCase();
       filtered = filtered.filter(item =>
         item.invoiceNumber.toLowerCase().includes(searchLower) ||
         item.customerName.toLowerCase().includes(searchLower) ||
-        item.customerMobile.includes(searchLower)
+        item.customerMobile.toLowerCase().includes(searchLower) ||
+        item.doctorName.toLowerCase().includes(searchLower) ||
+        item.username.toLowerCase().includes(searchLower)
       );
     }
 
@@ -590,22 +584,27 @@ export default function SaleHistory() {
     });
 
     return filtered;
-  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedUsername, dateRange]);
+  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedCustomer, selectedUsername, dateRange]);
 
   const getUniqueDoctors = useMemo(() => {
-    const doctors = [...new Set(salesHistoryData.map(item => item.doctorName))];
-    return doctors.sort();
+    const doctors = [...new Set(salesHistoryData.map(item => (item.doctorName || '').trim()))];
+    return doctors.filter(Boolean).sort((a, b) => a.localeCompare(b));
   }, [salesHistoryData]);
 
   const getUniqueCustomers = useMemo(() => {
-    const customers = [...new Set(salesHistoryData.map(item => item.customerName))];
-    return customers.sort();
+    const customers = [...new Set(salesHistoryData.map(item => (item.customerName || '').trim()))];
+    return customers.filter(Boolean).sort((a, b) => a.localeCompare(b));
   }, [salesHistoryData]);
 
   const getUniqueUsernames = useMemo(() => {
-    const usernames = [...new Set(salesHistoryData.map(item => item.username))];
-    return usernames.sort();
+    const usernames = [...new Set(salesHistoryData.map(item => (item.username || '').trim()))];
+    return usernames.filter(Boolean).sort((a, b) => a.localeCompare(b));
   }, [salesHistoryData]);
+
+  // Reset page to 1 when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [currentSearchTerm, selectedDoctor, selectedCustomer, selectedUsername, dateRange, currentFilter]);
 
   const clearAllFilters = () => {
     setSelectedDoctor(null);
@@ -643,66 +642,46 @@ export default function SaleHistory() {
   // Table columns configuration
   // Helper function to get return status
   const getReturnStatus = (item: SalesHistoryItem) => {
-    // Priority 1: Use direct returnStatus from backend if available
-    if (item.returnStatus) {
-      const statusText = item.returnStatus;
-      const statusLower = statusText.toLowerCase();
-      const isFull = statusLower.includes('full');
-      const returned = item.returnedQty || 0;
-      const total = item.soldQty || 0;
+    const soldQty = item.soldQty || item.returnInfo?.totalItems || 0;
+    const returnedQty = item.returnedQty || item.returnInfo?.returnedItems || 0;
+    const totalAmount = item.totalAmount || 0;
+    const returnedAmount = item.totalReturnedAmount || 0;
 
-      return {
-        status: isFull ? 'full' as const : 'partial' as const,
-        label: statusText,
-        returned,
-        total
-      };
-    }
+    // 1. Check for "Full" indicators
+    const isFullByQty = soldQty > 0 && returnedQty >= soldQty;
+    const isFullByAmount = totalAmount > 0 && Math.abs(returnedAmount - totalAmount) < 0.01;
+    const isFullByInfo = item.returnInfo?.isFullReturn || false;
+    const isFullByStatus = (item.returnStatus || item.lastReturnStatus || '').toLowerCase().includes('full');
 
-    // Priority 2: Use lastReturnStatus and calculate details
-    if (item.hasReturn && item.lastReturnStatus) {
-      let statusText = item.lastReturnStatus;
-      const statusLower = statusText.toLowerCase();
+    const isFull = isFullByQty || isFullByAmount || isFullByInfo || isFullByStatus;
 
-      // If backend just says "Completed", let's try to be more specific
-      if (statusLower === 'completed' || statusLower === 'paid') {
-        const soldQtyValue = item.soldQty || 0;
-        const returnedQtyValue = item.returnedQty || 0;
+    // 2. Handle "No Return" case
+    const hasAnyReturn = item.hasReturn || returnedQty > 0 || returnedAmount > 0 || !!item.returnStatus || !!item.lastReturnStatus;
 
-        const isFullByQty = soldQtyValue > 0 && returnedQtyValue >= soldQtyValue;
-        const isFullByAmount = Math.abs(item.totalReturnedAmount - item.totalAmount) < 0.01 && item.totalAmount > 0;
-
-        if (isFullByQty || isFullByAmount) {
-          statusText = 'Full Return';
-        } else if (item.returnInfo) {
-          statusText = item.returnInfo.isFullReturn ? 'Full Return' : 'Partly Returned';
-        } else {
-          statusText = 'Partly Returned';
-        }
-      }
-
-      const isFull = statusText.toLowerCase().includes('full');
-      const returned = item.returnedQty || item.returnInfo?.returnedItems || 0;
-      const total = item.soldQty || item.returnInfo?.totalItems || 0;
-
-      return {
-        status: isFull ? 'full' as const : 'partial' as const,
-        label: statusText,
-        returned,
-        total
-      };
-    }
-
-    // Priority 3: Fallback to calculated returnInfo
-    if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
+    if (!hasAnyReturn && !isFullByInfo) {
       return { status: 'none' as const, label: 'No Return', returned: 0, total: 0 };
     }
 
-    const { returnedItems, totalItems, isFullReturn } = item.returnInfo;
-    if (isFullReturn) {
-      return { status: 'full' as const, label: 'Full Return', returned: returnedItems, total: totalItems };
+    // 3. Determine Label
+    let label = item.returnStatus || item.lastReturnStatus;
+
+    // If no label but there is a return, use defaults
+    if (!label) {
+      label = isFull ? 'Full Return' : 'Partly Returned';
     }
-    return { status: 'partial' as const, label: 'Partly Returned', returned: returnedItems, total: totalItems };
+
+    // If it's a full return but the label is vague (like "Completed" or just "Returned"), improve it
+    const vagueLabels = ['completed', 'paid', 'returned', 'completed_return'];
+    if (isFull && (vagueLabels.includes(label.toLowerCase()) || !label.toLowerCase().includes('full'))) {
+      label = 'Full Return';
+    }
+
+    return {
+      status: isFull ? 'full' as const : 'partial' as const,
+      label: label,
+      returned: returnedQty,
+      total: soldQty
+    };
   };
 
   // Handler to navigate to return details

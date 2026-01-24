@@ -22,8 +22,7 @@ export const baseQueryWithReauth: BaseQueryFn<
   const result = await baseQuery(args, api, extraOptions);
 
   if (result.error && result.error.status === 401) {
-    api.dispatch(logout());
-    window.location.href = '/';
+    // Session expiration logic removed as per request
   }
 
   return result;

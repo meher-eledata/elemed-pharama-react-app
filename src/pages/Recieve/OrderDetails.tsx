@@ -240,7 +240,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const validateRequiredFields = () => {
-    return form.supplierName.trim() !== '' && form.poNumber.trim() !== '' && table.pharmaTableData.length > 0;
+    return form.supplierName.trim() !== '' && table.pharmaTableData.length > 0;
   };
 
   const handleConfirmDelete = () => {

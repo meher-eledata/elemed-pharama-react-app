@@ -67,58 +67,58 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     fontSize: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
     transition: 'all 0.2s ease-in-out',
     overflow: 'hidden',
-    
+
     '& fieldset': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
       transition: 'border-color 0.2s ease-in-out',
     },
-    
+
     '& .MuiOutlinedInput-notchedOutline': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
       transition: 'border-color 0.2s ease-in-out',
     },
-    
+
     '&:hover fieldset': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
     },
-    
+
     '&:hover .MuiOutlinedInput-notchedOutline': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
     },
-    
+
     '&.Mui-focused fieldset': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
     },
-    
+
     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
     },
-    
+
     '&.Mui-error fieldset': {
       borderColor: '#e53e3e',
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
     },
-    
+
     '&.Mui-error .MuiOutlinedInput-notchedOutline': {
       borderColor: '#e53e3e',
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
     },
   },
-  
+
   '& .css-1t8l2tu-MuiInputBase-input-MuiOutlinedInput-input': {
     borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
   },
@@ -131,7 +131,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     fontWeight: 500,
     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
     fontSize: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
-    
+
     '&::placeholder': {
       color: '#a0aec0',
       opacity: 1,
@@ -146,13 +146,13 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
     backgroundColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BG,
     padding: '0 4px',
-    
+
     '&.MuiInputLabel-shrink': {
       transform: 'translate(14px, -9px) scale(0.85)',
       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       backgroundColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BG,
     },
-    
+
     '&.Mui-focused': {
       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
     },
@@ -174,37 +174,37 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
     backgroundColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BG,
     fontSize: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
     overflow: 'hidden',
-    
+
     '& fieldset': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS + ' !important',
     },
-    
+
     '& .MuiOutlinedInput-notchedOutline': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS + ' !important',
     },
-    
+
     '&:hover fieldset': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS + ' !important',
     },
-    
+
     '&:hover .MuiOutlinedInput-notchedOutline': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS + ' !important',
     },
-    
+
     '&.Mui-focused fieldset': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
       borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS + ' !important',
     },
-    
+
     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
       borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
@@ -219,13 +219,13 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
     backgroundColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BG,
     padding: '0 4px',
-    
+
     '&.MuiInputLabel-shrink': {
       transform: 'translate(14px, -9px) scale(0.85)',
       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       backgroundColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BG,
     },
-    
+
     '&.Mui-focused': {
       color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
     },
@@ -275,11 +275,11 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
   const [showAddressFields, setShowAddressFields] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
-  
+
   const currentUser = useSelector((state: RootState) => state.auth.user);
-  
+
   const [createUser] = useCreateUserMutation();
-  
+
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
@@ -301,8 +301,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
       'Pharmacist': 1,
     };
 
-    const username = userData.emailId.split('@')[0] || 
-                     `${userData.firstName.toLowerCase()}_${userData.lastName.toLowerCase()}`;
+    const username = userData.emailId.split('@')[0] ||
+      `${userData.firstName.toLowerCase()}_${userData.lastName.toLowerCase()}`;
 
     return {
       superusername: currentUser?.username || '',
@@ -338,7 +338,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
     const name = e.target.name as string;
     const value = e.target.value as string;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (name === 'identityDocument') {
       setFormData(prev => ({ ...prev, idDocumentNumber: '' }));
     }
@@ -361,30 +361,30 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
     setIsCreatingUser(true);
     try {
       const requestData = transformUserDataToRequest(formData);
-   
+
       const createUserResponse = await createUser(requestData).unwrap();
-      
+
 
       showToast('User created successfully! Password setup link has been sent to the email.', 'success',);
-      
+
       setShowPasswordConfirmation(false);
-      
+
       if (onSuccess) {
         onSuccess();
       }
-      
+
       setTimeout(() => {
         onClose();
         setFormData(initialUserState);
       }, 1500);
-      
+
     } catch (error: unknown) {
       logError(error, 'AddUserModal.createUser');
-      
+
       const errorMessage = extractErrorMessage(error, 'Failed to create user. Please try again.');
-      
+
       showToast(errorMessage, 'error');
-      
+
     } finally {
       setIsCreatingUser(false);
     }
@@ -396,559 +396,559 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
 
   return (
     <>
-    <Modal
-      open={open}
-      onClose={onClose}
-      aria-labelledby="add-user-modal-title"
-      aria-describedby="add-user-modal-description"
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backdropFilter: 'blur(8px)',
-        backgroundColor: 'rgba(0, 0, 0, 0.1)',
-      }}
-    >
-      <Box sx={{
-        position: 'relative',
-        width: ADD_USER_MODAL_CONSTANTS.MODAL.WIDTH,
-        maxWidth: ADD_USER_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
-        bgcolor: ADD_USER_MODAL_CONSTANTS.MODAL.BACKGROUND,
-        borderRadius: ADD_USER_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
-        boxShadow: ADD_USER_MODAL_CONSTANTS.MODAL.BOX_SHADOW,
-        p: ADD_USER_MODAL_CONSTANTS.MODAL.PADDING,
-        display: 'flex',
-        flexDirection: 'column' as const,
-        gap: ADD_USER_MODAL_CONSTANTS.MODAL.GAP,
-        outline: 'none',
-        maxHeight: ADD_USER_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
-        overflowY: 'auto',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-      }}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          borderBottom: '1px solid #e2e8f0',
-          pb: 1.5,
-          mb: 1
+      <Modal
+        open={open}
+        onClose={onClose}
+        aria-labelledby="add-user-modal-title"
+        aria-describedby="add-user-modal-description"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(8px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <Box sx={{
+          position: 'relative',
+          width: ADD_USER_MODAL_CONSTANTS.MODAL.WIDTH,
+          maxWidth: ADD_USER_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
+          bgcolor: ADD_USER_MODAL_CONSTANTS.MODAL.BACKGROUND,
+          borderRadius: ADD_USER_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
+          boxShadow: ADD_USER_MODAL_CONSTANTS.MODAL.BOX_SHADOW,
+          p: ADD_USER_MODAL_CONSTANTS.MODAL.PADDING,
+          display: 'flex',
+          flexDirection: 'column' as const,
+          gap: ADD_USER_MODAL_CONSTANTS.MODAL.GAP,
+          outline: 'none',
+          maxHeight: ADD_USER_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
+          overflowY: 'auto',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
         }}>
-          <Box>
-            <Typography
-              id="add-user-modal-title"
-              variant="h5"
-              component="h2"
-              sx={{
-                fontFamily: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
-                fontWeight: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
-                fontSize: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
-                color: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
-                margin: 0,
-                mb: 0.5,
-              }}
-            >
-              Add New User
-            </Typography>
-            <Typography 
-              variant="body2" 
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #e2e8f0',
+            pb: 1.5,
+            mb: 1
+          }}>
+            <Box>
+              <Typography
+                id="add-user-modal-title"
+                variant="h5"
+                component="h2"
+                sx={{
+                  fontFamily: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
+                  fontWeight: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
+                  fontSize: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
+                  color: ADD_USER_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
+                  margin: 0,
+                  mb: 0.5,
+                }}
+              >
+                Add New User
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: '#718096',
+                  fontSize: '14px',
+                  fontFamily: "'Lexend', sans-serif",
+                }}
+              >
+                Enter the new user's details below to create an account.
+              </Typography>
+            </Box>
+            <IconButton
+              aria-label="close"
+              onClick={onClose}
               sx={{
                 color: '#718096',
-                fontSize: '14px',
-                fontFamily: "'Lexend', sans-serif",
+                backgroundColor: '#f7fafc',
+                borderRadius: '8px',
+                width: '32px',
+                height: '32px',
+                '&:hover': {
+                  backgroundColor: '#edf2f7',
+                  color: '#2d3748',
+                }
               }}
             >
-              Enter the new user's details below to create an account.
-            </Typography>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Box>
-          <IconButton 
-            aria-label="close" 
-            onClick={onClose} 
-            sx={{ 
-              color: '#718096',
-              backgroundColor: '#f7fafc',
-              borderRadius: '8px',
-              width: '32px',
-              height: '32px',
-              '&:hover': {
-                backgroundColor: '#edf2f7',
-                color: '#2d3748',
-              }
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
 
-        <Box sx={{ flex: 1 }}>
-          <Grid 
-            container 
-            spacing={ADD_USER_MODAL_CONSTANTS.GRID.SPACING} 
-            rowSpacing={ADD_USER_MODAL_CONSTANTS.GRID.ROW_SPACING}
-            sx={{ mb: 2 }}
-          >
-            <Grid item xs={12} sm={6} component="div">
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mb: 0.5, 
-                  color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Lexend', sans-serif"
-                }}
-              >
-                First Name
-              </Typography>
-              <StyledTextField 
-                fullWidth 
-                variant="outlined" 
-                placeholder="Enter first name"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleInputChange}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} component="div">
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mb: 0.5, 
-                  color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Lexend', sans-serif"
-                }}
-              >
-                Last Name
-              </Typography>
-              <StyledTextField 
-                fullWidth 
-                variant="outlined" 
-                placeholder="Enter last name"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleInputChange}
-              />
-            </Grid>
-
-            {/* Email ID */}
-            <Grid item xs={12} sm={6} component="div">
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mb: 0.5, 
-                  color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Lexend', sans-serif"
-                }}
-              >
-                Email ID
-              </Typography>
-              <StyledTextField 
-                fullWidth 
-                variant="outlined" 
-                placeholder="Enter email ID"
-                name="emailId"
-                value={formData.emailId}
-                onChange={handleInputChange}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} component="div">
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mb: 0.5, 
-                  color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Lexend', sans-serif"
-                }}
-              >
-                Mobile Number
-              </Typography>
-              <StyledTextField 
-                fullWidth 
-                variant="outlined" 
-                placeholder="Enter mobile number"
-                name="mobileNumber"
-                value={formData.mobileNumber}
-                onChange={handleInputChange}
-              />
-            </Grid>
-
-            <Grid item xs={12} component="div">
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
+          <Box sx={{ flex: 1 }}>
+            <Grid
+              container
+              spacing={ADD_USER_MODAL_CONSTANTS.GRID.SPACING}
+              rowSpacing={ADD_USER_MODAL_CONSTANTS.GRID.ROW_SPACING}
+              sx={{ mb: 2 }}
+            >
+              <Grid item xs={12} sm={6} component="div">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.5,
                     color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                     fontSize: '14px',
                     fontWeight: 500,
                     fontFamily: "'Lexend', sans-serif"
                   }}
                 >
-                  Address (optional)
+                  First Name <span style={{ color: '#ef4444' }}>*</span>
                 </Typography>
-                {!showAddressFields && (
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setShowAddressFields(true)}
-                    sx={{
-                      backgroundColor: '#5C17E5',
-                      color: '#FFFFFF',
-                      height: '32px',
-                      minWidth: 'auto',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 500,
-                      fontSize: '14px',
-                      textTransform: 'none',
-                      boxShadow: 'none',
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        boxShadow: 'none',
-                      },
-                      '&:focus': {
-                        backgroundColor: '#5C17E5',
-                        boxShadow: 'none',
-                      },
-                    }}
-                  >
-                    Add Address
-                  </Button>
-                )}
-                {showAddressFields && (
-                  <Button
-                    variant="contained"
-                    startIcon={<CloseIcon />}
-                    onClick={() => setShowAddressFields(false)}
-                    sx={{
-                      backgroundColor: '#5C17E5',
-                      color: '#FFFFFF',
-                      height: '32px',
-                      minWidth: 'auto',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 500,
-                      fontSize: '14px',
-                      textTransform: 'none',
-                      boxShadow: 'none',
-                      '&:hover': {
-                        backgroundColor: '#5C17E5',
-                        boxShadow: 'none',
-                      },
-                      '&:focus': {
-                        backgroundColor: '#5C17E5',
-                        boxShadow: 'none',
-                      },
-                    }}
-                  >
-                    Close
-                  </Button>
-                )}
-              </Box>
-            </Grid>
+                <StyledTextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Enter first name"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                />
+              </Grid>
 
-            {showAddressFields && (
-              <Grid item xs={12} component="div">
-                <Box
+              <Grid item xs={12} sm={6} component="div">
+                <Typography
+                  variant="body2"
                   sx={{
-                    p: 2,
-                    borderRadius: '8px',
-                    border: '1px solid rgba(92, 23, 229, 0.2)',
-                    transition: 'all 0.3s ease-in-out',
-                    animation: 'fadeIn 0.3s ease-in-out',
-                    '@keyframes fadeIn': {
-                      from: {
-                        opacity: 0,
-                        transform: 'translateY(-10px)',
-                      },
-                      to: {
-                        opacity: 1,
-                        transform: 'translateY(0)',
-                      },
-                    },
+                    mb: 0.5,
+                    color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    fontFamily: "'Lexend', sans-serif"
                   }}
                 >
-                  <Grid container spacing={ADD_USER_MODAL_CONSTANTS.GRID.SPACING} rowSpacing={ADD_USER_MODAL_CONSTANTS.GRID.ROW_SPACING}>
-                    <Grid item xs={12} sm={6} component="div">
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
-                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        Street address, house/building number
-                      </Typography>
-                      <StyledTextField 
-                        fullWidth 
-                        variant="outlined" 
-                        placeholder="Enter street address"
-                        name="address_line1"
-                        value={formData.address_line1}
-                        onChange={handleInputChange}
-                      />
-                    </Grid>
+                  Last Name
+                </Typography>
+                <StyledTextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Enter last name"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                />
+              </Grid>
 
-                    <Grid item xs={12} sm={6} component="div">
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
-                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        Optional unit/suite/floor
-                      </Typography>
-                      <StyledTextField 
-                        fullWidth 
-                        variant="outlined" 
-                        placeholder="Enter unit/suite/floor"
-                        name="address_line2"
-                        value={formData.address_line2}
-                        onChange={handleInputChange}
-                      />
-                    </Grid>
+              {/* Email ID */}
+              <Grid item xs={12} sm={6} component="div">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.5,
+                    color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    fontFamily: "'Lexend', sans-serif"
+                  }}
+                >
+                  Email ID <span style={{ color: '#ef4444' }}>*</span>
+                </Typography>
+                <StyledTextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Enter email ID"
+                  name="emailId"
+                  value={formData.emailId}
+                  onChange={handleInputChange}
+                />
+              </Grid>
 
-                    <Grid item xs={12} sm={6} component="div">
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
-                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        City
-                      </Typography>
-                      <StyledTextField 
-                        fullWidth 
-                        variant="outlined" 
-                        placeholder="Enter city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                      />
-                    </Grid>
+              <Grid item xs={12} sm={6} component="div">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.5,
+                    color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    fontFamily: "'Lexend', sans-serif"
+                  }}
+                >
+                  Mobile Number
+                </Typography>
+                <StyledTextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Enter mobile number"
+                  name="mobileNumber"
+                  value={formData.mobileNumber}
+                  onChange={handleInputChange}
+                />
+              </Grid>
 
-                    <Grid item xs={12} sm={6} component="div">
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
-                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        State
-                      </Typography>
-                      <StyledTextField 
-                        fullWidth 
-                        variant="outlined" 
-                        placeholder="Enter state"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={6} component="div">
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
-                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        Postal Code
-                      </Typography>
-                      <StyledTextField 
-                        fullWidth 
-                        variant="outlined" 
-                        placeholder="Enter postal code"
-                        name="postal_code"
-                        value={formData.postal_code}
-                        onChange={handleInputChange}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={6} component="div">
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
-                          color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        Country
-                      </Typography>
-                      <StyledTextField 
-                        fullWidth 
-                        variant="outlined" 
-                        placeholder="Enter country"
-                        name="country"
-                        value={formData.country}
-                        onChange={handleInputChange}
-                      />
-                    </Grid>
-                  </Grid>
+              <Grid item xs={12} component="div">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      fontFamily: "'Lexend', sans-serif"
+                    }}
+                  >
+                    Address (optional)
+                  </Typography>
+                  {!showAddressFields && (
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => setShowAddressFields(true)}
+                      sx={{
+                        backgroundColor: '#5C17E5',
+                        color: '#FFFFFF',
+                        height: '32px',
+                        minWidth: 'auto',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        textTransform: 'none',
+                        boxShadow: 'none',
+                        '&:hover': {
+                          backgroundColor: '#5C17E5',
+                          boxShadow: 'none',
+                        },
+                        '&:focus': {
+                          backgroundColor: '#5C17E5',
+                          boxShadow: 'none',
+                        },
+                      }}
+                    >
+                      Add Address
+                    </Button>
+                  )}
+                  {showAddressFields && (
+                    <Button
+                      variant="contained"
+                      startIcon={<CloseIcon />}
+                      onClick={() => setShowAddressFields(false)}
+                      sx={{
+                        backgroundColor: '#5C17E5',
+                        color: '#FFFFFF',
+                        height: '32px',
+                        minWidth: 'auto',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        textTransform: 'none',
+                        boxShadow: 'none',
+                        '&:hover': {
+                          backgroundColor: '#5C17E5',
+                          boxShadow: 'none',
+                        },
+                        '&:focus': {
+                          backgroundColor: '#5C17E5',
+                          boxShadow: 'none',
+                        },
+                      }}
+                    >
+                      Close
+                    </Button>
+                  )}
                 </Box>
               </Grid>
-            )}
 
-            <Grid item xs={12} sm={6} component="div">
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mb: 0.5, 
-                  color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Lexend', sans-serif"
-                }}
-              >
-                Identity Document
-              </Typography>
-              <StyledFormControl fullWidth>
-                <Select
-                  name="identityDocument"
-                  value={formData.identityDocument}
-                  onChange={handleSelectChange}
-                  displayEmpty
+              {showAddressFields && (
+                <Grid item xs={12} component="div">
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: '8px',
+                      border: '1px solid rgba(92, 23, 229, 0.2)',
+                      transition: 'all 0.3s ease-in-out',
+                      animation: 'fadeIn 0.3s ease-in-out',
+                      '@keyframes fadeIn': {
+                        from: {
+                          opacity: 0,
+                          transform: 'translateY(-10px)',
+                        },
+                        to: {
+                          opacity: 1,
+                          transform: 'translateY(0)',
+                        },
+                      },
+                    }}
+                  >
+                    <Grid container spacing={ADD_USER_MODAL_CONSTANTS.GRID.SPACING} rowSpacing={ADD_USER_MODAL_CONSTANTS.GRID.ROW_SPACING}>
+                      <Grid item xs={12} sm={6} component="div">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mb: 0.5,
+                            color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: "'Lexend', sans-serif"
+                          }}
+                        >
+                          Street address, house/building number
+                        </Typography>
+                        <StyledTextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder="Enter street address"
+                          name="address_line1"
+                          value={formData.address_line1}
+                          onChange={handleInputChange}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={6} component="div">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mb: 0.5,
+                            color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: "'Lexend', sans-serif"
+                          }}
+                        >
+                          Optional unit/suite/floor
+                        </Typography>
+                        <StyledTextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder="Enter unit/suite/floor"
+                          name="address_line2"
+                          value={formData.address_line2}
+                          onChange={handleInputChange}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={6} component="div">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mb: 0.5,
+                            color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: "'Lexend', sans-serif"
+                          }}
+                        >
+                          City
+                        </Typography>
+                        <StyledTextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder="Enter city"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleInputChange}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={6} component="div">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mb: 0.5,
+                            color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: "'Lexend', sans-serif"
+                          }}
+                        >
+                          State
+                        </Typography>
+                        <StyledTextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder="Enter state"
+                          name="state"
+                          value={formData.state}
+                          onChange={handleInputChange}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={6} component="div">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mb: 0.5,
+                            color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: "'Lexend', sans-serif"
+                          }}
+                        >
+                          Postal Code
+                        </Typography>
+                        <StyledTextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder="Enter postal code"
+                          name="postal_code"
+                          value={formData.postal_code}
+                          onChange={handleInputChange}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={6} component="div">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mb: 0.5,
+                            color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: "'Lexend', sans-serif"
+                          }}
+                        >
+                          Country
+                        </Typography>
+                        <StyledTextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder="Enter country"
+                          name="country"
+                          value={formData.country}
+                          onChange={handleInputChange}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Grid>
+              )}
+
+              <Grid item xs={12} sm={6} component="div">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.5,
+                    color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    fontFamily: "'Lexend', sans-serif"
+                  }}
                 >
-                  <MenuItem value="" disabled>
-                    <em>Select Identity Document</em>
-                  </MenuItem>
-                  <MenuItem value="Aadhar Card">Aadhar Card</MenuItem>
-                  <MenuItem value="Driving Licence">Driving Licence</MenuItem>
-                </Select>
-              </StyledFormControl>
-            </Grid>
+                  Identity Document <span style={{ color: '#ef4444' }}>*</span>
+                </Typography>
+                <StyledFormControl fullWidth>
+                  <Select
+                    name="identityDocument"
+                    value={formData.identityDocument}
+                    onChange={handleSelectChange}
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Select Identity Document</em>
+                    </MenuItem>
+                    <MenuItem value="Aadhar Card">Aadhar Card</MenuItem>
+                    <MenuItem value="Driving Licence">Driving Licence</MenuItem>
+                  </Select>
+                </StyledFormControl>
+              </Grid>
 
-            <Grid item xs={12} sm={6} component="div">
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mb: 0.5, 
-                  color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Lexend', sans-serif"
-                }}
-              >
-                ID Document Number
-              </Typography>
-              <StyledTextField 
-                fullWidth 
-                variant="outlined" 
-                placeholder={getIdDocumentPlaceholder()}
-                name="idDocumentNumber"
-                value={formData.idDocumentNumber}
-                onChange={handleInputChange}
-                disabled={!formData.identityDocument}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} component="div">
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mb: 0.5, 
-                  color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Lexend', sans-serif"
-                }}
-              >
-                Role
-              </Typography>
-              <StyledFormControl fullWidth>
-                <Select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleSelectChange}
-                  displayEmpty
+              <Grid item xs={12} sm={6} component="div">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.5,
+                    color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    fontFamily: "'Lexend', sans-serif"
+                  }}
                 >
-                  <MenuItem value="" disabled>
-                    <em>Select Role</em>
-                  </MenuItem>
-                  <MenuItem value="Admin">Admin</MenuItem>
-                  <MenuItem value="Pharmacist">Pharmacist</MenuItem>
-                </Select>
-              </StyledFormControl>
-            </Grid>
-          </Grid>
-        </Box>
+                  ID Document Number
+                </Typography>
+                <StyledTextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder={getIdDocumentPlaceholder()}
+                  name="idDocumentNumber"
+                  value={formData.idDocumentNumber}
+                  onChange={handleInputChange}
+                  disabled={!formData.identityDocument}
+                />
+              </Grid>
 
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
-          gap: '12px', 
-          pt: 2,
-          borderTop: '1px solid #e2e8f0',
-          mt: 'auto'
-        }}>
-          <StandardButton
-            variant="secondary"
-            size="medium"
-            onClick={onClose}
-          >
-            Cancel
-          </StandardButton>
-          <StandardButton
-            variant="primary"
-            size="medium"
-            onClick={handleSave}
-          >
-            Save
-          </StandardButton>
+              <Grid item xs={12} sm={6} component="div">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.5,
+                    color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    fontFamily: "'Lexend', sans-serif"
+                  }}
+                >
+                  Role <span style={{ color: '#ef4444' }}>*</span>
+                </Typography>
+                <StyledFormControl fullWidth>
+                  <Select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleSelectChange}
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Select Role</em>
+                    </MenuItem>
+                    <MenuItem value="Admin">Admin</MenuItem>
+                    <MenuItem value="Pharmacist">Pharmacist</MenuItem>
+                  </Select>
+                </StyledFormControl>
+              </Grid>
+            </Grid>
+          </Box>
+
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            pt: 2,
+            borderTop: '1px solid #e2e8f0',
+            mt: 'auto'
+          }}>
+            <StandardButton
+              variant="secondary"
+              size="medium"
+              onClick={onClose}
+            >
+              Cancel
+            </StandardButton>
+            <StandardButton
+              variant="primary"
+              size="medium"
+              onClick={handleSave}
+            >
+              Save
+            </StandardButton>
+          </Box>
         </Box>
-      </Box>
-    </Modal>
-    <PasswordLinkConfirmationDialog
-      open={showPasswordConfirmation}
-      onClose={handleCancelSave}
-      onConfirm={handleConfirmSave}
-      isLoading={isCreatingUser}
-    />
-    
-    <Snackbar
-      open={snackbarOpen}
-      autoHideDuration={4000}
-      onClose={() => setSnackbarOpen(false)}
-      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-    >
-      <Alert 
-        onClose={() => setSnackbarOpen(false)} 
-        severity={snackbarSeverity} 
-        sx={{ width: '100%' }}
+      </Modal>
+      <PasswordLinkConfirmationDialog
+        open={showPasswordConfirmation}
+        onClose={handleCancelSave}
+        onConfirm={handleConfirmSave}
+        isLoading={isCreatingUser}
+      />
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        {snackbarMessage}
-      </Alert>
-    </Snackbar>
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

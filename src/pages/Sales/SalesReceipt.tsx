@@ -10,7 +10,7 @@ import CommonModal from '../../components/CommonModal/CommonModal';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
-import { 
+import {
   useGetDoctorNamesQuery,
   useSubmitSaleMutation,
   useUpdateSalesMutation,
@@ -21,7 +21,7 @@ import {
   DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
-import { 
+import {
   selectCartTotal,
   clearCart,
   clearFormData,
@@ -65,31 +65,31 @@ const SalesReceipt: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  
+
   const cartTotal = useSelector(selectCartTotal);
   const user = useSelector((state: RootState) => state.auth.user);
-  
+
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
-  
+
   // Extract names from doctor objects array to string array for compatibility
   const doctorNames: string[] = useMemo(() => {
-    return doctorNamesData.map((doctor: { id: string; name: string } | string) => 
+    return doctorNamesData.map((doctor: { id: string; name: string } | string) =>
       typeof doctor === 'string' ? doctor : doctor.name
     );
   }, [doctorNamesData]);
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
-  
-  const { 
-    data: apiProducts = [], 
-    isLoading: isProductsLoading, 
+
+  const {
+    data: apiProducts = [],
+    isLoading: isProductsLoading,
     isError: isProductsError,
-    error: productsError 
+    error: productsError
   } = useGetProductsQuery();
-  
+
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: SALES_RECEIPT_CONSTANTS.DEFAULT_SORT_KEY,
     direction: SALES_RECEIPT_CONSTANTS.SORT_DIRECTION_ASC
@@ -101,43 +101,43 @@ const SalesReceipt: React.FC = () => {
   const [currentFilter, setCurrentFilter] = useState<{ [key: string]: string | null }>({});
   const [currentPage, setCurrentPage] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_CURRENT_PAGE);
   const [rowsPerPage] = useState(SALES_RECEIPT_CONSTANTS.DEFAULT_ROWS_PER_PAGE);
-  
+
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
-  
+
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [applyGstToAll, setApplyGstToAll] = useState(false);
-  
+
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [customerCity, setCustomerCity] = useState('');
   const [patientType, setPatientType] = useState<string>('Out Patient'); // Default to 'Out Patient'
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [availablePhones, setAvailablePhones] = useState<string[]>([]);
-  
+
   const [doctorName, setDoctorName] = useState('');
   const [doctorMobile, setDoctorMobile] = useState('');
   const [doctorEmail, setDoctorEmail] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
   const [availableDoctorInfo, setAvailableDoctorInfo] = useState<DoctorPhoneEmailInfo[]>([]);
-  
+
   const [paymentMode, setPaymentMode] = useState('');
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => getTodayDate());
   const [returnDate, setReturnDate] = useState<string>('');
-  
+
   const [totalValue, setTotalValue] = useState('');
   const [totalDiscount, setTotalDiscount] = useState('');
   const [taxAmount, setTaxAmount] = useState('');
   const [totalPayableAmount, setTotalPayableAmount] = useState('');
 
   const [salesItems, setSalesItems] = useState<SalesReceiptItem[]>([]);
-  
+
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
@@ -177,22 +177,13 @@ const SalesReceipt: React.FC = () => {
     if ((isEditMode || isReturnDetailsMode) && editModeData) {
       let invoiceId: number | null = null;
       let invoiceNumber: string | null = null;
-      
-      // Extract numeric invoice number from formats like "INV8", "RB1", or just "8"
+
+      // Use the full invoice number as-is if available - backend expects the formatted string
       if (editModeData.invoiceNumber) {
-        // Remove prefixes like "INV", "RB", "INV-", "RB-"
-        const cleanedNumber = editModeData.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
-        const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
-          invoiceId = parsed;
-          // Use the numeric part as invoice_number for API
-          invoiceNumber = parsed.toString();
-        } else {
-          // If parsing fails, use the original invoice number
-          invoiceNumber = editModeData.invoiceNumber;
-        }
+        invoiceNumber = editModeData.invoiceNumber.trim();
+        console.log('📝 Using full invoice number for API fetch:', invoiceNumber);
       }
-      
+
       if (!invoiceId) {
         const stateId = editModeData.invoiceId || editModeData.invoice_id;
         if (stateId && typeof stateId === 'number' && stateId > 0 && stateId < 1000000) {
@@ -202,7 +193,7 @@ const SalesReceipt: React.FC = () => {
           }
         }
       }
-      
+
       if ((invoiceId && invoiceId > 0) || invoiceNumber) {
         const fetchInvoiceDetails = async () => {
           try {
@@ -216,7 +207,7 @@ const SalesReceipt: React.FC = () => {
                 invoiceNumber: editModeData.invoiceNumber
               }
             });
-            
+
             // Prefer invoice_number (numeric) as it's more reliable
             let result;
             if (invoiceNumber) {
@@ -228,14 +219,14 @@ const SalesReceipt: React.FC = () => {
             } else {
               throw new Error('No invoice_number or invoice_id available');
             }
-            
+
             console.log('✅ Invoice details response received:', {
               invoiceId: result.invoice?.id,
               invoiceNumber: result.invoice?.invoice_number,
               totalAmount: result.invoice?.total_amount,
               linesCount: result.lines?.length
             });
-            
+
             if (result.lines && result.lines.length > 0) {
               console.log('📦 First line details:', {
                 productName: result.lines[0].name,
@@ -245,12 +236,12 @@ const SalesReceipt: React.FC = () => {
                 batch_number: result.lines[0].batch_number
               });
             }
-            
+
             if (result) {
               const invoice = result.invoice || {};
               const lines = result.lines || [];
-              
-          
+
+
               const invoiceData = {
                 customerName: result.customer_name || editModeData.customerName || '',
                 customerMobile: result.customer_mobile || editModeData.customerMobile || '',
@@ -266,7 +257,7 @@ const SalesReceipt: React.FC = () => {
                   const unitPrice = parseFloat(line.rate || line.unit_price || '0');
                   const quantity = parseFloat(line.quantity || '1');
                   const baseAmount = unitPrice * quantity;
-                  
+
                   // Calculate discount percentage - API now returns percentage values (0-100)
                   let discountPercentValue = '0';
                   if (line.discount_percent !== undefined && line.discount_percent !== null) {
@@ -281,7 +272,7 @@ const SalesReceipt: React.FC = () => {
                   // Calculate discounted amount (base amount after discount)
                   const discountPercent = parseFloat(discountPercentValue || '0');
                   const discountedAmount = baseAmount * (1 - discountPercent / 100);
-                  
+
                   let cgstPercent = '0';
                   if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
                     cgstPercent = line.cgst_percent.toString();
@@ -308,7 +299,7 @@ const SalesReceipt: React.FC = () => {
 
                   const originalQty = parseFloat(line.quantity || '0');
                   const returnedQty = parseFloat(line.returned_quantity || '0');
-                  
+
                   return {
                     id: line.invoice_line_id?.toString() || line.id?.toString() || '',
                     productName: line.name || line.product_name || line.productName || '', // API returns 'name' field
@@ -316,7 +307,7 @@ const SalesReceipt: React.FC = () => {
                     manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name' field
                     batch: line.batch_number || line.batch || '',
                     expiryDate: line.expiry_date || line.expiryDate || '',
-                    quantity: line.quantity?.toString() || '0',
+                    quantity: (line.quantity || line.qty || '1').toString(),
                     unitPrice: line.rate?.toString() || line.unit_price?.toString() || '0',
                     mrp: line.mrp?.toString() || '0',
                     discount: line.discount?.toString() || '0',
@@ -333,13 +324,24 @@ const SalesReceipt: React.FC = () => {
                     returned_quantity: returnedQty,
                     original_quantity: originalQty,
                   };
-                }) : (editModeData.salesItems || []),
-                totalValue: invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || editModeData.totalValue || '0',
-                totalDiscount: invoice.discount?.toString() || result.total_discount?.toString() || result.totalDiscount?.toString() || editModeData.totalDiscount || '0',
-                taxAmount: result.tax_amount?.toString() || result.taxAmount?.toString() || editModeData.taxAmount || '0',
-                totalPayableAmount: invoice.total_amount?.toString() || result.total_payable_amount?.toString() || result.totalPayableAmount?.toString() || editModeData.totalPayableAmount || '0',
+                }) : [],
+                finalSalesItems: (editModeData.salesItems && editModeData.salesItems.length > 0)
+                  ? editModeData.salesItems
+                  : (lines.length > 0 ? invoiceData.salesItems : []),
+                totalValue: (editModeData.salesItems && editModeData.salesItems.length > 0)
+                  ? (editModeData.totalValue || editModeData.totalAmount?.toString() || '0')
+                  : (invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || '0'),
+                totalDiscount: (editModeData.salesItems && editModeData.salesItems.length > 0)
+                  ? (editModeData.totalDiscount || '0')
+                  : (invoice.discount?.toString() || result.total_discount?.toString() || result.totalDiscount?.toString() || '0'),
+                taxAmount: (editModeData.salesItems && editModeData.salesItems.length > 0)
+                  ? (editModeData.taxAmount || '0')
+                  : (result.tax_amount?.toString() || result.taxAmount?.toString() || '0'),
+                totalPayableAmount: (editModeData.salesItems && editModeData.salesItems.length > 0)
+                  ? (editModeData.totalPayableAmount || editModeData.totalAmount?.toString() || '0')
+                  : (invoice.total_amount?.toString() || result.total_payable_amount?.toString() || result.totalPayableAmount?.toString() || '0'),
               };
-              
+
               // Pre-populate form fields from API data
               if (invoiceData.customerName) setCustomerName(invoiceData.customerName);
               if (invoiceData.customerMobile) setCustomerMobile(invoiceData.customerMobile);
@@ -355,19 +357,19 @@ const SalesReceipt: React.FC = () => {
               if (invoiceData.insuranceCompany) setInsuranceCompany(invoiceData.insuranceCompany);
               if (invoiceData.invoiceNumber) setInvoiceNumber(invoiceData.invoiceNumber);
               if (invoiceData.invoiceDate) setInvoiceDate(invoiceData.invoiceDate);
-              
+
               // TODO: Extract return date from API when ready
               // When API is ready, extract return_date from result and set it:
               // if (isReturnDetailsMode && result.return_date) {
               //   setReturnDate(result.return_date);
               // }
-              
-              // Pre-populate sales items
-              if (invoiceData.salesItems && Array.isArray(invoiceData.salesItems) && invoiceData.salesItems.length > 0) {
-                const recalculatedItems = invoiceData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item));
+
+              // Pre-populate sales items - prioritize local ones
+              if (invoiceData.finalSalesItems && Array.isArray(invoiceData.finalSalesItems) && invoiceData.finalSalesItems.length > 0) {
+                const recalculatedItems = invoiceData.finalSalesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item));
                 setSalesItems(recalculatedItems);
-                
-                // Recalculate summary
+
+                // Recalculate summary from these items to ensure consistency
                 const correctedSummary = calculateFinancialSummary(recalculatedItems);
                 setTotalValue(correctedSummary.totalValue);
                 setTotalDiscount(correctedSummary.totalDiscount);
@@ -379,7 +381,7 @@ const SalesReceipt: React.FC = () => {
                 setTaxAmount(invoiceData.taxAmount || '0');
                 setTotalPayableAmount(invoiceData.totalPayableAmount || '0');
               }
-              
+
               // Set customer if available
               if (invoiceData.customerName && invoiceData.customerMobile) {
                 const customer: Customer = {
@@ -395,7 +397,7 @@ const SalesReceipt: React.FC = () => {
               const originalItems = invoiceData.salesItems && Array.isArray(invoiceData.salesItems) && invoiceData.salesItems.length > 0
                 ? invoiceData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item))
                 : [];
-              
+
               setOriginalInvoiceData({
                 customerName: invoiceData.customerName || '',
                 customerMobile: invoiceData.customerMobile || '',
@@ -413,7 +415,7 @@ const SalesReceipt: React.FC = () => {
                 taxAmount: invoiceData.taxAmount || '0',
                 totalPayableAmount: invoiceData.totalPayableAmount || '0',
               });
-              
+
               return; // Exit early if API call succeeded
             }
           } catch (error) {
@@ -427,10 +429,10 @@ const SalesReceipt: React.FC = () => {
             // Fall through to use location state data as fallback
           }
         };
-        
+
         fetchInvoiceDetails();
       }
-      
+
       // Fallback: Use location state data if API call fails or invoiceId is not available
       // Pre-populate form fields
       if (editModeData.customerName) setCustomerName(editModeData.customerName);
@@ -448,12 +450,12 @@ const SalesReceipt: React.FC = () => {
       if (editModeData.insuranceCompany) setInsuranceCompany(editModeData.insuranceCompany);
       if (editModeData.invoiceNumber) setInvoiceNumber(editModeData.invoiceNumber);
       if (editModeData.invoiceDate) setInvoiceDate(editModeData.invoiceDate);
-      
+
       // Pre-populate sales items if available
       if (editModeData.salesItems && Array.isArray(editModeData.salesItems) && editModeData.salesItems.length > 0) {
         const recalculatedItems = editModeData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item));
         setSalesItems(recalculatedItems);
-        
+
         // Recalculate summary
         const correctedSummary = calculateFinancialSummary(recalculatedItems);
         setTotalValue(correctedSummary.totalValue);
@@ -467,7 +469,7 @@ const SalesReceipt: React.FC = () => {
         setTaxAmount(editModeData.taxAmount || '0');
         setTotalPayableAmount(editModeData.totalPayableAmount || '0');
       }
-      
+
       // Set customer if available
       if (editModeData.customerName && editModeData.customerMobile) {
         const customer: Customer = {
@@ -483,7 +485,7 @@ const SalesReceipt: React.FC = () => {
       const originalItems = editModeData.salesItems && Array.isArray(editModeData.salesItems) && editModeData.salesItems.length > 0
         ? editModeData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item))
         : [];
-      
+
       setOriginalInvoiceData({
         customerName: editModeData.customerName || '',
         customerMobile: editModeData.customerMobile || '',
@@ -512,7 +514,7 @@ const SalesReceipt: React.FC = () => {
         // Recalculate all items to ensure discount amounts are correct
         const recalculatedItems = items.map(item => recalculateSalesItemAmount(item));
         setSalesItems(recalculatedItems);
-        
+
         // Recalculate summary with corrected items
         const correctedSummary = calculateFinancialSummary(recalculatedItems);
         setTotalValue(correctedSummary.totalValue);
@@ -558,11 +560,11 @@ const SalesReceipt: React.FC = () => {
   const handleCustomerNameChange = (newName: string) => {
     const normalizedNewName = newName.trim().toLowerCase();
     const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
-    
+
     if (isExactMatch && newName.trim()) {
       shouldFetchImmediatelyRef.current = true;
     }
-    
+
     setCustomerName(newName);
   };
 
@@ -609,11 +611,11 @@ const SalesReceipt: React.FC = () => {
   const handleDoctorNameChange = (value: string) => {
     const normalizedNewName = value.trim().toLowerCase();
     const isExactMatch = doctorNames.length > 0 && doctorNames.some(name => name.toLowerCase() === normalizedNewName);
-    
+
     if (isExactMatch && value.trim()) {
       shouldFetchDoctorInfoRef.current = true;
     }
-    
+
     setDoctorName(value);
     // If typing a new name that's not in the list, clear selectedDoctor
     if (!doctorNames.includes(value)) {
@@ -863,7 +865,7 @@ const SalesReceipt: React.FC = () => {
     // Clear cart and form data after successful print
     clearCartFromStorage();
     clearFormDataFromStorage();
-    
+
     setIsPrintModalOpen(false);
   };
 
@@ -945,28 +947,28 @@ const SalesReceipt: React.FC = () => {
     setTotalPayableAmount('');
     setSelectedRows([]);
     setEditingRowId(null);
-    
+
     dispatch(clearCart());
     dispatch(clearFormData());
   }, [dispatch]);
 
   const validateRequiredFields = useCallback(() => {
     const missingFields: string[] = [];
-    
+
     if (!customerName || !customerName.trim()) {
       missingFields.push('Customer Name');
     }
     if (!customerMobile || !customerMobile.trim()) {
       missingFields.push('Customer Mobile Number');
     }
-    
+
     if (!doctorName || !doctorName.trim()) {
       missingFields.push('Doctor Name');
     }
     if (salesItems.length === 0) {
       missingFields.push('At least one product item');
     }
-    
+
     return {
       isValid: missingFields.length === 0,
       missingFields,
@@ -1005,7 +1007,7 @@ const SalesReceipt: React.FC = () => {
     for (let i = 0; i < salesItems.length; i++) {
       const current = salesItems[i];
       const original = originalInvoiceData.salesItems[i];
-      
+
       if (!original) {
         return true;
       }
@@ -1062,7 +1064,7 @@ const SalesReceipt: React.FC = () => {
 
   const handleSave = () => {
     const validation = validateRequiredFields();
-    
+
     if (!validation.isValid) {
       const fieldsList = validation.missingFields.join(', ');
       showToast(`Please fill in the required details: ${fieldsList}`, 'warning');
@@ -1117,11 +1119,11 @@ const SalesReceipt: React.FC = () => {
         return;
       }
     }
-    
+
     resetForm();
-    
+
     dispatch(clearCart());
-    
+
     navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
   };
 
@@ -1186,7 +1188,7 @@ const SalesReceipt: React.FC = () => {
             selectedCustomer={selectedCustomer}
             customerNames={customerNames}
             availablePhones={availablePhones}
-            onCustomerNameChange={isReturnDetailsMode ? () => {} : (newName) => {
+            onCustomerNameChange={isReturnDetailsMode ? () => { } : (newName) => {
               // When name changes and it's an exact match from dropdown, set immediate fetch flag first
               const normalizedNewName = newName.trim().toLowerCase();
               const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
@@ -1196,11 +1198,11 @@ const SalesReceipt: React.FC = () => {
               }
               handleCustomerNameChange(newName);
             }}
-            onCustomerSelect={isReturnDetailsMode ? () => {} : handleCustomerSelect}
-            onCustomerMobileChange={isReturnDetailsMode ? () => {} : setCustomerMobile}
-            onCustomerCityChange={isReturnDetailsMode ? () => {} : setCustomerCity}
-            onPatientTypeChange={isReturnDetailsMode ? () => {} : setPatientType}
-            onAddNewCustomer={isReturnDetailsMode ? () => {} : handleOpenCustomerModal}
+            onCustomerSelect={isReturnDetailsMode ? () => { } : handleCustomerSelect}
+            onCustomerMobileChange={isReturnDetailsMode ? () => { } : setCustomerMobile}
+            onCustomerCityChange={isReturnDetailsMode ? () => { } : setCustomerCity}
+            onPatientTypeChange={isReturnDetailsMode ? () => { } : setPatientType}
+            onAddNewCustomer={isReturnDetailsMode ? () => { } : handleOpenCustomerModal}
           />
 
           <DoctorDetailsSection
@@ -1211,10 +1213,10 @@ const SalesReceipt: React.FC = () => {
             doctorNames={doctorNames}
             isLoadingDoctorNames={isLoadingDoctorNames}
             availableDoctorInfo={availableDoctorInfo}
-            onDoctorSelect={isReturnDetailsMode ? () => {} : handleDoctorSelect}
-            onDoctorNameChange={isReturnDetailsMode ? () => {} : handleDoctorNameChange}
-            onDoctorMobileChange={isReturnDetailsMode ? () => {} : setDoctorMobile}
-            onDoctorEmailChange={isReturnDetailsMode ? () => {} : setDoctorEmail}
+            onDoctorSelect={isReturnDetailsMode ? () => { } : handleDoctorSelect}
+            onDoctorNameChange={isReturnDetailsMode ? () => { } : handleDoctorNameChange}
+            onDoctorMobileChange={isReturnDetailsMode ? () => { } : setDoctorMobile}
+            onDoctorEmailChange={isReturnDetailsMode ? () => { } : setDoctorEmail}
           />
 
           <PaymentDetailsSection
@@ -1222,24 +1224,24 @@ const SalesReceipt: React.FC = () => {
             insuranceCompany={insuranceCompany}
             invoiceNumber={invoiceNumber}
             invoiceDate={invoiceDate}
-            onPaymentModeChange={isReturnDetailsMode ? () => {} : setPaymentMode}
-            onInsuranceCompanyChange={isReturnDetailsMode ? () => {} : setInsuranceCompany}
-            onInvoiceNumberChange={isReturnDetailsMode ? () => {} : setInvoiceNumber}
-            onInvoiceDateChange={isReturnDetailsMode ? () => {} : setInvoiceDate}
+            onPaymentModeChange={isReturnDetailsMode ? () => { } : setPaymentMode}
+            onInsuranceCompanyChange={isReturnDetailsMode ? () => { } : setInsuranceCompany}
+            onInvoiceNumberChange={isReturnDetailsMode ? () => { } : setInvoiceNumber}
+            onInvoiceDateChange={isReturnDetailsMode ? () => { } : setInvoiceDate}
             isReturnDetailsMode={isReturnDetailsMode}
             returnDate={returnDate}
           />
         </CustomerDoctorSection>
 
-        <Box sx={{ 
+        <Box sx={{
           marginTop: '8px',
           width: '100%'
         }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '16px' 
+            marginBottom: '16px'
           }}>
             {!isReturnDetailsMode && (
               <>
@@ -1263,13 +1265,13 @@ const SalesReceipt: React.FC = () => {
                     }
                   }, [salesItems])}
                 />
-                
-                <StandardButton 
+
+                <StandardButton
                   onClick={handleEditCart}
                   variant="text"
                   size="small"
                   startIcon={<EditIcon sx={{ fontSize: '16px' }} />}
-                  sx={{ 
+                  sx={{
                     color: '#5C17E5',
                     backgroundColor: 'transparent',
                     '&:hover': {
@@ -1282,8 +1284,8 @@ const SalesReceipt: React.FC = () => {
               </>
             )}
           </Box>
-          
-          <Box sx={{ 
+
+          <Box sx={{
             width: '100%',
             overflowX: 'auto',
             '&::-webkit-scrollbar': {
@@ -1310,10 +1312,10 @@ const SalesReceipt: React.FC = () => {
           totalDiscount={totalDiscount}
           taxAmount={taxAmount}
           totalPayableAmount={totalPayableAmount}
-          onTotalValueChange={isReturnDetailsMode ? () => {} : setTotalValue}
-          onTotalDiscountChange={isReturnDetailsMode ? () => {} : setTotalDiscount}
-          onTaxAmountChange={isReturnDetailsMode ? () => {} : setTaxAmount}
-          onTotalPayableAmountChange={isReturnDetailsMode ? () => {} : setTotalPayableAmount}
+          onTotalValueChange={isReturnDetailsMode ? () => { } : setTotalValue}
+          onTotalDiscountChange={isReturnDetailsMode ? () => { } : setTotalDiscount}
+          onTaxAmountChange={isReturnDetailsMode ? () => { } : setTaxAmount}
+          onTotalPayableAmountChange={isReturnDetailsMode ? () => { } : setTotalPayableAmount}
         />
 
         {!isReturnDetailsMode && (

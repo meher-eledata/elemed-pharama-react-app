@@ -1,26 +1,26 @@
 export const orderLabels = {
   // Main title
   orderDetails: 'Order Details',
-  
+
   // Form field labels
   supplierName: 'Supplier Name',
-  poNumber: 'PO Number',
+  poNumber: 'PO Number (Optional)',
   invoiceDate: 'Invoice Date',
   invoiceAttachment: 'Invoice Attachment',
   paymentMethod: 'Payment method',
   paymentVendor: 'Payment vendor',
   transactionNumber: 'Transaction Number',
   findProduct: 'Find product',
-  
+
   // Placeholders
   enterSupplierName: 'Enter supplier name ',
-  enterPoNumber: 'Enter PO number',
+  enterPoNumber: 'Enter PO number (Optional)',
   enterBatchNumber: 'Enter batch number',
   searchByProductName: 'Search by product name',
   dateFormat: 'DD/MM/YYYY',
   selectBankVendor: 'Select bank / vendor',
   search: 'Search',
-  
+
   // Table headers
   productName: 'Product name',
   batchNumber: 'Batch Number',
@@ -33,7 +33,7 @@ export const orderLabels = {
   igst: 'IGST',
   discount: 'Discount',
   actions: 'Actions',
-  
+
   // Buttons
   cancelButton: 'Cancel',
   cancel: 'Cancel',
@@ -43,10 +43,10 @@ export const orderLabels = {
   deleteReceipt: 'Delete Receipt',
   proceedToPayment: 'Proceed to Payment',
   orderReceivedButton: 'Order Received',
-  
+
   // Table data
   noDataAvailable: 'No data available',
-  
+
   // Add product option
   addProducts: 'Add Products...',
   addNewSupplier: 'Add New Supplier',

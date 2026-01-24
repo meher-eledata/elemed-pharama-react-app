@@ -1,4 +1,5 @@
 import { Customer } from '../../redux/slices/salesApi';
+import { CartItem } from '../../redux/slices/cartSlice';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { extractErrorMessage as extractErrorFromUtils } from '../../utils/errorUtils';
 
@@ -15,36 +16,36 @@ export const validateCustomerData = (customerData: any): { isValid: boolean; err
   if (!customerData.billingAddress || !customerData.billingAddress.trim()) {
     return { isValid: false, error: 'Billing address is required' };
   }
-  
+
   if (customerData.emailId && customerData.emailId.trim()) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customerData.emailId.trim())) {
       return { isValid: false, error: 'Invalid email format' };
     }
   }
-  
+
   if (customerData.gstin && customerData.gstin.trim()) {
     const gstinRegex = /^[0-9]{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
     const gstinValue = customerData.gstin.trim().toUpperCase().replace(/\s/g, '');
-    
+
     if (!gstinRegex.test(gstinValue)) {
       return { isValid: false, error: 'Invalid GSTIN format' };
     }
-    
+
     customerData.gstin = gstinValue;
   }
-  
+
   if (customerData.pancardNumber && customerData.pancardNumber.trim()) {
     const panRegex = /^[A-Z]{5}\d{4}[A-Z]$/;
     const panValue = customerData.pancardNumber.trim().toUpperCase();
-    
+
     if (!panRegex.test(panValue)) {
       return { isValid: false, error: 'Invalid PAN format (e.g., ABCDE1234F)' };
     }
-    
+
     customerData.pancardNumber = panValue;
   }
-  
+
   return { isValid: true };
 };
 
@@ -60,13 +61,13 @@ export const transformCustomerDataToApiPayload = (customerData: any) => {
   } else if (customerData.gender.other) {
     genderValue = 3;
   }
-  
+
   return {
     name: customerData.customerName.trim(),
     email: customerData.emailId && customerData.emailId.trim() ? customerData.emailId.trim() : null,
     phone: customerData.mobileNumber.trim(),
     billing_address: customerData.billingAddress.trim(),
-    shipping_address: customerData.shippingAddressSameAsBilling 
+    shipping_address: customerData.shippingAddressSameAsBilling
       ? customerData.billingAddress.trim()
       : (customerData.shippingAddress && customerData.shippingAddress.trim() ? customerData.shippingAddress.trim() : null),
     gstin: customerData.gstin || null,
@@ -98,7 +99,7 @@ export const getProductIdFromName = (productName: string, apiProducts: any[]): n
   const normalizedProductName = normalize(productName);
 
   let product = apiProducts.find(p => normalize(p.name) === normalizedProductName);
-  
+
   if (!product) {
     product = apiProducts.find(p => normalize(p.name).includes(normalizedProductName) || normalizedProductName.includes(normalize(p.name)));
   }
@@ -109,19 +110,19 @@ export const getProductIdFromName = (productName: string, apiProducts: any[]): n
 /**
  * Transform cart items for editing
  */
-export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]) => {
+export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]): CartItem[] => {
   return salesItems.map(item => ({
     id: item.id,
     name: item.productName,
     batch: item.batch,
     avlQty: item.quantity,
-    mrp: parseFloat(item.mrp),
-    sp: parseFloat(item.unitPrice),
-    expiry: item.expiryDate,
+    mrp: parseFloat(item.mrp || '0'),
+    sp: parseFloat(item.unitPrice || '0'),
+    expiry: item.expiryDate || '',
     quantity: parseInt(item.quantity),
     type: item.type,
-    discount: parseFloat(item.discountPercent),
-    totalPrice: parseFloat(item.amount),
+    discount: parseFloat(item.discountPercent || '0'),
+    totalPrice: parseFloat(item.amount || '0'),
     cgst: item.cgst,
     cgstPercent: item.cgstPercent,
     sgst: item.sgst,
