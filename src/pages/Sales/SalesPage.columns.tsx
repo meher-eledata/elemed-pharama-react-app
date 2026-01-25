@@ -112,7 +112,7 @@ export const getTableColumns = ({
             }}
           />
         ) : (
-          item.avlQty
+          Math.floor(parseFloat(item.avlQty || '0'))
         )
       )
     },
@@ -175,6 +175,7 @@ export const getTableColumns = ({
         />
       )
     },
+
     {
       key: "actions",
       header: "Actions",

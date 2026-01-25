@@ -45,10 +45,10 @@ export interface SalesHistoryItem {
   totalReturnedAmount: number;
   soldQty?: number;
   returnedQty?: number;
-  returnStatus?: string;
+  returnStatus?: string | null;
   // Return information (populated directly from backend list)
   hasReturn: boolean;
-  lastReturnStatus: string | null;
+  lastReturnStatus?: string | null;
   returnInfo?: {
     totalItems: number; // Total items in invoice
     returnedItems: number; // Total items returned
@@ -190,7 +190,8 @@ export default function SaleHistory() {
         patientType = invoice.patient_type === 0 ? 'In Patient' : 'Out Patient';
       }
 
-      const safeInvoiceId = (invoice.id && !isNaN(Number(invoice.id))) ? Number(invoice.id) : null;
+      // Backend SQL query uses "i.id AS invoice_id"
+      const safeInvoiceId = (invoice.invoice_id && !isNaN(Number(invoice.invoice_id))) ? Number(invoice.invoice_id) : null;
       const numericInvoiceNumber = invoice.invoice_number ? parseInt(String(invoice.invoice_number).replace(/^INV/i, '')) : null;
       const dbInvoiceId = safeInvoiceId || numericInvoiceNumber || index + 1000;
 
@@ -247,18 +248,20 @@ export default function SaleHistory() {
         doctorEmail: invoice.doctor_email || 'N/A',
         username: invoice.created_by ? (isNaN(Number(invoice.created_by)) ? invoice.created_by : `User ${invoice.created_by}`) : 'Guest',
         patientType: patientType,
-        totalAmount: parseFloat(invoice.total_amount) || 0,
-        totalReturnedAmount: parseFloat(invoice.total_returned_amount) || 0,
-        soldQty: parseFloat(invoice.sold_qty || invoice.quantity || invoice.qty) || 0,
-        returnedQty: parseFloat(invoice.returned_qty || invoice.returned_quantity || invoice.return_qty) || 0,
-        returnStatus: invoice.return_status || null,
-        hasReturn: invoice.has_return || (invoice.returned_qty && parseFloat(invoice.returned_qty) > 0) || (invoice.returned_quantity && parseFloat(invoice.returned_quantity) > 0) || false,
-        lastReturnStatus: invoice.last_return_status || invoice.return_status || null,
+        totalAmount: parseFloat(invoice.total_amount || invoice.totalAmount || '0') || 0,
+        totalReturnedAmount: parseFloat(invoice.total_returned_amount || invoice.totalReturnedAmount || '0') || 0,
+        soldQty: parseFloat(invoice.sold_qty || invoice.quantity || invoice.qty || '0') || 0,
+        returnedQty: parseFloat(invoice.returned_qty || invoice.returned_quantity || invoice.return_qty || '0') || 0,
+        returnStatus: (invoice.return_status && String(invoice.return_status).toLowerCase() !== 'null') ? String(invoice.return_status) : null,
+        hasReturn: (invoice.has_return && invoice.has_return !== '0' && invoice.has_return !== 'false') ||
+          (parseFloat(invoice.returned_qty || invoice.returned_quantity || '0') > 0) ||
+          (parseFloat(invoice.total_returned_amount || '0') > 0),
+        lastReturnStatus: (invoice.last_return_status && String(invoice.last_return_status).toLowerCase() !== 'null') ? String(invoice.last_return_status) : null,
         paymentMode: invoice.payment_mode || 'Cash',
         insuranceCompany: invoice.insurance_company || '',
-        totalDiscount: invoice.discount || invoice.total_discount || 0,
-        taxAmount: invoice.tax_amount || 0,
-        totalPayableAmount: invoice.total_payable_amount || invoice.total_amount || 0,
+        totalDiscount: parseFloat(invoice.discount || invoice.total_discount || '0') || 0,
+        taxAmount: parseFloat(invoice.tax_amount || '0') || 0,
+        totalPayableAmount: parseFloat(invoice.total_payable_amount || invoice.total_amount || '0') || 0,
       };
     });
 
@@ -266,75 +269,60 @@ export default function SaleHistory() {
     // STRATEGY: 
     // 1. Add API items first (these are the source of truth for return status)
     // 2. Add saved items ONLY if they don't exist in the API yet (e.g., new sales not yet synced)
-    const resultMap = new Map<string, SalesHistoryItem>();
+    // CRITICAL: Use unique database 'id' as key, NOT invoiceNumber (duplicates exist)
+    const resultMap = new Map<string | number, SalesHistoryItem>();
 
     // First add all API items (source of truth for return status)
     apiItems.forEach(item => {
-      if (item.invoiceNumber) {
-        // Normalize invoice number for matching (remove spaces, uppercase)
-        const normalize = (str: string) => str ? str.replace(/\s+/g, '').toUpperCase() : '';
-        const itemInv = normalize(item.invoiceNumber);
+      // Normalize invoice number for matching (remove spaces, uppercase)
+      const normalize = (str: string) => str ? str.replace(/\s+/g, '').toUpperCase() : '';
+      const itemInv = normalize(item.invoiceNumber);
 
-        // Look for this item in local storage to see if we have names the API might be missing
-        const savedItem = uniqueSavedItems.find(s => {
-          if (!s.invoiceNumber) return false;
-          const sInv = normalize(s.invoiceNumber);
+      // Look for this item in local storage to see if we have names the API might be missing
+      const savedItem = uniqueSavedItems.find(s => {
+        if (String(s.id) === String(item.id)) return true;
+        if (!s.invoiceNumber) return false;
 
-          // Match by normalized invoice number
-          if (sInv === itemInv) return true;
+        const sInv = normalize(s.invoiceNumber);
+        if (sInv === itemInv) return true;
 
-          // Also try matching just the numeric parts
-          const sNum = sInv.replace(/\D/g, '');
-          const itemNum = itemInv.replace(/\D/g, '');
-          if (sNum && itemNum && sNum === itemNum) return true;
+        const sNum = sInv.replace(/\D/g, '');
+        const itemNum = itemInv.replace(/\D/g, '');
+        return sNum && itemNum && sNum === itemNum;
+      });
 
-          return false;
-        });
+      if (savedItem) {
+        // Prioritize saved data for names if API returns generic placeholders
+        const mergedItem = {
+          ...item,
+          customerName: savedItem.customerName || item.customerName,
+          customerMobile: savedItem.customerMobile || item.customerMobile,
+          customerCity: savedItem.customerCity || item.customerCity,
+          doctorName: savedItem.doctorName || item.doctorName,
+          doctorMobile: savedItem.doctorMobile || item.doctorMobile,
+          doctorEmail: savedItem.doctorEmail || item.doctorEmail,
+          username: savedItem.username || item.username,
+          paymentMode: savedItem.paymentMode || item.paymentMode,
+          insuranceCompany: savedItem.insuranceCompany || item.insuranceCompany,
+        };
 
-        if (savedItem) {
-          // Helper to check if a value is a fallback placeholder or empty
-          // Now strictly checking for 'null' string which API might return
-          const isFallbackValue = (value: string | null | undefined) => {
-            if (!value) return true;
-            const strVal = String(value).trim();
-            return strVal === '' ||
-              strVal === 'N/A' ||
-              strVal.toLowerCase() === 'null' ||
-              /^Customer\s+\d+$/i.test(strVal) ||
-              /^Doctor\s+\d+$/i.test(strVal) ||
-              /^User\s+\d+$/i.test(strVal);
-          };
-
-          // Prioritize saved data if available - this is the source of truth for the user's submission
-          const mergedItem = {
-            ...item,
-            customerName: savedItem.customerName || item.customerName,
-            customerMobile: savedItem.customerMobile || item.customerMobile,
-            customerCity: savedItem.customerCity || item.customerCity,
-            doctorName: savedItem.doctorName || item.doctorName,
-            doctorMobile: savedItem.doctorMobile || item.doctorMobile,
-            doctorEmail: savedItem.doctorEmail || item.doctorEmail,
-            username: savedItem.username || item.username,
-            totalAmount: (savedItem.totalAmount !== undefined && savedItem.totalAmount !== null) ? savedItem.totalAmount : item.totalAmount,
-            paymentMode: savedItem.paymentMode || item.paymentMode,
-            insuranceCompany: savedItem.insuranceCompany || item.insuranceCompany,
-            totalDiscount: savedItem.totalDiscount || item.totalDiscount,
-            taxAmount: savedItem.taxAmount || item.taxAmount,
-            totalPayableAmount: savedItem.totalPayableAmount || item.totalPayableAmount,
-          };
-
-          resultMap.set(item.invoiceNumber, mergedItem);
-        } else {
-          resultMap.set(item.invoiceNumber, item);
-        }
+        resultMap.set(item.id, mergedItem);
+      } else {
+        resultMap.set(item.id, item);
       }
     });
 
-    // Then add saved items that aren't in the API yet
+    // Then add saved items that aren't in the API yet (e.g. offline or just submitted)
     uniqueSavedItems.forEach(item => {
-      if (item.invoiceNumber && !resultMap.has(item.invoiceNumber)) {
-        // Add default return info for local-only items
-        resultMap.set(item.invoiceNumber, {
+      // Check if this item is already accounted for in resultMap (by ID or Invoice Number)
+      const alreadyExists = Array.from(resultMap.values()).some(existing => {
+        if (String(existing.id) === String(item.id)) return true;
+        if (existing.invoiceNumber && item.invoiceNumber && existing.invoiceNumber === item.invoiceNumber) return true;
+        return false;
+      });
+
+      if (!alreadyExists) {
+        resultMap.set(item.id, {
           ...item,
           hasReturn: false,
           lastReturnStatus: null
@@ -380,14 +368,14 @@ export default function SaleHistory() {
       // Fetch return info for each invoice
       const promises = invoicesData.map(async (invoice: any) => {
         try {
-          const invoiceId = invoice.id;
+          const invoiceId = invoice.invoice_id || invoice.id;
           const invoiceNumber = invoice.invoice_number;
 
           if (!invoiceId && !invoiceNumber) return;
 
           let result;
           if (invoiceId) {
-            result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
+            result = await getInvoiceDetails({ invoice_id: Number(invoiceId) }).unwrap();
           } else if (invoiceNumber) {
             const numericInvoiceNumber = String(invoiceNumber).replace(/^INV/i, '').trim();
             result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
@@ -663,19 +651,30 @@ export default function SaleHistory() {
     const totalAmount = item.totalAmount || 0;
     const returnedAmount = item.totalReturnedAmount || 0;
 
-    // 1. Check for "Full" indicators
-    const isFullByQty = soldQty > 0 && returnedQty >= soldQty;
-    const isFullByAmount = totalAmount > 0 && Math.abs(returnedAmount - totalAmount) < 0.01;
+    // 1. Handle "No Return" case first (Highest priority - if no quantites/amounts, it's not a return)
+    const hasGenuineReturnData = returnedQty > 0 || returnedAmount > 0 || item.returnInfo?.isFullReturn;
+    const hasReturnStatusString = !!item.returnStatus || !!item.lastReturnStatus;
+
+    if (!hasGenuineReturnData && !hasReturnStatusString && !item.hasReturn) {
+      return { status: 'none' as const, label: 'No Return', returned: 0, total: 0 };
+    }
+
+    // 2. Check for "Full" indicators (Only if there is genuine return activity)
+    const isFullByQty = soldQty > 0 && returnedQty > 0 && returnedQty >= soldQty;
+    const isFullByAmount = totalAmount > 0 && returnedAmount > 0 && Math.abs(returnedAmount - totalAmount) < 0.01;
     const isFullByInfo = item.returnInfo?.isFullReturn || false;
     const isFullByStatus = (item.returnStatus || item.lastReturnStatus || '').toLowerCase().includes('full');
 
     const isFull = isFullByQty || isFullByAmount || isFullByInfo || isFullByStatus;
 
-    // 2. Handle "No Return" case
-    const hasAnyReturn = item.hasReturn || returnedQty > 0 || returnedAmount > 0 || !!item.returnStatus || !!item.lastReturnStatus;
-
-    if (!hasAnyReturn && !isFullByInfo) {
-      return { status: 'none' as const, label: 'No Return', returned: 0, total: 0 };
+    // 3. Double check: If not 'full' and no quantities/amounts, it might be a false positive status string
+    if (!isFull && !hasGenuineReturnData && hasReturnStatusString) {
+      // If status is something like "Completed" or "Paid", it's not a return
+      const statusStr = (item.returnStatus || item.lastReturnStatus || '').toLowerCase();
+      const nonReturnTerms = ['completed', 'paid', 'success', 'pending', 'confirmed'];
+      if (nonReturnTerms.some(term => statusStr.includes(term))) {
+        return { status: 'none' as const, label: 'No Return', returned: 0, total: 0 };
+      }
     }
 
     // 3. Determine Label

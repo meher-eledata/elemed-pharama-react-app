@@ -5,17 +5,17 @@ import { baseQueryWithReauth } from "../baseQuery";
 export const createDebouncedValidateSale = () => {
   let timeoutId: NodeJS.Timeout | null = null;
   let lastParams: ValidateSaleRequest | null = null;
-  
+
   return (params: ValidateSaleRequest, apiCall: (params: ValidateSaleRequest) => Promise<ValidateSaleResponse>) => {
     return new Promise<ValidateSaleResponse>((resolve, reject) => {
       // Clear previous timeout
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      
+
       // Store the latest parameters
       lastParams = params;
-      
+
       // Set new timeout
       timeoutId = setTimeout(async () => {
         try {
@@ -252,7 +252,30 @@ export interface AddCustomerResponse {
   name: string;
 }
 
+export interface EditSaleLine extends SubmitSaleLine {
+  invoice_line_id?: number;
+}
 
+export interface EditSaleRequest {
+  invoice_id: number;
+  invoice_number: string;
+  quantity: number;
+  disc: number;
+  payment_method: string;
+  payment_amount: number;
+  created_by: string;
+  customer_id: number;
+  Deleted?: number[];
+  Added?: SubmitSaleLine[];
+  Edited?: EditSaleLine[];
+}
+
+export interface EditSaleResponse {
+  message: string;
+  invoice_id: number;
+  invoice_number: string;
+  total_amount: number;
+}
 
 
 export const salesApi = createApi({
@@ -299,7 +322,7 @@ export const salesApi = createApi({
       providesTags: ["Sales"],
     }),
 
-    // Update sales transaction
+    // Update sales transaction (Legacy or boilerplace - recommend using editSale below)
     updateSales: builder.mutation<any, { id: number; data: Partial<CreateSalesRequest> }>({
       query: ({ id, data }) => ({
         url: `sales/${id}`,
@@ -307,6 +330,15 @@ export const salesApi = createApi({
         body: data,
       }),
       invalidatesTags: ["Sales"],
+    }),
+
+    editSale: builder.mutation<EditSaleResponse, EditSaleRequest>({
+      query: (body) => ({
+        url: "sales/edit-sale",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Sales", "Inventory"],
     }),
 
     // Delete sales transaction
@@ -382,7 +414,7 @@ export const salesApi = createApi({
     }),
 
     // Get all products for sales - alternative endpoint
-    getSalesProducts: builder.query<{name: string, id: number}[], void>({
+    getSalesProducts: builder.query<{ name: string, id: number }[], void>({
       query: () => "sales/get-products",
       transformResponse: (response: any[]) => {
         // Handle different response formats
@@ -518,4 +550,5 @@ export const {
   useGetBatchNumbersByProductIdMutation,
   useGetInvoiceDetailsMutation,
   useSubmitSalesReturnMutation,
+  useEditSaleMutation,
 } = salesApi;

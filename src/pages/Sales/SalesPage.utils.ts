@@ -8,10 +8,10 @@ export const processProductOptions = (apiProducts: any[]): string[] => {
   if (!apiProducts || apiProducts.length === 0) {
     return [];
   }
-  
+
   const firstProduct = apiProducts[0];
   let options: string[] = [];
-  
+
   // Handle array format [name, id]
   if (Array.isArray(firstProduct)) {
     options = apiProducts
@@ -22,7 +22,7 @@ export const processProductOptions = (apiProducts: any[]): string[] => {
       .filter((name: string) => {
         return name && name.trim() !== '';
       });
-  } 
+  }
   // Handle object format {name: string, id: number}
   else if (typeof firstProduct === 'object' && firstProduct !== null) {
     options = apiProducts
@@ -35,14 +35,14 @@ export const processProductOptions = (apiProducts: any[]): string[] => {
       });
   } else {
   }
-  
+
   if (options.length === 0 && apiProducts.length > 0) {
   }
-  
+
   // Remove duplicates to prevent React key warnings
   // Use Set to get unique product names, then convert back to array
   const uniqueOptions = Array.from(new Set(options));
-  
+
   return uniqueOptions;
 };
 
@@ -62,7 +62,7 @@ export const extractProductId = (apiProducts: any[], productName: string): strin
     }
     return false;
   }) as any;
-  
+
   if (selectedProduct) {
     if (Array.isArray(selectedProduct)) {
       return String(selectedProduct[1]); // [name, id] format
@@ -70,7 +70,7 @@ export const extractProductId = (apiProducts: any[], productName: string): strin
       return String(selectedProduct.id); // {name, id} format
     }
   }
-  
+
   return null;
 };
 
@@ -102,10 +102,10 @@ export const canAddToCart = (
     return { canAdd: false, message: 'Please select a product and quantity' };
   }
 
-  const typesArray = Array.isArray(availableTypes) && availableTypes.length > 0 
+  const typesArray = Array.isArray(availableTypes) && availableTypes.length > 0
     ? (typeof availableTypes[0] === 'string' ? availableTypes : availableTypes.map(t => (t as any).type))
     : [];
-  
+
   if (typesArray.length > 1 && !productType) {
     return { canAdd: false, message: 'Please select a product type' };
   }
@@ -148,7 +148,7 @@ export const createCartItem = (
   batch?: string,
   discountAuthorizedById?: number
 ): Product => {
-  const typesArray = Array.isArray(availableTypes) && availableTypes.length > 0 
+  const typesArray = Array.isArray(availableTypes) && availableTypes.length > 0
     ? (typeof availableTypes[0] === 'string' ? availableTypes : availableTypes.map(t => (t as any).type))
     : [];
   const finalProductType = productType || (typesArray.length > 0 ? typesArray[0] : 'UNKNOWN');
@@ -167,6 +167,10 @@ export const createCartItem = (
     product_id: productId ? (typeof productId === 'string' ? parseInt(productId) : productId) : undefined,
     discountAuthorizedBy: discountAuthorizedBy || undefined,
     discountAuthorizedById: discountAuthorizedById,
+    // Enforce default tax percentages (9%, 9%, 0%) unless specified by validation data
+    cgstPercent: validatedData?.cgst_percent?.toString() || '9',
+    sgstPercent: validatedData?.sgst_percent?.toString() || '9',
+    igstPercent: validatedData?.igst_percent?.toString() || '0',
   };
 };
 

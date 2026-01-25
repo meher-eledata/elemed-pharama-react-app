@@ -17,6 +17,7 @@ import {
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
   useGetInvoiceDetailsMutation,
+  useEditSaleMutation,
   Customer,
   DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
@@ -71,6 +72,7 @@ const SalesReceipt: React.FC = () => {
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
+  const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
   const [addCustomer] = useAddCustomerMutation();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
@@ -178,63 +180,68 @@ const SalesReceipt: React.FC = () => {
       let invoiceId: number | null = null;
       let invoiceNumber: string | null = null;
 
-      // Use the full invoice number as-is if available - backend expects the formatted string
+      // CRITICAL: Always use invoice_number if available - it's the source of truth
       if (editModeData.invoiceNumber) {
-        invoiceNumber = editModeData.invoiceNumber.trim();
-        console.log('📝 Using full invoice number for API fetch:', invoiceNumber);
+        // Strip "INV" prefix - backend expects only numeric part
+        const fullInvoiceNumber = editModeData.invoiceNumber.trim();
+        invoiceNumber = fullInvoiceNumber.replace(/^INV/i, '').trim();
+        console.log('📝 Stripped INV prefix for API fetch. Original:', fullInvoiceNumber, '→ Sending:', invoiceNumber);
       }
 
-      if (!invoiceId) {
-        const stateId = editModeData.invoiceId || editModeData.invoice_id;
-        if (stateId && typeof stateId === 'number' && stateId > 0) {
-          invoiceId = stateId;
-          if (!invoiceNumber) {
-            invoiceNumber = stateId.toString();
-          }
+      // Also get invoiceId if available (for fallback only if invoice_number fails)
+      const rawStateId = editModeData.invoiceId || editModeData.invoice_id;
+      if (rawStateId) {
+        const parsedId = Number(rawStateId);
+        if (!isNaN(parsedId) && parsedId > 0) {
+          invoiceId = parsedId;
         }
       }
 
-      if ((invoiceId && invoiceId > 0) || invoiceNumber) {
+      console.log('📋 Diagnostic: Edit mode data resolved:', { invoiceId, invoiceNumber, rawStateId });
+
+      // MUST have at least invoice_number to proceed
+      if (!invoiceNumber && !invoiceId) {
+        console.error('❌ No invoice_number or invoice_id available');
+        alert('Cannot load invoice: No invoice number or ID provided');
+        navigate('/sales');
+        return;
+      }
+
+      if (invoiceNumber || invoiceId) {
         const fetchInvoiceDetails = async () => {
           try {
-            console.log('🔍 Edit mode - fetching invoice details:', {
-              invoiceNumber: invoiceNumber,
-              originalInvoiceNumber: editModeData.invoiceNumber,
-              invoiceId: invoiceId,
-              editModeData: {
-                invoiceId: editModeData.invoiceId,
-                invoice_id: editModeData.invoice_id,
-                invoiceNumber: editModeData.invoiceNumber
-              }
-            });
-
-            // Prefer invoice_number (numeric) as it's more reliable
+            // STRATEGY:
+            // 1. Try fetching by unique 'invoice_id' (Database primary key) first.
+            //    This is the only way to avoid mismatches when duplicate invoice numbers exist.
+            // 2. If 'invoice_id' fails with 404, fallback to 'invoice_number' (Legacy support).
             let result;
-            if (invoiceNumber) {
-              console.log('📡 Fetching invoice details for invoice_number:', invoiceNumber, '(original:', editModeData.invoiceNumber, ')');
-              result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
-            } else if (invoiceId && invoiceId > 0) {
-              console.log('📡 Fetching invoice details for invoice_id:', invoiceId);
-              result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
-            } else {
-              throw new Error('No invoice_number or invoice_id available');
+            let firstAttemptError: any = null;
+
+            if (invoiceId && invoiceId > 0) {
+              console.log(`🔍 Attempting to fetch details for Invoice ID: ${invoiceId}`);
+              try {
+                result = await getInvoiceDetails({ invoice_id: Number(invoiceId) }).unwrap();
+                console.log('✅ Found invoice by unique ID');
+              } catch (err: any) {
+                firstAttemptError = err;
+                if (err.status === 404 && invoiceNumber) {
+                  console.warn('⚠️ Invoice ID not found, trying fallback to Invoice Number...');
+                } else {
+                  throw err; // Rethrow if not a 404 or no numeric fallback available
+                }
+              }
             }
 
-            console.log('✅ Invoice details response received:', {
-              invoiceId: result.invoice?.id,
-              invoiceNumber: result.invoice?.invoice_number,
-              totalAmount: result.invoice?.total_amount,
-              linesCount: result.lines?.length
-            });
+            // Fallback to invoice_number if first attempt failed or was skipped
+            if (!result && invoiceNumber) {
+              console.log(`📡 Attempting fallback: Fetching details for Invoice Number: ${invoiceNumber}`);
+              result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
+              console.log('✅ Found invoice by number (Fallback)');
+            }
 
-            if (result.lines && result.lines.length > 0) {
-              console.log('📦 First line details:', {
-                productName: result.lines[0].name,
-                product_id: result.lines[0].product_id,
-                quantity: result.lines[0].quantity,
-                rate: result.lines[0].rate,
-                batch_number: result.lines[0].batch_number
-              });
+            if (!result) {
+              console.error('❌ Data Retrieval Failed: No result returned from API');
+              throw firstAttemptError || new Error('No unique invoice_id or invoice_number available');
             }
 
             if (result) {
@@ -254,37 +261,48 @@ const SalesReceipt: React.FC = () => {
                 } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
                   discountPercentValue = line.discountPercent.toString();
                 } else if (line.discount !== undefined && line.discount !== null) {
-                  // API returns percentage value directly (e.g., 2 for 2%)
-                  discountPercentValue = parseFloat(line.discount).toString();
+                  // API may return fractional value (e.g., 0.05 for 5%) OR percentage (e.g., 5 for 5%)
+                  const disc = parseFloat(line.discount);
+                  discountPercentValue = (disc > 0 && disc < 1) ? (disc * 100).toString() : disc.toString();
                 }
 
-                // Calculate discounted amount (base amount after discount)
-                const discountPercent = parseFloat(discountPercentValue || '0');
-                const discountedAmount = baseAmount * (1 - discountPercent / 100);
+                // ROBUST TAX PERCENTAGE DERIVATION:
+                // Trust the stored value if it looks like a percentage (0-30)
+                // Only fall back to math derivation for old invoices storing absolute amounts
+                const deriveTaxPercent = (storedVal: any, base: number, defaultVal: string) => {
+                  const val = parseFloat(storedVal || '0');
 
-                let cgstPercent = '0';
-                if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
-                  cgstPercent = line.cgst_percent.toString();
-                } else if (line.cgst !== undefined && line.cgst !== null) {
-                  // API returns percentage value directly (e.g., 9 for 9%)
-                  cgstPercent = parseFloat(line.cgst).toString();
-                }
+                  // Priority 1: If value is already a reasonable percentage (0.1% to 30%), USE IT DIRECTLY
+                  // This ensures rates like 7%, 10%, 15% etc. are preserved and not snapped to 5 or 9
+                  if (val > 0.1 && val <= 30) return val.toString();
 
-                let sgstPercent = '0';
-                if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
-                  sgstPercent = line.sgst_percent.toString();
-                } else if (line.sgst !== undefined && line.sgst !== null) {
-                  // API returns percentage value directly (e.g., 9 for 9%)
-                  sgstPercent = parseFloat(line.sgst).toString();
-                }
+                  // Priority 2: If value is 0, check if we should use the mandatory default
+                  if (val === 0) return defaultVal;
 
-                let igstPercent = '0';
-                if (line.igst_percent !== undefined && line.igst_percent !== null) {
-                  igstPercent = line.igst_percent.toString();
-                } else if (line.igst !== undefined && line.igst !== null) {
-                  // API returns percentage value directly (e.g., 0 for 0%)
-                  igstPercent = parseFloat(line.igst).toString();
-                }
+                  if (base === 0) return defaultVal;
+
+                  // Priority 3: Fallback for OLD invoices storing absolute amounts
+                  const calcPercent = (val / base) * 100;
+                  const commonPercents = [2.5, 5, 6, 9, 12, 14, 18, 28];
+                  const foundCommon = commonPercents.find(p => Math.abs(calcPercent - p) < 0.1);
+
+                  if (foundCommon) {
+                    return foundCommon.toString();
+                  }
+
+                  // If it's a small amount that looks like a percentage when calculated
+                  if (calcPercent > 0.1 && calcPercent <= 30) return calcPercent.toFixed(1);
+
+                  return defaultVal;
+                };
+
+                const discountedAmountPerUnit = baseAmount / quantity - (parseFloat(line.discount || '0') / quantity);
+                const lineBaseForTax = baseAmount - parseFloat(line.discount || '0');
+
+                // Apply defaults: CGST=9, SGST=9, IGST=0
+                let cgstPercent = deriveTaxPercent(line.cgst || line.cgst_percent, lineBaseForTax, '9');
+                let sgstPercent = deriveTaxPercent(line.sgst || line.sgst_percent, lineBaseForTax, '9');
+                let igstPercent = deriveTaxPercent(line.igst || line.igst_percent, lineBaseForTax, '0');
 
                 const originalQty = parseFloat(line.quantity || '0');
                 const returnedQty = parseFloat(line.returned_quantity || '0');
@@ -373,10 +391,16 @@ const SalesReceipt: React.FC = () => {
 
                 // Recalculate summary from these items to ensure consistency
                 const correctedSummary = calculateFinancialSummary(recalculatedItems);
+
                 setTotalValue(correctedSummary.totalValue);
                 setTotalDiscount(correctedSummary.totalDiscount);
                 setTaxAmount(correctedSummary.taxAmount);
                 setTotalPayableAmount(correctedSummary.totalPayableAmount);
+
+                // IMPORTANT: Save original data for diff tracking when saving edits to backend
+                setOriginalInvoiceData(invoiceData);
+              } else if (invoiceData.totalValue) {
+                setOriginalInvoiceData(invoiceData);
               } else if (invoiceData.totalValue) {
                 setTotalValue(invoiceData.totalValue || '0');
                 setTotalDiscount(invoiceData.totalDiscount || '0');
@@ -429,7 +453,22 @@ const SalesReceipt: React.FC = () => {
               errorData: (error as any)?.data,
             });
             // Do NOT use fallback data from location state
-            alert(`Failed to load invoice details from server: ${(error as any)?.data?.error || (error as any)?.message || 'Unknown error'}`);
+            const errData = (error as any)?.data;
+            const errStatus = (error as any)?.status;
+            const errMessage = errData?.error || (error as any)?.message || 'Unknown error';
+
+            if (errStatus === 404) {
+              alert(
+                `Invoice Not Found on Server (404)\n\n` +
+                `The invoice "${editModeData.invoiceNumber}" exists in your local history, but the server couldn't find it.\n\n` +
+                `Common Reason: If you recently restarted your backend server, it might have cleared its temporary database, ` +
+                `but your browser still remembers the old record.\n\n` +
+                `Solution: Create the sale again or ensure your backend database is permanent.`
+              );
+            } else {
+              alert(`Failed to load invoice details from server: ${errMessage}`);
+            }
+
             navigate('/sales');
             return;
           }
@@ -1034,6 +1073,7 @@ const SalesReceipt: React.FC = () => {
       productsError,
       user,
       submitSale,
+      editSale,
       updateSales,
       showToast,
       resetForm,
@@ -1041,6 +1081,8 @@ const SalesReceipt: React.FC = () => {
       navigate,
       invoiceId: isEditMode && editModeData?.invoiceId ? editModeData.invoiceId : undefined,
       isEditMode,
+      editModeData,
+      originalSalesItems: originalInvoiceData?.salesItems,
     });
   }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData]);
 
@@ -1122,7 +1164,7 @@ const SalesReceipt: React.FC = () => {
             selectedCustomer={selectedCustomer}
             customerNames={customerNames}
             availablePhones={availablePhones}
-            onCustomerNameChange={isReturnDetailsMode ? () => { } : (newName) => {
+            onCustomerNameChange={isReturnDetailsMode ? () => { } : (newName: string) => {
               // When name changes and it's an exact match from dropdown, set immediate fetch flag first
               const normalizedNewName = newName.trim().toLowerCase();
               const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);

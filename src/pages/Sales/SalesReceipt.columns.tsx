@@ -46,7 +46,7 @@ export const getTableColumns = ({
       render: (item) => (
         (isReturnDetailsMode || editingRowId !== item.id) ? (
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.quantity}
+            {Math.floor(parseFloat(item.quantity || '0'))}
           </Typography>
         ) : (
           <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
@@ -105,7 +105,7 @@ export const getTableColumns = ({
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_UNIT_PRICE,
       render: (item) => (
         <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-          {item.unitPrice}
+          {Math.floor(parseFloat(item.unitPrice || '0'))}
         </Typography>
       )
     },
@@ -115,7 +115,7 @@ export const getTableColumns = ({
       render: (item) => (
         (isReturnDetailsMode || editingRowId !== item.id) ? (
           <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-            {item.discountPercent}%
+            {item.discountPercent}
           </Typography>
         ) : (
           <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
@@ -170,27 +170,135 @@ export const getTableColumns = ({
       key: 'cgst',
       header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_CGST} (%)`,
       render: (item) => (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-          {item.cgstPercent}
-        </Typography>
+        (isReturnDetailsMode || editingRowId !== item.id) ? (
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+            {item.cgstPercent}
+          </Typography>
+        ) : (
+          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
+            <TextField
+              value={item.cgstPercent}
+              onChange={(e) => {
+                setSalesItems(prev => prev.map(product => {
+                  if (product.id === item.id) {
+                    const updated = { ...product, cgstPercent: e.target.value };
+                    return recalculateSalesItemAmount(updated);
+                  }
+                  return product;
+                }));
+              }}
+              disabled={!item.productName || item.productName.trim() === ''}
+              size="small"
+              sx={{
+                width: 70,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px',
+                  height: '32px',
+                  '&:hover fieldset': {
+                    borderColor: '#5C17E5',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#5C17E5',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  padding: '8px 12px',
+                  fontSize: '14px',
+                },
+              }}
+            />
+          </Box>
+        )
       )
     },
     {
       key: 'sgst',
       header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_SGST} (%)`,
       render: (item) => (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-          {item.sgstPercent}
-        </Typography>
+        (isReturnDetailsMode || editingRowId !== item.id) ? (
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+            {item.sgstPercent}
+          </Typography>
+        ) : (
+          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
+            <TextField
+              value={item.sgstPercent}
+              onChange={(e) => {
+                setSalesItems(prev => prev.map(product => {
+                  if (product.id === item.id) {
+                    const updated = { ...product, sgstPercent: e.target.value };
+                    return recalculateSalesItemAmount(updated);
+                  }
+                  return product;
+                }));
+              }}
+              disabled={!item.productName || item.productName.trim() === ''}
+              size="small"
+              sx={{
+                width: 70,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px',
+                  height: '32px',
+                  '&:hover fieldset': {
+                    borderColor: '#5C17E5',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#5C17E5',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  padding: '8px 12px',
+                  fontSize: '14px',
+                },
+              }}
+            />
+          </Box>
+        )
       )
     },
     {
       key: 'igst',
       header: `${SALES_RECEIPT_LABELS.TABLE_HEADER_IGST} (%)`,
       render: (item) => (
-        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-          {item.igstPercent}
-        </Typography>
+        (isReturnDetailsMode || editingRowId !== item.id) ? (
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+            {item.igstPercent}
+          </Typography>
+        ) : (
+          <Box sx={{ overflow: 'visible', display: 'inline-block' }}>
+            <TextField
+              value={item.igstPercent}
+              onChange={(e) => {
+                setSalesItems(prev => prev.map(product => {
+                  if (product.id === item.id) {
+                    const updated = { ...product, igstPercent: e.target.value };
+                    return recalculateSalesItemAmount(updated);
+                  }
+                  return product;
+                }));
+              }}
+              disabled={!item.productName || item.productName.trim() === ''}
+              size="small"
+              sx={{
+                width: 70,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px',
+                  height: '32px',
+                  '&:hover fieldset': {
+                    borderColor: '#5C17E5',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#5C17E5',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  padding: '8px 12px',
+                  fontSize: '14px',
+                },
+              }}
+            />
+          </Box>
+        )
       )
     },
     {

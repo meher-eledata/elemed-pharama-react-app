@@ -59,6 +59,7 @@ interface ExecuteSaveParams {
   productsError: any;
   user: any;
   submitSale: (payload: any) => any;
+  editSale: (payload: any) => any;
   updateSales?: (payload: { id: number; data: any }) => any; // Update sales mutation for edit mode
   showToast: (message: string, severity: 'success' | 'error' | 'warning' | 'info') => void;
   resetForm: () => void;
@@ -66,6 +67,8 @@ interface ExecuteSaveParams {
   navigate: (path: string) => void;
   invoiceId?: number; // Invoice ID for edit mode
   isEditMode?: boolean; // Flag to indicate edit mode
+  editModeData?: any; // Original state data from navigation
+  originalSalesItems?: SalesReceiptItem[]; // For diff tracking in edit mode
 }
 
 export const executeSave = async ({
@@ -92,6 +95,7 @@ export const executeSave = async ({
   productsError,
   user,
   submitSale,
+  editSale,
   updateSales,
   showToast,
   resetForm,
@@ -99,6 +103,8 @@ export const executeSave = async ({
   navigate,
   invoiceId,
   isEditMode,
+  editModeData,
+  originalSalesItems,
 }: ExecuteSaveParams): Promise<void> => {
   try {
     if (!customerName || !customerName.trim()) {
@@ -160,11 +166,9 @@ export const executeSave = async ({
 
       if (item.product_id && item.product_id > 0) {
         productId = item.product_id;
-        console.log(`✅ Using product_id from cart item: ${productId} for "${item.productName}"`);
       } else {
-        // Fallback: lookup by name (may return wrong product_id if multiple products have same name)
+        // Fallback: lookup by name
         productId = getProductIdFromName(item.productName, apiProducts);
-        console.log(`⚠️ Product ID not in cart item, looking up by name: ${productId} for "${item.productName}"`);
       }
 
       if (!productId || productId <= 0) {
@@ -212,14 +216,10 @@ export const executeSave = async ({
       console.log('📝 Generated invoice number during save (should not happen normally):', finalInvoiceNumber);
     }
 
-    // Send invoice number as-is to backend (format: "INV1", "INV2", etc.)
-    // Backend expects the full formatted string with "INV" prefix
-    let invoiceNumberForBackend = finalInvoiceNumber.trim();
 
-    // Build payload according to backend expectations
-    // Backend expects: disc, payment_method, payment_amount, created_by, customer_id, doctor_id (optional), lines
-    // For return flow: invoice_number and invoice_date should be included when available (invoice already stored in DB)
-    // Convert patient type: "In Patient" -> 0, "Out Patient" -> 1
+    let invoiceNumberForBackend = finalInvoiceNumber.replace(/^INV/i, '').trim();
+
+
     const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
 
     const submitSalePayload = {
@@ -227,26 +227,86 @@ export const executeSave = async ({
       payment_method: paymentMode || 'Cash',
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
-      customer_id: customerId, // Must be valid number > 0
+      customer_id: customerId,
       customer_name: customerName,
       customer_mobile: customerMobile,
       customer_city: customerCity,
       doctor_name: doctorName,
       doctor_mobile: doctorMobile,
       doctor_email: doctorEmail,
-      patient_type: patientTypeNumber, // 0 for "In Patient", 1 for "Out Patient"
-      invoice_number: invoiceNumberForBackend, // Send numeric part only (e.g., "12" instead of "INV12")
-      // doctor_id: undefined, // Optional - can be added later if needed
-      // Include invoice_date for return flow (when invoice already exists in DB)
+      patient_type: patientTypeNumber,
+      invoice_number: invoiceNumberForBackend,
       ...(invoiceDate && invoiceDate.trim() ? { invoice_date: invoiceDate.trim() } : {}),
-      lines: lines, // Already in correct format from lines.map above
+      lines: lines,
     };
 
-    // In edit mode, skip API call and just update localStorage (no backend endpoint)
+    // In edit mode, call the specialized editSale API to synchronize with database
     if (isEditMode && invoiceId) {
-      // Edit mode: Just update localStorage, skip all API calls
-      // No submitSale or updateSales endpoint will be called
-      console.log('Edit mode: Updating sale in localStorage only (no API call) with invoiceId:', invoiceId);
+      console.log('Edit mode: Computing line item changes (Added/Edited/Deleted)...');
+
+      const deletedLines: number[] = [];
+      const addedLines: any[] = [];
+      const editedLines: any[] = [];
+
+      // 1. Identify Deleted lines (Lines that were in original but are not in current list)
+      if (originalSalesItems) {
+        originalSalesItems.forEach(orig => {
+          const stillExists = salesItems.find(curr => curr.id === orig.id);
+          if (!stillExists) {
+            const lineId = parseInt(orig.id);
+            if (!isNaN(lineId)) {
+              deletedLines.push(lineId);
+            }
+          }
+        });
+      }
+
+      // 2. Identify Added and Edited lines
+      salesItems.forEach(curr => {
+        const lineItem = {
+          product_id: curr.product_id || 0,
+          quantity: parseFloat(curr.quantity || '0'),
+          batch_number: curr.batch,
+          mrp: parseFloat(curr.mrp || '0'),
+          sp: parseFloat(curr.unitPrice || '0'),
+          discount: parseFloat(curr.discountPercent || '0') / 100, // Send as fraction (e.g. 0.05) if backend expects it
+          cgst: parseFloat(curr.cgstPercent || '0'),
+          sgst: parseFloat(curr.sgstPercent || '0'),
+          igst: parseFloat(curr.igstPercent || '0'),
+          discount_authority: curr.discountAuthorizedBy,
+        };
+
+        const original = originalSalesItems?.find(orig => orig.id === curr.id);
+        if (!original || isNaN(parseInt(curr.id))) {
+          // No original item with this ID found OR ID is synthetic -> New item added during edit
+          addedLines.push(lineItem);
+        } else {
+          // Original item found with valid numeric ID -> Send as edited
+          editedLines.push({
+            ...lineItem,
+            invoice_line_id: parseInt(curr.id)
+          });
+        }
+      });
+
+      const editSalePayload = {
+        invoice_id: Number(invoiceId),
+        invoice_number: invoiceNumber,
+        quantity: salesItems.length,
+        disc: parseFloat(totalDiscount || '0') / parseFloat(totalValue || '1'), // Overall discount ratio
+        payment_method: paymentMode || 'Cash',
+        payment_amount: parseFloat(totalPayableAmount || '0'),
+        customer_id: selectedCustomer?.id || editModeData?.customer_id || 4, // Default to a valid ID if missing
+        created_by: user?.username || 'meher',
+        Deleted: deletedLines,
+        Added: addedLines,
+        Edited: editedLines,
+      };
+
+      console.log('📡 Calling backend API: POST /api/sales/edit-sale');
+      console.log('📦 Payload:', JSON.stringify(editSalePayload, null, 2));
+      const result = await editSale(editSalePayload).unwrap();
+      console.log('✅ Backend API Response (edit-sale):', result);
     } else {
       // New sale mode: Call the submitSale API endpoint
       // Debug: Log the payload to verify discount_authority is being sent

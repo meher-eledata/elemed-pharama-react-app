@@ -137,27 +137,14 @@ export default function SaleReturn() {
       }
     }
 
-    // IMPORTANT: Log what data we have to debug the issue
+    // Only use invoiceId from state if it's a valid number. 
+    // Do NOT fall back to parsing numeric invoice numbers as IDs, 
+    // as invoice_number is NOT unique in the database and will cause mismatches.
     console.log('📋 invoiceData received:', {
       invoiceId: invoiceData.invoiceId,
       invoiceNumber: invoiceData.invoiceNumber,
       invoiceIdToFetch,
     });
-
-    if (!invoiceIdToFetch && invoiceData.invoiceNumber) {
-      let cleanedNumber = invoiceData.invoiceNumber
-        .replace(/^(RB|INV-?)/i, '')
-        .replace(/[^0-9]/g, '') //
-        .trim();
-
-      if (cleanedNumber) {
-        const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0) {
-          invoiceIdToFetch = parsed;
-          console.log('⚠️ Using parsed invoice number as ID (fallback):', invoiceIdToFetch);
-        }
-      }
-    }
 
     const fetchInvoiceDetails = async () => {
       const invoiceNumber = invoiceData.invoiceNumber;
@@ -183,63 +170,42 @@ export default function SaleReturn() {
             lastError = err;
             console.log('❌ Invoice not found by invoice_id, trying with invoice_number...');
             if (invoiceNumber && err?.status === 404) {
-              // Priority 1: Try with the original invoice number string (e.g. "INV26")
-              console.log('🔍 Trying with original invoice_number:', invoiceNumber);
-              try {
-                result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
-                console.log('✅ Invoice found using original invoice_number');
-              } catch (errOriginal: any) {
-                // Priority 2: Try with cleaned numeric part (e.g. "26")
-                let numericInvoiceNumber = invoiceNumber;
-                if (typeof invoiceNumber === 'string') {
-                  const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-                  numericInvoiceNumber = cleaned || invoiceNumber;
-                }
+              // Backend expects numeric part only (e.g., "26" instead of "INV26")
+              // Strip the "INV" prefix before sending to backend
+              let numericInvoiceNumber = invoiceNumber;
+              if (typeof invoiceNumber === 'string') {
+                const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+                numericInvoiceNumber = cleaned || invoiceNumber;
+              }
 
-                if (numericInvoiceNumber !== invoiceNumber) {
-                  console.log('🔍 Trying with cleaned invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
-                  try {
-                    result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
-                    console.log('✅ Invoice found using cleaned invoice_number');
-                  } catch (err2: any) {
-                    lastError = err2;
-                    throw err2;
-                  }
-                } else {
-                  throw errOriginal;
-                }
+              console.log('🔍 Trying with numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
+              try {
+                result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
+                console.log('✅ Invoice found using numeric invoice_number');
+              } catch (err2: any) {
+                lastError = err2;
+                throw err2;
               }
             } else {
               throw err;
             }
           }
         } else if (invoiceNumber) {
-          // Priority 1: Try with original invoice number
-          console.log('🔍 Fetching invoice details using original invoice_number:', invoiceNumber);
-          try {
-            result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
-            console.log('✅ Invoice found using original invoice_number');
-          } catch (err: any) {
-            // Priority 2: Try with cleaned numeric part
-            let numericInvoiceNumber = invoiceNumber;
-            if (typeof invoiceNumber === 'string') {
-              const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-              numericInvoiceNumber = cleaned || invoiceNumber;
-            }
+          // Backend expects numeric part only (e.g., "26" instead of "INV26")
+          // Strip the "INV" prefix before sending to backend
+          let numericInvoiceNumber = invoiceNumber;
+          if (typeof invoiceNumber === 'string') {
+            const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+            numericInvoiceNumber = cleaned || invoiceNumber;
+          }
 
-            if (numericInvoiceNumber !== invoiceNumber) {
-              console.log('🔍 Original failed, trying with cleaned invoice_number:', numericInvoiceNumber);
-              try {
-                result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
-                console.log('✅ Invoice found using cleaned invoice_number');
-              } catch (err2: any) {
-                lastError = err2;
-                throw err; // Throw original error or err2
-              }
-            } else {
-              lastError = err;
-              throw err;
-            }
+          console.log('🔍 Fetching invoice details using numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
+          try {
+            result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
+            console.log('✅ Invoice found using numeric invoice_number');
+          } catch (err: any) {
+            lastError = err;
+            throw err;
           }
         } else {
           throw new Error('No invoice_id or invoice_number available');
@@ -296,8 +262,9 @@ export default function SaleReturn() {
                 } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
                   discountPercentValue = line.discountPercent.toString();
                 } else if (line.discount !== undefined && line.discount !== null) {
-                  // API now returns percentage value directly (e.g., 3 for 3%)
-                  discountPercentValue = parseFloat(line.discount).toString();
+                  // API may return fractional value (e.g., 0.05 for 5%) OR percentage (e.g., 5 for 5%)
+                  const disc = parseFloat(line.discount);
+                  discountPercentValue = (disc > 0 && disc < 1) ? (disc * 100).toString() : disc.toString();
                 }
 
 
@@ -324,44 +291,39 @@ export default function SaleReturn() {
                 const discountedAmount = baseAmount - discountAmount;
 
 
-                let cgstPercentValue = '0';
-                if (originalItem && originalItem.cgstPercent) {
-                  cgstPercentValue = originalItem.cgstPercent.toString();
-                  console.log('✅ Using original CGST percent from location state:', cgstPercentValue);
-                } else if (line.cgst_percent !== undefined && line.cgst_percent !== null) {
-                  cgstPercentValue = line.cgst_percent.toString();
-                } else if (line.cgstPercent !== undefined && line.cgstPercent !== null) {
-                  cgstPercentValue = line.cgstPercent.toString();
-                } else if (line.cgst !== undefined && line.cgst !== null) {
-                  // API now returns percentage value directly (e.g., 9 for 9%)
-                  cgstPercentValue = parseFloat(line.cgst).toString();
-                }
+                const lineBaseForTax = baseAmount - parseFloat(line.discount || '0');
 
-                let sgstPercentValue = '0';
-                if (originalItem && originalItem.sgstPercent) {
-                  sgstPercentValue = originalItem.sgstPercent.toString();
-                  console.log('✅ Using original SGST percent from location state:', sgstPercentValue);
-                } else if (line.sgst_percent !== undefined && line.sgst_percent !== null) {
-                  sgstPercentValue = line.sgst_percent.toString();
-                } else if (line.sgstPercent !== undefined && line.sgstPercent !== null) {
-                  sgstPercentValue = line.sgstPercent.toString();
-                } else if (line.sgst !== undefined && line.sgst !== null) {
-                  // API now returns percentage value directly (e.g., 9 for 9%)
-                  sgstPercentValue = parseFloat(line.sgst).toString();
-                }
+                // Helper for robust tax derivation with defaults (9/9/0)
+                // Trust the stored value if it looks like a percentage (0.1 to 30)
+                const deriveTaxPercent = (storedVal: any, base: number, defaultVal: string) => {
+                  const val = parseFloat(storedVal || '0');
 
-                let igstPercentValue = '0';
-                if (originalItem && originalItem.igstPercent) {
-                  igstPercentValue = originalItem.igstPercent.toString();
-                  console.log('✅ Using original IGST percent from location state:', igstPercentValue);
-                } else if (line.igst_percent !== undefined && line.igst_percent !== null) {
-                  igstPercentValue = line.igst_percent.toString();
-                } else if (line.igstPercent !== undefined && line.igstPercent !== null) {
-                  igstPercentValue = line.igstPercent.toString();
-                } else if (line.igst !== undefined && line.igst !== null) {
-                  // API now returns percentage value directly (e.g., 0 for 0%)
-                  igstPercentValue = parseFloat(line.igst).toString();
-                }
+                  // Priority 1: If value is already a reasonable percentage (0.1% to 30%), USE IT DIRECTLY
+                  if (val > 0.1 && val <= 30) return val.toString();
+
+                  // Priority 2: If value is 0, check if we should use the mandatory default
+                  if (val === 0) return defaultVal;
+
+                  if (base === 0) return defaultVal;
+
+                  // Priority 3: Fallback for OLD invoices storing absolute amounts
+                  const calcPercent = (val / base) * 100;
+                  const commonPercents = [2.5, 5, 6, 9, 12, 14, 18, 28];
+                  const foundCommon = commonPercents.find(p => Math.abs(calcPercent - p) < 0.1);
+
+                  if (foundCommon) {
+                    return foundCommon.toString();
+                  }
+
+                  // If it's a small amount that looks like a percentage when calculated
+                  if (calcPercent > 0.1 && calcPercent <= 30) return calcPercent.toFixed(1);
+
+                  return defaultVal;
+                };
+
+                let cgstPercentValue = originalItem?.cgstPercent?.toString() || deriveTaxPercent(line.cgst || line.cgst_percent, lineBaseForTax, '9');
+                let sgstPercentValue = originalItem?.sgstPercent?.toString() || deriveTaxPercent(line.sgst || line.sgst_percent, lineBaseForTax, '9');
+                let igstPercentValue = originalItem?.igstPercent?.toString() || deriveTaxPercent(line.igst || line.igst_percent, lineBaseForTax, '0');
 
                 const returnQty = originalQty || quantity || 0;
 
@@ -1054,6 +1016,7 @@ export default function SaleReturn() {
               key: 'unitPrice',
               header: 'Unit price',
               sortable: true,
+              render: (item) => Math.floor(parseFloat(item.unitPrice || '0'))
             },
             {
               key: 'discount',
@@ -1061,7 +1024,7 @@ export default function SaleReturn() {
               sortable: false,
               render: (item: ReturnItem) => (
                 <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
-                  {item.discountPercent}%
+                  {item.discountPercent}
                 </Typography>
               ),
             },
@@ -1071,7 +1034,7 @@ export default function SaleReturn() {
               sortable: false,
               render: (item: ReturnItem) => (
                 <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
-                  {item.cgstPercent}%
+                  {item.cgstPercent}
                 </Typography>
               ),
             },
@@ -1081,7 +1044,7 @@ export default function SaleReturn() {
               sortable: false,
               render: (item: ReturnItem) => (
                 <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
-                  {item.sgstPercent}%
+                  {item.sgstPercent}
                 </Typography>
               ),
             },
@@ -1091,7 +1054,7 @@ export default function SaleReturn() {
               sortable: false,
               render: (item: ReturnItem) => (
                 <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
-                  {item.igstPercent}%
+                  {item.igstPercent}
                 </Typography>
               ),
             },
