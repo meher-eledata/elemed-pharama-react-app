@@ -498,7 +498,8 @@ export const salesApi = createApi({
     // invoice_number is required - backend accepts string or number
     // Backend will look up by invoice_number, and if not found, will fallback to id
     submitSalesReturn: builder.mutation<any, {
-      invoice_number: number | string; // Can be number (invoice.id) or string (invoice_number from DB)
+      invoice_number: number | string; // Textual number (column lookup)
+      invoice_id?: number;            // Unique database ID (primary key)
       created_by: string;
       return_date?: string; // Return date in YYYY-MM-DD format
       reason: string;

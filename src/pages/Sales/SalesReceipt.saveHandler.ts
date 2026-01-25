@@ -217,7 +217,10 @@ export const executeSave = async ({
     }
 
 
-    let invoiceNumberForBackend = finalInvoiceNumber.replace(/^INV/i, '').trim();
+    // Strip "INV" prefix if present - backend expects only numeric part
+    let invoiceNumberForBackend = finalInvoiceNumber.toString().toUpperCase().startsWith('INV')
+      ? finalInvoiceNumber.toString().replace(/^INV/i, '').trim()
+      : finalInvoiceNumber.toString().trim();
 
 
     const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;

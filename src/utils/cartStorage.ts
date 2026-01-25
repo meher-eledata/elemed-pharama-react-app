@@ -33,7 +33,7 @@ export const saveCartToStorage = (cartItems: any[], totalAmount: number = 0): vo
       totalAmount,
       timestamp: Date.now(),
     };
-    
+
     sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
   } catch (error) {
     if (error instanceof Error && error.name === 'QuotaExceededError') {
@@ -45,19 +45,19 @@ export const saveCartToStorage = (cartItems: any[], totalAmount: number = 0): vo
 export const loadCartFromStorage = (): CartData | null => {
   try {
     const storedData = sessionStorage.getItem(CART_STORAGE_KEY);
-    
+
     if (!storedData) {
       return null;
     }
-    
+
     const cartData: CartData = JSON.parse(storedData);
-    
+
     const hoursSinceCreation = (Date.now() - cartData.timestamp) / (1000 * 60 * 60);
     if (hoursSinceCreation > CART_EXPIRY_HOURS) {
       clearCartFromStorage();
       return null;
     }
-    
+
     return cartData;
   } catch (error) {
     clearCartFromStorage();
@@ -88,7 +88,7 @@ export const saveFormDataToStorage = (formData: Omit<SalesFormData, 'timestamp'>
       ...formData,
       timestamp: Date.now(),
     };
-    
+
     sessionStorage.setItem(FORM_DATA_STORAGE_KEY, JSON.stringify(dataToSave));
   } catch (error) {
   }
@@ -97,19 +97,19 @@ export const saveFormDataToStorage = (formData: Omit<SalesFormData, 'timestamp'>
 export const loadFormDataFromStorage = (): SalesFormData | null => {
   try {
     const storedData = sessionStorage.getItem(FORM_DATA_STORAGE_KEY);
-    
+
     if (!storedData) {
       return null;
     }
-    
+
     const formData: SalesFormData = JSON.parse(storedData);
-    
+
     const hoursSinceCreation = (Date.now() - formData.timestamp) / (1000 * 60 * 60);
     if (hoursSinceCreation > CART_EXPIRY_HOURS) {
       clearFormDataFromStorage();
       return null;
     }
-    
+
     return formData;
   } catch (error) {
     clearFormDataFromStorage();
@@ -127,18 +127,18 @@ export const clearFormDataFromStorage = (): void => {
 export const saveSalesHistoryToStorage = (historyItem: any, invoiceId?: number): void => {
   try {
     const existingHistory = getSalesHistoryFromStorage();
-    
+
     // If invoiceId is provided (edit mode), update the existing entry
     if (invoiceId !== undefined && invoiceId !== null) {
       // First, find the entry by invoiceId
-      const existingIndex = existingHistory.findIndex((item: any) => 
+      const existingIndex = existingHistory.findIndex((item: any) =>
         item.id === invoiceId
       );
-      
+
       if (existingIndex >= 0) {
         // Get the old invoice number before updating
         const oldInvoiceNumber = existingHistory[existingIndex].invoiceNumber;
-        
+
         // Remove ALL entries with the same invoiceId OR same invoice number (old or new)
         // This ensures we only keep one entry - the updated one
         const filteredHistory = existingHistory.filter((item: any) => {
@@ -151,7 +151,7 @@ export const saveSalesHistoryToStorage = (historyItem: any, invoiceId?: number):
           // Keep everything else
           return true;
         });
-        
+
         // Add the updated entry with the original ID
         filteredHistory.push({
           ...historyItem,
@@ -159,21 +159,21 @@ export const saveSalesHistoryToStorage = (historyItem: any, invoiceId?: number):
           savedAt: existingHistory[existingIndex].savedAt, // Keep original savedAt
           updatedAt: new Date().toISOString()
         });
-        
+
         localStorage.setItem(SALES_HISTORY_STORAGE_KEY, JSON.stringify(filteredHistory));
       } else {
         // If not found by ID, try to find by invoice number and update
-        const invoiceNumberIndex = existingHistory.findIndex((item: any) => 
+        const invoiceNumberIndex = existingHistory.findIndex((item: any) =>
           item.invoiceNumber === historyItem.invoiceNumber
         );
-        
+
         if (invoiceNumberIndex >= 0) {
           // Remove any other entries with the same invoice number
           const filteredHistory = existingHistory.filter((item: any, index: number) => {
             if (index === invoiceNumberIndex) return true;
             return item.invoiceNumber !== historyItem.invoiceNumber;
           });
-          
+
           filteredHistory[invoiceNumberIndex >= filteredHistory.length ? filteredHistory.length - 1 : invoiceNumberIndex] = {
             ...historyItem,
             id: existingHistory[invoiceNumberIndex].id,
@@ -193,17 +193,17 @@ export const saveSalesHistoryToStorage = (historyItem: any, invoiceId?: number):
       }
     } else {
       // For new invoices, check if invoice number already exists and update it
-      const existingIndex = existingHistory.findIndex((item: any) => 
+      const existingIndex = existingHistory.findIndex((item: any) =>
         item.invoiceNumber === historyItem.invoiceNumber
       );
-      
+
       if (existingIndex >= 0) {
         // Remove any duplicates with the same invoice number
         const filteredHistory = existingHistory.filter((item: any, index: number) => {
           if (index === existingIndex) return true;
           return item.invoiceNumber !== historyItem.invoiceNumber;
         });
-        
+
         // Update existing entry
         filteredHistory[existingIndex >= filteredHistory.length ? filteredHistory.length - 1 : existingIndex] = {
           ...historyItem,
@@ -248,19 +248,34 @@ export const clearSalesHistoryFromStorage = (): void => {
   }
 };
 
-// Invoice Number Management Functions
-/**
- * Gets the current invoice number counter from localStorage
- * @returns The current invoice number (starts from 1)
- */
 export const getCurrentInvoiceNumber = (): number => {
   try {
     const stored = localStorage.getItem(INVOICE_NUMBER_COUNTER_KEY);
+    let nextNum = 11; // Start from 11 due to 10 default invoices
+
     if (stored) {
-      const number = parseInt(stored, 10);
-      return isNaN(number) || number < 1 ? 1 : number;
+      nextNum = parseInt(stored, 10);
+      if (isNaN(nextNum) || nextNum < 11) nextNum = 11;
     }
-    return 1; // Start from 1 if not found
+
+    // SELF-HEALING: Check sales history to ensure we never generate a duplicate
+    // especially if the user cleared their browser storage but NOT their database.
+    const history = getSalesHistoryFromStorage();
+    if (history.length > 0) {
+      const highestInHistory = history.reduce((max, item) => {
+        // Extract numeric part (handles "6", "INV-6", "RB6", etc.)
+        const num = parseInt(String(item.invoiceNumber || '').replace(/[^0-9]/g, ''), 10);
+        return (!isNaN(num) && num > max) ? num : max;
+      }, 0);
+
+      // If history has a higher number than our counter, jump ahead!
+      if (highestInHistory >= nextNum) {
+        nextNum = highestInHistory + 1;
+        localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, nextNum.toString());
+      }
+    }
+
+    return nextNum;
   } catch (error) {
     return 1;
   }
@@ -268,18 +283,19 @@ export const getCurrentInvoiceNumber = (): number => {
 
 /**
  * Generates the next invoice number and saves it
- * Format: "INV" + number (e.g., "INV1", "INV2", etc.)
- * @returns The formatted invoice number string
+ * Format: Simple number (e.g., "6", "7", etc.) to match backend strict numeric expectation
+ * @returns The next unique invoice number string
  */
 export const generateNextInvoiceNumber = (): string => {
   try {
-    const currentNumber = getCurrentInvoiceNumber();
-    const nextNumber = currentNumber + 1;
-    localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, nextNumber.toString());
-    return `INV${currentNumber}`;
+    const nextNumber = getCurrentInvoiceNumber();
+    localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, (nextNumber + 1).toString());
+
+    // Include the "INV" prefix for frontend representation
+    return `INV${nextNumber}`;
   } catch (error) {
-    // Fallback: if storage fails, return a timestamp-based number
-    return `INV${Date.now()}`;
+    // Fallback: if storage fails, return a random sequence to minimize collision risks
+    return `INV${Math.floor(Date.now() / 1000)}`;
   }
 };
 
@@ -303,7 +319,7 @@ export const saveInvoiceNumber = (invoiceNumber: string): void => {
     // Extract numeric part from invoice number (e.g., "INV123" -> 123)
     const numericPart = invoiceNumber.replace(/^INV/i, '').trim();
     const number = parseInt(numericPart, 10);
-    
+
     if (!isNaN(number) && number > 0) {
       const currentNumber = getCurrentInvoiceNumber();
       // Update counter to be at least this number

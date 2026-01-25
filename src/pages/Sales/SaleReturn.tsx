@@ -704,39 +704,24 @@ export default function SaleReturn() {
         fromInvoiceId: invoiceData.invoiceId,
       });
 
-      if (!invoiceNumber || (typeof invoiceNumber === 'string' && invoiceNumber.trim() === '')) {
-        console.error('❌ Invoice number resolution failed - invoice_number is required for new invoices:', {
-          invoiceNumberFromApi: invoiceNumberFromApi,
-          invoiceDataInvoiceNumber: invoiceData.invoiceNumber,
-          invoiceDataInvoiceId: invoiceData.invoiceId,
-        });
-        alert('Invalid invoice number. Cannot submit return. Please ensure the invoice has a valid invoice number (new invoices should always have one).');
-        return;
-      }
-
+      // RESOLUTION (FRONTEND ONLY FIX):
+      // The backend 'submitReturn' strictly lookups by the textual 'invoice_number' column
+      // and does not recognize DB primary keys. We must send the original text number (e.g. "6").
+      const finalSubmissionInvoiceNumber = String(invoiceNumber);
       const createdBy = user?.username || invoiceData.username || 'system';
-      console.log('👤 Created by:', createdBy);
 
-
-      // Send invoice_number exactly as stored in database (for new invoices)
-      // Backend expects string format matching what's in the database
       const payload = {
-        invoice_number: String(invoiceNumber), // Send as string to match backend lookup
+        invoice_number: finalSubmissionInvoiceNumber, // Must match the string in DB column (e.g. "6")
         created_by: createdBy,
-        return_date: returnDate ? returnDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'), // Format as YYYY-MM-DD
+        return_date: returnDate ? returnDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
         reason: reason.trim(),
         notes: notes.trim(),
         lines: lines,
       };
 
-      console.log('📝 Using invoice_number for return:', invoiceNumber, {
-        source: invoiceNumberFromApi !== null && invoiceNumberFromApi !== undefined
-          ? 'API response'
-          : 'Location state (parsed)',
-        originalFromApi: invoiceNumberFromApi
-      });
-
-      console.log('🚀 Calling submitSalesReturn API with payload:', JSON.stringify(payload, null, 2));
+      console.log('🚀 SUBMITTING RETURN TO BACKEND');
+      console.log('Using strict invoice_number string:', finalSubmissionInvoiceNumber);
+      console.log('Payload for strict lookup:', payload);
       console.log('🌐 Endpoint: POST /sales/submit-sales-return/');
 
       const result = await submitSalesReturn(payload).unwrap();

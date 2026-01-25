@@ -182,10 +182,12 @@ const SalesReceipt: React.FC = () => {
 
       // CRITICAL: Always use invoice_number if available - it's the source of truth
       if (editModeData.invoiceNumber) {
-        // Strip "INV" prefix - backend expects only numeric part
-        const fullInvoiceNumber = editModeData.invoiceNumber.trim();
-        invoiceNumber = fullInvoiceNumber.replace(/^INV/i, '').trim();
-        console.log('📝 Stripped INV prefix for API fetch. Original:', fullInvoiceNumber, '→ Sending:', invoiceNumber);
+        // Strip "INV" prefix if present - backend expects only numeric part
+        let fullInvoiceNumber = editModeData.invoiceNumber.toString().trim();
+        invoiceNumber = fullInvoiceNumber.toUpperCase().startsWith('INV')
+          ? fullInvoiceNumber.replace(/^INV/i, '').trim()
+          : fullInvoiceNumber;
+        console.log('📝 Prepared invoice number for API fetch. Original:', fullInvoiceNumber, '→ Sending:', invoiceNumber);
       }
 
       // Also get invoiceId if available (for fallback only if invoice_number fails)
@@ -342,7 +344,7 @@ const SalesReceipt: React.FC = () => {
                 doctorEmail: result.doctor_email || result.invoice?.doctor_email || editModeData.doctorEmail || '',
                 paymentMode: result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || 'Cash',
                 insuranceCompany: result.insurance_company || result.invoice?.insurance_company || editModeData.insuranceCompany || '',
-                invoiceNumber: editModeData.invoiceNumber || (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || '',
+                invoiceNumber: (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || editModeData.invoiceNumber || '',
                 invoiceDate: invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB').split('/').reverse().join('-') : (editModeData.invoiceDate || getTodayDate()),
                 salesItems: mappedSalesItems,
                 finalSalesItems: (editModeData.salesItems && editModeData.salesItems.length > 0)
