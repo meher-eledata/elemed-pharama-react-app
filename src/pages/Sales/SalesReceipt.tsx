@@ -827,27 +827,38 @@ const SalesReceipt: React.FC = () => {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      // Trigger browser print dialog
-      printWindow.print();
+
+      // Handle cleanup for the print window
       printWindow.onafterprint = () => {
-        // Only show success toast after print dialog closes (user may have printed or cancelled)
-        // Note: onafterprint fires even on cancel, so we show a generic message
         printWindow.close();
       };
+
+      // Trigger browser print dialog in the next tick to make it non-blocking
+      // for the main window's navigation logic
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+
+      // IMMEDIATELY finalize the workflow on the main screen for a snappy experience
+      // This fulfills the user's request to navigate to history table right after clicking print
+      setIsPrintModalOpen(false);
+      resetForm();
+      if (dispatch) dispatch(clearCart());
+      clearCartFromStorage();
+      clearFormDataFromStorage();
+
+      // Navigate to sales history page (/sales)
+      navigate('/sales');
     } else {
       showToast('Failed to open print window', 'error');
     }
-    // Clear cart and form data after successful print
-    clearCartFromStorage();
-    clearFormDataFromStorage();
-
-    setIsPrintModalOpen(false);
   };
 
   const handleAfterSave = () => {
     clearCartFromStorage();
     clearFormDataFromStorage();
     setIsPrintModalOpen(false);
+    navigate('/sales');
   };
 
   const handleCancelPrint = () => {
@@ -895,10 +906,20 @@ const SalesReceipt: React.FC = () => {
         setPendingAction(null);
       }
     } else if (pendingAction === 'print') {
+      // Close dialog first
       setIsConfirmDialogOpen(false);
-      // Open Print Preview Modal which shows the customer receipt for review
-      setIsPrintModalOpen(true);
-      setPendingAction(null);
+      try {
+        // Execute save first, but skip normal navigation
+        await executeSaveWrapper(true, () => {
+          // After successful save, open the print preview
+          setIsPrintModalOpen(true);
+        });
+        // Reset pending action
+        setPendingAction(null);
+      } catch (error) {
+        // Error is handled in executeSave
+        setPendingAction(null);
+      }
     }
   };
 
@@ -1050,7 +1071,7 @@ const SalesReceipt: React.FC = () => {
     setIsConfirmDialogOpen(true);
   };
 
-  const executeSaveWrapper = useCallback(async () => {
+  const executeSaveWrapper = useCallback(async (skipNavigation = false, onSuccess?: () => void) => {
     await executeSave({
       customerName,
       customerMobile,
@@ -1085,8 +1106,10 @@ const SalesReceipt: React.FC = () => {
       isEditMode,
       editModeData,
       originalSalesItems: originalInvoiceData?.salesItems,
+      skipNavigation,
+      onSuccess,
     });
-  }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData]);
+  }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {

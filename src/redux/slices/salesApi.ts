@@ -1,5 +1,8 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "../baseQuery";
+import { dashboardApi } from "./dashboardApi";
+import { inventoryApi } from "./inventoryApi";
+import { reportsApi } from "./reportsApi";
 
 // Debounced validation endpoint - prevents excessive API calls
 export const createDebouncedValidateSale = () => {
@@ -281,7 +284,7 @@ export interface EditSaleResponse {
 export const salesApi = createApi({
   reducerPath: "salesApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Sales", "ProductType", "Inventory"] as const,
+  tagTypes: ["Sales", "ProductType", "Inventory", "Dashboard"] as const,
   endpoints: (builder) => ({
     // Get product types by product ID (can return multiple types)
     getProductType: builder.query<ProductTypesResponse, GetProductTypeRequest>({
@@ -302,6 +305,14 @@ export const salesApi = createApi({
         body,
       }),
       invalidatesTags: ["Sales"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     // Get sales history
@@ -330,6 +341,14 @@ export const salesApi = createApi({
         body: data,
       }),
       invalidatesTags: ["Sales"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     editSale: builder.mutation<EditSaleResponse, EditSaleRequest>({
@@ -339,6 +358,14 @@ export const salesApi = createApi({
         body,
       }),
       invalidatesTags: ["Sales", "Inventory"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     // Delete sales transaction
@@ -348,6 +375,14 @@ export const salesApi = createApi({
         method: "DELETE",
       }),
       invalidatesTags: ["Sales"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     // Search customers by name or mobile number
@@ -438,6 +473,14 @@ export const salesApi = createApi({
         body,
       }),
       invalidatesTags: ["Sales", "Inventory"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     addCustomer: builder.mutation<AddCustomerResponse, AddCustomerRequest>({
@@ -517,6 +560,14 @@ export const salesApi = createApi({
         body,
       }),
       invalidatesTags: ["Sales", "Inventory"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
   }),
 });

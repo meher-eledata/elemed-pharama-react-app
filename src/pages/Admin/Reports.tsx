@@ -170,28 +170,53 @@ const DailySalesReport: React.FC = () => {
 
   const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
     { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
-    { skip: !selectedDate }
+    {
+      skip: !selectedDate,
+      refetchOnMountOrArgChange: true
+    }
   );
 
   const { data: weeklyApiData } = useGetWeeklyBillCountsQuery(
     { end_date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
-    { skip: !selectedDate }
+    {
+      skip: !selectedDate,
+      refetchOnMountOrArgChange: true
+    }
   );
 
   const PAYMENT_METHOD_COLORS: Record<string, string> = {
-    'Cash': '#3B82F6',
-    'Card': '#EF4444',
-    'UPI': '#F59E0B',
-    'Insurance': '#60A5FA',
-    'Credit': '#9CA3AF',
-    'Bank Transfer': '#10B981',
-    'Cheque': '#8B5CF6',
-    'Credit Card': '#EC4899',
-    'Others': '#D1D5DB'
+    'Cash': '#3B82F6', // Blue
+    'Card': '#EF4444', // Red
+    'UPI': '#10B981', // Green (Better for UPI/Payments)
+    'Insurance': '#F59E0B', // Orange
+    'Credit': '#6B7280', // Gray
+    'Bank Transfer': '#6366F1', // Indigo
+    'Cheque': '#8B5CF6', // Purple
+    'Credit Card': '#EC4899', // Pink
+    'Others': '#94A3B8'
+  };
+
+  const normalizeLabel = (label: string) => {
+    if (!label) return 'Others';
+    // Replace underscores with spaces and split into words
+    return label.replace(/_/g, ' ').split(' ').map(word => {
+      const upper = word.toUpperCase();
+      // Keep these as all caps
+      if (['UPI', 'UPI/QR', 'ATM'].includes(upper)) return upper;
+      // Normal Title Case
+      return upper.charAt(0) + upper.slice(1).toLowerCase();
+    }).join(' ');
   };
 
   const reportData = useMemo(() => {
     if (!apiData) return null;
+
+    // Diagnostic log to verify if cash numbers are updating from backend
+    console.log('📊 Daily Sales Report API Data:', {
+      total_sales: apiData.total_sales,
+      cash_in_hand: apiData.cash_in_hand_total,
+      breakdown: apiData.payment_method_breakdown
+    });
 
     const parseVal = (val: any) => {
       if (val === null || val === undefined) return 0;
@@ -221,21 +246,24 @@ const DailySalesReport: React.FC = () => {
         outpatient: parseVal(apiData.outpatient_tax),
       },
       cashSales: {
-        amount: parseVal(apiData.cash_in_hand_total),
-        bills: apiData.payment_method_breakdown.find(p => p.payment_method === 'Cash')?.count || 0,
+        amount: apiData.payment_method_breakdown.reduce((sum, p) => p.payment_method.toUpperCase() === 'CASH' ? sum + parseVal(p.total_sales) : sum, 0),
+        bills: apiData.payment_method_breakdown.find(p => p.payment_method.toUpperCase() === 'CASH')?.bill_count || 0,
         breakdown: {
-          inpatient: parseVal(apiData.cash_in_hand_inpatient),
-          outpatient: parseVal(apiData.cash_in_hand_outpatient),
+          inpatient: apiData.payment_method_breakdown.reduce((sum, p) => p.payment_method.toUpperCase() === 'CASH' ? sum + parseVal(p.inpatient_sales) : sum, 0),
+          outpatient: apiData.payment_method_breakdown.reduce((sum, p) => p.payment_method.toUpperCase() === 'CASH' ? sum + parseVal(p.outpatient_sales) : sum, 0),
         },
       },
-      paymentTypeData: apiData.payment_method_breakdown.map((item, index) => ({
-        id: index,
-        value: parseVal(item.total_amount),
-        label: item.payment_method,
-        color: PAYMENT_METHOD_COLORS[item.payment_method] || PAYMENT_METHOD_COLORS['Others']
-      })),
+      paymentTypeData: apiData.payment_method_breakdown.map((item, index) => {
+        const normalizedLabel = normalizeLabel(item.payment_method);
+        return {
+          id: index,
+          value: parseVal(item.total_sales),
+          label: normalizedLabel,
+          color: PAYMENT_METHOD_COLORS[normalizedLabel] || PAYMENT_METHOD_COLORS['Others']
+        };
+      }),
       taxSummary: {
-        totalTax: parseVal(apiData.total_tax),
+        totalTax: parseVal(apiData.total_cgst) + parseVal(apiData.total_sgst) + parseVal(apiData.total_igst),
         cgst: parseVal(apiData.total_cgst),
         sgst: parseVal(apiData.total_sgst),
         igst: parseVal(apiData.total_igst),
@@ -254,9 +282,14 @@ const DailySalesReport: React.FC = () => {
   };
 
   // Calculate total for percentage calculation
-  const totalPaymentValue = useMemo(() => 
+  const totalPaymentValue = useMemo(() =>
     reportData?.paymentTypeData.reduce((sum, item) => sum + item.value, 0) || 0
-  , [reportData]);
+    , [reportData]);
+
+  const sortedPaymentData = useMemo(() => {
+    if (!reportData) return [];
+    return [...reportData.paymentTypeData].sort((a, b) => b.value - a.value);
+  }, [reportData]);
 
   // Calculate max for Y axis
   const maxBills = useMemo(() => {
@@ -268,7 +301,7 @@ const DailySalesReport: React.FC = () => {
   // Prepare CSV data
   const csvData = useMemo(() => {
     if (!reportData) return [];
-    
+
     const csvRows = [
       // Summary Section
       { Section: 'Summary', Metric: 'Total Bills', Value: reportData.totalBills.toString(), Details: '' },
@@ -276,7 +309,7 @@ const DailySalesReport: React.FC = () => {
       { Section: 'Summary', Metric: 'Total Discount (₹)', Value: reportData.totalDiscount.toFixed(2), Details: '' },
       { Section: 'Summary', Metric: 'Total Tax Collected (₹)', Value: reportData.totalTaxCollected.toFixed(2), Details: '' },
       { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
-      
+
       // Sales Breakdown Section
       ...reportData.paymentTypeData.map(item => ({
         Section: 'Sales Breakdown',
@@ -285,7 +318,7 @@ const DailySalesReport: React.FC = () => {
         Details: ''
       })),
       { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
-      
+
       // Payment Type Breakdown
       ...reportData.paymentTypeData.map(item => ({
         Section: 'Payment Type Breakdown',
@@ -294,14 +327,14 @@ const DailySalesReport: React.FC = () => {
         Details: totalPaymentValue > 0 ? `${((item.value / totalPaymentValue) * 100).toFixed(2)}%` : '0%'
       })),
       { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
-      
+
       // Tax Summary
       { Section: 'Tax Summary', Metric: 'Total Tax (₹)', Value: reportData.taxSummary.totalTax.toFixed(2), Details: '' },
       { Section: 'Tax Summary', Metric: 'CGST (₹)', Value: reportData.taxSummary.cgst.toFixed(2), Details: '' },
       { Section: 'Tax Summary', Metric: 'SGST (₹)', Value: reportData.taxSummary.sgst.toFixed(2), Details: '' },
       { Section: 'Tax Summary', Metric: 'IGST (₹)', Value: reportData.taxSummary.igst.toFixed(2), Details: '' },
     ];
-    
+
     return csvRows;
   }, [reportData, totalPaymentValue]);
 
@@ -746,26 +779,39 @@ const DailySalesReport: React.FC = () => {
                 </Box>
               )}
             </Box>
-            <Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 1.5 }}>
-                {reportData.paymentTypeData.map((item) => (
-                  <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '2px',
-                        backgroundColor: item.color,
-                      }}
-                    />
+            <Box sx={{ flexGrow: 1, ml: 4 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+                {sortedPaymentData.map((item) => (
+                  <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '2px',
+                          backgroundColor: item.color,
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontSize: '14px',
+                          color: '#4B5563',
+                          fontWeight: 500,
+                          fontFamily: "'Lexend', sans-serif",
+                        }}
+                      >
+                        {item.label}
+                      </Typography>
+                    </Box>
                     <Typography
                       sx={{
                         fontSize: '14px',
                         color: '#1A212B',
+                        fontWeight: 600,
                         fontFamily: "'Lexend', sans-serif",
                       }}
                     >
-                      {item.label}
+                      {totalPaymentValue > 0 ? `${((item.value / totalPaymentValue) * 100).toFixed(1)}%` : '0%'}
                     </Typography>
                   </Box>
                 ))}

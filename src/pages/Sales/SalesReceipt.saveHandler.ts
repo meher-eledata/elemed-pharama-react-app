@@ -69,6 +69,8 @@ interface ExecuteSaveParams {
   isEditMode?: boolean; // Flag to indicate edit mode
   editModeData?: any; // Original state data from navigation
   originalSalesItems?: SalesReceiptItem[]; // For diff tracking in edit mode
+  skipNavigation?: boolean; // Flag to skip navigation after save
+  onSuccess?: () => void; // Optional callback after successful save
 }
 
 export const executeSave = async ({
@@ -105,6 +107,8 @@ export const executeSave = async ({
   isEditMode,
   editModeData,
   originalSalesItems,
+  skipNavigation = false,
+  onSuccess,
 }: ExecuteSaveParams): Promise<void> => {
   try {
     if (!customerName || !customerName.trim()) {
@@ -225,9 +229,18 @@ export const executeSave = async ({
 
     const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
 
+    // Helper to map UI payment modes to backend keys (e.g., "Credit Card" -> "CREDIT_CARD")
+    const getBackendPaymentMethod = (mode: string) => {
+      const normalized = (mode || 'Cash').toUpperCase().trim();
+      return normalized.replace(/\s+/g, '_');
+    };
+
+    const backendPaymentMethod = getBackendPaymentMethod(paymentMode);
+
     const submitSalePayload = {
       disc: totalDiscountPercent,
-      payment_method: paymentMode || 'Cash',
+      payment_method: backendPaymentMethod,
+      payment_mode: backendPaymentMethod, // Dual naming sync
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
       customer_id: customerId,
@@ -297,7 +310,8 @@ export const executeSave = async ({
         invoice_number: invoiceNumber,
         quantity: salesItems.length,
         disc: parseFloat(totalDiscount || '0') / parseFloat(totalValue || '1'), // Overall discount ratio
-        payment_method: paymentMode || 'Cash',
+        payment_method: backendPaymentMethod,
+        payment_mode: backendPaymentMethod,
         payment_amount: parseFloat(totalPayableAmount || '0'),
         customer_id: selectedCustomer?.id || editModeData?.customer_id || 4, // Default to a valid ID if missing
         created_by: user?.username || 'meher',
@@ -502,6 +516,11 @@ export const executeSave = async ({
         showToast(successMessage, 'success');
       }, 200);
     });
+
+    if (skipNavigation) {
+      if (onSuccess) onSuccess();
+      return;
+    }
 
     setTimeout(() => {
       resetForm();

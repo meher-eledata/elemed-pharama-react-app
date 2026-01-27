@@ -24,9 +24,10 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { paymentMethods, paymentVendors, themeColors } from "../../config/constants/OrderDetail.constants";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
-import { 
-  useUpsertReceiptPaymentsMutation, 
-  useGetPurchaseOrderPaymentsMutation 
+import {
+  useUpsertReceiptPaymentsMutation,
+  useGetPurchaseOrderPaymentsMutation,
+  useGetSupplierCreditBalanceQuery
 } from "../../redux/slices/receiveApi";
 
 const TickMarkIcon = (props: any) => (
@@ -37,10 +38,10 @@ const TickMarkIcon = (props: any) => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     {...props}
-    style={{ 
-      pointerEvents: "none", 
+    style={{
+      pointerEvents: "none",
       color: "currentColor",
-      overflow: "visible" 
+      overflow: "visible"
     }}
   >
     <path
@@ -70,7 +71,7 @@ const PaymentDetails: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const [upsertReceiptPayments, { isLoading: isSavingPayments }] = useUpsertReceiptPaymentsMutation();
   const [getPurchaseOrderPayments, { isLoading: isFetchingPayments }] = useGetPurchaseOrderPaymentsMutation();
-  
+
   // Get data from navigation state
   const navigationState = location.state as any;
   const supplierName = navigationState?.supplierName || "";
@@ -81,6 +82,7 @@ const PaymentDetails: React.FC = () => {
   const isEditMode = navigationState?.isEditMode || false;
   const receiptId = navigationState?.receiptId || null;
   const receiptNumber = navigationState?.receiptNumber || "";
+  const supplierId = navigationState?.supplierId || null;
 
   const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([]);
 
@@ -111,6 +113,18 @@ const PaymentDetails: React.FC = () => {
 
     fetchPayments();
   }, [poId, getPurchaseOrderPayments]);
+
+  // Fetch supplier credit balance
+  const { data: supplierCreditData } = useGetSupplierCreditBalanceQuery(
+    { supplier_id: Number(supplierId) },
+    { skip: !supplierId }
+  );
+
+  useEffect(() => {
+    if (supplierCreditData) {
+      setCreditAvailable(supplierCreditData.available_credit);
+    }
+  }, [supplierCreditData]);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<PaymentRow>>({});
   const [isSaveConfirmationOpen, setIsSaveConfirmationOpen] = useState<boolean>(false);
@@ -144,7 +158,7 @@ const PaymentDetails: React.FC = () => {
             fullWidth
             value={editingData.transactionNumber || row.transactionNumber}
             onChange={(e) => setEditingData({ ...editingData, transactionNumber: e.target.value })}
-            sx={{ 
+            sx={{
               width: "180px",
               "& .MuiOutlinedInput-root": {
                 height: "36px",
@@ -213,7 +227,7 @@ const PaymentDetails: React.FC = () => {
             fullWidth
             value={editingData.paymentVendor || row.paymentVendor}
             onChange={(e) => setEditingData({ ...editingData, paymentVendor: e.target.value })}
-            sx={{ 
+            sx={{
               width: "150px",
               "& .MuiOutlinedInput-root": {
                 height: "36px",
@@ -238,7 +252,7 @@ const PaymentDetails: React.FC = () => {
             fullWidth
             value={editingData.amount !== undefined ? editingData.amount : row.amount}
             onChange={(e) => setEditingData({ ...editingData, amount: parseFloat(e.target.value) || 0 })}
-            sx={{ 
+            sx={{
               width: "120px",
               "& .MuiOutlinedInput-root": {
                 height: "36px",
@@ -262,7 +276,7 @@ const PaymentDetails: React.FC = () => {
             fullWidth
             value={editingData.details || row.details}
             onChange={(e) => setEditingData({ ...editingData, details: e.target.value })}
-            sx={{ 
+            sx={{
               width: "180px",
               "& .MuiOutlinedInput-root": {
                 height: "36px",
@@ -304,7 +318,7 @@ const PaymentDetails: React.FC = () => {
                   setEditingRowId(null);
                   setEditingData({});
                 }}
-                sx={{ 
+                sx={{
                   cursor: 'pointer',
                   color: "#EF4444",
                   display: 'flex',
@@ -356,7 +370,7 @@ const PaymentDetails: React.FC = () => {
     };
 
     setPaymentRows([...paymentRows, newPayment]);
-    
+
     // Reset form
     setTransactionNumber("");
     setTransactionDate(null);
@@ -479,17 +493,17 @@ const PaymentDetails: React.FC = () => {
       };
 
       await upsertReceiptPayments(payload).unwrap();
-      
+
       setSaveSuccess(true);
       setIsFinalSaveConfirmationOpen(false);
-      
+
       // Navigate back to order receive after successful save
       setTimeout(() => {
         navigate('/receive/order-receive');
       }, 2000);
     } catch (error: any) {
       let errorMessage = 'Failed to save payment details';
-      
+
       if (error?.data) {
         if (typeof error.data === 'string') {
           errorMessage = error.data;
@@ -505,7 +519,7 @@ const PaymentDetails: React.FC = () => {
       } else if (error?.status) {
         errorMessage = `Server error (${error.status}): ${error.status === 404 ? 'Endpoint not found' : error.status === 500 ? 'Internal server error' : 'Unknown error'}`;
       }
-      
+
       setSaveError(errorMessage);
       setIsFinalSaveConfirmationOpen(false);
     }
@@ -669,102 +683,102 @@ const PaymentDetails: React.FC = () => {
                 Payment vendor
               </Typography>
               <Autocomplete
-  options={paymentVendors}
-  value={paymentVendor || null}
-  onChange={(_, newValue) => {
-    setPaymentVendor(newValue || "");
-  }}
-  disableClearable={!paymentVendor}
+                options={paymentVendors}
+                value={paymentVendor || null}
+                onChange={(_, newValue) => {
+                  setPaymentVendor(newValue || "");
+                }}
+                disableClearable={!paymentVendor}
 
-  // ADD these two props to fix height control:
-  disableListWrap={true}  // stops MUI from pre-calculating large height
-  PaperComponent={({ children }) => (
-    <Box
-      sx={{
-        padding: 0,
-        marginTop: "4px",
-        borderRadius: "12px",
-        border: "1px solid #E5E7EB",
-        backgroundColor: "#fff",
-      }}
-    >
-      {children}
-    </Box>
-  )}
+                // ADD these two props to fix height control:
+                disableListWrap={true}  // stops MUI from pre-calculating large height
+                PaperComponent={({ children }) => (
+                  <Box
+                    sx={{
+                      padding: 0,
+                      marginTop: "4px",
+                      borderRadius: "12px",
+                      border: "1px solid #E5E7EB",
+                      backgroundColor: "#fff",
+                    }}
+                  >
+                    {children}
+                  </Box>
+                )}
 
-  slotProps={{
-    popper: {
-      sx: {
-        "& .MuiPaper-root": {
-          minWidth: "274px",
-          width: "fit-content",
-          padding: "0 !important",
-          marginTop: "4px !important",
-          maxHeight: "none !important",
-          height: "auto !important",
-          "& ul": {
-            padding: "4px 0 !important",
-            margin: "0 !important",
-            maxHeight: "none !important",
-            "& li:last-child": {
-              marginBottom: "0 !important",
-              paddingBottom: "8px !important",
-            },
-          },
-        },
-      },
-    },
-  }}
+                slotProps={{
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        minWidth: "274px",
+                        width: "fit-content",
+                        padding: "0 !important",
+                        marginTop: "4px !important",
+                        maxHeight: "none !important",
+                        height: "auto !important",
+                        "& ul": {
+                          padding: "4px 0 !important",
+                          margin: "0 !important",
+                          maxHeight: "none !important",
+                          "& li:last-child": {
+                            marginBottom: "0 !important",
+                            paddingBottom: "8px !important",
+                          },
+                        },
+                      },
+                    },
+                  },
+                }}
 
-  ListboxProps={{
-    sx: {
-      padding: "4px 0 !important",
-      maxHeight: "none !important",
-      "& li:last-child": {
-        marginBottom: "0 !important",
-      },
-    },
-  }}
+                ListboxProps={{
+                  sx: {
+                    padding: "4px 0 !important",
+                    maxHeight: "none !important",
+                    "& li:last-child": {
+                      marginBottom: "0 !important",
+                    },
+                  },
+                }}
 
-  sx={{
-    minWidth: "274px",
-    width: "274px",
-  }}
+                sx={{
+                  minWidth: "274px",
+                  width: "274px",
+                }}
 
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      placeholder="Select bank / vendor"
-      variant="outlined"
-      fullWidth
-      sx={{
-        "& .MuiOutlinedInput-root": {
-          borderRadius: "18px",
-          height: "44px",
-          backgroundColor: "#FFFFFF",
-          "& fieldset": {
-            borderColor: "#D1D5DB",
-          },
-          "&:hover fieldset": {
-            borderColor: "#D1D5DB",
-          },
-          "&.Mui-focused fieldset": {
-            borderColor: "#728197",
-            borderWidth: "2px",
-            outline: "none",
-          },
-        },
-        "& .MuiOutlinedInput-input": {
-          padding: "12px 16px",
-          fontFamily: "'Lexend', sans-serif",
-          fontSize: "16px",
-          lineHeight: "24px",
-          color: "#728197",
-        },
-      }}
-    />
-  )}
-/>
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Select bank / vendor"
+                    variant="outlined"
+                    fullWidth
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "18px",
+                        height: "44px",
+                        backgroundColor: "#FFFFFF",
+                        "& fieldset": {
+                          borderColor: "#D1D5DB",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "#D1D5DB",
+                        },
+                        "&.Mui-focused fieldset": {
+                          borderColor: "#728197",
+                          borderWidth: "2px",
+                          outline: "none",
+                        },
+                      },
+                      "& .MuiOutlinedInput-input": {
+                        padding: "12px 16px",
+                        fontFamily: "'Lexend', sans-serif",
+                        fontSize: "16px",
+                        lineHeight: "24px",
+                        color: "#728197",
+                      },
+                    }}
+                  />
+                )}
+              />
 
             </Box>
 
@@ -932,19 +946,19 @@ const PaymentDetails: React.FC = () => {
           emptyMessage="No payment details added yet"
           searchAndFilterConfig={{ filterOptions: [] }}
           currentSearchTerm=""
-          onSearchChange={() => {}}
+          onSearchChange={() => { }}
           showFilters={false}
-          onShowFiltersToggle={() => {}}
+          onShowFiltersToggle={() => { }}
           currentFilterKey=""
-          onFilterSelect={() => {}}
+          onFilterSelect={() => { }}
           totalRows={paymentRows.length}
           rowsPerPage={10}
           currentPage={1}
-          onPageChange={() => {}}
-          onSortRequest={() => {}}
+          onPageChange={() => { }}
+          onSortRequest={() => { }}
           sortConfig={{ key: "", direction: "asc" }}
           selectedRows={[]}
-          setSelectedRows={() => {}}
+          setSelectedRows={() => { }}
         />
       </Box>
 
@@ -1039,9 +1053,9 @@ const PaymentDetails: React.FC = () => {
         onClose={() => setSaveError(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSaveError(null)} 
-          severity="error" 
+        <Alert
+          onClose={() => setSaveError(null)}
+          severity="error"
           sx={{ width: '100%' }}
         >
           {saveError}
@@ -1054,9 +1068,9 @@ const PaymentDetails: React.FC = () => {
         onClose={() => setSaveSuccess(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSaveSuccess(false)} 
-          severity="success" 
+        <Alert
+          onClose={() => setSaveSuccess(false)}
+          severity="success"
           sx={{ width: '100%' }}
         >
           Payment details saved successfully!

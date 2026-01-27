@@ -437,9 +437,13 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           }
         }
 
+        const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
+        const supplierId = selectedSupplierData ? selectedSupplierData.supplier_id : 0;
+
         navigate('/receive/payment-details', {
           state: {
             supplierName,
+            supplierId,
             poNumber,
             invoiceDate,
             pharmaTableData,

@@ -30,8 +30,8 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
   dateRange,
 }) => {
 
-const shouldFetchData = dateRange.startDate && dateRange.endDate;
-const {
+  const shouldFetchData = dateRange.startDate && dateRange.endDate;
+  const {
     data: invoiceStats,
     isLoading: isInvoiceStatsLoading,
     error: invoiceStatsError,
@@ -42,6 +42,7 @@ const {
     },
     {
       skip: !shouldFetchData,
+      refetchOnMountOrArgChange: true,
     }
   );
 
@@ -56,6 +57,7 @@ const {
     },
     {
       skip: !shouldFetchData,
+      refetchOnMountOrArgChange: true,
     }
   );
 
@@ -193,10 +195,10 @@ const {
     if (!modalData || modalData.length === 0) {
       return [];
     }
-    
+
     const activeSortKey = sortConfig.key || INVENTORY_METRICS_CONSTANTS.DEFAULT_SORT.key;
     const activeSortDirection = sortConfig.direction || INVENTORY_METRICS_CONSTANTS.DEFAULT_SORT.direction;
-    
+
     const sorted = [...modalData].sort((a, b) => {
       const aValue = a[activeSortKey as keyof ModalItem];
       const bValue = b[activeSortKey as keyof ModalItem];
@@ -216,7 +218,7 @@ const {
       if (typeof aValue === "number" && typeof bValue === "number") {
         return activeSortDirection === "asc" ? aValue - bValue : bValue - aValue;
       }
-      
+
       return activeSortDirection === "asc"
         ? String(aValue).localeCompare(String(bValue))
         : String(bValue).localeCompare(String(aValue));
@@ -299,7 +301,7 @@ const {
     },
     {
       title: INVENTORY_METRICS_LABELS.CARDS.RETURN_PERCENT.TITLE,
-      content: `${invoiceStats?.returns || 0}%`,
+      content: `${invoiceStats?.returns || 0}`,
     },
     {
       title: INVENTORY_METRICS_LABELS.CARDS.ACTIVE_SALES_DAYS.TITLE,

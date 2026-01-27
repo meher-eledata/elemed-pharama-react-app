@@ -1,8 +1,8 @@
 export interface PurchaseOrder {
   po_number: string;
-  ordered_date: string; 
+  ordered_date: string;
   supplier_name: string;
-  total_amount: string; 
+  total_amount: string;
   status: string;
   created_by?: number | string | null;
 }
@@ -201,19 +201,32 @@ export interface GetPurchaseOrderPaymentsResponse {
   amount_left_to_pay: number;
 }
 
+export interface GetSupplierCreditBalanceRequest {
+  supplier_id: number;
+}
+
+export interface GetSupplierCreditBalanceResponse {
+  supplier_id: number;
+  available_credit: number;
+  last_txn_id: number | null;
+}
+
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "../baseQuery";
+import { dashboardApi } from "./dashboardApi";
+import { inventoryApi } from "./inventoryApi";
+import { reportsApi } from "./reportsApi";
 
 export const receiveApi = createApi({
   reducerPath: "receiveApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Receive", "ReceiptLines", "Inventory"] as const,
+  tagTypes: ["Receive", "ReceiptLines", "Inventory", "Dashboard"] as const,
   endpoints: (builder) => ({
     getCurrentPurchaseOrders: builder.query<PurchaseOrder[], void>({
       query: () => "receive/current-purchase-orders",
       providesTags: ["Receive"],
     }),
-    getUniqueSupplierNames: builder.query<{supplier_name: string, supplier_id: number}[], void>({
+    getUniqueSupplierNames: builder.query<{ supplier_name: string, supplier_id: number }[], void>({
       query: () => "receive/unique-supplier-names",
       providesTags: ["Receive"],
     }),
@@ -261,7 +274,15 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive", "Inventory"],
+      invalidatesTags: ["Receive"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     deleteReceipt: builder.mutation<DeleteReceiptResponse, DeleteReceiptRequest>({
@@ -270,7 +291,15 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive", "Inventory"],
+      invalidatesTags: ["Receive"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     // Receipt line endpoints
@@ -309,8 +338,8 @@ export const receiveApi = createApi({
 
     // Submit receipt endpoint
     submitReceipt: builder.mutation<
-      { 
-        message: string; 
+      {
+        message: string;
         po_id: number;
         receipt_id: number;
         total_amount: number;
@@ -341,18 +370,24 @@ export const receiveApi = createApi({
         }>;
       }
     >({
-      query: (body) => {
-        return {
-          url: "receive/submit-receipt",
-          method: "POST",
-          body,
-        };
-      },
+      query: (body) => ({
+        url: "receive/submit-receipt",
+        method: "POST",
+        body,
+      }),
       invalidatesTags: ["Receive", "Inventory"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     // Get all products endpoint (shared across modules)
-    getProducts: builder.query<{name: string, id: number}[], void>({
+    getProducts: builder.query<{ name: string, id: number }[], void>({
       query: () => {
         return "receive/get-products";
       },
@@ -361,15 +396,15 @@ export const receiveApi = createApi({
         if (!response) {
           return [];
         }
-        
+
         if (!Array.isArray(response)) {
           return [];
         }
-        
+
         if (response.length === 0) {
           return [];
         }
-        
+
         const products = response
           .filter((product: any) => {
             const isValid = product && Array.isArray(product) && product.length >= 2;
@@ -383,7 +418,7 @@ export const receiveApi = createApi({
             const isValid = product.name && product.name.trim() !== '' && product.id;
             return isValid;
           });
-        
+
         return products;
       },
       transformErrorResponse: (response: any) => {
@@ -406,7 +441,7 @@ export const receiveApi = createApi({
       query: ({ receiptId, file }) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         return {
           url: `receive/${receiptId}/upload-file`,
           method: 'POST',
@@ -452,6 +487,13 @@ export const receiveApi = createApi({
         body,
       }),
       invalidatesTags: ["Receive"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
 
     getPurchaseOrderPayments: builder.mutation<
@@ -463,7 +505,17 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive"],
+      invalidatesTags: ["Receive", "Dashboard", "Reports"],
+    }),
+    getSupplierCreditBalance: builder.query<
+      GetSupplierCreditBalanceResponse,
+      GetSupplierCreditBalanceRequest
+    >({
+      query: (params) => ({
+        url: `receive/get-supplier-credit-balance?supplier_id=${params.supplier_id}`,
+        method: "GET",
+      }),
+      providesTags: ["Receive"],
     }),
   }),
 });
@@ -486,9 +538,9 @@ export const {
   useGetReceiptFileQuery,
   useUpsertReceiptPaymentsMutation,
   useGetPurchaseOrderPaymentsMutation,
+  useGetSupplierCreditBalanceQuery,
 } = receiveApi;
 
-// Helper function to get receipt file URL (for iframe or direct link)
 export const getReceiptFileUrl = (receiptId: number): string => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
   return `${baseUrl}receive/${receiptId}/file`;

@@ -18,8 +18,11 @@ export interface WeeklyBillCountItem {
 
 export interface PaymentMethodBreakdown {
   payment_method: string;
-  count: number;
-  total_amount: number | string | null;
+  bill_count: number;
+  total_sales: number | string | null;
+  inpatient_sales?: number | string | null;
+  outpatient_sales?: number | string | null;
+  percent_of_sales?: number | string | null;
 }
 
 export interface DailySalesReportResponse {
@@ -68,7 +71,7 @@ export const reportsApi = createApi({
   }),
 });
 
-export const { 
+export const {
   useGetDailySalesReportQuery,
-  useGetWeeklyBillCountsQuery 
+  useGetWeeklyBillCountsQuery
 } = reportsApi;

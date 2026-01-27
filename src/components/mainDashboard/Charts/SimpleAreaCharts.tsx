@@ -34,6 +34,8 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
   const { data: kpis, isLoading, error } = useGetInvoiceKpisQuery({
     startDate: dateRange.startDate || '',
     endDate: dateRange.endDate || '',
+  }, {
+    refetchOnMountOrArgChange: true
   });
 
   if (isLoading) {
@@ -77,7 +79,7 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
     totalPrefix = ''
   ) => {
     const dailyData = (kpis[dataKey] as DailyData[]) ?? [];
-    
+
     if (!Array.isArray(dailyData)) {
       return {
         title,
@@ -106,8 +108,10 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    const seriesData = filteredData.map((d) => d.amount ?? d.count ?? 0);
+    const seriesData = filteredData.map((d) => Number(d.amount ?? d.count ?? 0));
     const xAxisDates = filteredData.map((d) => new Date(d.date).toISOString());
+
+    const totalValue = seriesData.reduce((acc, val) => acc + val, 0);
 
     const maxVal = Math.max(0, ...seriesData);
     const safeMax = maxVal <= 0 ? 1 : maxVal;
@@ -115,9 +119,14 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
     const inc = safeMax / (ticks - 1);
     const tickInterval = Array.from({ length: ticks }, (_, i) => +(i * inc).toFixed(2));
 
+    const isRevenue = totalPrefix === '₹';
+    const formattedValue = isRevenue
+      ? totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : totalValue.toLocaleString('en-IN');
+
     return {
       title,
-      metric: `${totalPrefix}${kpis[totalKey] ?? 0}`,
+      metric: `${totalPrefix}${formattedValue}`,
       chartData: {
         xAxis: xAxisDates,
         series1: seriesData,
@@ -166,10 +175,10 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 600, mb: '12px', mt: '28px' }}>
         {DASHBOARD_LABELS.SALES_CONTRACTS_TITLE}
       </Typography>
-      <Stack 
-        direction={{ xs: 'column', md: 'row' }} 
-        spacing={4} 
-        flexWrap="wrap" 
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={4}
+        flexWrap="wrap"
         justifyContent={{ xs: 'stretch', md: 'flex-start' }}
         alignItems={{ xs: 'stretch', md: 'stretch' }}
       >
