@@ -6,7 +6,10 @@ import {
   Typography,
   Checkbox,
   IconButton,
-  Button
+  Button,
+  Autocomplete,
+  TextField,
+  Chip
 } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
@@ -15,7 +18,7 @@ import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { SerializedError } from "@reduxjs/toolkit";
 import AddIcon from "@mui/icons-material/Add";
 import WarningIcon from '@mui/icons-material/Warning';
-import NewProductModal from "../../components/Modal/NewProduct/NewProductModal"; 
+import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 
 import {
   useGetLowStockQuery,
@@ -58,7 +61,7 @@ function isErrorWithMessage(error: unknown): error is { message: string } {
     "message" in error &&
     typeof (error as any).message === "string"
   );
-} 
+}
 type StockType = 'low' | 'excess' | 'expired' | 'nearExpiry';
 type InventoryItem = RTKInventoryItem;
 type FilterKey =
@@ -90,19 +93,50 @@ const InventoryModule: React.FC = () => {
   });
 
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
-      useState<boolean>(false);
+    useState<boolean>(false);
 
   const { data: lowStockItems = [], isLoading: isLowStockLoading, error: lowStockError } =
-    useGetLowStockQuery(undefined, { skip: selectedStockType !== 'low' });
+    useGetLowStockQuery();
 
   const { data: excessStockItems = [], isLoading: isExcessStockLoading, error: excessStockError } =
-    useGetExcessStockQuery(undefined, { skip: selectedStockType !== 'excess' });
+    useGetExcessStockQuery();
 
   const { data: expiredStockItems = [], isLoading: isExpiredStockLoading, error: expiredStockError } =
-    useGetExpiredStockQuery(undefined, { skip: selectedStockType !== 'expired' });
+    useGetExpiredStockQuery();
 
   const { data: nearExpiryStockItems = [], isLoading: isNearExpiryStockLoading, error: nearExpiryStockError } =
-    useGetNearExpiryStockQuery({ months: nearExpiryMonths }, { skip: selectedStockType !== 'nearExpiry' });
+    useGetNearExpiryStockQuery({ months: nearExpiryMonths });
+
+  const allSearchOptions = useMemo(() => {
+    const options: { name: string; category: StockType; id?: string }[] = [];
+
+    lowStockItems.forEach(item => options.push({ name: item.name, category: 'low', id: item.id }));
+    excessStockItems.forEach(item => options.push({ name: item.name, category: 'excess', id: item.id }));
+    nearExpiryStockItems.forEach(item => options.push({ name: item.name, category: 'nearExpiry', id: item.id }));
+    expiredStockItems.forEach(item => options.push({ name: item.name, category: 'expired', id: item.id }));
+
+    return options;
+  }, [lowStockItems, excessStockItems, nearExpiryStockItems, expiredStockItems]);
+
+  const getCategoryLabel = (category: StockType) => {
+    switch (category) {
+      case 'low': return 'Low Stock';
+      case 'excess': return 'Excess Stock';
+      case 'nearExpiry': return 'Near Expiry';
+      case 'expired': return 'Expired';
+      default: return '';
+    }
+  };
+
+  const getCategoryColor = (category: StockType) => {
+    switch (category) {
+      case 'low': return '#F59E0B';
+      case 'excess': return '#3B82F6';
+      case 'nearExpiry': return '#8B5CF6';
+      case 'expired': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
 
   const { data: inventorySummary, isLoading: isSummaryLoading, error: summaryError } =
     useGetInventorySummaryQuery();
@@ -156,14 +190,28 @@ const InventoryModule: React.FC = () => {
     setPage(1);
     setSelectedItems([]);
     setFilterType('name');
-    setSearchQuery('');
     setShowFilters(false);
     setSortConfig({ key: 'name', direction: 'asc' });
   }, [selectedStockType, nearExpiryMonths]);
 
   const handleTabClick = (tab: StockType) => {
-    setSelectedStockType(tab); 
+    setSelectedStockType(tab);
     setSelectedRows([]); // Clear selected rows when tab changes
+    setSearchQuery(''); // Clear search when manually switching tabs
+  };
+
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleAutocompleteSelect = (event: any, value: any) => {
+    if (value) {
+      setSelectedStockType(value.category);
+      setSearchQuery(value.name);
+      setPage(1);
+    } else {
+      setSearchQuery('');
+    }
   };
 
   const filteredData = useMemo(() => {
@@ -225,7 +273,7 @@ const InventoryModule: React.FC = () => {
 
     const currentSortKey = sortConfig.key || 'name';
     const currentDirection = sortConfig.direction || 'asc';
-    
+
     filtered = [...filtered].sort((a, b) => {
       let aValue: any;
       let bValue: any;
@@ -494,32 +542,75 @@ const InventoryModule: React.FC = () => {
   const { columns, searchAndFilterConfig } = useMemo(() => getTableProps(), [selectedStockType, nearExpiryMonths]);
 
   return (
-    <Container maxWidth="xl" disableGutters sx={{mb: 0, px: { xs: 2, sm: 3, md: 1 } }}>
+    <Container maxWidth="xl" disableGutters sx={{ mb: 0, px: { xs: 2, sm: 3, md: 1 } }}>
       <Box className="inventory-container">
-        <Box 
-        sx={{
-          display:"flex",
-          justifyContent:"space-between",
-          alignItems: "center"
-        }}> 
-        <Typography variant="h4" sx={headerTitleStyle}>
-          {INVENTORY_LABELS.pageTitle}
-        </Typography>
-        <StandardButton
-          startIcon={<AddIcon />}
-          onClick={() => setIsNewProductModalOpen(true)}
-          variant="primary"
-          size="large"
-        >
-          Add Product
-        </StandardButton>
-      </Box>
-        <NewProductModal
-              open={isNewProductModalOpen}
-              onClose={() => setIsNewProductModalOpen(false)}
-              onProductAdded={() => {
-              }}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          }}>
+          <Typography variant="h4" sx={headerTitleStyle}>
+            {INVENTORY_LABELS.pageTitle}
+          </Typography>
+
+          <Box sx={{ flex: 1, maxWidth: '500px', mx: 4 }}>
+            <Autocomplete
+              options={allSearchOptions}
+              getOptionLabel={(option) => option.name}
+              onChange={handleAutocompleteSelect}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search products across all tabs..."
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                      backgroundColor: '#F9FAFB',
+                      '& fieldset': { border: '1px solid #D1D5DB' },
+                      '&:hover fieldset': { borderColor: '#5C17E5' },
+                      '&.Mui-focused fieldset': { borderColor: '#5C17E5' },
+                    }
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <Typography variant="body2">{option.name}</Typography>
+                  <Chip
+                    label={getCategoryLabel(option.category)}
+                    size="small"
+                    sx={{
+                      ml: 1,
+                      fontSize: '0.65rem',
+                      height: '18px',
+                      backgroundColor: getCategoryColor(option.category),
+                      color: '#fff',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </Box>
+              )}
             />
+          </Box>
+
+          <StandardButton
+            startIcon={<AddIcon />}
+            onClick={() => setIsNewProductModalOpen(true)}
+            variant="primary"
+            size="large"
+          >
+            Add Product
+          </StandardButton>
+        </Box>
+        <NewProductModal
+          open={isNewProductModalOpen}
+          onClose={() => setIsNewProductModalOpen(false)}
+          onProductAdded={() => {
+          }}
+        />
 
         <Box className="inventory-tabs">
           <Button
@@ -602,7 +693,7 @@ const InventoryModule: React.FC = () => {
 
         {/* Summary Cards */}
         <Box className="summary-cards">
-          <Box 
+          <Box
             className="summary-card1"
             sx={{
               position: 'relative',
@@ -641,7 +732,7 @@ const InventoryModule: React.FC = () => {
             <img src={ASSET_PATHS.Chart1} alt="icon" className="card-icon1" />
           </Box>
 
-          <Box 
+          <Box
             className="summary-card2"
             sx={{
               position: 'relative',
@@ -680,7 +771,7 @@ const InventoryModule: React.FC = () => {
             <img src={ASSET_PATHS.Chart2} alt="icon" className="card-icon2" />
           </Box>
 
-          <Box 
+          <Box
             className="summary-card3"
             sx={{
               position: 'relative',
@@ -724,7 +815,7 @@ const InventoryModule: React.FC = () => {
             <img src={ASSET_PATHS.Chart3} alt="icon" className="card-icon3" />
           </Box>
 
-          <Box 
+          <Box
             className="summary-card4"
             sx={{
               position: 'relative',
@@ -781,71 +872,71 @@ const InventoryModule: React.FC = () => {
           </Typography>
         </Box>
       ) : (
-          <ReusableTable
-            data={filteredData as InventoryItem[]}
-            columns={columns}
-            selectedRows={selectedRows}
-            setSelectedRows={setSelectedRows}
-            searchAndFilterConfig={searchAndFilterConfig}
-            currentSearchTerm={searchQuery}
-            onSearchChange={(e) => setSearchQuery(e.target.value)}
-            showFilters={showFilters}
-            onShowFiltersToggle={() => setShowFilters(!showFilters)}
-            currentFilterKey={filterType}
-            onFilterSelect={(key, value) => setFilterType(key as FilterKey)}
-            totalRows={filteredData.length}
-            rowsPerPage={ROWS_PER_PAGE}
-            currentPage={page}
-            onPageChange={handlePageChange}
-            onSortRequest={handleSortRequest}
-            sortConfig={sortConfig}
-            customSearchBarContent={
-              selectedStockType === 'nearExpiry' ? (
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    onClick={() => setNearExpiryMonths(3)}
-                    sx={{
-                      backgroundColor: nearExpiryMonths === 3 ? '#5C17E5' : 'transparent',
-                      color: nearExpiryMonths === 3 ? '#FFFFFF' : '#1A212B',
-                      border: nearExpiryMonths === 3 ? 'none' : '1px solid #D1D5DB',
-                      borderRadius: '0.5rem',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      fontSize: '0.875rem', // 14px = 0.875rem
-                      padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
-                      minWidth: '6.25rem', // 100px = 6.25rem
-                      height: '2.375rem', // 38px = 2.375rem
-                      '&:hover': {
-                        backgroundColor: nearExpiryMonths === 3 ? '#4C14C7' : 'transparent',
-                      },
-                    }}
-                  >
-                    {INVENTORY_LABELS.threeMonths}
-                  </Button>
-                  <Button
-                    onClick={() => setNearExpiryMonths(1)}
-                    sx={{
-                      backgroundColor: nearExpiryMonths === 1 ? '#5C17E5' : 'transparent',
-                      color: nearExpiryMonths === 1 ? '#FFFFFF' : '#1A212B',
-                      border: nearExpiryMonths === 1 ? 'none' : '1px solid #D1D5DB',
-                      borderRadius: '0.5rem',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      fontSize: '0.875rem', // 14px = 0.875rem
-                      padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
-                      minWidth: '6.25rem', // 100px = 6.25rem
-                      height: '2.375rem', // 38px = 2.375rem
-                      '&:hover': {
-                        backgroundColor: nearExpiryMonths === 1 ? '#4C14C7' : 'transparent',
-                      },
-                    }}
-                  >
-                    {INVENTORY_LABELS.oneMonth}
-                  </Button>
-                </Box>
-              ) : undefined
-            }
-          />
+        <ReusableTable
+          data={filteredData as InventoryItem[]}
+          columns={columns}
+          selectedRows={selectedRows}
+          setSelectedRows={setSelectedRows}
+          searchAndFilterConfig={searchAndFilterConfig}
+          currentSearchTerm={searchQuery}
+          onSearchChange={handleSearchChange}
+          showFilters={showFilters}
+          onShowFiltersToggle={() => setShowFilters(!showFilters)}
+          currentFilterKey={filterType}
+          onFilterSelect={(key, value) => setFilterType(key as FilterKey)}
+          totalRows={filteredData.length}
+          rowsPerPage={ROWS_PER_PAGE}
+          currentPage={page}
+          onPageChange={handlePageChange}
+          onSortRequest={handleSortRequest}
+          sortConfig={sortConfig}
+          customSearchBarContent={
+            selectedStockType === 'nearExpiry' ? (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  onClick={() => setNearExpiryMonths(3)}
+                  sx={{
+                    backgroundColor: nearExpiryMonths === 3 ? '#5C17E5' : 'transparent',
+                    color: nearExpiryMonths === 3 ? '#FFFFFF' : '#1A212B',
+                    border: nearExpiryMonths === 3 ? 'none' : '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.875rem', // 14px = 0.875rem
+                    padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+                    minWidth: '6.25rem', // 100px = 6.25rem
+                    height: '2.375rem', // 38px = 2.375rem
+                    '&:hover': {
+                      backgroundColor: nearExpiryMonths === 3 ? '#4C14C7' : 'transparent',
+                    },
+                  }}
+                >
+                  {INVENTORY_LABELS.threeMonths}
+                </Button>
+                <Button
+                  onClick={() => setNearExpiryMonths(1)}
+                  sx={{
+                    backgroundColor: nearExpiryMonths === 1 ? '#5C17E5' : 'transparent',
+                    color: nearExpiryMonths === 1 ? '#FFFFFF' : '#1A212B',
+                    border: nearExpiryMonths === 1 ? 'none' : '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.875rem', // 14px = 0.875rem
+                    padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+                    minWidth: '6.25rem', // 100px = 6.25rem
+                    height: '2.375rem', // 38px = 2.375rem
+                    '&:hover': {
+                      backgroundColor: nearExpiryMonths === 1 ? '#4C14C7' : 'transparent',
+                    },
+                  }}
+                >
+                  {INVENTORY_LABELS.oneMonth}
+                </Button>
+              </Box>
+            ) : undefined
+          }
+        />
       )}
     </Container>
   );

@@ -246,7 +246,6 @@ export const ReusableTable = <T,>({
                         justifyContent: isTabletOrMobile ? 'flex-start' : 'space-between',
                         bgcolor: '#F6F8FB',
                         borderRadius: '16px',
-                        border: '1px solid #9AABB',
                         p: '12px',
                         gap: '16px',
                         mb: 2,
@@ -305,65 +304,25 @@ export const ReusableTable = <T,>({
                                         height: '40px',
                                         borderRadius: '12px',
                                         backgroundColor: '#ffffff',
-                                        border: '1px solid #9AA8bc',
-                                        outline: 'none !important',
+                                        paddingRight: '8px',
                                         '& .MuiOutlinedInput-notchedOutline': {
-                                            border: 'none !important',
+                                            border: 'none',
                                         },
-                                        '&:hover': {
-                                            border: '1px solid #9AA8bc !important',
-                                            outline: 'none !important',
-                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                border: 'none !important',
-                                            },
+                                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                                            border: 'none',
                                         },
-                                        '&.Mui-focused': {
-                                            border: '1px solid #9AA8bc !important',
-                                            outline: 'none !important',
-                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                border: 'none !important',
-                                            },
-                                        },
-                                        '&:focus': {
-                                            outline: 'none !important',
-                                        },
-                                        '&:focus-visible': {
-                                            outline: 'none !important',
+                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                            border: 'none',
                                         },
                                     },
                                 }}
                                 sx={{
                                     width: '100%',
                                     borderRadius: '12px',
-                                    border: '5px',
-                                    marginBottom: isTabletOrMobile ? '12px' : 0,
+                                    backgroundColor: '#ffffff',
                                     '& .MuiOutlinedInput-root': {
-                                        outline: 'none !important',
-                                        '&:focus': {
-                                            outline: 'none !important',
-                                        },
-                                        '&:focus-visible': {
-                                            outline: 'none !important',
-                                        },
-                                        '& .MuiOutlinedInput-notchedOutline': {
-                                            border: 'none !important',
-                                        },
-                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                            border: 'none !important',
-                                        },
-                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                            border: 'none !important',
-                                        },
-                                    },
-                                    '& .MuiInputBase-root': {
-                                        outline: 'none !important',
-                                        '&:focus': {
-                                            outline: 'none !important',
-                                        },
-                                        '&:focus-visible': {
-                                            outline: 'none !important',
-                                        },
-                                    },
+                                        height: '40px',
+                                    }
                                 }}
                             />
                         </Box>
