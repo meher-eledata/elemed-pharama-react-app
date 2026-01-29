@@ -34,7 +34,7 @@ import type { InventoryItem as RTKInventoryItem } from '../../redux/slices/inven
 
 import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
 
-import { INVENTORY_LABELS, FILTER_OPTIONS } from '../../config/label/inventoryLabels';
+import { INVENTORY_LABELS } from '../../config/label/inventoryLabels';
 import {
   baseButtonStyle,
   headerTitleStyle,
@@ -80,7 +80,6 @@ type FilterKey =
 const InventoryModule: React.FC = () => {
   const [selectedStockType, setSelectedStockType] = useState<StockType>('low');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showFilters, setShowFilters] = useState<boolean>(false);
   const [filterType, setFilterType] = useState<FilterKey>('name');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -190,7 +189,6 @@ const InventoryModule: React.FC = () => {
     setPage(1);
     setSelectedItems([]);
     setFilterType('name');
-    setShowFilters(false);
     setSortConfig({ key: 'name', direction: 'asc' });
   }, [selectedStockType, nearExpiryMonths]);
 
@@ -440,13 +438,11 @@ const InventoryModule: React.FC = () => {
   };
 
 
-  const getTableProps = () => {
-    let columns: TableColumn<any>[] = [];
-    let searchAndFilterConfig: SearchAndFilterConfig;
-
+  const { columns } = useMemo(() => {
+    let cols: TableColumn<any>[] = [];
     switch (selectedStockType) {
       case 'low':
-        columns = [
+        cols = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
           { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
@@ -454,19 +450,9 @@ const InventoryModule: React.FC = () => {
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: renderCurrentQtyCell },
           { key: 'minQuantity', header: INVENTORY_LABELS.minimumQuantityHeader, render: (item) => (item as InventoryItem).minQuantity },
         ];
-        searchAndFilterConfig = {
-          filterOptions: [
-            { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
-            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
-            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
-            { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
-            { key: 'minQuantity', label: FILTER_OPTIONS.minQuantity, type: 'number' },
-          ],
-        };
         break;
-
       case 'excess':
-        columns = [
+        cols = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
           { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
@@ -474,19 +460,9 @@ const InventoryModule: React.FC = () => {
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: renderCurrentQtyCell },
           { key: 'maxQuantity', header: INVENTORY_LABELS.maximumQuantityHeader, render: (item) => (item as InventoryItem).maxQuantity },
         ];
-        searchAndFilterConfig = {
-          filterOptions: [
-            { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
-            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
-            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
-            { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
-            { key: 'maxQuantity', label: FILTER_OPTIONS.maxQuantity, type: 'number' },
-          ],
-        };
         break;
-
       case 'expired':
-        columns = [
+        cols = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
           { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
@@ -496,21 +472,9 @@ const InventoryModule: React.FC = () => {
           { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate },
           { key: 'daysPastExpiry', header: INVENTORY_LABELS.daysPastExpiryHeader, render: (item) => (item as InventoryItem).daysPastExpiry },
         ];
-        searchAndFilterConfig = {
-          filterOptions: [
-            { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
-            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
-            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
-            { key: 'batchNumber', label: FILTER_OPTIONS.batchNumber, type: 'text' },
-            { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
-            { key: 'expiryDate', label: FILTER_OPTIONS.expiryDate, type: 'date' },
-            { key: 'daysPastExpiry', label: FILTER_OPTIONS.daysPastExpiry, type: 'number' },
-          ],
-        };
         break;
-
       case 'nearExpiry':
-        columns = [
+        cols = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderProductCell },
           { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
@@ -520,26 +484,10 @@ const InventoryModule: React.FC = () => {
           { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate },
           { key: 'daysToExpiry', header: INVENTORY_LABELS.daysToExpiryHeader, render: (item) => (item as InventoryItem).daysToExpiry },
         ];
-        searchAndFilterConfig = {
-          filterOptions: [
-            { key: 'name', label: FILTER_OPTIONS.name, type: 'text' },
-            { key: 'brand', label: FILTER_OPTIONS.brand, type: 'text' },
-            { key: 'type', label: FILTER_OPTIONS.type, type: 'text' },
-            { key: 'batchNumber', label: FILTER_OPTIONS.batchNumber, type: 'text' },
-            { key: 'currentQuantity', label: FILTER_OPTIONS.currentQuantity, type: 'number' },
-            { key: 'expiryDate', label: FILTER_OPTIONS.expiryDate, type: 'date' },
-            { key: 'daysToExpiry', label: FILTER_OPTIONS.daysToExpiry, type: 'number' },
-          ],
-        };
         break;
-
-      default:
-        return { columns: [], searchAndFilterConfig: { filterOptions: [] } };
     }
-    return { columns, searchAndFilterConfig };
-  };
-
-  const { columns, searchAndFilterConfig } = useMemo(() => getTableProps(), [selectedStockType, nearExpiryMonths]);
+    return { columns: cols };
+  }, [selectedStockType, nearExpiryMonths, renderHeaderCheckbox]);
 
   return (
     <Container maxWidth="xl" disableGutters sx={{ mb: 0, px: { xs: 2, sm: 3, md: 1 } }}>
@@ -553,48 +501,6 @@ const InventoryModule: React.FC = () => {
           <Typography variant="h4" sx={headerTitleStyle}>
             {INVENTORY_LABELS.pageTitle}
           </Typography>
-
-          <Box sx={{ flex: 1, maxWidth: '500px', mx: 4 }}>
-            <Autocomplete
-              options={allSearchOptions}
-              getOptionLabel={(option) => option.name}
-              onChange={handleAutocompleteSelect}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Search products across all tabs..."
-                  variant="outlined"
-                  size="small"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '12px',
-                      backgroundColor: '#F9FAFB',
-                      '& fieldset': { border: '1px solid #D1D5DB' },
-                      '&:hover fieldset': { borderColor: '#5C17E5' },
-                      '&.Mui-focused fieldset': { borderColor: '#5C17E5' },
-                    }
-                  }}
-                />
-              )}
-              renderOption={(props, option) => (
-                <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                  <Typography variant="body2">{option.name}</Typography>
-                  <Chip
-                    label={getCategoryLabel(option.category)}
-                    size="small"
-                    sx={{
-                      ml: 1,
-                      fontSize: '0.65rem',
-                      height: '18px',
-                      backgroundColor: getCategoryColor(option.category),
-                      color: '#fff',
-                      fontWeight: 'bold'
-                    }}
-                  />
-                </Box>
-              )}
-            />
-          </Box>
 
           <StandardButton
             startIcon={<AddIcon />}
@@ -877,11 +783,11 @@ const InventoryModule: React.FC = () => {
           columns={columns}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
-          searchAndFilterConfig={searchAndFilterConfig}
+          searchAndFilterConfig={{ filterOptions: [] }}
           currentSearchTerm={searchQuery}
           onSearchChange={handleSearchChange}
-          showFilters={showFilters}
-          onShowFiltersToggle={() => setShowFilters(!showFilters)}
+          showFilters={false}
+          onShowFiltersToggle={() => { }}
           currentFilterKey={filterType}
           onFilterSelect={(key, value) => setFilterType(key as FilterKey)}
           totalRows={filteredData.length}
@@ -890,51 +796,107 @@ const InventoryModule: React.FC = () => {
           onPageChange={handlePageChange}
           onSortRequest={handleSortRequest}
           sortConfig={sortConfig}
+          hideDefaultSearch={true}
           customSearchBarContent={
-            selectedStockType === 'nearExpiry' ? (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  onClick={() => setNearExpiryMonths(3)}
-                  sx={{
-                    backgroundColor: nearExpiryMonths === 3 ? '#5C17E5' : 'transparent',
-                    color: nearExpiryMonths === 3 ? '#FFFFFF' : '#1A212B',
-                    border: nearExpiryMonths === 3 ? 'none' : '1px solid #D1D5DB',
-                    borderRadius: '0.5rem',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.875rem', // 14px = 0.875rem
-                    padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
-                    minWidth: '6.25rem', // 100px = 6.25rem
-                    height: '2.375rem', // 38px = 2.375rem
-                    '&:hover': {
-                      backgroundColor: nearExpiryMonths === 3 ? '#4C14C7' : 'transparent',
-                    },
-                  }}
-                >
-                  {INVENTORY_LABELS.threeMonths}
-                </Button>
-                <Button
-                  onClick={() => setNearExpiryMonths(1)}
-                  sx={{
-                    backgroundColor: nearExpiryMonths === 1 ? '#5C17E5' : 'transparent',
-                    color: nearExpiryMonths === 1 ? '#FFFFFF' : '#1A212B',
-                    border: nearExpiryMonths === 1 ? 'none' : '1px solid #D1D5DB',
-                    borderRadius: '0.5rem',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.875rem', // 14px = 0.875rem
-                    padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
-                    minWidth: '6.25rem', // 100px = 6.25rem
-                    height: '2.375rem', // 38px = 2.375rem
-                    '&:hover': {
-                      backgroundColor: nearExpiryMonths === 1 ? '#4C14C7' : 'transparent',
-                    },
-                  }}
-                >
-                  {INVENTORY_LABELS.oneMonth}
-                </Button>
-              </Box>
-            ) : undefined
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
+              <Autocomplete
+                sx={{ width: '400px' }}
+                options={allSearchOptions}
+                getOptionLabel={(option) => option.name}
+                onChange={handleAutocompleteSelect}
+                disablePortal
+                slotProps={{
+                  popper: {
+                    placement: 'bottom-start',
+                    modifiers: [
+                      {
+                        name: 'flip',
+                        enabled: false,
+                      },
+                    ],
+                  },
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search products across all tabs..."
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '12px',
+                        backgroundColor: '#F9FAFB',
+                        height: '40px',
+                        '& fieldset': { border: '1px solid #D1D5DB' },
+                        '&:hover fieldset': { borderColor: '#5C17E5' },
+                        '&.Mui-focused fieldset': { borderColor: '#5C17E5' },
+                      }
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <Typography variant="body2">{option.name}</Typography>
+                    <Chip
+                      label={getCategoryLabel(option.category)}
+                      size="small"
+                      sx={{
+                        ml: 1,
+                        fontSize: '0.65rem',
+                        height: '18px',
+                        backgroundColor: getCategoryColor(option.category),
+                        color: '#fff',
+                        fontWeight: 'bold'
+                      }}
+                    />
+                  </Box>
+                )}
+              />
+              {selectedStockType === 'nearExpiry' && (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    onClick={() => setNearExpiryMonths(3)}
+                    sx={{
+                      backgroundColor: nearExpiryMonths === 3 ? '#5C17E5' : 'transparent',
+                      color: nearExpiryMonths === 3 ? '#FFFFFF' : '#1A212B',
+                      border: nearExpiryMonths === 3 ? 'none' : '1px solid #D1D5DB',
+                      borderRadius: '0.5rem',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      padding: '0.5rem 1rem',
+                      minWidth: '6.25rem',
+                      height: '2.375rem',
+                      '&:hover': {
+                        backgroundColor: nearExpiryMonths === 3 ? '#4C14C7' : 'transparent',
+                      },
+                    }}
+                  >
+                    {INVENTORY_LABELS.threeMonths}
+                  </Button>
+                  <Button
+                    onClick={() => setNearExpiryMonths(1)}
+                    sx={{
+                      backgroundColor: nearExpiryMonths === 1 ? '#5C17E5' : 'transparent',
+                      color: nearExpiryMonths === 1 ? '#FFFFFF' : '#1A212B',
+                      border: nearExpiryMonths === 1 ? 'none' : '1px solid #D1D5DB',
+                      borderRadius: '0.5rem',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      padding: '0.5rem 1rem',
+                      minWidth: '6.25rem',
+                      height: '2.375rem',
+                      '&:hover': {
+                        backgroundColor: nearExpiryMonths === 1 ? '#4C14C7' : 'transparent',
+                      },
+                    }}
+                  >
+                    {INVENTORY_LABELS.oneMonth}
+                  </Button>
+                </Box>
+              )}
+            </Box>
           }
         />
       )}

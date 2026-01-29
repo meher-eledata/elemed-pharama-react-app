@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from 'react-redux';
 import { List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import ArrowIcon from '../../assets/Arrow.svg';
+import BgWhiteIcon from '../../assets/BG_White.svg';
 import BoxIcon from '../../assets/Box.svg';
 import CheckBoxIcon from '../../assets/CheckBox.svg';
 import DollarIcon from '../../assets/Dollor.svg';
@@ -14,6 +15,7 @@ import HumanIcon from '../../assets/Human.svg';
 import MailIcon from '../../assets/Mail.svg';
 import VectorIcon from '../../assets/Vector.svg';
 import SettingsIcon from '../../assets/Setting.svg';
+import ThunderIcon from '../../assets/Thunder.svg';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -34,16 +36,16 @@ interface SidebarItem {
 }
 
 const WhiteIcon: React.FC<{ children: React.ReactElement }> = ({ children }) => (
-  <Box 
-    sx={{ 
-      color: 'white', 
+  <Box
+    sx={{
+      color: 'white',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      '& svg': { 
+      '& svg': {
         fill: 'white !important',
         color: 'white !important',
-        '& path, & circle, & rect, & polygon': { 
+        '& path, & circle, & rect, & polygon': {
           fill: 'white !important',
           stroke: 'white !important'
         }
@@ -67,7 +69,7 @@ const baseItems: SidebarItem[] = [
 ];
 interface SidebarProps {
   onOpenChange?: (isOpen: boolean) => void;
-  isOpen?: boolean; 
+  isOpen?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
@@ -122,22 +124,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
 
   useEffect(() => {
     const currentPath = location.pathname;
-        const sortedItems = [...sidebarItems].filter(item => item.route).sort((a, b) => {
+    const sortedItems = [...sidebarItems].filter(item => item.route).sort((a, b) => {
       const aLength = a.route?.length || 0;
       const bLength = b.route?.length || 0;
       return bLength - aLength;
     });
-    
+
     const matchingItem = sortedItems.find(item => {
       if (!item.route) return false;
-      
+
       if (item.route === currentPath) return true;
-         
+
       if (currentPath.startsWith(item.route + '/')) return true;
-      
+
       return false;
     });
-    
+
     if (matchingItem) {
       setActiveItemId(matchingItem.id);
     } else {
@@ -146,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
       }
     }
   }, [location.pathname, sidebarItems]);
-return (
+  return (
     <Box sx={{ display: 'flex', height: '100vh', }}>
       <Box
         className="sidebar"
@@ -178,35 +180,41 @@ return (
           boxShadow: open ? '0.125rem 0 0.5rem rgba(0, 0, 0, 0.1)' : 'none', // 2px = 0.125rem, 8px = 0.5rem
         }}
       >
-         <Box
-  sx={{
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.625rem', // 10px = 0.625rem
-    padding: '0 0.75rem 0.75rem 0.75rem', // 12px = 0.75rem
-    width: '100%',
-    cursor: 'pointer', // make it clickable
-  }}
-  onClick={() => {
-    setUncontrolledOpen(prev => !prev); // toggle sidebar
-    if (onOpenChange) onOpenChange(!open); // notify parent if needed
-  }}
->
-  <img src={GroupIcon} alt="Logo" style={{ width: '2rem', height: '2rem' }} /> {/* 32px = 2rem */}
-  {open && (
-    <Typography 
-      variant="subtitle1" 
-      sx={{ 
-        fontSize: '1.125rem', // 18px = 1.125rem
-        fontWeight: 700,
-        whiteSpace: 'nowrap',
-        overflow: 'hidden'
-      }}
-    >
-      Pharma App
-    </Typography>
-  )}
-</Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.625rem',
+            padding: '0.25rem',
+            width: open ? 'calc(100% - 1rem)' : 'calc(100% - 0.5rem)',
+            margin: '0 auto 0.75rem auto',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            justifyContent: open ? 'flex-start' : 'center',
+          }}
+          onClick={() => {
+            setUncontrolledOpen(prev => !prev);
+            if (onOpenChange) onOpenChange(!open);
+          }}
+        >
+          <img src={BgWhiteIcon} alt="Logo" style={{ width: '2.5rem', height: '2.5rem' }} />
+          {open && (
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                lineHeight: '1.2',
+                color: '#5C17E5'
+              }}
+            >
+              Elite  pharmacy
+            </Typography>
+          )}
+        </Box>
 
 
         {sidebarItems.map(item => (
@@ -234,9 +242,9 @@ return (
                 position: 'relative',
               }}
             >
-              <ListItemIcon 
-                sx={{ 
-                  minWidth: "40px", 
+              <ListItemIcon
+                sx={{
+                  minWidth: "40px",
                   color: "white",
                   '& svg': {
                     color: 'white !important',
@@ -293,16 +301,30 @@ return (
             paddingBottom: '24px',
             display: 'flex',
             width: '100%',
-            justifyContent: open ? "center" : "flex-start",
+            flexDirection: 'column',
+            alignItems: open ? 'flex-start' : 'center',
+            justifyContent: 'center',
+            paddingLeft: open ? '16px' : '0',
           }}
         >
-          <IconButton className="settings-icon-border">
-            <img
-              src={SettingsIcon}
-              alt="Settings"
-              style={{ width: '24.91px', height: '24px' }}
-            />
-          </IconButton>
+          {open ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <img src={ThunderIcon} alt="Elemed" style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+              <Typography
+                sx={{
+                  fontSize: '0.75rem',
+                  fontWeight: 400,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Powered by Elemed
+              </Typography>
+            </Box>
+          ) : (
+            <img src={ThunderIcon} alt="Elemed" style={{ width: '20px', height: '20px', filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+          )}
         </Box>
       </Box>
     </Box>

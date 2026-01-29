@@ -18,6 +18,9 @@ interface InvoiceKpisData {
   totalRevenue: number;
   totalSales: number;
   uniquePatients: number;
+  grossRevenue?: number;
+  returnsAmount?: number;
+  netRevenue?: number;
   revenueByDay: DailyData[];
   salesByDay: DailyData[];
   uniquePatientsByDay: DailyData[];
@@ -111,7 +114,11 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
     const seriesData = filteredData.map((d) => Number(d.amount ?? d.count ?? 0));
     const xAxisDates = filteredData.map((d) => new Date(d.date).toISOString());
 
-    const totalValue = seriesData.reduce((acc, val) => acc + val, 0);
+    // Prioritize total value from API if available for the specific key
+    const apiTotal = kpis[totalKey];
+    const totalValue = (typeof apiTotal === 'number' && !isNaN(apiTotal))
+      ? apiTotal
+      : seriesData.reduce((acc, val) => acc + val, 0);
 
     const maxVal = Math.max(0, ...seriesData);
     const safeMax = maxVal <= 0 ? 1 : maxVal;

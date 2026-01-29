@@ -9,6 +9,9 @@ export interface InvoiceKpisResponse {
   totalRevenue: number;
   totalSales: number;
   uniquePatients: number;
+  grossRevenue?: number;
+  returnsAmount?: number;
+  netRevenue?: number;
   revenueByDay: Array<{
     date: string;
     amount: number;
@@ -76,6 +79,12 @@ export const dashboardApi = createApi({
         url: "dashboard/invoice-kpis",
         method: "POST",
         body,
+      }),
+      transformResponse: (response: any) => ({
+        ...response,
+        totalRevenue: response.netRevenue !== undefined
+          ? response.netRevenue
+          : ((response.grossRevenue || 0) - (response.returnsAmount || 0)),
       }),
       providesTags: ["Dashboard"],
     }),

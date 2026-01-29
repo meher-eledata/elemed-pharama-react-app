@@ -17,7 +17,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       const discountMultiplier = 1 - ((item.discount || 0) / 100);
       amount = (item.sp * item.quantity * discountMultiplier).toFixed(2);
     }
-    
+
     return {
       id: item.id,
       productName: item.name,
@@ -53,7 +53,7 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
   }, 0);
   const totalDiscount = salesItems.reduce((sum, item) => sum + parseFloat(item.discount || '0'), 0);
   // Calculate total tax amount from CGST, SGST, and IGST
-  const taxAmount = salesItems.reduce((sum, item) => 
+  const taxAmount = salesItems.reduce((sum, item) =>
     sum + parseFloat(item.cgst || '0') + parseFloat(item.sgst || '0') + parseFloat(item.igst || '0'), 0
   );
   // Total payable amount is the sum of all item amounts (which already includes discount and taxes)
@@ -92,6 +92,7 @@ export const generatePrintHTML = (data: {
   taxAmount: string;
   totalPayableAmount: string;
   labels: any;
+  brandIcon?: string;
 }): string => {
   const {
     customerName,
@@ -110,6 +111,7 @@ export const generatePrintHTML = (data: {
     taxAmount,
     totalPayableAmount,
     labels,
+    brandIcon,
   } = data;
 
   return `
@@ -119,7 +121,7 @@ export const generatePrintHTML = (data: {
         <style>
           @media print {
             @page { 
-              margin: 0.5in;
+              margin: 0.3in;
               size: A4;
             }
             * {
@@ -127,291 +129,228 @@ export const generatePrintHTML = (data: {
               print-color-adjust: exact !important;
               color-adjust: exact !important;
             }
-            html, body {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
           }
           * {
             box-sizing: border-box;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
           }
           body { 
             font-family: 'Lexend', sans-serif; 
-            margin: 20px;
-            padding: 20px;
+            margin: 0;
+            padding: 10px;
             color: #1A212B;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
           }
           .receipt-header { 
-            text-align: left; 
-            margin-bottom: 30px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #1A212B;
           }
-          .receipt-title { 
-            font-size: 28px; 
-            font-weight: bold; 
-            margin-bottom: 20px; 
-            color: #1A212B;
+          .header-left {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
           }
+          .header-logo {
+            width: 110px;
+            height: auto;
+            margin-top: -15px;
+            margin-left: -10px;
+          }
+          .header-center {
+            flex: 3;
+            text-align: center;
+          }
+          .hospital-name {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+          }
+          .hospital-subtext {
+            font-size: 12px;
+            font-weight: 500;
+            margin: 2px 0;
+          }
+          .hospital-details {
+            font-size: 10px;
+            margin: 4px 0;
+            line-height: 1.2;
+          }
+          .header-right {
+            flex: 1;
+            text-align: right;
+          }
+          .tax-invoice-label {
+            display: none;
+          }
+          
           .receipt-details { 
             display: flex; 
             flex-direction: column;
-            gap: 0px; 
-            margin-bottom: 40px; 
+            margin-bottom: 20px; 
             border: 1px solid #E5E7EB; 
-            border-radius: 8px; 
+            border-radius: 4px; 
             overflow: hidden;
-            page-break-inside: avoid;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           }
           .receipt-details-row {
             display: flex;
-            flex-direction: row;
-            gap: 0px;
             width: 100%;
           }  
           .detail-section { 
             flex: 1; 
-            min-width: 180px;
             background-color: #F9FAFB !important; 
-            padding: 12px 8px; 
-            border-right: 2px solid #9CA3AF; 
-            border-bottom: 2px solid #9CA3AF;
-            box-sizing: border-box;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
+            padding: 8px; 
+            border-right: 1px solid #E5E7EB; 
+            border-bottom: 1px solid #E5E7EB;
           }
-          .receipt-details-row:first-child .detail-section:last-child {
-            border-bottom: 2px solid #9CA3AF;
-            border-right: none;
-          }
-          .receipt-details-row:last-child .detail-section:last-child {
+          .receipt-details-row:last-child .detail-section {
             border-bottom: none;
-            border-right: none;
           }
-          .receipt-details-row:last-child .detail-section:first-child {
-            border-bottom: none;
+          .detail-section:last-child {
+            border-right: none;
           }
           .detail-title { 
             font-weight: bold; 
-            margin-bottom: 12px; 
-            font-size: 14px;
-            color: #1A212B;
+            margin-bottom: 4px; 
+            font-size: 12px;
+            text-decoration: underline;
           }
           .detail-item { 
-            font-size: 11px; 
-            margin-bottom: 6px;
-            color: #374151;
-            line-height: 1.4;
+            font-size: 10px; 
+            margin-bottom: 2px;
+            line-height: 1.2;
           }
-          .detail-item.email-item {
-            font-size: 10px;
-          }
+
           .items-section { 
-            margin-bottom: 40px;
-            page-break-inside: avoid;
-          }
-          .items-title { 
-            font-weight: bold; 
-            margin-bottom: 16px; 
-            font-size: 14px;
-            color: #1A212B;
+            margin-bottom: 20px;
           }
           .items-table { 
             width: 100%; 
-            border-collapse: separate;
-            border-spacing: 0;
-            border: 2px solid #A5B4FC !important; 
-            border-radius: 8px; 
-            overflow: hidden;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
+            border-collapse: collapse;
+            border: 1px solid #E5E7EB;
           }
           .items-table th { 
-            background-color: #C7D2FE !important; 
-            padding: 18px 12px; 
+            background-color: #F3F4F6 !important; 
+            padding: 8px 4px; 
             font-weight: bold; 
-            font-size: 11px; 
+            font-size: 10px; 
             text-align: left;
-            color: #1A212B !important;
-            border-bottom: 2px solid #A5B4FC !important;
-            white-space: nowrap;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          @media print {
-            .items-table th {
-              background-color: #C7D2FE !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
-          }
-          .items-table td { 
-            padding: 18px 12px; 
-            font-size: 11px; 
-            background-color: #FFFFFF !important; 
-            color: #374151 !important;
-            border-top: 1px solid #E5E7EB;
-            line-height: 1.6;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          .items-table tbody tr:first-child td {
-            border-top: none;
-          }
-          .items-table th:not(:last-child),
-          .items-table td:not(:last-child) {
+            border-bottom: 1px solid #E5E7EB;
             border-right: 1px solid #E5E7EB;
           }
+          .items-table td { 
+            padding: 6px 4px; 
+            font-size: 10px; 
+            border-bottom: 1px solid #F3F4F6;
+            border-right: 1px solid #E5E7EB;
+          }
+          .items-table th:last-child, .items-table td:last-child {
+            border-right: none;
+          }
+
           .summary { 
-            background-color: #C7D2FE !important; 
-            padding: 20px 24px; 
-            border-radius: 8px; 
             display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start;
-            page-break-inside: avoid;
-            margin-top: 30px;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
+            justify-content: flex-end;
+            margin-top: 20px;
           }
-          @media print {
-            .summary {
-              background-color: #C7D2FE !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
-            .detail-section {
-              background-color: #F9FAFB !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
-            .items-table {
-              border: 2px solid #A5B4FC !important;
-            }
+          .summary-table {
+            width: 250px;
+            border-collapse: collapse;
           }
-          .summary-left { 
-            display: flex; 
-            gap: 60px; 
-            font-size: 12px;
-            color: #1A212B;
-          }
-          .summary-item {
+          .summary-row {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #F3F4F6;
+          }
+          .summary-row.total {
+            border-top: 2px solid #1A212B;
+            border-bottom: 2px solid #1A212B;
+            padding: 8px 0;
+            margin-top: 4px;
+            font-weight: bold;
+            font-size: 14px;
           }
           .summary-label {
-            font-weight: 500;
-            color: #1A212B;
+            font-size: 11px;
           }
           .summary-value {
-            font-weight: 700;
-            font-size: 14px;
-            color: #1A212B;
-          }
-          .summary-right { 
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            align-items: flex-end;
-            text-align: right;
-          }
-          .summary-right-label {
-            font-size: 14px;
-            font-weight: 500;
-            color: #1A212B;
-          }
-          .summary-right-value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1A212B;
+            font-size: 11px;
+            font-weight: bold;
           }
         </style>
       </head>
       <body>
         <div class="receipt-header">
-          <div class="receipt-title">${labels.CUSTOMER_RECEIPT_TITLE}</div>
+          <div class="header-left">
+            ${brandIcon ? `<img src="${brandIcon}" class="header-logo" alt="Logo" />` : ''}
+          </div>
+          <div class="header-center">
+            <h1 class="hospital-name">ELITE PHARMACY</h1>
+            <div class="hospital-subtext">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
+            <div class="hospital-details">
+              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br/>
+              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br/>
+              GSTIN No: 37AAQCS3213C2ZH<br/>
+              (M): 0891-2554040, 8096655050
+            </div>
+          </div>
+          <div class="header-right">
+          </div>
         </div>
         
         <div class="receipt-details">
-          <!-- First Row: Customer Details and Doctor Details -->
           <div class="receipt-details-row">
             <div class="detail-section">
-              <div class="detail-title">${labels.CUSTOMER_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}</div>
-              <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}</div>
-              <div class="detail-item">${labels.CITY_PRINT.replace('{city}', (customerCity || '').trim())}</div>
+              <div class="detail-title">Customer Details</div>
+              <div class="detail-item"><strong>Name:</strong> ${customerName || ''}</div>
+              <div class="detail-item"><strong>Mobile:</strong> ${customerMobile || ''}</div>
+              <div class="detail-item"><strong>City:</strong> ${customerCity || ''}</div>
             </div>
             <div class="detail-section">
-              <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
-              <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}</div>
-              <div class="detail-item email-item">${labels.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}</div>
-            </div>
-          </div>
-          <!-- Second Row: Payment Details and Invoice Details -->
-          <div class="receipt-details-row">
-            <div class="detail-section">
-              <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>
-              ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
-                ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
-                : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() 
-                  ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
-                  : ''
-              }
+              <div class="detail-title">Doctor Details</div>
+              <div class="detail-item"><strong>Name:</strong> ${doctorName || ''}</div>
+              <div class="detail-item"><strong>Mobile:</strong> ${doctorMobile || ''}</div>
             </div>
             <div class="detail-section">
-              <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
-              <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}</div>
+              <div class="detail-title">Invoice Details</div>
+              <div class="detail-item"><strong>Invoice No:</strong> ${invoiceNumber || ''}</div>
+              <div class="detail-item"><strong>Date:</strong> ${invoiceDate || ''}</div>
+              <div class="detail-item"><strong>Payment:</strong> ${paymentMode || ''}</div>
             </div>
           </div>
         </div>
         
         <div class="items-section">
-          <div class="items-title">${labels.ITEMS_SECTION_TITLE}</div>
           <table class="items-table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Qty</th>
-                <th>Type</th>
-                <th>Batch</th>
-                <th>Price</th>
-                <th>Disc</th>
-                <th>CGST</th>
-                <th>SGST</th>
-                <th>IGST</th>
-                <th>Amt</th>
+                <th style="width: 5%">#</th>
+                <th style="width: 35%">Description</th>
+                <th style="width: 10%">Batch</th>
+                <th style="width: 10%">Exp</th>
+                <th style="width: 8%">Qty</th>
+                <th style="width: 8%">MRP</th>
+                <th style="width: 8%">Disc%</th>
+                <th style="width: 8%">Tax%</th>
+                <th style="width: 10%">Amount</th>
               </tr>
             </thead>
             <tbody>
-              ${salesItems.map(item => `
+              ${salesItems.map((item, index) => `
                 <tr>
+                  <td>${index + 1}</td>
                   <td>${item.productName}</td>
-                  <td>${item.quantity}</td>
-                  <td>${item.type}</td>
                   <td>${item.batch}</td>
+                  <td>${item.expiryDate}</td>
+                  <td>${item.quantity}</td>
                   <td>${item.unitPrice}</td>
                   <td>${item.discountPercent}%</td>
-                  <td>${item.cgstPercent}%</td>
-                  <td>${item.sgstPercent}%</td>
-                  <td>${item.igstPercent}%</td>
+                  <td>${parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')}%</td>
                   <td>${item.amount}</td>
                 </tr>
               `).join('')}
@@ -420,24 +359,31 @@ export const generatePrintHTML = (data: {
         </div>
         
         <div class="summary">
-          <div class="summary-left">
-            <div class="summary-item">
-              <div class="summary-label">${labels.TOTAL_VALUE_LABEL}</div>
-              <div class="summary-value">${totalValue}</div>
+          <div class="summary-table">
+            <div class="summary-row">
+              <span class="summary-label">Sub Total</span>
+              <span class="summary-value">${totalValue}</span>
             </div>
-            <div class="summary-item">
-              <div class="summary-label">${labels.TOTAL_DISCOUNT_LABEL}</div>
-              <div class="summary-value">${totalDiscount}</div>
+            <div class="summary-row">
+              <span class="summary-label">Total Discount</span>
+              <span class="summary-value">-${totalDiscount}</span>
             </div>
-            <div class="summary-item">
-              <div class="summary-label">${labels.TAX_AMOUNT_LABEL}</div>
-              <div class="summary-value">${taxAmount}</div>
+            <div class="summary-row">
+              <span class="summary-label">Tax Amount</span>
+              <span class="summary-value">${taxAmount}</span>
+            </div>
+            <div class="summary-row total">
+              <span class="summary-label">NET PAYABLE</span>
+              <span class="summary-value">₹${totalPayableAmount}</span>
             </div>
           </div>
-          <div class="summary-right">
-            <div class="summary-right-label">${labels.TOTAL_PAYABLE_LABEL}</div>
-            <div class="summary-right-value">${totalPayableAmount}</div>
-          </div>
+        </div>
+        
+        <div style="margin-top: 40px; text-align: center; font-size: 10px; color: #6B7280;">
+          This is a computer generated invoice.
+        </div>
+        <div style="margin-top: 10px; text-align: center; font-size: 12px; font-weight: 600; color: #1A212B;">
+          Powered by Elemed
         </div>
       </body>
     </html>

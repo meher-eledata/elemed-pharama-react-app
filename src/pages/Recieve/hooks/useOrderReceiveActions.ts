@@ -194,6 +194,7 @@ export const useOrderReceiveActions = (
         paymentMethod: (row as any).last_payment_method || "Cash",
         amount: row.amountPaid || "",
         creditAvailable: row.creditAvailable || 0,
+        totalAmount: row.amt || 0,
         pharmaTableData: [],
       }
     });

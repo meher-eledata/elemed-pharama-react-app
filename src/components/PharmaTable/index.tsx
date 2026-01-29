@@ -76,6 +76,7 @@ interface ReusableTableProps<T> {
     sortConfig: { key: string; direction: 'asc' | 'desc' };
     currentFilter?: { [key: string]: string | null }; // Added this prop for better state management
     customSearchBarContent?: React.ReactNode; // Custom content to render next to search bar
+    hideDefaultSearch?: boolean; // If true, the default search bar is hidden
     footerContent?: React.ReactNode; // Custom footer content
     disableFooterWrapper?: boolean; // If true, footerContent is rendered directly inside TableFooter without wrapping in TableRow/TableCell
 }
@@ -101,6 +102,7 @@ export const ReusableTable = <T,>({
     sortConfig,
     currentFilter, // Destructure the new prop
     customSearchBarContent, // Custom content next to search bar
+    hideDefaultSearch = false, // Default to false
     footerContent, // Footer content
     disableFooterWrapper = false,
 }: ReusableTableProps<T>) => {
@@ -189,7 +191,7 @@ export const ReusableTable = <T,>({
         return 'auto';
     };
 
-    const hasSearchAndFilter = searchAndFilterConfig.filterOptions.length > 0 || searchAndFilterConfig.defaultPlaceholder;
+    const hasSearchAndFilter = (searchAndFilterConfig.filterOptions.length > 0 || searchAndFilterConfig.defaultPlaceholder || customSearchBarContent);
 
     const getActualRowIndex = (localIndex: number) => startIndex + localIndex;
 
@@ -263,73 +265,75 @@ export const ReusableTable = <T,>({
                             />
                         </Box>
                     ) : (
-                        <Box sx={{ width: isTabletOrMobile ? '100%' : '628.5px', flexShrink: 0 }}>
-                            <TextField
-                                className="pharma-table-search"
-                                placeholder={getPlaceholder()}
-                                value={currentSearchTerm}
-                                onChange={onSearchChange}
-                                type={activeFilter?.type || 'text'}
-                                InputProps={{
-                                    startAdornment: !currentSearchTerm.trim() ? (
-                                        <InputAdornment position="start">
-                                            <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
-                                        </InputAdornment>
-                                    ) : null,
-                                    endAdornment: currentSearchTerm ? (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                size="small"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const syntheticEvent = {
-                                                        target: { value: '' }
-                                                    } as ChangeEvent<HTMLInputElement>;
-                                                    onSearchChange(syntheticEvent);
-                                                }}
-                                                sx={{
-                                                    padding: '4px',
-                                                    color: '#728197',
-                                                    '&:hover': {
-                                                        backgroundColor: 'transparent',
-                                                        color: '#1A212B'
-                                                    }
-                                                }}
-                                            >
-                                                <CloseIcon sx={{ fontSize: '18px' }} />
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ) : null,
-                                    sx: {
-                                        height: '40px',
+                        !hideDefaultSearch && (
+                            <Box sx={{ width: isTabletOrMobile ? '100%' : '628.5px', flexShrink: 0 }}>
+                                <TextField
+                                    className="pharma-table-search"
+                                    placeholder={getPlaceholder()}
+                                    value={currentSearchTerm}
+                                    onChange={onSearchChange}
+                                    type={activeFilter?.type || 'text'}
+                                    InputProps={{
+                                        startAdornment: !currentSearchTerm.trim() ? (
+                                            <InputAdornment position="start">
+                                                <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
+                                            </InputAdornment>
+                                        ) : null,
+                                        endAdornment: currentSearchTerm ? (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const syntheticEvent = {
+                                                            target: { value: '' }
+                                                        } as ChangeEvent<HTMLInputElement>;
+                                                        onSearchChange(syntheticEvent);
+                                                    }}
+                                                    sx={{
+                                                        padding: '4px',
+                                                        color: '#728197',
+                                                        '&:hover': {
+                                                            backgroundColor: 'transparent',
+                                                            color: '#1A212B'
+                                                        }
+                                                    }}
+                                                >
+                                                    <CloseIcon sx={{ fontSize: '18px' }} />
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ) : null,
+                                        sx: {
+                                            height: '40px',
+                                            borderRadius: '12px',
+                                            backgroundColor: '#ffffff',
+                                            paddingRight: '8px',
+                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                border: 'none',
+                                            },
+                                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                border: 'none',
+                                            },
+                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                border: 'none',
+                                            },
+                                        },
+                                    }}
+                                    sx={{
+                                        width: '100%',
                                         borderRadius: '12px',
                                         backgroundColor: '#ffffff',
-                                        paddingRight: '8px',
-                                        '& .MuiOutlinedInput-notchedOutline': {
-                                            border: 'none',
-                                        },
-                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                            border: 'none',
-                                        },
-                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                            border: 'none',
-                                        },
-                                    },
-                                }}
-                                sx={{
-                                    width: '100%',
-                                    borderRadius: '12px',
-                                    backgroundColor: '#ffffff',
-                                    '& .MuiOutlinedInput-root': {
-                                        height: '40px',
-                                    }
-                                }}
-                            />
-                        </Box>
+                                        '& .MuiOutlinedInput-root': {
+                                            height: '40px',
+                                        }
+                                    }}
+                                />
+                            </Box>
+                        )
                     )}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, justifyContent: isTabletOrMobile ? 'flex-start' : 'flex-end' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, justifyContent: (isTabletOrMobile || hideDefaultSearch) ? 'flex-start' : 'flex-end' }}>
                         {customSearchBarContent && (
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', width: hideDefaultSearch ? '100%' : 'auto' }}>
                                 {customSearchBarContent}
                             </Box>
                         )}
@@ -359,36 +363,38 @@ export const ReusableTable = <T,>({
                             </Button>
                         )}
                     </Box>
-                </Box>
+                </Box >
             )}
 
-            {showFilters && (
-                <Box
-                    display="flex"
-                    flexWrap="wrap"
-                    gap={2}
-                    mb={4}
-                    sx={{
-                        flexDirection: isTabletOrMobile ? 'column' : 'row',
-                        boxSizing: 'border-box'
-                    }}
-                >
-                    <Typography variant="body1" sx={{ alignSelf: 'center', fontWeight: 'bold' }}>
-                        Filter by:
-                    </Typography>
-                    {searchAndFilterConfig.filterOptions.map((option: FilterOption) => (
-                        <Button
-                            key={option.key}
-                            variant={currentFilter?.[option.key] ? 'contained' : 'outlined'} // Use currentFilter to determine button state
-                            onClick={() => onFilterSelect(option.key, currentFilter?.[option.key] ? null : 'value-placeholder')} // Example logic for selecting/clearing
-                            sx={{ textTransform: 'none', width: isTabletOrMobile ? '100%' : 'auto' }}
-                        >
-                            {option.label}
-                        </Button>
-                    ))}
-                    {searchAndFilterConfig.customFilters}
-                </Box>
-            )}
+            {
+                showFilters && (
+                    <Box
+                        display="flex"
+                        flexWrap="wrap"
+                        gap={2}
+                        mb={4}
+                        sx={{
+                            flexDirection: isTabletOrMobile ? 'column' : 'row',
+                            boxSizing: 'border-box'
+                        }}
+                    >
+                        <Typography variant="body1" sx={{ alignSelf: 'center', fontWeight: 'bold' }}>
+                            Filter by:
+                        </Typography>
+                        {searchAndFilterConfig.filterOptions.map((option: FilterOption) => (
+                            <Button
+                                key={option.key}
+                                variant={currentFilter?.[option.key] ? 'contained' : 'outlined'} // Use currentFilter to determine button state
+                                onClick={() => onFilterSelect(option.key, currentFilter?.[option.key] ? null : 'value-placeholder')} // Example logic for selecting/clearing
+                                sx={{ textTransform: 'none', width: isTabletOrMobile ? '100%' : 'auto' }}
+                            >
+                                {option.label}
+                            </Button>
+                        ))}
+                        {searchAndFilterConfig.customFilters}
+                    </Box>
+                )
+            }
 
             <Box sx={{
                 borderRadius: totalRows > 0 ? '12px 12px 0 0' : '12px',
@@ -664,106 +670,108 @@ export const ReusableTable = <T,>({
                     </Table>
                 </TableContainer>
             </Box>
-            {totalRows > 0 && (
-                <Box
-                    sx={{
-                        display: 'flex',
-                        justifyContent: 'flex-start',
-                        alignItems: 'center',
-                        px: 2,
-                        py: 1.5,
-                        border: '1px solid #E5E7EB',
-                        borderTop: '1px solid #E5E7EB',
-                        gap: 2,
-                        bgcolor: '#F9FAFB',
-                        borderRadius: '0 0 12px 12px',
-                        marginTop: '-1px',
-                    }}
-                >
+            {
+                totalRows > 0 && (
                     <Box
                         sx={{
                             display: 'flex',
+                            justifyContent: 'flex-start',
                             alignItems: 'center',
-                            border: '1px solid #E0E0E0',
-                            borderRadius: '4px',
-                            height: 32,
-                            px: 1,
-                            gap: 1,
-                            bgcolor: '#ffffff',
+                            px: 2,
+                            py: 1.5,
+                            border: '1px solid #E5E7EB',
+                            borderTop: '1px solid #E5E7EB',
+                            gap: 2,
+                            bgcolor: '#F9FAFB',
+                            borderRadius: '0 0 12px 12px',
+                            marginTop: '-1px',
                         }}
                     >
-                        <Select
-                            value={currentPage}
-                            onChange={handlePageSelectChange}
-                            variant="standard"
-                            disableUnderline
-                            IconComponent={KeyboardArrowDownIcon}
+                        <Box
                             sx={{
-                                height: '100%',
-                                '& .MuiSelect-select': { py: 0, pr: 2, display: 'flex', alignItems: 'center', minWidth: 20 },
-                                '& .MuiSelect-icon': { top: '50%', transform: 'translateY(-50%)', color: '#5C17E5', fontSize: '24px' },
-                                fontSize: '14px',
-                                fontWeight: 'bold',
-                                fontFamily: "'Lexend', sans-serif",
+                                display: 'flex',
+                                alignItems: 'center',
+                                border: '1px solid #E0E0E0',
+                                borderRadius: '4px',
+                                height: 32,
+                                px: 1,
+                                gap: 1,
+                                bgcolor: '#ffffff',
                             }}
                         >
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
-                                <MenuItem key={pageNumber} value={pageNumber}>
-                                    {pageNumber}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                        <Typography variant="body2" sx={{ whiteSpace: 'nowrap', color: '#728197', fontSize: '14px' }}>
-                            {`of ${totalPages} pages`}
-                        </Typography>
-                    </Box>
+                            <Select
+                                value={currentPage}
+                                onChange={handlePageSelectChange}
+                                variant="standard"
+                                disableUnderline
+                                IconComponent={KeyboardArrowDownIcon}
+                                sx={{
+                                    height: '100%',
+                                    '& .MuiSelect-select': { py: 0, pr: 2, display: 'flex', alignItems: 'center', minWidth: 20 },
+                                    '& .MuiSelect-icon': { top: '50%', transform: 'translateY(-50%)', color: '#5C17E5', fontSize: '24px' },
+                                    fontSize: '14px',
+                                    fontWeight: 'bold',
+                                    fontFamily: "'Lexend', sans-serif",
+                                }}
+                            >
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
+                                    <MenuItem key={pageNumber} value={pageNumber}>
+                                        {pageNumber}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                            <Typography variant="body2" sx={{ whiteSpace: 'nowrap', color: '#728197', fontSize: '14px' }}>
+                                {`of ${totalPages} pages`}
+                            </Typography>
+                        </Box>
 
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            sx={{
-                                border: '1px solid #E0E0E0',
-                                borderRadius: '4px',
-                                p: 0.5,
-                                height: 32,
-                                width: 32,
-                                bgcolor: '#ffffff',
-                                '&:hover:not(:disabled)': {
-                                    bgcolor: '#F3E8FF',
-                                    borderColor: '#5C17E5',
-                                },
-                                '&:disabled': {
-                                    opacity: 0.4,
-                                }
-                            }}
-                        >
-                            <KeyboardArrowLeftIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            sx={{
-                                border: '1px solid #E0E0E0',
-                                borderRadius: '4px',
-                                p: 0.5,
-                                height: 32,
-                                width: 32,
-                                bgcolor: '#ffffff',
-                                '&:hover:not(:disabled)': {
-                                    bgcolor: '#F3E8FF',
-                                    borderColor: '#5C17E5',
-                                },
-                                '&:disabled': {
-                                    opacity: 0.4,
-                                }
-                            }}
-                        >
-                            <KeyboardArrowRightIcon fontSize="small" />
-                        </IconButton>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <IconButton
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                sx={{
+                                    border: '1px solid #E0E0E0',
+                                    borderRadius: '4px',
+                                    p: 0.5,
+                                    height: 32,
+                                    width: 32,
+                                    bgcolor: '#ffffff',
+                                    '&:hover:not(:disabled)': {
+                                        bgcolor: '#F3E8FF',
+                                        borderColor: '#5C17E5',
+                                    },
+                                    '&:disabled': {
+                                        opacity: 0.4,
+                                    }
+                                }}
+                            >
+                                <KeyboardArrowLeftIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                sx={{
+                                    border: '1px solid #E0E0E0',
+                                    borderRadius: '4px',
+                                    p: 0.5,
+                                    height: 32,
+                                    width: 32,
+                                    bgcolor: '#ffffff',
+                                    '&:hover:not(:disabled)': {
+                                        bgcolor: '#F3E8FF',
+                                        borderColor: '#5C17E5',
+                                    },
+                                    '&:disabled': {
+                                        opacity: 0.4,
+                                    }
+                                }}
+                            >
+                                <KeyboardArrowRightIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
                     </Box>
-                </Box>
-            )}
+                )
+            }
         </>
     );
 };

@@ -61,6 +61,7 @@ import {
 } from './SalesReceipt.styles';
 
 import { printStyles, fieldStyles } from './SalesReceipt.printStyles';
+import bgWhiteIcon from '../../assets/BG_White.svg';
 
 const SalesReceipt: React.FC = () => {
   const navigate = useNavigate();
@@ -823,6 +824,7 @@ const SalesReceipt: React.FC = () => {
         taxAmount,
         totalPayableAmount,
         labels: SALES_RECEIPT_LABELS,
+        brandIcon: bgWhiteIcon,
       });
 
       printWindow.document.write(htmlContent);
@@ -1380,6 +1382,7 @@ const SalesReceipt: React.FC = () => {
               onPrint={handlePrintFromModal}
               onSaveClick={handleSaveFromModal}
               hideActionButtons={true}
+              brandIcon={bgWhiteIcon}
             />
           }
           onClose={handleClosePrintModal}

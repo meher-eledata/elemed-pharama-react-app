@@ -85,6 +85,7 @@ const PaymentDetails: React.FC = () => {
   const supplierId = navigationState?.supplierId || null;
 
   const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([]);
+  const [totalAmount, setTotalAmount] = useState<number>(navigationState?.totalAmount || 0);
 
   // Fetch current payments on mount if poId is available
   useEffect(() => {
@@ -356,6 +357,15 @@ const PaymentDetails: React.FC = () => {
 
   const handleAddPayment = () => {
     if (!transactionNumber.trim() || !transactionDate || !amount.trim()) {
+      return;
+    }
+
+    const currentTotalPaid = paymentRows.reduce((sum, row) => sum + row.amount, 0);
+    const newAmount = parseFloat(amount) || 0;
+    const remainingBalance = totalAmount - currentTotalPaid;
+
+    if (newAmount > remainingBalance) {
+      alert(`Payment amount (₹${newAmount.toFixed(2)}) exceeds the remaining balance (₹${remainingBalance.toFixed(2)}).`);
       return;
     }
 

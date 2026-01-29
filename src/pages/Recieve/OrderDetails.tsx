@@ -83,6 +83,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setEditingData: table.setEditingData,
     setIsProductSelected: table.setIsProductSelected,
     isProductRowComplete: table.isProductRowComplete,
+    allReceiptsData: data.allReceiptsData,
   });
 
   // Fetch suppliers and products on mount

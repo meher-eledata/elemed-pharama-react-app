@@ -1,5 +1,5 @@
 export const LOGIN_LABELS = {
-  TITLE: "Login",
+  // TITLE: "Login",
   USERNAME_LABEL: "Username",
   USERNAME_PLACEHOLDER: "Enter your username",
   PASSWORD_LABEL: "Password",

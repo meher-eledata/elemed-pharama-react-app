@@ -19,6 +19,7 @@ import { useDispatch } from "react-redux";
 import { LOGIN_LABELS } from "../../../config/label/loginLabels";
 import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants";
 import { handleLoginEffect } from "../../../config/helpers/loginHandlers";
+import bgWhiteIcon from "../../../assets/BG_White.svg";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -105,22 +106,48 @@ const LoginForm: React.FC = () => {
         maxWidth: "100%",
         alignItems: "center",
         // marginBlock: "auto", // Removed essentially to allow custom top spacing
-        marginTop: "6.5rem", // 104px = 6.5rem - Custom top spacing
+        marginTop: "0.5rem", // Moved branding even higher as requested
       }}
     >
-      <Typography
-        variant="h4"
+      <Box
         sx={{
-          fontFamily: "'Lexend', sans-serif",
-          fontWeight: 600,
-          fontSize: "2rem", // 32px = 2rem
-          lineHeight: "2.25rem", // 36px = 2.25rem
-          color: "#1A212B",
-          mb: "1.5rem", // 24px = 1.5rem
+          mb: "2.5rem",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start", // Align to the left
+          width: { xs: "100%", sm: "400px" }, // Match form width
         }}
       >
-        {LOGIN_LABELS.TITLE}
-      </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem", // Moved text closer to logo
+            mb: "0.5rem",
+          }}
+        >
+          <img
+            src={bgWhiteIcon}
+            alt="Logo"
+            style={{
+              height: "100px", // Restored to large size as requested
+              width: "auto",
+            }}
+          />
+          <Typography
+            sx={{
+              fontFamily: "'Lexend', sans-serif",
+              fontWeight: 700,
+              fontSize: "1.7rem", // Adjusted to ensure it fits on one line
+              lineHeight: "1.1",
+              color: "#1A212B",
+              whiteSpace: "nowrap", // Prevents wrapping
+            }}
+          >
+            Elite  Pharmacy
+          </Typography>
+        </Box>
+      </Box>
 
       <Box
         component="form"
@@ -283,22 +310,6 @@ const LoginForm: React.FC = () => {
             : LOGIN_LABELS.LOGIN_BUTTON}
         </Button>
 
-        {/* Divider */}
-        {/* <Box sx={{ display: 'flex', alignItems: 'center', width: '400px', mb: '24px' }}>
-          <Divider sx={{ flexGrow: 1 }} />
-          <Typography sx={{ mx: '12px' }}>{LOGIN_LABELS.DIVIDER_TEXT}</Typography>
-          <Divider sx={{ flexGrow: 1 }} />
-        </Box>
-
-      
-        <Link to="/reset-password" style={{ textDecoration: 'none', alignSelf: 'center' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-            <Typography>{LOGIN_LABELS.SIGNUP_QUESTION}</Typography>
-            <Typography sx={{ color: '#2B80EC', textDecoration: 'underline' }}>
-              {LOGIN_LABELS.SIGNUP_LINK}
-            </Typography>
-          </Box>
-        </Link> */}
       </Box>
 
       {/* Snackbar */}
@@ -315,7 +326,7 @@ const LoginForm: React.FC = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </Box>
+    </Box >
   );
 };
 

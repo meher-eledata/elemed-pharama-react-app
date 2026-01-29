@@ -26,6 +26,7 @@ interface PrintPreviewModalProps {
   onSaveClick?: () => void; // Handler for Save button click
   onAfterSave?: () => void; // Optional callback after successful save
   hideActionButtons?: boolean; // Hide the action buttons (for view-only mode)
+  brandIcon?: string;
 }
 
 const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
@@ -49,6 +50,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   onSaveClick,
   onAfterSave,
   hideActionButtons = false,
+  brandIcon,
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
 
@@ -95,16 +97,46 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         maxWidth: '481px',
         margin: '0 auto'
       }}>
-        {/* Receipt Header */}
-        <Box sx={{ textAlign: 'left', marginBottom: '24px' }}>
-          <Typography sx={{
-            fontSize: '24px',
-            fontWeight: 700,
-            color: '#1A212B',
-            marginBottom: '0'
-          }}>
-            {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
-          </Typography>
+        {/* Branded Receipt Header */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+          paddingBottom: '10px',
+          borderBottom: '2px solid #1A212B'
+        }}>
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+            {brandIcon && (
+              <Box
+                component="img"
+                src={brandIcon}
+                sx={{
+                  width: '90px',
+                  height: 'auto',
+                  marginTop: '-15px',
+                  marginLeft: '-10px'
+                }}
+                alt="Logo"
+              />
+            )}
+          </Box>
+          <Box sx={{ flex: 3, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
+              ELITE PHARMACY
+            </Typography>
+            <Typography sx={{ fontSize: '9px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
+              (SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)
+            </Typography>
+            <Typography sx={{ fontSize: '8px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
+              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
+              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
+              GSTIN No: 37AAQCS3213C2ZH<br />
+              (M): 0891-2554040, 8096655050
+            </Typography>
+          </Box>
+          <Box sx={{ flex: 1, textAlign: 'right' }}>
+          </Box>
         </Box>
 
         {/* Four Section Layout - 2x2 Grid */}
@@ -363,8 +395,10 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             </Box>
           </Box>
         </Box>
+        <Typography sx={{ marginTop: '10px', textAlign: 'right', fontSize: '8px', fontWeight: 600, color: '#1A212B' }}>
+          Powered by Elemed
+        </Typography>
       </Box>
-
     </Box>
   );
 };

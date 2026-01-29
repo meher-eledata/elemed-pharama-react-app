@@ -505,15 +505,23 @@ export const receiveApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Receive", "Dashboard", "Reports"],
+      invalidatesTags: ["Receive"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
     }),
     getSupplierCreditBalance: builder.query<
       GetSupplierCreditBalanceResponse,
       GetSupplierCreditBalanceRequest
     >({
-      query: (params) => ({
-        url: `receive/get-supplier-credit-balance?supplier_id=${params.supplier_id}`,
-        method: "GET",
+      query: (body) => ({
+        url: "receive/get-supplier-credit-balance",
+        method: "POST",
+        body,
       }),
       providesTags: ["Receive"],
     }),

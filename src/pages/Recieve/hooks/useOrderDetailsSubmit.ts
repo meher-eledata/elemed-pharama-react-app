@@ -37,6 +37,7 @@ interface SubmitHookParams {
   setEditingData: (val: any) => void;
   setIsProductSelected: (val: boolean) => void;
   isProductRowComplete: (row: PharmaTableRow) => boolean;
+  allReceiptsData?: any[];
 }
 
 export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
@@ -74,6 +75,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     setEditingData,
     setIsProductSelected,
     isProductRowComplete,
+    allReceiptsData,
   } = params;
 
   const getProductIdFromName = (productName: string): number | null => {
@@ -440,6 +442,17 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         const selectedSupplierData = supplierOptions.find(s => s.supplier_name === supplierName);
         const supplierId = selectedSupplierData ? selectedSupplierData.supplier_id : 0;
 
+        // Calculate total credit available for this supplier from all receipts
+        let totalCreditAvailable = 0;
+        if (allReceiptsData && Array.isArray(allReceiptsData)) {
+          totalCreditAvailable = allReceiptsData
+            .filter(r => r.supplier_id === supplierId || r.supplier_name === supplierName)
+            .reduce((sum, r) => {
+              const credit = r.supplier_credit_available ? parseFloat(r.supplier_credit_available) : 0;
+              return sum + credit;
+            }, 0);
+        }
+
         navigate('/receive/payment-details', {
           state: {
             supplierName,
@@ -450,6 +463,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
             isEditMode: false,
             receiptId: newReceiptId,
             receiptNumber: `RA${newReceiptId}`,
+            creditAvailable: totalCreditAvailable,
+            totalAmount: pharmaTableData.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
           }
         });
       }
