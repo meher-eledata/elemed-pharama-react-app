@@ -227,7 +227,7 @@ export const executeSave = async ({
       : finalInvoiceNumber.toString().trim();
 
 
-    const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
+    const patientTypeNumber = patientType === 'In Patient' ? 1 : 0;
 
     // Helper to map UI payment modes to backend keys (e.g., "Credit Card" -> "CREDIT_CARD")
     const getBackendPaymentMethod = (mode: string) => {
@@ -314,6 +314,13 @@ export const executeSave = async ({
         payment_mode: backendPaymentMethod,
         payment_amount: parseFloat(totalPayableAmount || '0'),
         customer_id: selectedCustomer?.id || editModeData?.customer_id || 4, // Default to a valid ID if missing
+        customer_name: customerName,
+        customer_mobile: customerMobile,
+        customer_city: customerCity,
+        doctor_name: doctorName,
+        doctor_mobile: doctorMobile,
+        doctor_email: doctorEmail,
+        patient_type: patientTypeNumber,
         created_by: user?.username || 'meher',
         Deleted: deletedLines,
         Added: addedLines,

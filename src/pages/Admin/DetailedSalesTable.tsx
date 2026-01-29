@@ -1,15 +1,17 @@
-import React, { useState, useMemo, ChangeEvent, useRef } from 'react';
-import { Box, Typography, TextField, InputAdornment, IconButton } from '@mui/material';
+import React, { useState, useMemo, useRef, ChangeEvent } from 'react';
+import { Box, Typography, TextField, InputAdornment, IconButton, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import { CSVLink } from 'react-csv';
+import dayjs, { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { DETAILED_SALES_TABLE_CONSTANTS } from '../../config/constants/DetailedSalesTable.constants';
 import { DETAILED_SALES_TABLE_LABELS } from '../../config/label/DetailedSalesTable.labels';
-import { StandardButton } from '../../components/Common';
+import { StandardButton, PharmaDatePicker } from '../../components/Common';
+import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 
 interface SalesData {
   id: number;
@@ -29,65 +31,43 @@ interface SalesData {
 const DetailedSalesTable: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
 
-  const mockData: SalesData[] = [
+  const { data: apiData, isLoading, isError } = useGetDailySalesTableQuery(
+    { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
     {
-      id: 1,
-      transactionDate: '16/05/25 15:14:31',
-      invoiceNumber: '1/00795',
-      customerName: 'K MANIKANTA',
-      paymentType: 'PHONEPAY',
-      saleAmount: 1535.00,
-      discount: 0.00,
-      cgst: 82.21,
-      gst: 0.00,
-      igst: 0.00,
-      totalAmount: 1617.21,
-      patientType: 'Out Patient',
-    },
-    {
-      id: 2,
-      transactionDate: '16/05/25 13:13:48',
-      invoiceNumber: '1/00782',
-      customerName: 'MANI',
-      paymentType: 'PHONEPAY',
-      saleAmount: 525.00,
-      discount: 0.00,
-      cgst: 28.18,
-      gst: 0.00,
-      igst: 0.00,
-      totalAmount: 553.18,
-      patientType: 'In Patient',
-    },
-    {
-      id: 3,
-      transactionDate: '16/05/25 13:04:30',
-      invoiceNumber: '1/00781',
-      customerName: 'CH SASHIDHAR REDDY',
-      paymentType: 'PHONEPAY',
-      saleAmount: 935.00,
-      discount: 0.00,
-      cgst: 50.09,
-      gst: 0.00,
-      igst: 0.00,
-      totalAmount: 985.09,
-      patientType: 'Out Patient',
-    },
-    {
-      id: 4,
-      transactionDate: '16/05/25 12:25:33',
-      invoiceNumber: '1/00780',
-      customerName: 'SHIVA S N R INDUKOORI',
-      paymentType: 'PHONEPAY',
-      saleAmount: 80.00,
-      discount: 0.00,
-      cgst: 4.29,
-      gst: 0.00,
-      igst: 0.00,
-      totalAmount: 84.29,
-      patientType: 'In Patient',
-    },
-  ];
+      skip: !selectedDate,
+      refetchOnMountOrArgChange: true
+    }
+  );
+
+  const tableData = useMemo(() => {
+    if (!apiData) return [];
+
+    return apiData.map((item, index) => ({
+      id: index + 1,
+      transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
+      invoiceNumber: item.invoice_number,
+      customerName: item.customer_name || 'N/A',
+      paymentType: item.payment_type,
+      saleAmount: parseFloat(item.sales_amount) || 0,
+      discount: parseFloat(item.discount_amount) || 0,
+      cgst: parseFloat(item.cgst) || 0,
+      gst: parseFloat(item.sgst) || 0, // Mapping SGST to gst column as per plan
+      igst: parseFloat(item.igst) || 0,
+      totalAmount: parseFloat(item.total_amount) || 0,
+      patientType: (() => {
+        const raw = item.patient_type !== undefined ? item.patient_type : (item as any).patientType;
+        if (raw === null || raw === undefined) return 'Out Patient';
+        const str = String(raw).toUpperCase().trim();
+        if (raw === 1 || str === '1' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
+          return 'In Patient';
+        }
+        return 'Out Patient';
+      })(),
+      rawPatientType: item.patient_type || 'N/A',
+    }));
+  }, [apiData]);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -107,15 +87,15 @@ const DetailedSalesTable: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-   
-    const datePart = dateString.split(' ')[0]; 
-    const [day, month, year] = datePart.split('/');
-    const fullYear = year.length === 2 ? `20${year}` : year;
-    return `${day}/${month}/${fullYear}`;
+    if (!dateString) return '-';
+    // If it's already in DD/MM/YYYY format or similar
+    if (dateString.includes('/')) return dateString;
+    // If it's YYYY-MM-DD
+    return dayjs(dateString).format('DD/MM/YYYY');
   };
 
   const filteredData = useMemo(() => {
-    let filtered = [...mockData];
+    let filtered = [...tableData];
 
     if (currentSearchTerm) {
       filtered = filtered.filter(item =>
@@ -127,12 +107,12 @@ const DetailedSalesTable: React.FC = () => {
     }
 
     return filtered;
-  }, [mockData, currentSearchTerm]);
+  }, [tableData, currentSearchTerm]);
 
   const sortedData = useMemo(() => {
     const activeSortKey = sortConfig.key || DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY;
     const activeSortDirection = sortConfig.direction || DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION;
-    
+
     return [...filteredData].sort((a, b) => {
       const aValue = a[activeSortKey as keyof SalesData];
       const bValue = b[activeSortKey as keyof SalesData];
@@ -309,15 +289,19 @@ const DetailedSalesTable: React.FC = () => {
       key: 'patientType',
       header: DETAILED_SALES_TABLE_LABELS.TABLE.PATIENT_TYPE,
       sortable: true,
-      render: (item) => (
-        <Typography sx={{
-          fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
-          fontSize: '14px',
-          color: '#1A212B',
-        }}>
-          {item.patientType}
-        </Typography>
-      ),
+      render: (item) => {
+        const val = item.patientType;
+        const isActuallyIn = (val === 'In Patient' || String(val).toUpperCase().includes('IN') && !String(val).toUpperCase().includes('OUT'));
+        return (
+          <Typography sx={{
+            fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+            fontSize: '14px',
+            color: '#1A212B',
+          }}>
+            {isActuallyIn ? 'In Patient' : 'Out Patient'}
+          </Typography>
+        );
+      },
     },
   ];
 
@@ -355,7 +339,24 @@ const DetailedSalesTable: React.FC = () => {
   }, [sortedData]);
 
   // Generate filename with current date
-  const csvFilename = `detailed_sales_table_${new Date().toISOString().split('T')[0]}.csv`;
+  const csvFilename = `detailed_sales_table_${selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')}.csv`;
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px', flexDirection: 'column', gap: 2 }}>
+        <Typography color="error">Failed to load detailed sales data.</Typography>
+        <StandardButton variant="primary" onClick={() => window.location.reload()}>Retry</StandardButton>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -388,113 +389,121 @@ const DetailedSalesTable: React.FC = () => {
       </Box>
 
       {/* Search Bar and Download Button */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'space-between',
         mb: 3,
         gap: 2,
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
           bgcolor: '#F6F8FB',
           borderRadius: '16px',
           border: '1px solid #9AABB',
           p: '12px',
           width: 'fit-content',
         }}>
-        <TextField
-          placeholder={DETAILED_SALES_TABLE_LABELS.SEARCH_PLACEHOLDER}
-          value={currentSearchTerm}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: !currentSearchTerm.trim() ? (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
-              </InputAdornment>
-            ) : null,
-            endAdornment: currentSearchTerm ? (
-              <InputAdornment position="end">
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const syntheticEvent = {
-                      target: { value: '' }
-                    } as ChangeEvent<HTMLInputElement>;
-                    handleSearchChange(syntheticEvent);
-                  }}
-                  sx={{
-                    padding: '4px',
-                    color: '#728197',
-                    '&:hover': {
-                      backgroundColor: 'transparent',
-                      color: '#1A212B'
-                    }
-                  }}
-                >
-                  <CloseIcon sx={{ fontSize: '18px' }} />
-                </IconButton>
-              </InputAdornment>
-            ) : null,
-            sx: {
-              height: '40px',
+          <TextField
+            placeholder={DETAILED_SALES_TABLE_LABELS.SEARCH_PLACEHOLDER}
+            value={currentSearchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: !currentSearchTerm.trim() ? (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: '#728197', fontSize: '20px', backgroundColor: '#ffffff' }} />
+                </InputAdornment>
+              ) : null,
+              endAdornment: currentSearchTerm ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const syntheticEvent = {
+                        target: { value: '' }
+                      } as ChangeEvent<HTMLInputElement>;
+                      handleSearchChange(syntheticEvent);
+                    }}
+                    sx={{
+                      padding: '4px',
+                      color: '#728197',
+                      '&:hover': {
+                        backgroundColor: 'transparent',
+                        color: '#1A212B'
+                      }
+                    }}
+                  >
+                    <CloseIcon sx={{ fontSize: '18px' }} />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+              sx: {
+                height: '40px',
+                borderRadius: '12px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #9AA8bc',
+                outline: 'none !important',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  border: 'none !important',
+                },
+                '&:hover': {
+                  border: '1px solid #9AA8bc !important',
+                  outline: 'none !important',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: 'none !important',
+                  },
+                },
+                '&.Mui-focused': {
+                  border: '1px solid #9AA8bc !important',
+                  outline: 'none !important',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: 'none !important',
+                  },
+                },
+              },
+            }}
+            sx={{
+              width: '600px',
               borderRadius: '12px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #9AA8bc',
-              outline: 'none !important',
-              '& .MuiOutlinedInput-notchedOutline': {
-                border: 'none !important',
-              },
-              '&:hover': {
-                border: '1px solid #9AA8bc !important',
+              '& .MuiOutlinedInput-root': {
                 outline: 'none !important',
+                '&:focus': {
+                  outline: 'none !important',
+                },
+                '&:focus-visible': {
+                  outline: 'none !important',
+                },
                 '& .MuiOutlinedInput-notchedOutline': {
                   border: 'none !important',
                 },
-              },
-              '&.Mui-focused': {
-                border: '1px solid #9AA8bc !important',
-                outline: 'none !important',
-                '& .MuiOutlinedInput-notchedOutline': {
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                   border: 'none !important',
                 },
               },
-            },
-          }}
-          sx={{
-            width: '600px',
-            borderRadius: '12px',
-            '& .MuiOutlinedInput-root': {
-              outline: 'none !important',
-              '&:focus': {
-                outline: 'none !important',
-              },
-              '&:focus-visible': {
-                outline: 'none !important',
-              },
-              '& .MuiOutlinedInput-notchedOutline': {
-                border: 'none !important',
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                border: 'none !important',
-              },
-            },
-          }}
-        />
+            }}
+          />
         </Box>
-        <StandardButton
-          variant="primary"
-          size="medium"
-          startIcon={<DownloadIcon />}
-          onClick={handleDownloadCSV}
-          sx={{
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Download CSV
-        </StandardButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <PharmaDatePicker
+            value={selectedDate}
+            onChange={setSelectedDate}
+            width={200}
+            height={40}
+          />
+          <StandardButton
+            variant="primary"
+            size="medium"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadCSV}
+            sx={{
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Download CSV
+          </StandardButton>
+        </Box>
       </Box>
 
       {/* Table */}
@@ -585,11 +594,11 @@ const DetailedSalesTable: React.FC = () => {
             filterOptions: [],
           }}
           currentSearchTerm=""
-          onSearchChange={() => {}}
+          onSearchChange={() => { }}
           showFilters={false}
-          onShowFiltersToggle={() => {}}
+          onShowFiltersToggle={() => { }}
           currentFilterKey=""
-          onFilterSelect={() => {}}
+          onFilterSelect={() => { }}
           totalRows={sortedData.length}
           rowsPerPage={rowsPerPage}
           currentPage={currentPage}

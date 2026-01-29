@@ -93,6 +93,7 @@ export interface CreateSalesRequest {
   insuranceCompany: string;
   invoiceNumber: string;
   invoiceDate: string;
+  patient_type?: number;
   items: SalesReceiptItem[];
   totalValue: string;
   totalDiscount: string;
@@ -214,7 +215,7 @@ export interface SubmitSaleRequest {
   doctor_email?: string; // Email of the doctor
   invoice_number?: string | null; // Invoice number entered by user (for return flow - invoice already stored in DB)
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
-  patient_type?: number; // 0 for "In Patient", 1 for "Out Patient"
+  patient_type?: number; // 1 for "In Patient", 0 for "Out Patient"
   lines: SubmitSaleLine[];
 }
 
@@ -268,6 +269,13 @@ export interface EditSaleRequest {
   payment_amount: number;
   created_by: string;
   customer_id: number;
+  customer_name?: string;
+  customer_mobile?: string;
+  customer_city?: string;
+  doctor_name?: string;
+  doctor_mobile?: string;
+  doctor_email?: string;
+  patient_type?: number;
   Deleted?: number[];
   Added?: SubmitSaleLine[];
   Edited?: EditSaleLine[];

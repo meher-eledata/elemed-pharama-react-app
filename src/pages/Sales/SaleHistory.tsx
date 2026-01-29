@@ -160,7 +160,12 @@ export default function SaleHistory() {
         doctorMobile: item.doctorMobile || '',
         doctorEmail: item.doctorEmail || '',
         username: item.username || 'Guest',
-        patientType: item.patientType || 'Out Patient', // Default to "Out Patient" if not specified
+        patientType: (() => {
+          const raw = item.patientType;
+          if (raw === null || raw === undefined || raw === '') return 'Out Patient';
+          const str = String(raw).toUpperCase().trim();
+          return (raw === 1 || str === '1' || str === 'INPATIENT' || (str.startsWith('IN') && !str.includes('OUT'))) ? 'In Patient' : 'Out Patient';
+        })(),
         totalAmount: item.totalAmount || 0,
         totalReturnedAmount: 0,
         hasReturn: false,
@@ -184,11 +189,13 @@ export default function SaleHistory() {
         ? dayjs(invoice.created_at).format('DD/MM/YYYY')
         : '';
 
-      // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
-      let patientType = 'Out Patient'; // Default
-      if (invoice.patient_type !== undefined && invoice.patient_type !== null) {
-        patientType = invoice.patient_type === 0 ? 'In Patient' : 'Out Patient';
-      }
+      // Convert patient_type from number or string to normalized string
+      const patientType = (() => {
+        const raw = invoice.patient_type !== undefined ? invoice.patient_type : invoice.patientType;
+        if (raw === null || raw === undefined || raw === '') return 'Out Patient';
+        const str = String(raw).toUpperCase().trim();
+        return (raw === 1 || str === '1' || str === 'INPATIENT' || (str.startsWith('IN') && !str.includes('OUT'))) ? 'In Patient' : 'Out Patient';
+      })();
 
       // Backend SQL query uses "i.id AS invoice_id"
       const safeInvoiceId = (invoice.invoice_id && !isNaN(Number(invoice.invoice_id))) ? Number(invoice.invoice_id) : null;
@@ -304,6 +311,7 @@ export default function SaleHistory() {
           username: savedItem.username || item.username,
           paymentMode: savedItem.paymentMode || item.paymentMode,
           insuranceCompany: savedItem.insuranceCompany || item.insuranceCompany,
+          patientType: (savedItem.patientType && savedItem.patientType.toLowerCase().includes('in')) ? 'In Patient' : item.patientType,
         };
 
         resultMap.set(item.id, mergedItem);
@@ -850,7 +858,9 @@ export default function SaleHistory() {
       key: 'patientType',
       header: 'Patient Type',
       sortable: true,
-      render: (item) => item.patientType || 'Out Patient',
+      render: (item) => (
+        (Number(item.patientType) === 1 || String(item.patientType || '').toUpperCase().includes('IN') && !String(item.patientType || '').toUpperCase().includes('OUT')) ? 'In Patient' : 'Out Patient'
+      ),
     },
     {
       key: 'username',

@@ -160,6 +160,7 @@ const SalesReceipt: React.FC = () => {
     doctorEmail: string;
     paymentMode: string;
     insuranceCompany: string;
+    patientType: string;
     invoiceNumber: string;
     invoiceDate: string;
     salesItems: SalesReceiptItem[];
@@ -345,6 +346,15 @@ const SalesReceipt: React.FC = () => {
                 doctorEmail: result.doctor_email || result.invoice?.doctor_email || editModeData.doctorEmail || '',
                 paymentMode: result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || 'Cash',
                 insuranceCompany: result.insurance_company || result.invoice?.insurance_company || editModeData.insuranceCompany || '',
+                patientType: (() => {
+                  const raw = invoice.patient_type !== undefined ? invoice.patient_type : (invoice as any).patientType;
+                  if (raw === null || raw === undefined) return 'Out Patient';
+                  const str = String(raw).trim().toUpperCase();
+                  if (raw === 0 || str === '0' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
+                    return 'In Patient';
+                  }
+                  return 'Out Patient';
+                })(),
                 invoiceNumber: (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || editModeData.invoiceNumber || '',
                 invoiceDate: invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB').split('/').reverse().join('-') : (editModeData.invoiceDate || getTodayDate()),
                 salesItems: mappedSalesItems,
@@ -378,6 +388,7 @@ const SalesReceipt: React.FC = () => {
               if (invoiceData.doctorEmail) setDoctorEmail(invoiceData.doctorEmail);
               if (invoiceData.paymentMode) setPaymentMode(invoiceData.paymentMode);
               if (invoiceData.insuranceCompany) setInsuranceCompany(invoiceData.insuranceCompany);
+              if (invoiceData.patientType) setPatientType(invoiceData.patientType);
               if (invoiceData.invoiceNumber) setInvoiceNumber(invoiceData.invoiceNumber);
               if (invoiceData.invoiceDate) setInvoiceDate(invoiceData.invoiceDate);
 
@@ -436,6 +447,7 @@ const SalesReceipt: React.FC = () => {
                 doctorEmail: invoiceData.doctorEmail || '',
                 paymentMode: invoiceData.paymentMode || '',
                 insuranceCompany: invoiceData.insuranceCompany || '',
+                patientType: invoiceData.patientType || 'Out Patient',
                 invoiceNumber: invoiceData.invoiceNumber || '',
                 invoiceDate: invoiceData.invoiceDate || '',
                 salesItems: originalItems,
@@ -971,7 +983,7 @@ const SalesReceipt: React.FC = () => {
       isValid: missingFields.length === 0,
       missingFields,
     };
-  }, [customerName, customerMobile, doctorName, salesItems]);
+  }, [customerName, customerMobile, doctorName, patientType, salesItems]);
 
   // Check if there are any changes from original data (for edit mode)
   const hasChanges = useCallback(() => {
@@ -989,6 +1001,7 @@ const SalesReceipt: React.FC = () => {
       doctorMobile.trim() !== originalInvoiceData.doctorMobile.trim() ||
       doctorEmail.trim() !== originalInvoiceData.doctorEmail.trim() ||
       paymentMode.trim() !== originalInvoiceData.paymentMode.trim() ||
+      patientType.trim() !== originalInvoiceData.patientType.trim() ||
       insuranceCompany.trim() !== originalInvoiceData.insuranceCompany.trim() ||
       invoiceNumber.trim() !== originalInvoiceData.invoiceNumber.trim() ||
       invoiceDate.trim() !== originalInvoiceData.invoiceDate.trim()
@@ -1050,6 +1063,7 @@ const SalesReceipt: React.FC = () => {
     doctorMobile,
     doctorEmail,
     paymentMode,
+    patientType,
     insuranceCompany,
     invoiceNumber,
     invoiceDate,
@@ -1111,7 +1125,7 @@ const SalesReceipt: React.FC = () => {
       skipNavigation,
       onSuccess,
     });
-  }, [customerName, customerMobile, customerCity, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm]);
+  }, [customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {

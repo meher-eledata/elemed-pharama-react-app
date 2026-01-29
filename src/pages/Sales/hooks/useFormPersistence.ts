@@ -64,14 +64,16 @@ export const useFormPersistence = ({
       setIsDataLoaded(true);
       return;
     }
-    
+
     // Only load form data if not in edit mode and formData exists
     if (formData) {
+      const raw = formData.patientType;
+      const initialPatientType = (Number(raw) === 1 || String(raw || '').toUpperCase().trim().startsWith('IN') && !String(raw || '').toUpperCase().trim().includes('OUT')) ? 'In Patient' : 'Out Patient';
       onFormDataLoaded({
         ...formData,
-        patientType: formData.patientType || 'Out Patient', // Default if missing
+        patientType: initialPatientType,
       });
-      
+
       if (formData.customerName && formData.customerMobile) {
         const restoredCustomer: Customer = {
           id: 0,
@@ -106,7 +108,7 @@ export const useFormPersistence = ({
         invoiceNumber,
         invoiceDate,
       };
-      
+
       dispatch(saveFormData(formDataToSave));
     }
   }, [isDataLoaded, isEditMode, customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, debouncedInsuranceCompany, invoiceNumber, invoiceDate, dispatch]);

@@ -19,7 +19,7 @@ export const DETAILED_SALES_TABLE_CONSTANTS = {
     ROW_HOVER_BACKGROUND: 'rgba(92, 23, 229, 0.05)',
   },
   PAGINATION: {
-    ROWS_PER_PAGE: 10,
+    ROWS_PER_PAGE: 6,
     DEFAULT_SORT_KEY: 'transactionDate',
     DEFAULT_SORT_DIRECTION: 'desc' as const,
   },

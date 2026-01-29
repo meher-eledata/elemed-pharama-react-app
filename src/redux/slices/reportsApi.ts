@@ -9,6 +9,24 @@ export interface WeeklyBillCountsRequest {
   end_date: string;
 }
 
+export interface DailySalesTableRequest {
+  date: string;
+}
+
+export interface DailySalesTableItem {
+  transaction_date: string;
+  invoice_number: string;
+  customer_name: string | null;
+  payment_type: string;
+  sales_amount: string;
+  discount_amount: string;
+  cgst: string;
+  sgst: string;
+  igst: string;
+  total_amount: string;
+  patient_type: string;
+}
+
 export interface WeeklyBillCountItem {
   day: string;
   inpatient_bills: string;
@@ -68,10 +86,19 @@ export const reportsApi = createApi({
       }),
       providesTags: ["Reports"],
     }),
+    getDailySalesTable: builder.query<DailySalesTableItem[], DailySalesTableRequest>({
+      query: (params) => ({
+        url: "reports/dailySalesReport/get-daily-sales-table",
+        method: "GET",
+        params,
+      }),
+      providesTags: ["Reports"],
+    }),
   }),
 });
 
 export const {
   useGetDailySalesReportQuery,
-  useGetWeeklyBillCountsQuery
+  useGetWeeklyBillCountsQuery,
+  useGetDailySalesTableQuery
 } = reportsApi;
