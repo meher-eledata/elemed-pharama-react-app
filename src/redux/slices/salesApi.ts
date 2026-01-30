@@ -210,6 +210,7 @@ export interface SubmitSaleRequest {
   customer_name?: string; // Send name if ID not available
   customer_mobile?: string; // Send mobile if ID not available
   customer_city?: string; // Send city if ID not available
+  doctor_id?: number; // ID of the doctor
   doctor_name?: string; // Name of the doctor
   doctor_mobile?: string; // Mobile of the doctor
   doctor_email?: string; // Email of the doctor
@@ -272,6 +273,7 @@ export interface EditSaleRequest {
   customer_name?: string;
   customer_mobile?: string;
   customer_city?: string;
+  doctor_id?: number;
   doctor_name?: string;
   doctor_mobile?: string;
   doctor_email?: string;

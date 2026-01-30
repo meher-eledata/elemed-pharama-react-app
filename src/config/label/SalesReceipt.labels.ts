@@ -55,7 +55,7 @@ export const SALES_RECEIPT_LABELS = {
 
   // Financial Summary
   TOTAL_VALUE_LABEL: "Total value (Rs)",
-  TOTAL_DISCOUNT_LABEL: "Total Discount (%)",
+  TOTAL_DISCOUNT_LABEL: "Total Discount (Rs)",
   TAX_AMOUNT_LABEL: "Tax amount (Rs)",
   TOTAL_PAYABLE_LABEL: "Total payable amount (Rs)",
 

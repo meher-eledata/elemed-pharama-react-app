@@ -575,13 +575,18 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
           <TextField
             value={discount}
             onChange={(e) => {
-              const inputValue = e.target.value;
+              let inputValue = e.target.value;
+              // Prevent leading zero (e.g., "05" -> "5")
+              if (inputValue.length > 1 && inputValue.startsWith('0')) {
+                inputValue = inputValue.substring(1);
+                e.target.value = inputValue; // Force browser to sync immediately
+              }
               // Allow empty string or valid number
               if (inputValue === '') {
                 onDiscountChange(0);
                 onDiscountAuthorizedByChange(''); // Clear authorization when discount is 0
               } else {
-                const numValue = parseInt(inputValue);
+                const numValue = parseFloat(inputValue);
                 if (!isNaN(numValue)) {
                   onDiscountChange(Math.max(SALES_PAGE_CONSTANTS.MIN_DISCOUNT, Math.min(SALES_PAGE_CONSTANTS.MAX_DISCOUNT, numValue)));
                   if (numValue === 0) {
@@ -617,8 +622,18 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   outline: 'none',
                 },
               },
+              '& .MuiInputBase-input': {
+                textAlign: 'center',
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: "14px",
+              }
             }}
-            inputProps={{ style: { textAlign: 'center' } }}
+            type="number"
+            inputProps={{
+              step: "1",
+              min: 0,
+              max: 100
+            }}
           />
         </Box>
 

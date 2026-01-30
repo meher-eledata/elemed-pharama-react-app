@@ -105,7 +105,7 @@ export const getTableColumns = ({
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_UNIT_PRICE,
       render: (item) => (
         <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-          {Math.floor(parseFloat(item.unitPrice || '0'))}
+          {parseFloat(item.unitPrice || '0').toFixed(2)}
         </Typography>
       )
     },
@@ -122,7 +122,13 @@ export const getTableColumns = ({
             <TextField
               value={item.discountPercent}
               onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
+                let inputValue = e.target.value;
+                // Prevent leading zero (e.g., "05" -> "5")
+                if (inputValue.length > 1 && inputValue.startsWith('0')) {
+                  inputValue = inputValue.substring(1);
+                  e.target.value = inputValue; // Force browser to sync immediately
+                }
+                const value = parseInt(inputValue) || 0;
                 setSalesItems(prev => prev.map(product => {
                   if (product.id === item.id) {
                     const updated = {
@@ -134,10 +140,13 @@ export const getTableColumns = ({
                   return product;
                 }));
               }}
+              onFocus={(e) => {
+                e.target.select();
+              }}
               disabled={!item.productName || item.productName.trim() === ''}
               size="small"
               type="number"
-              inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
+              inputProps={{ min: 0, max: 100, step: "1", style: { textAlign: 'center' } }}
               sx={{
                 width: 70,
                 '& .MuiOutlinedInput-root': {

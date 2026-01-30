@@ -35,7 +35,13 @@ const DiscountField: React.FC<{
     <TextField
       value={item.discount}
       onChange={(e) => {
-        const value = parseInt(e.target.value) || 0;
+        let inputValue = e.target.value;
+        // Prevent leading zero (e.g., "05" -> "5")
+        if (inputValue.length > 1 && inputValue.startsWith('0')) {
+          inputValue = inputValue.substring(1);
+          e.target.value = inputValue; // Force browser to sync immediately
+        }
+        const value = parseInt(inputValue) || 0;
         dispatch(updateItemDetails({
           id: item.id,
           updates: {
@@ -43,9 +49,12 @@ const DiscountField: React.FC<{
           }
         }));
       }}
+      onFocus={(e) => {
+        e.target.select();
+      }}
       size="small"
       type="number"
-      inputProps={{ min: 0, max: 100, style: { textAlign: 'center' } }}
+      inputProps={{ min: 0, max: 100, step: "1", style: { textAlign: 'center' } }}
       sx={{
         width: 80,
         '& .MuiOutlinedInput-root': {

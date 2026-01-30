@@ -96,18 +96,24 @@ export default function SaleReturn() {
     const baseAmount = unitPrice * quantity;
 
     const discountMultiplier = 1 - (discountPercent / 100);
-    const discountedAmount = baseAmount * discountMultiplier;
+    const subtotalInclusive = baseAmount * discountMultiplier;
 
     const discountAmount = (unitPrice * discountPercent / 100 * quantity).toFixed(2);
 
-    const cgstAmount = discountedAmount * cgstPercent / 100;
-    const sgstAmount = discountedAmount * sgstPercent / 100;
-    const igstAmount = discountedAmount * igstPercent / 100;
+    // Calculate total tax percentage
+    const totalTaxPercent = cgstPercent + sgstPercent + igstPercent;
 
-    const finalAmount = discountedAmount + cgstAmount + sgstAmount + igstAmount;
+    // Extract base amount (refund) from inclusive subtotal
+    // Base = Inclusive / (1 + TaxRate/100)
+    const refundAmount = subtotalInclusive / (1 + totalTaxPercent / 100);
+
+    // Calculate individual tax amounts for record (though removed from summary)
+    const cgstAmount = refundAmount * cgstPercent / 100;
+    const sgstAmount = refundAmount * sgstPercent / 100;
+    const igstAmount = refundAmount * igstPercent / 100;
 
     return {
-      amount: finalAmount.toFixed(2),
+      amount: refundAmount.toFixed(2), // This is the amount to be returned (Total - Tax)
       discount: discountAmount,
       cgst: cgstAmount.toFixed(2),
       sgst: sgstAmount.toFixed(2),
@@ -257,15 +263,13 @@ export default function SaleReturn() {
                 const productName = line.name || line.product_name || line.productName || (productId ? `Product ID: ${productId}` : 'Unknown Product');
 
                 let discountPercentValue = '0';
-                if (line.discount_percent !== undefined && line.discount_percent !== null) {
-                  discountPercentValue = line.discount_percent.toString();
-                } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
-                  discountPercentValue = line.discountPercent.toString();
-                } else if (line.discount !== undefined && line.discount !== null) {
-                  // API may return fractional value (e.g., 0.05 for 5%) OR percentage (e.g., 5 for 5%)
-                  const disc = parseFloat(line.discount);
-                  discountPercentValue = (disc > 0 && disc < 1) ? (disc * 100).toString() : disc.toString();
-                }
+                const rawDisc = line.discount_percent ?? line.discountPercent ?? line.discount ?? 0;
+                const discValue = parseFloat(rawDisc.toString());
+
+                // Detection: if it looks like a fraction (e.g. 0.05 or 0.5), convert to percentage (5 or 50)
+                discountPercentValue = (discValue > 0 && discValue <= 1)
+                  ? (discValue * 100).toString()
+                  : discValue.toString();
 
 
                 const quantityValue = line.quantity !== undefined && line.quantity !== null
@@ -337,8 +341,8 @@ export default function SaleReturn() {
                   expiryDate: line.expiry_date || line.expiryDate || '',
                   quantity: String(returnQty),
                   type: line.product_type || line.type || 'N/A', // API returns 'product_type'
-                  // Map backend 'rate' to 'unit_price', also check for 'unit_price' as fallback
-                  unitPrice: line.rate?.toString() || line.unit_price?.toString() || line.unitPrice?.toString() || '0',
+                  // Map backend 'selling_price' to 'unit_price', falling back to 'rate' or 'unit_price'
+                  unitPrice: line.selling_price?.toString() || line.rate?.toString() || line.unit_price?.toString() || line.unitPrice?.toString() || '0',
                   mrp: line.mrp?.toString() || '0',
                   // Use calculated discount percentage
                   discountPercent: discountPercentValue,
@@ -1001,7 +1005,7 @@ export default function SaleReturn() {
               key: 'unitPrice',
               header: 'Unit price',
               sortable: true,
-              render: (item) => Math.floor(parseFloat(item.unitPrice || '0'))
+              render: (item) => parseFloat(item.unitPrice || '0').toFixed(2)
             },
             {
               key: 'discount',
@@ -1013,39 +1017,10 @@ export default function SaleReturn() {
                 </Typography>
               ),
             },
-            {
-              key: 'cgst',
-              header: 'CGST (%)',
-              sortable: false,
-              render: (item: ReturnItem) => (
-                <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
-                  {item.cgstPercent}
-                </Typography>
-              ),
-            },
-            {
-              key: 'sgst',
-              header: 'SGST (%)',
-              sortable: false,
-              render: (item: ReturnItem) => (
-                <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
-                  {item.sgstPercent}
-                </Typography>
-              ),
-            },
-            {
-              key: 'igst',
-              header: 'IGST (%)',
-              sortable: false,
-              render: (item: ReturnItem) => (
-                <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B', textAlign: 'center' }}>
-                  {item.igstPercent}
-                </Typography>
-              ),
-            },
+
             {
               key: 'amount',
-              header: 'Amount (₹)',
+              header: 'Refund Amount (₹)',
               sortable: true,
               render: (item: ReturnItem) => (
                 <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', color: '#1A212B' }}>
@@ -1108,14 +1083,7 @@ export default function SaleReturn() {
             {totalDiscountAmount.toFixed(2)}
           </Typography>
         </Box>
-        <Box>
-          <Typography sx={{ fontSize: '14px', color: '#728197', mb: 0.5 }}>
-            Total tax amount (Rs)
-          </Typography>
-          <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>
-            {totalTaxAmount.toFixed(2)}
-          </Typography>
-        </Box>
+
         <Box>
           <Typography sx={{ fontSize: '14px', color: '#728197', mb: 0.5 }}>
             Total amount to be returned (Rs)

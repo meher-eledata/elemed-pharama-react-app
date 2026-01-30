@@ -15,6 +15,7 @@ import {
   useSubmitSaleMutation,
   useUpdateSalesMutation,
   useAddCustomerMutation,
+  useGetCustomersQuery,
   useGetAllCustomerNamesQuery,
   useGetInvoiceDetailsMutation,
   useEditSaleMutation,
@@ -85,6 +86,7 @@ const SalesReceipt: React.FC = () => {
     );
   }, [doctorNamesData]);
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
+  const { data: customersData = [] } = useGetCustomersQuery();
 
   const {
     data: apiProducts = [],
@@ -258,17 +260,16 @@ const SalesReceipt: React.FC = () => {
                 const quantity = parseFloat(line.quantity || '1');
                 const baseAmount = unitPrice * quantity;
 
-                // Calculate discount percentage - API now returns percentage values (0-100)
+                // Calculate discount percentage
                 let discountPercentValue = '0';
-                if (line.discount_percent !== undefined && line.discount_percent !== null) {
-                  discountPercentValue = line.discount_percent.toString();
-                } else if (line.discountPercent !== undefined && line.discountPercent !== null) {
-                  discountPercentValue = line.discountPercent.toString();
-                } else if (line.discount !== undefined && line.discount !== null) {
-                  // API may return fractional value (e.g., 0.05 for 5%) OR percentage (e.g., 5 for 5%)
-                  const disc = parseFloat(line.discount);
-                  discountPercentValue = (disc > 0 && disc < 1) ? (disc * 100).toString() : disc.toString();
-                }
+                const rawDisc = line.discount_percent ?? line.discountPercent ?? line.discount ?? 0;
+                const discValue = parseFloat(rawDisc.toString());
+
+                // Detection: if it looks like a fraction (e.g. 0.05 or 0.5), convert to percentage (5 or 50)
+                // Otherwise use as is (already 0-100)
+                discountPercentValue = (discValue > 0 && discValue <= 1)
+                  ? (discValue * 100).toString()
+                  : discValue.toString();
 
                 // ROBUST TAX PERCENTAGE DERIVATION:
                 // Trust the stored value if it looks like a percentage (0-30)
@@ -1089,12 +1090,22 @@ const SalesReceipt: React.FC = () => {
   };
 
   const executeSaveWrapper = useCallback(async (skipNavigation = false, onSuccess?: () => void) => {
+    // Find doctor_id from doctorNamesData matching selected doctorName
+    const matchedDoctor = doctorNamesData.find((d: any) =>
+      (typeof d === 'string' ? d : d.name) === doctorName
+    );
+    const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
+
+    // Find customer_id from customersData matching selected customerName
+    const matchedCustomerData = customersData.find((c: any) => c.name === customerName);
+
     await executeSave({
       customerName,
       customerMobile,
       customerCity,
       patientType,
       doctorName,
+      doctorId,
       doctorMobile,
       doctorEmail,
       paymentMode,
@@ -1106,7 +1117,7 @@ const SalesReceipt: React.FC = () => {
       totalDiscount,
       taxAmount,
       totalPayableAmount,
-      selectedCustomer,
+      selectedCustomer: matchedCustomerData || selectedCustomer,
       apiProducts,
       isProductsLoading,
       isProductsError,

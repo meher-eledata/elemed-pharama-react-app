@@ -30,17 +30,16 @@ export const useCustomerPhones = ({
         try {
           const normalizedCustomerName = customerName.trim().toLowerCase();
           const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedCustomerName);
-          
+
           // Fetch phone numbers
           const result = await getCustomerPhones({ name: customerName.trim() }).unwrap();
           const phones = result.phones || [];
           onPhoneFetched(phones);
-          
+
           // Auto-fill customer if we have a phone number
-          // Note: We skip the search-customers endpoint call since it returns 404
-          // The customer ID is not critical - we can use ID 0 as per the comment in SalesReceipt
           if (phones.length === 1 && (!customerMobile || customerMobile.trim() === '')) {
-            // Auto-fill with phone number, using ID 0 since we don't have the actual customer ID
+            // Auto-fill with phone number. 
+            // Note: actual ID lookup happens in the component's submission wrapper.
             const autoFilledCustomer: Customer = {
               id: 0,
               name: customerName.trim(),
@@ -53,10 +52,8 @@ export const useCustomerPhones = ({
               onPhoneClear();
             }
           }
-          
-          // Note: We intentionally skip calling searchCustomers endpoint
-          // because it returns 404. The customer ID is not critical for the sales flow,
-          // and we can use ID 0 as documented in SalesReceipt.tsx
+
+          // ID lookup and validation moved to SalesReceipt.tsx executeSaveWrapper for accuracy.
         } catch (error) {
           onPhoneFetched([]);
         }

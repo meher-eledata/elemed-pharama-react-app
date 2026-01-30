@@ -41,6 +41,7 @@ interface ExecuteSaveParams {
   customerCity: string;
   patientType: string;
   doctorName: string;
+  doctorId?: number;
   doctorMobile: string;
   doctorEmail: string;
   paymentMode: string;
@@ -79,6 +80,7 @@ export const executeSave = async ({
   customerCity,
   patientType,
   doctorName,
+  doctorId,
   doctorMobile,
   doctorEmail,
   paymentMode,
@@ -160,7 +162,7 @@ export const executeSave = async ({
 
     const totalQuantity = salesItems.reduce((sum, item) => sum + parseFloat(item.quantity || '0'), 0);
     const totalDiscountPercent = salesItems.length > 0
-      ? salesItems.reduce((sum, item) => sum + parseFloat(item.discountPercent || '0'), 0) / salesItems.length
+      ? (salesItems.reduce((sum, item) => sum + parseFloat(item.discountPercent || '0'), 0) / salesItems.length) / 100
       : 0;
 
     const lines = salesItems.map((item, index) => {
@@ -202,7 +204,7 @@ export const executeSave = async ({
         batch_number: batchNumber, // Required by backend
         mrp: parseFloat(item.mrp || '0'),
         sp: parseFloat(item.unitPrice || '0'),
-        discount: parseFloat(item.discountPercent || '0'),
+        discount: parseFloat(item.discountPercent || '0') / 100,
         discount_authority: item.discountAuthorizedBy || undefined, // Send name instead of ID
         cgst: cgstPercent, // Tax percentage (e.g., 1 for 1%)
         sgst: sgstPercent, // Tax percentage (e.g., 1 for 1%)
@@ -247,6 +249,7 @@ export const executeSave = async ({
       customer_name: customerName,
       customer_mobile: customerMobile,
       customer_city: customerCity,
+      doctor_id: doctorId,
       doctor_name: doctorName,
       doctor_mobile: doctorMobile,
       doctor_email: doctorEmail,
@@ -285,7 +288,7 @@ export const executeSave = async ({
           batch_number: curr.batch,
           mrp: parseFloat(curr.mrp || '0'),
           sp: parseFloat(curr.unitPrice || '0'),
-          discount: parseFloat(curr.discountPercent || '0') / 100, // Send as fraction (e.g. 0.05) if backend expects it
+          discount: parseFloat(curr.discountPercent || '0') / 100, // Send as fraction (e.g. 0.05) to backend
           cgst: parseFloat(curr.cgstPercent || '0'),
           sgst: parseFloat(curr.sgstPercent || '0'),
           igst: parseFloat(curr.igstPercent || '0'),
@@ -317,6 +320,7 @@ export const executeSave = async ({
         customer_name: customerName,
         customer_mobile: customerMobile,
         customer_city: customerCity,
+        doctor_id: doctorId,
         doctor_name: doctorName,
         doctor_mobile: doctorMobile,
         doctor_email: doctorEmail,

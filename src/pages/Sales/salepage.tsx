@@ -5,9 +5,9 @@ import { StandardButton } from "../../components/Common";
 import { useDispatch, useSelector } from "react-redux";
 import { ReusableTable } from "../../components/PharmaTable";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
-import { 
-  useGetProductTypeQuery, 
-  useLazyGetProductTypeQuery, 
+import {
+  useGetProductTypeQuery,
+  useLazyGetProductTypeQuery,
   useValidateSaleMutation,
   useGetBatchNumbersByProductIdMutation
 } from "../../redux/slices/salesApi";
@@ -18,7 +18,7 @@ import {
 } from "../../redux/slices/inventoryApi";
 import { useGetDoctorNamesQuery } from "../../redux/slices/salesApi";
 import { useGetProductsQuery } from "../../redux/slices/receiveApi";
-import { 
+import {
   addToCart,
   removeFromCart,
   updateItemQuantity,
@@ -63,27 +63,27 @@ import BulkActionsBar from "./components/BulkActionsBar";
 // Helper function to format stock error messages in a user-friendly way
 const formatStockErrorMessage = (errorMessage: string): string => {
   if (!errorMessage) return errorMessage;
-  
+
   // Check for "maximum available quantity" pattern (from backend validation)
   // Pattern: "the maximum available quantity for this product in batch AMX-2026-02-A is 10"
   const maxQtyPattern = /the maximum available quantity for this product (?:in batch )?([^\s]+) is (\d+)/i;
   const maxQtyMatch = errorMessage.match(maxQtyPattern);
-  
+
   if (maxQtyMatch) {
     const batchName = maxQtyMatch[1] || 'selected batch';
     const maxQty = maxQtyMatch[2] || '0';
     return `⚠️ Insufficient stock: The maximum available quantity for batch "${batchName}" is ${maxQty}. Please reduce the quantity or select a different batch.`;
   }
-  
+
   // Check for "No stock found" patterns
   const noStockPattern = /no stock found/i;
   const productIdPattern = /product_id\s*(\d+)/i;
   const batchPattern = /batch_number\s*([^\s,]+)/i;
-  
+
   if (noStockPattern.test(errorMessage)) {
     const productIdMatch = errorMessage.match(productIdPattern);
     const batchMatch = errorMessage.match(batchPattern);
-    
+
     if (productIdMatch && batchMatch) {
       return `⚠️ Insufficient stock: The selected batch "${batchMatch[1]}" for this product is not available. Please select a different batch or reduce the quantity.`;
     } else if (productIdMatch) {
@@ -92,35 +92,35 @@ const formatStockErrorMessage = (errorMessage: string): string => {
       return `⚠️ Insufficient stock: The selected product/batch is not available. Please select a different batch or reduce the quantity.`;
     }
   }
-  
+
   // Check for "Insufficient stock in batch" pattern
   // Pattern: "Insufficient stock in batch CTZ-2026-06-B (have 1, need 2)"
   const insufficientBatchPattern1 = /insufficient stock in batch\s+([^\s(]+)\s*\(have\s+(\d+),\s*need\s+(\d+)\)/i;
   const insufficientMatch1 = errorMessage.match(insufficientBatchPattern1);
-  
+
   if (insufficientMatch1) {
     const batchName = insufficientMatch1[1].trim();
     const available = insufficientMatch1[2];
     const requested = insufficientMatch1[3];
     return `⚠️ Insufficient stock: Batch "${batchName}" has only ${available} unit${available !== '1' ? 's' : ''} available, but ${requested} unit${requested !== '1' ? 's' : ''} ${requested === '1' ? 'is' : 'are'} requested. Please reduce the quantity or select a different batch.`;
   }
-  
+
   // Check for alternative pattern: "insufficient stock in batch X for product_id Y. have Z, need W"
   const insufficientBatchPattern2 = /insufficient stock in batch\s+([^\s]+)\s+for product_id\s+(\d+).*?have\s+(\d+).*?need\s+(\d+)/i;
   const insufficientMatch2 = errorMessage.match(insufficientBatchPattern2);
-  
+
   if (insufficientMatch2) {
     const batchName = insufficientMatch2[1];
     const available = insufficientMatch2[3];
     const requested = insufficientMatch2[4];
     return `⚠️ Insufficient stock: Batch "${batchName}" has only ${available} unit${available !== '1' ? 's' : ''} available, but ${requested} unit${requested !== '1' ? 's' : ''} ${requested === '1' ? 'is' : 'are'} requested. Please reduce the quantity or select a different batch.`;
   }
-  
+
   // Check for other stock-related errors
   if (/insufficient|not available|out of stock|stock.*not found|maximum available/i.test(errorMessage)) {
     return `⚠️ ${errorMessage}`;
   }
-  
+
   return errorMessage;
 };
 
@@ -155,13 +155,13 @@ const products: Product[] = [
 export default function SalePage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
+
   // Redux selectors
   const cartItems = useSelector(selectCartItems);
   const cartTotal = useSelector(selectCartTotal);
   const cartItemsCount = useSelector(selectCartItemsCount);
   const formData = useSelector(selectFormData);
-  
+
   // Form State
   const [productType, setProductType] = useState("");
   const [availableTypes, setAvailableTypes] = useState<Array<{ type: string; product_id: number }>>([]);
@@ -173,7 +173,7 @@ export default function SalePage() {
   const [discount, setDiscount] = useState(SALES_PAGE_CONSTANTS.DEFAULT_DISCOUNT);
   const [discountAuthorizedBy, setDiscountAuthorizedBy] = useState<string>("");
   const [discountAuthorizedById, setDiscountAuthorizedById] = useState<number | undefined>(undefined);
-  
+
   // Get doctor names with IDs from get-doctor-names endpoint
   const { data: doctorNames = [] } = useGetDoctorNamesQuery();
   const [findProduct, setFindProduct] = useState("");
@@ -194,20 +194,20 @@ export default function SalePage() {
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
-  
+
   // Toast State
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
-  
+
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: SALES_PAGE_CONSTANTS.DEFAULT_SORT_KEY,
     direction: SALES_PAGE_CONSTANTS.SORT_DIRECTION_ASC
   });
 
   // RTK Query hooks
-  const { 
-    data: apiProducts = [], 
+  const {
+    data: apiProducts = [],
     isLoading: isProductsLoading,
     error: productsError,
     isFetching: isProductsFetching
@@ -217,32 +217,32 @@ export default function SalePage() {
   const [getBrandsFromProductId, { isLoading: isBrandsLoading }] = useGetBrandsFromProductIdMutation();
   const [getTypesForBrandAndProduct, { isLoading: isTypesLoading }] = useGetTypesForBrandAndProductMutation();
   const [getBatchNumbersByProductId, { isLoading: isBatchesLoading }] = useGetBatchNumbersByProductIdMutation();
-  
+
   // Effect to find doctor ID when doctor name changes
   useEffect(() => {
     if (discountAuthorizedBy && !discountAuthorizedById && doctorNames.length > 0) {
       // Try exact match first
-      let foundDoctor = doctorNames.find(d => 
+      let foundDoctor = doctorNames.find(d =>
         d.name.toLowerCase().trim() === discountAuthorizedBy.toLowerCase().trim()
       );
-      
+
       // If exact match not found, try partial match
       if (!foundDoctor) {
-        foundDoctor = doctorNames.find(d => 
+        foundDoctor = doctorNames.find(d =>
           d.name.toLowerCase().trim().includes(discountAuthorizedBy.toLowerCase().trim()) ||
           discountAuthorizedBy.toLowerCase().trim().includes(d.name.toLowerCase().trim())
         );
       }
-      
+
       if (foundDoctor) {
         setDiscountAuthorizedById(parseInt(foundDoctor.id));
       }
     }
   }, [discountAuthorizedBy, discountAuthorizedById, doctorNames]);
-  
+
   // Cart is managed by Redux - no need for session storage
   // Removed verbose logging for cleaner test output
-  
+
   // Helper function to show toast messages
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
@@ -258,7 +258,7 @@ export default function SalePage() {
       showToast('No products found. Please check if the products endpoint is working.', 'warning');
     }
   }, [apiProducts, isProductsLoading, productsError, isProductsFetching]);
-  
+
   // Extract product names for autocomplete
   const productOptions = useMemo(() => {
     return processProductOptions(apiProducts);
@@ -287,7 +287,7 @@ export default function SalePage() {
     const validateProduct = async () => {
       // Use selectedTypeProductId if available, otherwise fall back to productId
       const productIdToUse = selectedTypeProductId ? String(selectedTypeProductId) : productId;
-      
+
       // Check if any debounced value actually changed
       const currentValues = {
         qty: debouncedQty,
@@ -297,7 +297,7 @@ export default function SalePage() {
         batch: batch
       };
 
-      const hasChanged = 
+      const hasChanged =
         prevDebouncedValuesRef.current.qty !== currentValues.qty ||
         prevDebouncedValuesRef.current.productType !== currentValues.productType ||
         prevDebouncedValuesRef.current.discount !== currentValues.discount ||
@@ -311,7 +311,7 @@ export default function SalePage() {
 
       // Update ref with current values
       prevDebouncedValuesRef.current = currentValues;
-      
+
       if (!findProduct || !productIdToUse || debouncedQty <= 0 || !debouncedProductType || !batch) {
         setValidationError("");
         setValidatedData(null);
@@ -327,7 +327,7 @@ export default function SalePage() {
           disc: debouncedDiscount / 100,
           batch_number: batch || undefined, // Include batch number for stock validation
         };
-        
+
         const response = await validateSale(requestPayload).unwrap();
 
         if (response.message && !response.mrp && !response.selling_price) {
@@ -341,11 +341,11 @@ export default function SalePage() {
         }
       } catch (error: any) {
         setValidatedData(null);
-        
+
         console.log('🔍 Validation error caught:', error);
         console.log('🔍 Error data:', error?.data);
         console.log('🔍 Error status:', error?.status);
-        
+
         let errorMessage = "";
         // Check for error in different formats
         if (error?.data) {
@@ -365,14 +365,14 @@ export default function SalePage() {
         } else {
           errorMessage = "Unable to validate product availability";
         }
-        
+
         console.log('🔍 Extracted error message:', errorMessage);
-        
+
         // Make error message more user-friendly
         const userFriendlyMessage = formatStockErrorMessage(errorMessage);
         console.log('🔍 Formatted error message:', userFriendlyMessage);
         setValidationError(userFriendlyMessage);
-        
+
         // Also show toast for immediate feedback
         if (userFriendlyMessage) {
           showToast(userFriendlyMessage, 'error');
@@ -400,7 +400,7 @@ export default function SalePage() {
     if (value && typeof value === 'string') {
       setFindProduct(value);
       setIsProductSelected(true);
-      
+
       // Reset all dependent fields
       setProductType("");
       setAvailableTypes([]);
@@ -415,28 +415,28 @@ export default function SalePage() {
       setSelectedTypeProductId(null);
       setValidationError("");
       setValidatedData(null);
-      
+
       const productID = extractProductId(apiProducts, value);
-      
+
       if (productID) {
         setProductId(productID);
-        
+
         const numericId = parseInt(productID);
         if (numericId > 0) {
           try {
             // Fetch brands for the selected product
             // Note: API returns a single brand object, not an array
             const brandsResult = await getBrandsFromProductId({ product_id: numericId }).unwrap();
-            
+
             if (brandsResult && brandsResult.id && brandsResult.brand_name) {
               // Convert single brand object to array format for consistency
               setAvailableBrands([{ id: brandsResult.id, brand_name: brandsResult.brand_name }]);
               setShowBrandDropdown(true);
-              
+
               // Auto-select the brand (since API returns single brand)
               setBrandId(brandsResult.id);
               setBrand(brandsResult.brand_name);
-              
+
               // Automatically fetch types for the brand
               await handleBrandChange(brandsResult.id, brandsResult.brand_name, value);
             } else {
@@ -456,7 +456,7 @@ export default function SalePage() {
   const handleBrandChange = async (newBrandId: number, newBrandName: string, productName?: string) => {
     setBrandId(newBrandId);
     setBrand(newBrandName);
-    
+
     // Reset dependent fields
     setProductType("");
     setAvailableTypes([]);
@@ -467,9 +467,9 @@ export default function SalePage() {
     setSelectedTypeProductId(null);
     setValidationError("");
     setValidatedData(null);
-    
+
     const productNameToUse = productName || findProduct;
-    
+
     if (productNameToUse) {
       try {
         // Fetch types for the selected brand and product
@@ -477,11 +477,11 @@ export default function SalePage() {
           brand_id: newBrandId,
           product_name: productNameToUse
         }).unwrap();
-        
+
         if (typesResult && Array.isArray(typesResult) && typesResult.length > 0) {
           setAvailableTypes(typesResult);
           setShowTypeDropdown(true);
-          
+
           // Auto-select if only one type
           if (typesResult.length === 1) {
             await handleTypeChange(typesResult[0].type, typesResult[0].product_id);
@@ -499,27 +499,27 @@ export default function SalePage() {
   const handleTypeChange = async (newType: string, typeProductId: number) => {
     setProductType(newType);
     setSelectedTypeProductId(typeProductId);
-    
+
     // Reset batch field
     setBatch("");
     setAvailableBatches([]);
     setShowBatchDropdown(false);
     setValidationError("");
     setValidatedData(null);
-    
+
     try {
       console.log('🔍 Fetching batches for product_id:', typeProductId);
       console.log('🔍 Product name:', findProduct);
       console.log('🔍 Product type:', newType);
-      
+
       // Use sales API endpoint: sales/get-batch-numbers-by-product-id
       let batchNumbers: string[] = [];
-      
+
       try {
         const batchesResult: any = await getBatchNumbersByProductId({ product_id: typeProductId }).unwrap();
         console.log('📦 Sales API batch numbers response (raw):', batchesResult);
         console.log('📦 Response type:', typeof batchesResult, 'Is array:', Array.isArray(batchesResult));
-        
+
         // Process the response
         if (Array.isArray(batchesResult)) {
           // Direct array format: ["batch1", "batch2", ...]
@@ -544,14 +544,14 @@ export default function SalePage() {
             console.warn('⚠️ Unexpected response format:', batchesResult);
           }
         }
-        
+
         console.log('📦 Final processed batch numbers:', batchNumbers);
-        
+
         if (batchNumbers.length > 0) {
           setAvailableBatches(batchNumbers);
           setShowBatchDropdown(true);
           console.log('✅ Batch dropdown shown with', batchNumbers.length, 'batches');
-          
+
           // Auto-select if only one batch
           if (batchNumbers.length === 1) {
             setBatch(batchNumbers[0]);
@@ -568,7 +568,7 @@ export default function SalePage() {
         console.error('Error status:', salesError?.status);
         console.error('Error data:', salesError?.data);
         console.error('Error message:', salesError?.message);
-        
+
         // Show detailed error message
         const errorMessage = salesError?.data?.error || salesError?.data?.message || salesError?.message || 'Failed to fetch batch numbers';
         setShowBatchDropdown(false);
@@ -615,24 +615,24 @@ export default function SalePage() {
     let finalDoctorId = discountAuthorizedById;
     if (!finalDoctorId && discountAuthorizedBy && doctorNames.length > 0) {
       // Try exact match first
-      let foundDoctor = doctorNames.find(d => 
+      let foundDoctor = doctorNames.find(d =>
         d.name.toLowerCase().trim() === discountAuthorizedBy.toLowerCase().trim()
       );
-      
+
       // If exact match not found, try partial match
       if (!foundDoctor) {
-        foundDoctor = doctorNames.find(d => 
+        foundDoctor = doctorNames.find(d =>
           d.name.toLowerCase().trim().includes(discountAuthorizedBy.toLowerCase().trim()) ||
           discountAuthorizedBy.toLowerCase().trim().includes(d.name.toLowerCase().trim())
         );
       }
-      
+
       if (foundDoctor) {
         finalDoctorId = parseInt(foundDoctor.id);
         setDiscountAuthorizedById(parseInt(foundDoctor.id));
       }
     }
-    
+
     const validation = canAddToCart(
       findProduct,
       qty,
@@ -668,7 +668,7 @@ export default function SalePage() {
     dispatch(addToCart(newCartItem));
     handleClearProduct();
     showToast('Product added to cart successfully!', 'success');
-    
+
   };
 
   // Edit/Delete Handlers
@@ -713,14 +713,14 @@ export default function SalePage() {
       showToast('Please add items to cart before proceeding', 'warning');
       return;
     }
-    
+
     const totalAmount = cartTotal; // Use Redux selector
-    
-    navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, { 
-      state: { 
+
+    navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
+      state: {
         cartItems: cartItems,
-        totalAmount: totalAmount 
-      } 
+        totalAmount: totalAmount
+      }
     });
   };
 
@@ -740,7 +740,7 @@ export default function SalePage() {
   const sortedProducts = useMemo(() => {
     const currentSort = sortConfig.key || SALES_PAGE_CONSTANTS.DEFAULT_SORT_KEY;
     const currentDirection = sortConfig.key ? sortConfig.direction : SALES_PAGE_CONSTANTS.SORT_DIRECTION_ASC;
-    
+
     return [...cartItems].sort((a, b) => {
       const aValue = a[currentSort as keyof CartItem];
       const bValue = b[currentSort as keyof CartItem];
@@ -816,7 +816,7 @@ export default function SalePage() {
             setDiscountAuthorizedById(doctorId);
             // If ID not found but name exists, try to find it from doctorNames list
             if (!doctorId && name && doctorNames.length > 0) {
-              const foundDoctor = doctorNames.find(d => 
+              const foundDoctor = doctorNames.find(d =>
                 d.name.toLowerCase().trim() === name.toLowerCase().trim()
               );
               if (foundDoctor) {
@@ -829,14 +829,14 @@ export default function SalePage() {
           validationError={validationError}
           validatedData={validatedData}
         />
-        
+
         {/* Validation Error Alert */}
         <ValidationErrorAlert error={validationError} />
       </Box>
 
       {/* Bulk Actions Bar */}
-      <BulkActionsBar 
-        selectedCount={selectedItems.length} 
+      <BulkActionsBar
+        selectedCount={selectedItems.length}
         onDelete={() => handleDeleteClick()}
       />
 
@@ -846,8 +846,8 @@ export default function SalePage() {
         columns={columns}
         selectedRows={selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))}
         setSelectedRows={(newSelected: number[] | ((prevState: number[]) => number[])) => {
-          const indices = typeof newSelected === 'function' 
-            ? newSelected(selectedItems.map(id => sortedProducts.findIndex(p => p.id === id))) 
+          const indices = typeof newSelected === 'function'
+            ? newSelected(selectedItems.map(id => sortedProducts.findIndex(p => p.id === id)))
             : newSelected;
           const newSelectedIds = indices.map((index: number) => sortedProducts[index].id);
           setSelectedItems(newSelectedIds);
@@ -855,23 +855,23 @@ export default function SalePage() {
         totalRows={sortedProducts.length}
         rowsPerPage={SALES_PAGE_CONSTANTS.DEFAULT_ROWS_PER_PAGE}
         currentPage={SALES_PAGE_CONSTANTS.DEFAULT_CURRENT_PAGE}
-        onPageChange={() => {}}
+        onPageChange={() => { }}
         onSortRequest={handleSortRequest}
         sortConfig={sortConfig}
         searchAndFilterConfig={{ filterOptions: [] }}
         currentSearchTerm=""
-        onSearchChange={() => {}}
+        onSearchChange={() => { }}
         showFilters={false}
-        onShowFiltersToggle={() => {}}
+        onShowFiltersToggle={() => { }}
         currentFilterKey=""
-        onFilterSelect={() => {}}
+        onFilterSelect={() => { }}
       />
-      
+
       {/* Total and Next Button */}
       <Box sx={{ mt: 4, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-        <Typography 
-          sx={{ 
-            fontWeight: 700, 
+        <Typography
+          sx={{
+            fontWeight: 700,
             fontStyle: 'italic',
             color: 'black',
             mb: 2
@@ -917,9 +917,9 @@ export default function SalePage() {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSnackbarOpen(false)} 
-          severity={snackbarSeverity} 
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
           sx={{ width: '100%' }}
         >
           {snackbarMessage}
