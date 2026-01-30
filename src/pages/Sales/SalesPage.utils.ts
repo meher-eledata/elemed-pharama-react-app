@@ -167,9 +167,9 @@ export const createCartItem = (
     product_id: productId ? (typeof productId === 'string' ? parseInt(productId) : productId) : undefined,
     discountAuthorizedBy: discountAuthorizedBy || undefined,
     discountAuthorizedById: discountAuthorizedById,
-    // Enforce default tax percentages (9%, 9%, 0%) unless specified by validation data
-    cgstPercent: validatedData?.cgst_percent?.toString() || '9',
-    sgstPercent: validatedData?.sgst_percent?.toString() || '9',
+    // Enforce default tax percentages (2.5%, 2.5%, 0%) unless specified by validation data
+    cgstPercent: validatedData?.cgst_percent?.toString() || '2.5',
+    sgstPercent: validatedData?.sgst_percent?.toString() || '2.5',
     igstPercent: validatedData?.igst_percent?.toString() || '0',
   };
 };

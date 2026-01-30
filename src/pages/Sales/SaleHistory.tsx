@@ -508,6 +508,7 @@ export default function SaleHistory() {
         totalDiscount: totalDiscount,
         taxAmount: taxAmount,
         totalPayableAmount: totalPayableAmount,
+        patientType: mergedItem.patientType || 'Out Patient',
         items: items
       };
 
@@ -1008,6 +1009,7 @@ export default function SaleHistory() {
         totalDiscount: invoiceDetails.totalDiscount || '0',
         taxAmount: invoiceDetails.taxAmount || '0',
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
+        patientType: invoiceDetails.patientType || 'Out Patient',
         labels: SALES_RECEIPT_LABELS,
       });
 
@@ -1519,10 +1521,12 @@ export default function SaleHistory() {
               totalDiscount={invoiceDetails.totalDiscount || '0'}
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
+              patientType={invoiceDetails.patientType || 'Out Patient'}
               onCancel={handleCancelPrint}
               onPrint={handlePrintClick}
               onSaveClick={handleSaveClick}
               hideActionButtons={true}
+              showHospitalDetails={false}
             />
           }
           onClose={handleCloseInvoiceModal}

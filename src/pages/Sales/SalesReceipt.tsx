@@ -835,6 +835,7 @@ const SalesReceipt: React.FC = () => {
         totalDiscount,
         taxAmount,
         totalPayableAmount,
+        patientType,
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
       });
@@ -1392,6 +1393,7 @@ const SalesReceipt: React.FC = () => {
               totalDiscount={totalDiscount}
               taxAmount={taxAmount}
               totalPayableAmount={totalPayableAmount}
+              patientType={patientType}
               onCancel={handleCancelPrint}
               onPrint={handlePrintFromModal}
               onSaveClick={handleSaveFromModal}

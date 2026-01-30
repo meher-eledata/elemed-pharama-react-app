@@ -34,9 +34,9 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       discountAuthorizedBy: item.discountAuthorizedBy, // Preserve doctor name
       discountAuthorizedById: item.discountAuthorizedById, // Preserve doctor ID (important for API)
       cgst: item.cgst || '0',
-      cgstPercent: item.cgstPercent || '9',
+      cgstPercent: item.cgstPercent || '2.5',
       sgst: item.sgst || '0',
-      sgstPercent: item.sgstPercent || '9',
+      sgstPercent: item.sgstPercent || '2.5',
       igst: item.igst || '0',
       igstPercent: item.igstPercent || '0',
       amount: amount,
@@ -91,6 +91,7 @@ export const generatePrintHTML = (data: {
   totalDiscount: string;
   taxAmount: string;
   totalPayableAmount: string;
+  patientType: string;
   labels: any;
   brandIcon?: string;
 }): string => {
@@ -110,6 +111,7 @@ export const generatePrintHTML = (data: {
     totalDiscount,
     taxAmount,
     totalPayableAmount,
+    patientType,
     labels,
     brandIcon,
   } = data;
@@ -191,96 +193,106 @@ export const generatePrintHTML = (data: {
           .receipt-details { 
             display: flex; 
             flex-direction: column;
-            margin-bottom: 20px; 
-            border: 1px solid #E5E7EB; 
-            border-radius: 4px; 
-            overflow: hidden;
+            gap: 12px;
+            margin-bottom: 24px; 
           }
           .receipt-details-row {
             display: flex;
+            gap: 12px;
             width: 100%;
           }  
           .detail-section { 
             flex: 1; 
+            min-width: 180px;
             background-color: #F9FAFB !important; 
-            padding: 8px; 
-            border-right: 1px solid #E5E7EB; 
-            border-bottom: 1px solid #E5E7EB;
-          }
-          .receipt-details-row:last-child .detail-section {
-            border-bottom: none;
-          }
-          .detail-section:last-child {
-            border-right: none;
+            padding: 12px 8px; 
+            border: 1px solid #E5E7EB; 
+            border-radius: 8px; 
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           }
           .detail-title { 
-            font-weight: bold; 
-            margin-bottom: 4px; 
-            font-size: 12px;
-            text-decoration: underline;
+            font-size: 14px;
+            font-weight: 600; 
+            color: #1A212B;
+            margin-bottom: 12px; 
           }
           .detail-item { 
-            font-size: 10px; 
-            margin-bottom: 2px;
-            line-height: 1.2;
+            font-size: 11px; 
+            color: #374151;
+            margin-bottom: 4px;
+            line-height: 1.4;
           }
 
           .items-section { 
-            margin-bottom: 20px;
+            margin-bottom: 24px;
           }
           .items-table { 
             width: 100%; 
             border-collapse: collapse;
             border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            overflow: hidden;
           }
           .items-table th { 
-            background-color: #F3F4F6 !important; 
-            padding: 8px 4px; 
-            font-weight: bold; 
-            font-size: 10px; 
+            background-color: #F9FAFB !important; 
+            padding: 12px 16px; 
+            font-weight: 600; 
+            font-size: 12px; 
             text-align: left;
-            border-bottom: 1px solid #E5E7EB;
-            border-right: 1px solid #E5E7EB;
+            color: #1A212B;
+            border-bottom: 2px solid #E5E7EB;
           }
           .items-table td { 
-            padding: 6px 4px; 
-            font-size: 10px; 
-            border-bottom: 1px solid #F3F4F6;
-            border-right: 1px solid #E5E7EB;
-          }
-          .items-table th:last-child, .items-table td:last-child {
-            border-right: none;
+            padding: 12px 16px; 
+            font-size: 12px; 
+            color: #374151;
+            border-top: 1px solid #E5E7EB;
           }
 
           .summary { 
+            background-color: #F9FAFB !important;
+            padding: 20px 24px;
+            border-radius: 8px;
             display: flex; 
-            justify-content: flex-end;
-            margin-top: 20px;
-          }
-          .summary-table {
-            width: 250px;
-            border-collapse: collapse;
-          }
-          .summary-row {
-            display: flex;
             justify-content: space-between;
-            padding: 4px 0;
-            border-bottom: 1px solid #F3F4F6;
+            align-items: center;
+            border: 1px solid #E5E7EB;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           }
-          .summary-row.total {
-            border-top: 2px solid #1A212B;
-            border-bottom: 2px solid #1A212B;
-            padding: 8px 0;
-            margin-top: 4px;
-            font-weight: bold;
-            font-size: 14px;
+          .summary-left {
+            display: flex;
+            gap: 60px;
+          }
+          .summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
           }
           .summary-label {
-            font-size: 11px;
+            font-size: 12px;
+            color: #6B7280;
+            font-weight: 500;
           }
           .summary-value {
-            font-size: 11px;
-            font-weight: bold;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1A212B;
+          }
+          .summary-right {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-end;
+          }
+          .payable-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #6B7280;
+          }
+          .payable-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1A212B;
           }
         </style>
       </head>
@@ -315,12 +327,20 @@ export const generatePrintHTML = (data: {
               <div class="detail-title">Doctor Details</div>
               <div class="detail-item"><strong>Name:</strong> ${doctorName || ''}</div>
               <div class="detail-item"><strong>Mobile:</strong> ${doctorMobile || ''}</div>
+              <div class="detail-item"><strong>Email:</strong> ${doctorEmail || ''}</div>
+            </div>
+          </div>
+          <div class="receipt-details-row">
+            <div class="detail-section">
+              <div class="detail-title">Payment Details</div>
+              <div class="detail-item"><strong>Mode:</strong> ${paymentMode || 'Cash'}</div>
+              ${paymentMode === 'Insurance' ? `<div class="detail-item"><strong>Company:</strong> ${insuranceCompany || ''}</div>` : ''}
             </div>
             <div class="detail-section">
               <div class="detail-title">Invoice Details</div>
               <div class="detail-item"><strong>Invoice No:</strong> ${invoiceNumber || ''}</div>
               <div class="detail-item"><strong>Date:</strong> ${invoiceDate || ''}</div>
-              <div class="detail-item"><strong>Payment:</strong> ${paymentMode || ''}</div>
+              <div class="detail-item"><strong>Patient Type:</strong> ${patientType || ''}</div>
             </div>
           </div>
         </div>
@@ -329,29 +349,31 @@ export const generatePrintHTML = (data: {
           <table class="items-table">
             <thead>
               <tr>
-                <th style="width: 5%">#</th>
-                <th style="width: 35%">Description</th>
-                <th style="width: 10%">Batch</th>
-                <th style="width: 10%">Exp</th>
-                <th style="width: 8%">Qty</th>
-                <th style="width: 8%">MRP</th>
-                <th style="width: 8%">Disc%</th>
-                <th style="width: 8%">Tax%</th>
-                <th style="width: 10%">Amount</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Type</th>
+                <th>Batch</th>
+                <th>Price</th>
+                <th>Disc</th>
+                <th>CGST</th>
+                <th>SGST</th>
+                <th>IGST</th>
+                <th>Amt</th>
               </tr>
             </thead>
             <tbody>
               ${salesItems.map((item, index) => `
                 <tr>
-                  <td>${index + 1}</td>
                   <td>${item.productName}</td>
-                  <td>${item.batch}</td>
-                  <td>${item.expiryDate}</td>
                   <td>${item.quantity}</td>
+                  <td>${item.type}</td>
+                  <td>${item.batch}</td>
                   <td>${item.unitPrice}</td>
                   <td>${item.discountPercent}%</td>
-                  <td>${parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')}%</td>
-                  <td>${item.amount}</td>
+                  <td>${item.cgstPercent}%</td>
+                  <td>${item.sgstPercent}%</td>
+                  <td>${item.igstPercent}%</td>
+                  <td style="font-weight: 600">${parseFloat(item.amount || '0').toFixed(1)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -359,23 +381,23 @@ export const generatePrintHTML = (data: {
         </div>
         
         <div class="summary">
-          <div class="summary-table">
-            <div class="summary-row">
-              <span class="summary-label">Sub Total</span>
-              <span class="summary-value">${totalValue}</span>
+          <div class="summary-left">
+            <div class="summary-item">
+              <div class="summary-label">Total Value</div>
+              <div class="summary-value">${parseFloat(totalValue || '0').toFixed(1)}</div>
             </div>
-            <div class="summary-row">
-              <span class="summary-label">Total Discount</span>
-              <span class="summary-value">-${totalDiscount}</span>
+            <div class="summary-item">
+              <div class="summary-label">Total Discount</div>
+              <div class="summary-value">${parseFloat(totalDiscount || '0').toFixed(1)}</div>
             </div>
-            <div class="summary-row">
-              <span class="summary-label">Tax Amount</span>
-              <span class="summary-value">${taxAmount}</span>
+            <div class="summary-item">
+              <div class="summary-label">Tax Amount</div>
+              <div class="summary-value">${parseFloat(taxAmount || '0').toFixed(1)}</div>
             </div>
-            <div class="summary-row total">
-              <span class="summary-label">NET PAYABLE</span>
-              <span class="summary-value">₹${totalPayableAmount}</span>
-            </div>
+          </div>
+          <div class="summary-right">
+            <div class="payable-label">NET PAYABLE</div>
+            <div class="payable-value">${parseFloat(totalPayableAmount || '0').toFixed(1)}</div>
           </div>
         </div>
         

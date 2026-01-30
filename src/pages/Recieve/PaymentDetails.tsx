@@ -87,6 +87,11 @@ const PaymentDetails: React.FC = () => {
   const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([]);
   const [totalAmount, setTotalAmount] = useState<number>(navigationState?.totalAmount || 0);
 
+  const [creditAvailable, setCreditAvailable] = useState<number>(navigationState?.creditAvailable || 0);
+  const [isCreditModalOpen, setIsCreditModalOpen] = useState<boolean>(false);
+  const [tempCreditValue, setTempCreditValue] = useState<string>("");
+  const [isCreditManuallyEdited, setIsCreditManuallyEdited] = useState<boolean>(false);
+
   // Fetch current payments on mount if poId is available
   useEffect(() => {
     const fetchPayments = async () => {
@@ -122,10 +127,10 @@ const PaymentDetails: React.FC = () => {
   );
 
   useEffect(() => {
-    if (supplierCreditData) {
+    if (supplierCreditData && !isCreditManuallyEdited) {
       setCreditAvailable(supplierCreditData.available_credit);
     }
-  }, [supplierCreditData]);
+  }, [supplierCreditData, isCreditManuallyEdited]);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<PaymentRow>>({});
   const [isSaveConfirmationOpen, setIsSaveConfirmationOpen] = useState<boolean>(false);
@@ -145,7 +150,6 @@ const PaymentDetails: React.FC = () => {
   const [paymentVendor, setPaymentVendor] = useState<string>(navigationState?.paymentVendor || "");
   const [amount, setAmount] = useState<string>(navigationState?.amount?.toString() || "");
   const [details, setDetails] = useState<string>("");
-  const [creditAvailable, setCreditAvailable] = useState<number>(navigationState?.creditAvailable || 0);
 
   const paymentTableColumns: TableColumn<PaymentRow>[] = [
     {
@@ -404,6 +408,22 @@ const PaymentDetails: React.FC = () => {
 
   const handleConfirmSave = () => {
     if (pendingSaveId) {
+      const rowToEdit = paymentRows.find(r => r.id === pendingSaveId);
+      if (rowToEdit) {
+        const otherPaymentsTotal = paymentRows
+          .filter(r => r.id !== pendingSaveId)
+          .reduce((sum, r) => sum + r.amount, 0);
+        const editedAmount = editingData.amount !== undefined ? editingData.amount : rowToEdit.amount;
+        const remainingBalance = totalAmount - otherPaymentsTotal;
+
+        if (editedAmount > remainingBalance) {
+          alert(`Edited amount (₹${editedAmount.toFixed(2)}) exceeds the remaining balance (₹${remainingBalance.toFixed(2)}).`);
+          setIsSaveConfirmationOpen(false);
+          setPendingSaveId(null);
+          return;
+        }
+      }
+
       setPaymentRows(paymentRows.map(row => {
         if (row.id === pendingSaveId) {
           return {
@@ -412,7 +432,7 @@ const PaymentDetails: React.FC = () => {
             transactionDate: editingData.transactionDate || row.transactionDate,
             paymentMethod: editingData.paymentMethod || row.paymentMethod,
             paymentVendor: editingData.paymentVendor || row.paymentVendor,
-            amount: editingData.amount || row.amount,
+            amount: editingData.amount !== undefined ? editingData.amount : row.amount,
             details: editingData.details || row.details,
           };
         }
@@ -446,6 +466,17 @@ const PaymentDetails: React.FC = () => {
   const handleCancelDelete = () => {
     setIsDeleteConfirmationOpen(false);
     setPendingDeleteId(null);
+  };
+  const handleOpenCreditModal = () => {
+    setTempCreditValue(creditAvailable.toString());
+    setIsCreditModalOpen(true);
+  };
+
+  const handleSaveCredit = () => {
+    const newVal = parseFloat(tempCreditValue) || 0;
+    setCreditAvailable(newVal);
+    setIsCreditManuallyEdited(true);
+    setIsCreditModalOpen(false);
   };
 
   const handleCancel = () => {
@@ -887,17 +918,33 @@ const PaymentDetails: React.FC = () => {
           </Box>
 
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography
-              sx={{
-                fontFamily: "'Lexend', sans-serif",
-                fontWeight: 400,
-                fontSize: "14px",
-                lineHeight: "20px",
-                color: "#EF4444",
-              }}
-            >
-              *INR {creditAvailable.toLocaleString('en-IN')} credit available with this supplier
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Typography
+                sx={{
+                  fontFamily: "'Lexend', sans-serif",
+                  fontWeight: 400,
+                  fontSize: "14px",
+                  lineHeight: "20px",
+                  color: "#EF4444",
+                }}
+              >
+                *INR {creditAvailable.toLocaleString('en-IN')} credit available with this supplier
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={handleOpenCreditModal}
+                sx={{
+                  padding: "4px",
+                  color: "#5C17E5",
+                  backgroundColor: "#F3F0FF",
+                  "&:hover": {
+                    backgroundColor: "#EBE5FF",
+                  },
+                }}
+              >
+                <EditIcon sx={{ fontSize: "16px" }} />
+              </IconButton>
+            </Box>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -1086,6 +1133,36 @@ const PaymentDetails: React.FC = () => {
           Payment details saved successfully!
         </Alert>
       </Snackbar>
+
+      <ConfirmationDialog
+        open={isCreditModalOpen}
+        onClose={() => setIsCreditModalOpen(false)}
+        onConfirm={handleSaveCredit}
+        title="Edit Supplier Credit"
+        message={
+          <Box sx={{ mt: 2 }}>
+            <Typography sx={{ mb: 1, fontSize: "14px", color: "#6B7280" }}>
+              Enter the current available credit for this supplier.
+            </Typography>
+            <TextField
+              fullWidth
+              autoFocus
+              type="number"
+              variant="outlined"
+              label="Credit Amount"
+              value={tempCreditValue}
+              onChange={(e) => setTempCreditValue(e.target.value)}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "12px",
+                }
+              }}
+            />
+          </Box>
+        }
+        confirmLabel="Save Credit"
+        cancelLabel="Cancel"
+      />
     </Box>
   );
 };

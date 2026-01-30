@@ -14,7 +14,7 @@ import { StandardButton } from '../Common';
 interface ConfirmationDialogProps {
   open: boolean;
   title: string;
-  message: string;
+  message: React.ReactNode;
   onClose: () => void;
   onConfirm: () => void;
   onCancel?: () => void;

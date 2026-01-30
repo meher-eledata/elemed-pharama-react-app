@@ -9,7 +9,8 @@ import {
   Button,
   Autocomplete,
   TextField,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
@@ -19,6 +20,8 @@ import type { SerializedError } from "@reduxjs/toolkit";
 import AddIcon from "@mui/icons-material/Add";
 import WarningIcon from '@mui/icons-material/Warning';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
+import { CSVLink } from 'react-csv';
+import DownloadIcon from '@mui/icons-material/Download';
 
 import {
   useGetLowStockQuery,
@@ -379,6 +382,69 @@ const InventoryModule: React.FC = () => {
       );
     }
     setSelectedItems(newSelected);
+  };
+
+  const csvContent = useMemo(() => {
+    let headers: { label: string; key: string }[] = [];
+    switch (selectedStockType) {
+      case 'low':
+        headers = [
+          { label: INVENTORY_LABELS.productNameHeader, key: 'name' },
+          { label: INVENTORY_LABELS.brandHeader, key: 'brand' },
+          { label: INVENTORY_LABELS.typeHeader, key: 'type' },
+          { label: INVENTORY_LABELS.currentQuantityHeader, key: 'currentQuantity' },
+          { label: INVENTORY_LABELS.minimumQuantityHeader, key: 'minQuantity' },
+        ];
+        break;
+      case 'excess':
+        headers = [
+          { label: INVENTORY_LABELS.productNameHeader, key: 'name' },
+          { label: INVENTORY_LABELS.brandHeader, key: 'brand' },
+          { label: INVENTORY_LABELS.typeHeader, key: 'type' },
+          { label: INVENTORY_LABELS.currentQuantityHeader, key: 'currentQuantity' },
+          { label: INVENTORY_LABELS.maximumQuantityHeader, key: 'maxQuantity' },
+        ];
+        break;
+      case 'expired':
+        headers = [
+          { label: INVENTORY_LABELS.productNameHeader, key: 'name' },
+          { label: INVENTORY_LABELS.brandHeader, key: 'brand' },
+          { label: INVENTORY_LABELS.typeHeader, key: 'type' },
+          { label: INVENTORY_LABELS.batchNoHeader, key: 'batchNumber' },
+          { label: INVENTORY_LABELS.currentQuantityHeader, key: 'currentQuantity' },
+          { label: INVENTORY_LABELS.expiryDateHeader, key: 'expiryDate' },
+          { label: INVENTORY_LABELS.daysPastExpiryHeader, key: 'daysPastExpiry' },
+        ];
+        break;
+      case 'nearExpiry':
+        headers = [
+          { label: INVENTORY_LABELS.productNameHeader, key: 'name' },
+          { label: INVENTORY_LABELS.brandHeader, key: 'brand' },
+          { label: INVENTORY_LABELS.typeHeader, key: 'type' },
+          { label: INVENTORY_LABELS.batchNoHeader, key: 'batchNumber' },
+          { label: INVENTORY_LABELS.currentQuantityHeader, key: 'currentQuantity' },
+          { label: INVENTORY_LABELS.expiryDateHeader, key: 'expiryDate' },
+          { label: INVENTORY_LABELS.daysToExpiryHeader, key: 'daysToExpiry' },
+        ];
+        break;
+    }
+
+    const data = filteredData.map(item => {
+      const row: any = {};
+      headers.forEach(header => {
+        row[header.key] = (item as any)[header.key] || '-';
+      });
+      return row;
+    });
+
+    return { headers, data };
+  }, [selectedStockType, filteredData]);
+
+  const csvFilename = `inventory_${selectedStockType}_stock_${new Date().toISOString().split('T')[0]}.csv`;
+  const csvLinkRef = React.useRef<any>(null);
+
+  const handleDownloadCSV = () => {
+    csvLinkRef.current?.link?.click();
   };
 
   const renderHeaderCheckbox = () => (
@@ -896,6 +962,32 @@ const InventoryModule: React.FC = () => {
                   </Button>
                 </Box>
               )}
+              <CSVLink
+                data={csvContent.data}
+                headers={csvContent.headers}
+                filename={csvFilename}
+                className="hidden"
+                ref={csvLinkRef}
+                style={{ display: 'none' }}
+              />
+              <Tooltip title="Download" arrow>
+                <IconButton
+                  onClick={handleDownloadCSV}
+                  sx={{
+                    ml: 'auto',
+                    backgroundColor: '#F3F4F6',
+                    color: '#5C17E5',
+                    borderRadius: '12px',
+                    width: '40px',
+                    height: '40px',
+                    '&:hover': {
+                      backgroundColor: '#E5E7EB',
+                    }
+                  }}
+                >
+                  <DownloadIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
           }
         />
