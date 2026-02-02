@@ -32,7 +32,12 @@ import { OrderReceiveRow, PurchaseOrderRow, ProductItem } from "./types";
 import { useOrderReceiveData } from "./hooks/useOrderReceiveData";
 import { useOrderReceiveFilters } from "./hooks/useOrderReceiveFilters";
 import { useOrderReceiveActions } from "./hooks/useOrderReceiveActions";
-import { ReceiptLine } from "../../redux/slices/receiveApi";
+import {
+  useGetReceiptsQuery,
+  useGetCurrentPurchaseOrdersQuery,
+  useLazyGetReceiptLinesQuery,
+  ReceiptLine
+} from "../../redux/slices/receiveApi";
 import { getOrderReceiveColumns, getPurchaseOrderColumns } from "./components/TableColumns";
 import OrderReceiveFooter from "./components/OrderReceiveFooter";
 
@@ -168,6 +173,79 @@ const OrderReceive: React.FC = () => {
   const currentFilterForTable = useMemo(() => {
     return Object.fromEntries(Object.entries(filters).map(([key, value]) => [key, value || null]));
   }, [filters]);
+
+  // -- Enrichment Logic to specific fix mismatch 1161 vs 1213.8 --
+  const [getReceiptLinesTrigger] = useLazyGetReceiptLinesQuery();
+  const [activeReceiptTotals, setActiveReceiptTotals] = useState<Record<number, number>>({});
+  const fetchedIdsRef = React.useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    // Only fetch for receipts in the current view (paginatedData)
+    // This avoids fetching all receipts (N+1 problem)
+    if (activeTab === 2 && paginatedData.length > 0) {
+      const fetchTotals = async () => {
+        const currentData = paginatedData as OrderReceiveRow[];
+        const idsToFetch = currentData
+          .map(r => r.receiptId)
+          .filter(id => id && !fetchedIdsRef.current.has(id)) as number[];
+
+        if (idsToFetch.length === 0) return;
+
+        // Mark as "fetching" immediately to avoid duplicate triggers during async operations
+        idsToFetch.forEach(id => fetchedIdsRef.current.add(id));
+
+        const newTotals: Record<number, number> = {};
+        await Promise.all(idsToFetch.map(async (receiptId) => {
+          try {
+            const result = await getReceiptLinesTrigger({ receipt_id: receiptId }).unwrap();
+            if (Array.isArray(result)) {
+              const total = result.reduce((sum: number, line: any) => {
+                // Calculate Total logic mirroring OrderDetails
+                const qty = Number(line.received_qty) || 0;
+                const price = parseFloat(line.unit_price) || 0;
+                const discount = parseFloat(line.discount) || 0;
+                const cgst = parseFloat(line.cgst) || 0;
+                const sgst = parseFloat(line.sgst) || 0;
+                const igst = parseFloat(line.igst) || 0;
+
+                const subtotal = qty * price;
+                const discountAmount = subtotal * (discount / 100);
+                const afterDiscount = subtotal - discountAmount;
+                const taxAmount = afterDiscount * ((cgst + sgst + igst) / 100);
+                return sum + afterDiscount + taxAmount;
+              }, 0);
+              newTotals[receiptId] = total;
+            }
+          } catch (e) {
+            console.error("Failed to fetch lines for receipt", receiptId, e);
+            // On error, remove from ref so it can be retried on next render/interaction
+            fetchedIdsRef.current.delete(receiptId);
+          }
+        }));
+
+        if (Object.keys(newTotals).length > 0) {
+          setActiveReceiptTotals(prev => ({ ...prev, ...newTotals }));
+        }
+      };
+
+      fetchTotals();
+    }
+  }, [paginatedData, activeTab, getReceiptLinesTrigger]);
+
+  const enrichedSortedData = useMemo(() => {
+    if (activeTab !== 2) return sortedData;
+    return (sortedData as OrderReceiveRow[]).map(row => {
+      if (activeReceiptTotals[row.receiptId]) {
+        return {
+          ...row,
+          amt: activeReceiptTotals[row.receiptId]
+          // We could also update pendingAmount here if we wanted to be super precise about debt
+        };
+      }
+      return row;
+    });
+  }, [sortedData, activeReceiptTotals, activeTab]);
+
 
   return (
     <Box className="order-receive">
@@ -438,7 +516,7 @@ const OrderReceive: React.FC = () => {
             ) : (
               <ReusableTable<OrderReceiveRow>
                 columns={orderReceiveColumns}
-                data={sortedData as OrderReceiveRow[]}
+                data={enrichedSortedData as OrderReceiveRow[]}
                 emptyMessage={ORDER_RECEIVE_MESSAGES.EMPTY_RECEIPTS}
                 searchAndFilterConfig={{ filterOptions: [] }}
                 currentSearchTerm={searchTerm}
@@ -456,7 +534,7 @@ const OrderReceive: React.FC = () => {
                 setSelectedRows={setSelectedRows}
                 currentFilter={currentFilterForTable}
                 disableFooterWrapper={true}
-                footerContent={<OrderReceiveFooter sortedData={sortedData as OrderReceiveRow[]} activeTab={activeTab} currentPage={currentPage} />}
+                footerContent={<OrderReceiveFooter sortedData={enrichedSortedData as OrderReceiveRow[]} activeTab={activeTab} currentPage={currentPage} />}
               />
             )}
           </>
@@ -521,7 +599,7 @@ const OrderReceive: React.FC = () => {
           />
         }
       />
-    </Box>
+    </Box >
   );
 };
 

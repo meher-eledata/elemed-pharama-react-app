@@ -29,9 +29,10 @@ export const handleCustomerSubmit = async ({
 
     // Transform to API payload
     const apiPayload = transformCustomerDataToApiPayload(customerData);
-    
+
     const response = await addCustomer(apiPayload).unwrap();
-    
+    console.log('✨ Add Customer API Response:', response);
+
     const newCustomer: Customer = {
       id: parseInt(response.id),
       name: response.name,
@@ -40,14 +41,14 @@ export const handleCustomerSubmit = async ({
       city: '',
       address: customerData.billingAddress,
     };
-    
+
     onCustomerAdded(newCustomer);
-    
+
     await refetchCustomerNames();
-    
+
     showToast(`Customer "${newCustomer.name}" added successfully!`, 'success');
     onClose();
-    
+
   } catch (error: unknown) {
     logError(error, 'SalesReceipt.handleCustomerSubmit');
     const errorMessage = extractErrorMessage(error, 'Failed to add customer. Please try again.');

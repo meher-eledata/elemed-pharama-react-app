@@ -27,7 +27,8 @@ import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDial
 import {
   useUpsertReceiptPaymentsMutation,
   useGetPurchaseOrderPaymentsMutation,
-  useGetSupplierCreditBalanceQuery
+  useGetSupplierCreditBalanceQuery,
+  useAdjustSupplierCreditMutation
 } from "../../redux/slices/receiveApi";
 
 const TickMarkIcon = (props: any) => (
@@ -91,6 +92,12 @@ const PaymentDetails: React.FC = () => {
   const [isCreditModalOpen, setIsCreditModalOpen] = useState<boolean>(false);
   const [tempCreditValue, setTempCreditValue] = useState<string>("");
   const [isCreditManuallyEdited, setIsCreditManuallyEdited] = useState<boolean>(false);
+
+  // Adjust Supplier Credit State
+  const [adjustSupplierCredit, { isLoading: isAdjustingCredit }] = useAdjustSupplierCreditMutation();
+  const [creditDirection, setCreditDirection] = useState<"IN" | "OUT">("IN");
+  const [creditAmount, setCreditAmount] = useState<string>("");
+  const [creditNotes, setCreditNotes] = useState<string>("");
 
   // Fetch current payments on mount if poId is available
   useEffect(() => {
@@ -468,15 +475,40 @@ const PaymentDetails: React.FC = () => {
     setPendingDeleteId(null);
   };
   const handleOpenCreditModal = () => {
-    setTempCreditValue(creditAvailable.toString());
+    setCreditDirection("IN");
+    setCreditAmount("");
+    setCreditNotes("");
     setIsCreditModalOpen(true);
   };
 
-  const handleSaveCredit = () => {
-    const newVal = parseFloat(tempCreditValue) || 0;
-    setCreditAvailable(newVal);
-    setIsCreditManuallyEdited(true);
-    setIsCreditModalOpen(false);
+  const handleSaveCredit = async () => {
+    if (!supplierId) {
+      return;
+    }
+    const amountVal = parseFloat(creditAmount);
+    if (!amountVal || amountVal <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      const createdBy = user?.username || user?.first_name || "meher";
+      await adjustSupplierCredit({
+        supplier_id: Number(supplierId),
+        direction: creditDirection,
+        amount: amountVal,
+        credit_type: "ADJUSTMENT",
+        notes: creditNotes,
+        created_by: createdBy
+      }).unwrap();
+
+      setIsCreditModalOpen(false);
+      setIsCreditManuallyEdited(false);
+      setSaveSuccess(true);
+    } catch (error) {
+      console.error("Failed to adjust credit:", error);
+      alert("Failed to adjust credit. Please try again.");
+    }
   };
 
   const handleCancel = () => {
@@ -1134,34 +1166,81 @@ const PaymentDetails: React.FC = () => {
         </Alert>
       </Snackbar>
 
+
       <ConfirmationDialog
         open={isCreditModalOpen}
         onClose={() => setIsCreditModalOpen(false)}
         onConfirm={handleSaveCredit}
-        title="Edit Supplier Credit"
+        title="Adjust Supplier Credit"
+        confirmLabel={isAdjustingCredit ? "Saving..." : "Save Adjustment"}
+        cancelLabel="Cancel"
         message={
-          <Box sx={{ mt: 2 }}>
-            <Typography sx={{ mb: 1, fontSize: "14px", color: "#6B7280" }}>
-              Enter the current available credit for this supplier.
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography sx={{ fontSize: "14px", color: "#6B7280" }}>
+              Manually adjust the available credit for this supplier.
             </Typography>
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant={creditDirection === "IN" ? "contained" : "outlined"}
+                onClick={() => setCreditDirection("IN")}
+                sx={{
+                  flex: 1,
+                  textTransform: 'none',
+                  bgcolor: creditDirection === "IN" ? '#5C17E5' : 'transparent',
+                  color: creditDirection === "IN" ? '#FFFFFF' : '#6B7280',
+                  borderColor: creditDirection === "IN" ? '#5C17E5' : '#E5E7EB',
+                  '&:hover': {
+                    bgcolor: creditDirection === "IN" ? '#4C14CC' : '#F9FAFB',
+                    borderColor: creditDirection === "IN" ? '#4C14CC' : '#D1D5DB',
+                  }
+                }}
+              >
+                Add Credit (IN)
+              </Button>
+              <Button
+                variant={creditDirection === "OUT" ? "contained" : "outlined"}
+                onClick={() => setCreditDirection("OUT")}
+                sx={{
+                  flex: 1,
+                  textTransform: 'none',
+                  bgcolor: creditDirection === "OUT" ? '#5C17E5' : 'transparent',
+                  color: creditDirection === "OUT" ? '#FFFFFF' : '#6B7280',
+                  borderColor: creditDirection === "OUT" ? '#5C17E5' : '#E5E7EB',
+                  '&:hover': {
+                    bgcolor: creditDirection === "OUT" ? '#4C14CC' : '#F9FAFB',
+                    borderColor: creditDirection === "OUT" ? '#4C14CC' : '#D1D5DB',
+                  }
+                }}
+              >
+                Subtract Credit (OUT)
+              </Button>
+            </Box>
+
             <TextField
               fullWidth
               autoFocus
               type="number"
               variant="outlined"
-              label="Credit Amount"
-              value={tempCreditValue}
-              onChange={(e) => setTempCreditValue(e.target.value)}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "12px",
-                }
-              }}
+              label="Amount"
+              value={creditAmount}
+              onChange={(e) => setCreditAmount(e.target.value)}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+            />
+
+            <TextField
+              fullWidth
+              variant="outlined"
+              label="Notes"
+              multiline
+              rows={2}
+              value={creditNotes}
+              onChange={(e) => setCreditNotes(e.target.value)}
+              placeholder="Reason for adjustment..."
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
             />
           </Box>
         }
-        confirmLabel="Save Credit"
-        cancelLabel="Cancel"
       />
     </Box>
   );

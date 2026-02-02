@@ -21,8 +21,11 @@ interface PaymentDetailsSectionProps {
   onInsuranceCompanyChange: (value: string) => void;
   onInvoiceNumberChange: (value: string) => void;
   onInvoiceDateChange: (value: string) => void;
+
   isReturnDetailsMode?: boolean;
   returnDate?: string;
+  onOpenSplitPayment?: () => void;
+  hasSplitPayments?: boolean;
 }
 
 const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
@@ -36,6 +39,8 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   onInvoiceDateChange,
   isReturnDetailsMode = false,
   returnDate,
+  onOpenSplitPayment,
+  hasSplitPayments = false,
 }) => {
   // Convert invoice date string to Dayjs for the date picker
   // Try multiple formats: "24 Nov 2025", "11/24/2025", "MM/DD/YYYY"
@@ -83,10 +88,10 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   return (
     <PaymentDetailsContainer>
       <Box sx={{ marginBottom: '8px', }}>
-        <Typography sx={{ 
-          fontFamily: "'Lexend', sans-serif", 
-          fontWeight: 600, 
-          fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION, 
+        <Typography sx={{
+          fontFamily: "'Lexend', sans-serif",
+          fontWeight: 600,
+          fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION,
           color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY,
           marginBottom: '8px'
         }}>
@@ -118,7 +123,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
               sx={{
                 '& .MuiOutlinedInput-root': {
                   height: '48px',
-                  width:'165px',
+                  width: '165px',
                   borderRadius: '8px',
                   backgroundColor: '#FFFFFF',
                   '& fieldset': {
@@ -202,7 +207,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
         />
       </SectionRow>
 
-      <SectionRow sx={{ gap: '16px', marginTop: '5px', marginLeft:"-10px" }}>
+      <SectionRow sx={{ gap: '16px', marginTop: '5px', marginLeft: "-10px", position: 'relative' }}>
         {paymentMode === 'Insurance' ? (
           <TextField
             label={SALES_RECEIPT_LABELS.INSURANCE_COMPANY_LABEL}
@@ -297,6 +302,38 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
             }}
           />
         )}
+
+
+        {/* Helper text / Link for Split Payment */}
+        {!isReturnDetailsMode && onOpenSplitPayment && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '52px', // Adjust depending on field height
+              left: '0',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            <Typography
+              onClick={onOpenSplitPayment}
+              sx={{
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '12px',
+                color: hasSplitPayments ? '#10B981' : '#5C17E5',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontWeight: 500,
+                '&:hover': {
+                  color: hasSplitPayments ? '#059669' : '#4C14C7',
+                }
+              }}
+            >
+              {hasSplitPayments ? "Multiple Payments Active (Click to Edit)" : "Multiple Payment"}
+            </Typography>
+          </Box>
+        )}
+
         <Box sx={{ width: '200px', marginLeft: '6px', marginBottom: '-8px' }}>
           <Box sx={{
             '& .MuiPickersInputBase-root, & .MuiOutlinedInput-root': {

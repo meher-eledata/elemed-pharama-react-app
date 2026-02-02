@@ -59,9 +59,11 @@ interface ExecuteSaveParams {
   isProductsError: boolean;
   productsError: any;
   user: any;
+  splitPayments?: any[]; // Array of split payments
   submitSale: (payload: any) => any;
   editSale: (payload: any) => any;
-  updateSales?: (payload: { id: number; data: any }) => any; // Update sales mutation for edit mode
+  upsertInvoicePayments?: (payload: any) => any; // Function to call the new API
+  updateSales?: (payload: any) => any;
   showToast: (message: string, severity: 'success' | 'error' | 'warning' | 'info') => void;
   resetForm: () => void;
   clearCart: () => void;
@@ -100,7 +102,7 @@ export const executeSave = async ({
   user,
   submitSale,
   editSale,
-  updateSales,
+  upsertInvoicePayments,
   showToast,
   resetForm,
   clearCart,
@@ -111,6 +113,7 @@ export const executeSave = async ({
   originalSalesItems,
   skipNavigation = false,
   onSuccess,
+  splitPayments = [],
 }: ExecuteSaveParams): Promise<void> => {
   try {
     if (!customerName || !customerName.trim()) {
@@ -123,18 +126,14 @@ export const executeSave = async ({
       return;
     }
 
-    // Get customer_id from selected customer
-    // If customer was created via modal, it will have a valid ID
-    // Otherwise, we'll send customer_id = 0 and let backend handle validation
-    let customerId: number = 0;
+    const customerId = (selectedCustomer && selectedCustomer.id && !isNaN(Number(selectedCustomer.id)))
+      ? Number(selectedCustomer.id)
+      : 0;
 
-    if (selectedCustomer && selectedCustomer.id && selectedCustomer.id > 0) {
-      customerId = selectedCustomer.id;
-      console.log('✅ Using customer ID from selected customer:', customerId);
+    if (customerId === 0) {
+      console.log('⚠️ No customer ID available, sending customer_id = 0.');
     } else {
-      // No customer ID available - send 0 and let backend validate
-      // Backend will return error if customer_id is required and invalid
-      console.log('⚠️ No customer ID available, sending customer_id = 0. Backend will validate.');
+      console.log('✅ Final Customer ID for payload:', customerId);
     }
 
     if (salesItems.length === 0) {
@@ -231,10 +230,10 @@ export const executeSave = async ({
 
     const patientTypeNumber = patientType === 'In Patient' ? 1 : 0;
 
-    // Helper to map UI payment modes to backend keys (e.g., "Credit Card" -> "CREDIT_CARD")
+    // Helper to map UI payment modes to backend keys
+    // Aligned with other modules to send raw strings (e.g., "Cash", "Credit Card")
     const getBackendPaymentMethod = (mode: string) => {
-      const normalized = (mode || 'Cash').toUpperCase().trim();
-      return normalized.replace(/\s+/g, '_');
+      return (mode || 'Cash').trim();
     };
 
     const backendPaymentMethod = getBackendPaymentMethod(paymentMode);
@@ -246,9 +245,12 @@ export const executeSave = async ({
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
       customer_id: customerId,
-      customer_name: customerName,
-      customer_mobile: customerMobile,
-      customer_city: customerCity,
+      // strictly follow user request: omit redundant details if customer_id > 0
+      ...(customerId > 0 ? {} : {
+        customer_name: customerName,
+        customer_mobile: customerMobile,
+        customer_city: customerCity,
+      }),
       doctor_id: doctorId,
       doctor_name: doctorName,
       doctor_mobile: doctorMobile,
@@ -257,7 +259,18 @@ export const executeSave = async ({
       invoice_number: invoiceNumberForBackend,
       ...(invoiceDate && invoiceDate.trim() ? { invoice_date: invoiceDate.trim() } : {}),
       lines: lines,
+      payments: splitPayments && splitPayments.length > 0 ? splitPayments.map(p => ({
+        payment_method: getBackendPaymentMethod(p.paymentMethod),
+        amount: p.amount,
+        details: p.details
+      })) : undefined
     };
+
+    // Override payment method if split payments exist
+    if (splitPayments && splitPayments.length > 0) {
+      submitSalePayload.payment_method = "MULTIPLE";
+      submitSalePayload.payment_mode = "MULTIPLE";
+    }
 
     // In edit mode, call the specialized editSale API to synchronize with database
     if (isEditMode && invoiceId) {
@@ -459,6 +472,27 @@ export const executeSave = async ({
 
           console.log('✅ Sale successfully saved to database. Invoice number:', savedInvoiceNumber);
           console.log('📋 Response message:', result.message || 'Success');
+
+          // Call upsertInvoicePayments if we have an invoice ID and split payments
+          if (dbInvoiceId && splitPayments && splitPayments.length > 0 && upsertInvoicePayments) {
+            console.log('🔄 Calling upsert-invoice-payments...');
+            try {
+              await upsertInvoicePayments({
+                invoice_id: dbInvoiceId,
+                created_by: user?.username || 'Guest',
+                payments: splitPayments.map(p => ({
+                  payment_method: getBackendPaymentMethod(p.paymentMethod),
+                  payment_amount: Number(p.amount),
+                  payment_id: 0
+                }))
+              }).unwrap();
+              console.log('✅ Payments upserted successfully');
+            } catch (paymentError) {
+              console.error('❌ Failed to upsert payments:', paymentError);
+              showToast('Sale saved, but failed to save split payment details.', 'warning');
+            }
+          }
+
         } else {
           // Even if response doesn't have invoice_number, verify the one we generated is saved
           saveInvoiceNumber(finalInvoiceNumber);

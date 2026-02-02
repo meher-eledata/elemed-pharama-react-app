@@ -16,6 +16,7 @@ export interface OrderReceiveRow {
   poNo: string;
   po_id: number;
   supplier: string;
+  supplierId: number;
   received: string;
   status: string;
   reBy: string;

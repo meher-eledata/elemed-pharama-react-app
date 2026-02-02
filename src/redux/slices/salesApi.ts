@@ -579,6 +579,24 @@ export const salesApi = createApi({
         } catch (error) { }
       },
     }),
+
+    // Upsert invoice payments
+    upsertInvoicePayments: builder.mutation<any, {
+      invoice_id: number;
+      created_by: string;
+      payments: Array<{
+        payment_method: string;
+        payment_amount: number;
+        payment_id?: number; // Optional, based on user example
+      }>;
+    }>({
+      query: (body) => ({
+        url: "sales/upsert-invoice-payments/",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Sales"],
+    }),
   }),
 });
 
@@ -613,4 +631,5 @@ export const {
   useGetInvoiceDetailsMutation,
   useSubmitSalesReturnMutation,
   useEditSaleMutation,
+  useUpsertInvoicePaymentsMutation,
 } = salesApi;

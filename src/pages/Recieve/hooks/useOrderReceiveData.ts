@@ -82,14 +82,41 @@ export const useOrderReceiveData = (activeTab: number) => {
 
   const mappedReceipts: OrderReceiveRow[] = useMemo(() => {
     return (receipts || [])
-      .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
+      .filter((receipt) => {
+        if (receipt.id === 13 || receipt.receipt_id === 13) {
+          console.log("🚀 Debug RA13:", JSON.stringify(receipt, null, 2));
+        }
+        return receipt.receipt_status.toLowerCase() === 'received';
+      })
       .map((receipt) => {
         const receiptId = receipt.receipt_id || receipt.id || 0;
-        const totalAmount = receipt.po_total_amount
-          ? parseFloat(receipt.po_total_amount)
-          : (receipt.total_amount || 0);
         const amountPaid = receipt.total_paid || 0;
         const pendingAmount = receipt.amount_left_to_pay || 0;
+
+        // Use paid + pending as the authoritative source for receipt total, 
+        // as total_amount/po_total_amount might reflect the original PO value, not the actual receipt value.
+        let totalAmount = amountPaid + pendingAmount;
+
+        // If the derived total is 0, check if we should fall back to existing fields
+        // This handles cases where paid/pending might be missing (though they shouldn't be based on type definition)
+        // or if it's a truly 0 value receipt vs a data error.
+        if (totalAmount === 0) {
+          const explicitTotal = (receipt.total_amount !== undefined && receipt.total_amount !== null)
+            ? (typeof receipt.total_amount === 'string' ? parseFloat(receipt.total_amount) : receipt.total_amount)
+            : null;
+
+          if (explicitTotal !== null && explicitTotal > 0) {
+            totalAmount = explicitTotal;
+          } else if (receipt.po_total_amount && parseFloat(receipt.po_total_amount) > 0) {
+            // Only use PO total as last resort if everything else is 0
+            // But be careful as this causes the mismatch for partial orders. 
+            // We assume if paid+pending is 0, maybe it's a fresh PO record masquerading as receipt?
+            // But mappedReceipts filters for 'received'.
+            // So we keep comparable logic but prefer the calculated sum.
+            totalAmount = parseFloat(receipt.po_total_amount);
+          }
+        }
+
         const creditAvailable = receipt.supplier_credit_available
           ? parseFloat(receipt.supplier_credit_available)
           : 0;
@@ -103,6 +130,7 @@ export const useOrderReceiveData = (activeTab: number) => {
           poNo: receipt.po_number || String(receipt.po_id),
           po_id: receipt.po_id,
           supplier: supplierName,
+          supplierId: receipt.supplier_id || 0,
           received: (receipt as any).invoice_date
             ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A')
             : dayjs(receipt.received_on).format('MMM DD, YYYY h:mm A'),

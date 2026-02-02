@@ -183,6 +183,7 @@ export const useOrderReceiveActions = (
     navigate('/receive/payment-details', {
       state: {
         supplierName: row.supplier,
+        supplierId: row.supplierId,
         poNumber: row.poNo,
         poId: row.po_id,
         invoiceDate: row.invoice_date || "",

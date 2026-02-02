@@ -58,6 +58,7 @@ export interface EditReceiptRequest {
   invoice_attachment?: string; // Invoice attachment (base64 data URL)
   notes: string;
   created_by: string;
+  total_amount?: number;
   Deleted: Array<{
     receipt_line_id: number;
   }>;
@@ -355,6 +356,7 @@ export const receiveApi = createApi({
         po_number: string;
         notes: string;
         created_by: string;
+        total_amount?: number;
         lines: Array<{
           product: string;
           product_id: number | null; // Allow null for product_id
@@ -525,6 +527,26 @@ export const receiveApi = createApi({
       }),
       providesTags: ["Receive"],
     }),
+
+    // Adjust supplier credit
+    adjustSupplierCredit: builder.mutation<
+      any,
+      {
+        supplier_id: number;
+        direction: "IN" | "OUT";
+        amount: number;
+        credit_type: string;
+        notes: string;
+        created_by: string;
+      }
+    >({
+      query: (body) => ({
+        url: "receive/adjust-supplier-credit",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Receive"],
+    }),
   }),
 });
 
@@ -538,6 +560,7 @@ export const {
   useEditReceiptMutation,
   useDeleteReceiptMutation,
   useGetReceiptLinesQuery,
+  useLazyGetReceiptLinesQuery,
   useEditReceiptLineQuantityMutation,
   useDeleteReceiptLineMutation,
   useSubmitReceiptMutation,
@@ -547,6 +570,7 @@ export const {
   useUpsertReceiptPaymentsMutation,
   useGetPurchaseOrderPaymentsMutation,
   useGetSupplierCreditBalanceQuery,
+  useAdjustSupplierCreditMutation, // IN: Add credit, OUT: Subtract credit
 } = receiveApi;
 
 export const getReceiptFileUrl = (receiptId: number): string => {

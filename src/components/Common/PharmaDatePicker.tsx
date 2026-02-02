@@ -3,8 +3,11 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import "dayjs/locale/en-gb";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+
+dayjs.extend(customParseFormat);
 
 export interface PharmaDatePickerProps {
   value: Dayjs | null;
@@ -44,9 +47,9 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       // Check if target is an Element and has closest method
       if (target && typeof (target as any).closest === 'function') {
         const element = target as Element;
-        if (element.closest('.MuiPickersPopper-root') || 
-            element.closest('.MuiPaper-root') ||
-            element.closest('[role="dialog"]')) {
+        if (element.closest('.MuiPickersPopper-root') ||
+          element.closest('.MuiPaper-root') ||
+          element.closest('[role="dialog"]')) {
           return;
         }
       }
@@ -78,7 +81,6 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
 
     return () => clearTimeout(timer);
   }, [open]);
-
   useEffect(() => {
     const styleId = 'pharma-datepicker-current-styles';
     if (!document.getElementById(styleId)) {
@@ -90,8 +92,9 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
         .css-qo1xbo-MuiPopper-root-MuiPickerPopper-root .MuiPaper-root,
         .MuiPopper-root .MuiPaper-root,
         [class*="MuiPopper-root"][class*="MuiPickerPopper-root"] .MuiPaper-root {
-          min-width: 273px !important;
+          min-width: 320px !important;
           min-height: 318px !important;
+          overflow: visible !important;
         }
         /* Ensure calendar icon is always visible */
         .MuiPickersTextField-root .MuiInputAdornment-root,
@@ -256,23 +259,41 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
         .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected) {
           background-color: transparent !important;
           color: #5C17E5 !important;
-          border: 2px solid #5C17E5 !important;
+          box-shadow: inset 0 0 0 2px #5C17E5 !important;
+          border: none !important;
           font-weight: 600 !important;
         }
         .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected):hover {
           background-color: #F3E8FF !important;
           color: #5C17E5 !important;
-          border: 2px solid #5C17E5 !important;
+          box-shadow: inset 0 0 0 2px #5C17E5 !important;
+          border: none !important;
         }
         /* When today's date is also selected, show as selected */
         .MuiPickersDay-root.MuiPickersDay-today.Mui-selected {
           background-color: #5C17E5 !important;
           color: #ffffff !important;
-          border: 2px solid #5C17E5 !important;
+          box-shadow: inset 0 0 0 2px #5C17E5 !important;
+          border: none !important;
         }
         .MuiPickersDay-root.MuiPickersDay-today.Mui-selected:hover {
           background-color: #4A14C7 !important;
-          border: 2px solid #4A14C7 !important;
+          box-shadow: inset 0 0 0 2px #4A14C7 !important;
+          border: none !important;
+        }
+        /* Fix clipping in Month/Week containers */
+        .MuiDayCalendar-monthContainer,
+        .MuiDayCalendar-weekContainer {
+          overflow: visible !important;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+        }
+        .MuiPickersDay-root {
+          overflow: visible !important;
+        }
+        .MuiDayCalendar-header {
+          padding-left: 8px !important;
+          padding-right: 8px !important;
         }
         /* Override text selection color to purple */
         .MuiPickersInputBase-root input::selection,
@@ -303,10 +324,10 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       const monthButtons = document.querySelectorAll('[role="dialog"] .MuiPickersMonth-root, [role="dialog"] .MuiMonthCalendar-button');
       monthButtons.forEach((button) => {
         const buttonText = button.textContent?.trim();
-        const monthIndex = monthNames.findIndex(m => m === buttonText) !== -1 
+        const monthIndex = monthNames.findIndex(m => m === buttonText) !== -1
           ? monthNames.findIndex(m => m === buttonText)
           : fullMonthNames.findIndex(m => m === buttonText);
-        
+
         if (monthIndex === currentMonth) {
           const element = button as HTMLElement;
           if (!element.classList.contains('Mui-selected')) {
@@ -324,7 +345,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
         '.MuiYearCalendar-root button',
         'button[class*="PickersYear"]'
       ];
-      
+
       let yearButtons: NodeListOf<Element> | null = null;
       for (const selector of yearSelectors) {
         yearButtons = document.querySelectorAll(selector);
@@ -332,17 +353,17 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           break;
         }
       }
-      
+
       if (yearButtons && yearButtons.length > 0) {
         yearButtons.forEach((button) => {
           let buttonText = button.textContent?.trim() || '';
           if (!buttonText && button.firstChild) {
             buttonText = button.firstChild.textContent?.trim() || '';
           }
-          
+
           const cleanedText = buttonText.replace(/[,\s]/g, '');
           const yearNumber = parseInt(cleanedText, 10);
-          
+
           if ((yearNumber === currentYear || buttonText === currentYear.toString()) && !isNaN(yearNumber)) {
             const element = button as HTMLElement;
             if (!element.classList.contains('Mui-selected')) {
@@ -371,15 +392,15 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       childList: true,
       subtree: true,
     });
-    
+
     const handleCalendarClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('.MuiPickersCalendarHeader-labelContainer') || 
-          target.closest('.MuiPickersCalendarHeader-switchViewButton')) {
+      if (target.closest('.MuiPickersCalendarHeader-labelContainer') ||
+        target.closest('.MuiPickersCalendarHeader-switchViewButton')) {
         setTimeout(styleCurrentMonthAndYear, 300);
       }
     };
-    
+
     document.addEventListener('click', handleCalendarClick);
 
     const interval = setInterval(() => {
@@ -399,7 +420,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
-      <div 
+      <div
         ref={containerRef}
         onClick={(e) => {
           if (!disabled) {
@@ -428,643 +449,643 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           slots={{
             openPickerIcon: CalendarTodayIcon,
           }}
-        slotProps={{
-          openPickerIcon: {
-            sx: {
-              display: 'flex !important',
-              visibility: 'visible !important',
-              opacity: '1 !important',
-              color: '#6B7280 !important',
-              fontSize: '20px !important',
-            }
-          },
-          monthButton: (ownerState) => {
-            const month = (ownerState as any).month || (ownerState as any).value;
-            const currentMonth = dayjs();
-            const isCurrentMonth = month && dayjs.isDayjs(month) && 
-              month.month() === currentMonth.month() && 
-              month.year() === currentMonth.year();
-            
-            return {
+          slotProps={{
+            openPickerIcon: {
               sx: {
-                fontSize: "12px !important",
-                width:"48px",
-                ...(isCurrentMonth && {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                    color: "#ffffff !important",
-                  },
-                }),
-                "&.Mui-selected": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                  },
-                },
-                "&:hover": {
-                  ...(!isCurrentMonth && {
-                    backgroundColor: "#F3E8FF !important",
-                    color: "#5C17E5 !important",
-                  }),
-                },
-              },
-            };
-          },
-          yearButton: (ownerState) => {
-            const year = (ownerState as any).year || (ownerState as any).value;
-            const currentYear = dayjs().year();
-            let isCurrentYear = false;
-            
-            if (year) {
-              if (dayjs.isDayjs(year)) {
-                isCurrentYear = year.year() === currentYear;
-              } else if (typeof year === 'number') {
-                isCurrentYear = year === currentYear;
+                display: 'flex !important',
+                visibility: 'visible !important',
+                opacity: '1 !important',
+                color: '#6B7280 !important',
+                fontSize: '20px !important',
               }
-            }
-            
-            return {
-              sx: {
-                fontSize: "14px !important",
-                ...(isCurrentYear && {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                    color: "#ffffff !important",
-                  },
-                }),
-                "&.Mui-selected": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                  },
-                },
-                "&:hover": {
-                  ...(!isCurrentYear && {
-                    backgroundColor: "#F3E8FF !important",
-                    color: "#5C17E5 !important",
-                  }),
-                },
-              },
-            };
-          },
-          textField: {
-            size: "small",
-            placeholder,
-            label,
-            error: error,
-            InputProps: {
-              readOnly: readOnly,
             },
-            sx: {
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              width,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "18px !important",
-                height: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
-                minHeight: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
-                backgroundColor: "#ffffff",
-                outline: "none !important",
-                "& .MuiPickersInputBase-root": {
-                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+            monthButton: (ownerState) => {
+              const month = (ownerState as any).month || (ownerState as any).value;
+              const currentMonth = dayjs();
+              const isCurrentMonth = month && dayjs.isDayjs(month) &&
+                month.month() === currentMonth.month() &&
+                month.year() === currentMonth.year();
+
+              return {
+                sx: {
+                  fontSize: "12px !important",
+                  width: "48px",
+                  ...(isCurrentMonth && {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                    "&:hover": {
+                      backgroundColor: "#4A14C7 !important",
+                      color: "#ffffff !important",
+                    },
+                  }),
+                  "&.Mui-selected": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                    "&:hover": {
+                      backgroundColor: "#4A14C7 !important",
+                    },
+                  },
+                  "&:hover": {
+                    ...(!isCurrentMonth && {
+                      backgroundColor: "#F3E8FF !important",
+                      color: "#5C17E5 !important",
+                    }),
+                  },
                 },
-                "& fieldset": { 
-                  borderColor: error ? "#EF4444" : "#D1D5DB",
-                  borderWidth: "1px",
-                  borderRadius: "18px",
+              };
+            },
+            yearButton: (ownerState) => {
+              const year = (ownerState as any).year || (ownerState as any).value;
+              const currentYear = dayjs().year();
+              let isCurrentYear = false;
+
+              if (year) {
+                if (dayjs.isDayjs(year)) {
+                  isCurrentYear = year.year() === currentYear;
+                } else if (typeof year === 'number') {
+                  isCurrentYear = year === currentYear;
+                }
+              }
+
+              return {
+                sx: {
+                  fontSize: "14px !important",
+                  ...(isCurrentYear && {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                    "&:hover": {
+                      backgroundColor: "#4A14C7 !important",
+                      color: "#ffffff !important",
+                    },
+                  }),
+                  "&.Mui-selected": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                    "&:hover": {
+                      backgroundColor: "#4A14C7 !important",
+                    },
+                  },
+                  "&:hover": {
+                    ...(!isCurrentYear && {
+                      backgroundColor: "#F3E8FF !important",
+                      color: "#5C17E5 !important",
+                    }),
+                  },
                 },
-                "&:hover": {
-                  outline: "none !important",
-                  outlineWidth: "0 !important",
-                  outlineStyle: "none !important",
-                  outlineOffset: "0 !important",
-                  boxShadow: "none !important",
-                },
-                "&:hover *": {
-                  outline: "none !important",
-                },
-                "&:hover fieldset": { 
-                  borderColor: error ? "#EF4444" : "#D1D5DB",
-                  borderWidth: "1px",
-                  borderRadius: "18px",
-                  outline: "none !important",
-                  boxShadow: "none !important",
-                },
-                "&.Mui-focused fieldset": { 
-                  borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
-                  borderWidth: "1px !important",
-                  borderRadius: "18px",
-                  outline: "none !important",
-                },
-                "&.Mui-focused": {
-                  outline: "none !important",
-                },
-                "&.Mui-error fieldset": {
-                  borderColor: "#EF4444",
-                  borderWidth: "1px",
-                  borderRadius: "18px",
-                },
+              };
+            },
+            textField: {
+              size: "small",
+              placeholder,
+              label,
+              error: error,
+              InputProps: {
+                readOnly: readOnly,
               },
-              "& .MuiPickersInputBase-root": {
-                borderRadius: "18px !important",
-                height: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
-                minHeight: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
-                outline: "none !important",
-                color: "#728197 !important",
-                "&:hover": {
+              sx: {
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                width,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "18px !important",
+                  height: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
+                  minHeight: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
+                  backgroundColor: "#ffffff",
                   outline: "none !important",
-                  outlineWidth: "0 !important",
-                  outlineStyle: "none !important",
-                  outlineOffset: "0 !important",
-                  boxShadow: "none !important",
+                  "& .MuiPickersInputBase-root": {
+                    fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  },
+                  "& fieldset": {
+                    borderColor: error ? "#EF4444" : "#D1D5DB",
+                    borderWidth: "1px",
+                    borderRadius: "18px",
+                  },
+                  "&:hover": {
+                    outline: "none !important",
+                    outlineWidth: "0 !important",
+                    outlineStyle: "none !important",
+                    outlineOffset: "0 !important",
+                    boxShadow: "none !important",
+                  },
+                  "&:hover *": {
+                    outline: "none !important",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: error ? "#EF4444" : "#D1D5DB",
+                    borderWidth: "1px",
+                    borderRadius: "18px",
+                    outline: "none !important",
+                    boxShadow: "none !important",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                    borderWidth: "1px !important",
+                    borderRadius: "18px",
+                    outline: "none !important",
+                  },
+                  "&.Mui-focused": {
+                    outline: "none !important",
+                  },
+                  "&.Mui-error fieldset": {
+                    borderColor: "#EF4444",
+                    borderWidth: "1px",
+                    borderRadius: "18px",
+                  },
                 },
-                "&:hover *": {
+                "& .MuiPickersInputBase-root": {
+                  borderRadius: "18px !important",
+                  height: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
+                  minHeight: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
                   outline: "none !important",
+                  color: "#728197 !important",
+                  "&:hover": {
+                    outline: "none !important",
+                    outlineWidth: "0 !important",
+                    outlineStyle: "none !important",
+                    outlineOffset: "0 !important",
+                    boxShadow: "none !important",
+                  },
+                  "&:hover *": {
+                    outline: "none !important",
+                  },
+                  "&:focus": {
+                    outline: "none !important",
+                    outlineWidth: "0 !important",
+                    outlineStyle: "none !important",
+                  },
+                  "&:focus-visible": {
+                    outline: "none !important",
+                    outlineWidth: "0 !important",
+                    outlineStyle: "none !important",
+                    boxShadow: "none !important",
+                  },
+                  "& fieldset": {
+                    borderColor: "#D1D5DB",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#D1D5DB",
+                    outline: "none !important",
+                    boxShadow: "none !important",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                    borderWidth: "1px !important",
+                  },
+                  "& input": {
+                    color: "#728197 !important",
+                  },
                 },
-                "&:focus": {
-                  outline: "none !important",
-                  outlineWidth: "0 !important",
-                  outlineStyle: "none !important",
+                "& .MuiFormControl-root.MuiPickersTextField-root .MuiPickersInputBase-root": {
+                  height: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
+                  minHeight: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
                 },
-                "&:focus-visible": {
-                  outline: "none !important",
-                  outlineWidth: "0 !important",
-                  outlineStyle: "none !important",
-                  boxShadow: "none !important",
+                "& .MuiPickersInputBase-colorPrimary": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                  },
                 },
-                "& fieldset": {
-                  borderColor: "#D1D5DB",
+                "& .MuiPickersInputBase-root.MuiPickersOutlinedInput-root.MuiPickersInputBase-colorPrimary": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                    borderWidth: "1px !important",
+                  },
                 },
-                "&:hover fieldset": {
-                  borderColor: "#D1D5DB",
-                  outline: "none !important",
-                  boxShadow: "none !important",
+                "& .MuiOutlinedInput-input": {
+                  padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  lineHeight: typeof height === 'number' && height <= 32 ? "18px !important" : "20px !important",
+                  color: "#728197 !important",
+                  fontWeight: "normal !important",
                 },
-                "&.Mui-focused fieldset": {
-                  borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
-                  borderWidth: "1px !important",
+                "& .MuiPickersInputBase-input": {
+                  padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  lineHeight: typeof height === 'number' && height <= 32 ? "18px !important" : "20px !important",
+                  color: "#728197 !important",
+                  fontWeight: "normal !important",
                 },
                 "& input": {
                   color: "#728197 !important",
-                },
-              },
-              "& .MuiFormControl-root.MuiPickersTextField-root .MuiPickersInputBase-root": {
-                height: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
-                minHeight: typeof height === 'number' ? `${height}px !important` : `${height} !important`,
-              },
-              "& .MuiPickersInputBase-colorPrimary": {
-                "&.Mui-focused fieldset": {
-                  borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
-                },
-              },
-              "& .MuiPickersInputBase-root.MuiPickersOutlinedInput-root.MuiPickersInputBase-colorPrimary": {
-                "&.Mui-focused fieldset": {
-                  borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
-                  borderWidth: "1px !important",
-                },
-              },
-              "& .MuiOutlinedInput-input": {
-                padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
-                fontFamily: "'Lexend', sans-serif",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                lineHeight: typeof height === 'number' && height <= 32 ? "18px !important" : "20px !important",
-                color: "#728197 !important",
-                fontWeight: "normal !important",
-              },
-              "& .MuiPickersInputBase-input": {
-                padding: typeof height === 'number' && height <= 32 ? "6px 8px" : "12px 16px",
-                fontFamily: "'Lexend', sans-serif",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                lineHeight: typeof height === 'number' && height <= 32 ? "18px !important" : "20px !important",
-                color: "#728197 !important",
-                fontWeight: "normal !important",
-              },
-              "& input": {
-                color: "#728197 !important",
-                WebkitTextFillColor: "#728197 !important",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                "&::selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-                "&::-moz-selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-              },
-              "& .MuiInputBase-input": {
-                color: "#728197 !important",
-                WebkitTextFillColor: "#728197 !important",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                "&::selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-                "&::-moz-selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-              },
-              "& .MuiPickersInputBase-root input": {
-                color: "#728197 !important",
-                WebkitTextFillColor: "#728197 !important",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                "&::selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-                "&::-moz-selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-              },
-              "& .MuiOutlinedInput-root input": {
-                color: "#728197 !important",
-                WebkitTextFillColor: "#728197 !important",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                "&::selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-                "&::-moz-selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-              },
-              "& input[type='text']": {
-                color: "#728197 !important",
-                WebkitTextFillColor: "#728197 !important",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                "&::selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-                "&::-moz-selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-              },
-              "& input[readonly]": {
-                color: "#728197 !important",
-                WebkitTextFillColor: "#728197 !important",
-                fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
-                "&::selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-                "&::-moz-selection": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                },
-              },
-              "& .MuiOutlinedInput-input::placeholder": {
-                color: "#728197",
-                opacity: 1,
-                fontSize: "10px !important",
-              },
-              "& input::placeholder": {
-                fontSize: "10px !important",
-                color: "#728197 !important",
-                opacity: "1 !important",
-              },
-              "& input::-webkit-input-placeholder": {
-                fontSize: "10px !important",
-                color: "#728197 !important",
-                opacity: "1 !important",
-              },
-              "& input::-moz-placeholder": {
-                fontSize: "10px !important",
-                color: "#728197 !important",
-                opacity: "1 !important",
-              },
-              "& .MuiPickersInputBase-input::placeholder": {
-                fontSize: "10px !important",
-                color: "#728197 !important",
-                opacity: "1 !important",
-              },
-              "& .MuiInputBase-input::placeholder": {
-                fontSize: "10px !important",
-                color: "#728197 !important",
-                opacity: "1 !important",
-              },
-              "& .MuiInputLabel-root": {
-                fontFamily: "'Lexend', sans-serif",
-                fontSize: "16px",
-                color: "#1A212B",
-                "&.Mui-focused": {
-                  color: "#5C17E5 !important",
-                },
-              },
-              "& .MuiInputAdornment-root": {
-                display: "flex !important",
-                visibility: "visible !important",
-                opacity: "1 !important",
-                pointerEvents: "auto !important",
-                "& .MuiIconButton-root": {
-                  color: "#6B7280 !important",
-                  padding: "4px",
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  display: "flex !important",
-                  visibility: "visible !important",
-                  opacity: "1 !important",
-                  pointerEvents: disabled ? 'none' : 'auto',
-                  "&:hover": {
-                    backgroundColor: disabled ? "transparent" : "rgba(0, 0, 0, 0.04)",
+                  WebkitTextFillColor: "#728197 !important",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  "&::selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
                   },
-                  "& svg": {
-                    fontSize: "20px !important",
-                    display: "block !important",
-                    visibility: "visible !important",
-                    opacity: "1 !important",
-                    width: "20px !important",
-                    height: "20px !important",
-                  },
-                  "&:focus": {
-                    outline: "none",
-                  },
-                },
-              },
-              "& .MuiPickersInputAdornment-root": {
-                display: "flex !important",
-                visibility: "visible !important",
-                opacity: "1 !important",
-                "& .MuiIconButton-root": {
-                  color: "#6B7280 !important",
-                  padding: "4px",
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  display: "flex !important",
-                  visibility: "visible !important",
-                  opacity: "1 !important",
-                  "&:hover": {
-                    backgroundColor: disabled ? "transparent" : "rgba(0, 0, 0, 0.04)",
-                  },
-                  "& svg": {
-                    fontSize: "20px !important",
-                    display: "block !important",
-                    visibility: "visible !important",
-                    opacity: "1 !important",
-                    width: "20px !important",
-                    height: "20px !important",
-                  },
-                  "&:focus": {
-                    outline: "none",
-                  },
-                },
-              },
-              "& .MuiInputAdornment-positionEnd": {
-                display: "flex !important",
-                visibility: "visible !important",
-                opacity: "1 !important",
-                pointerEvents: "auto !important",
-                "& .MuiIconButton-root": {
-                  display: "flex !important",
-                  visibility: "visible !important",
-                  opacity: "1 !important",
-                },
-              },
-              "& .MuiPickersInputAdornment-root.MuiInputAdornment-positionEnd": {
-                display: "flex !important",
-                visibility: "visible !important",
-                opacity: "1 !important",
-                pointerEvents: "auto !important",
-              },
-              "& .MuiInputBase-inputAdornedEnd": {
-                paddingRight: "40px !important",
-              },
-              "& .MuiOutlinedInput-adornedEnd": {
-                paddingRight: "8px !important",
-                "& .MuiInputAdornment-root": {
-                  marginLeft: "0 !important",
-                },
-              },
-            },
-          },
-          popper: {
-            placement: "bottom-start",
-            disablePortal: false,
-            modifiers: [
-              {
-                name: "flip",
-                enabled: false,
-              },
-              {
-                name: "offset",
-                options: {
-                  offset: [0, 8],
-                },
-              },
-              {
-                name: "preventOverflow",
-                enabled: true,
-                options: {
-                  rootBoundary: "viewport",
-                  boundary: "viewport",
-                  tether: false,
-                  altAxis: false,
-                  padding: 8,
-                },
-              },
-              {
-                name: "computeStyles",
-                options: {
-                  adaptive: true,
-                  roundOffsets: true,
-                },
-              },
-            ],
-            sx: {
-              zIndex: 1300,
-              "& .MuiPaper-root": {
-                borderRadius: "12px",
-                border: "1px solid #E6ECF5",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                padding: "16px",
-                width: "242px",
-                maxWidth: "242px",
-                minWidth: "273px",
-                height: "300px !important",
-                minHeight: "318px !important",
-                position: "relative",
-                overflow: "hidden",
-              },
-              "& .MuiDayCalendar-root": {
-                width: "242px",
-                maxWidth: "242px",
-                marginTop:"-6px",
-                height: "300px !important",
-                minHeight: "300px !important",
-              },
-              "& .MuiYearCalendar-root": {
-                width: "242px",
-                maxWidth: "242px",
-                height: "223px",
-              },
-              "& .MuiPickersYear-root": {
-                borderRadius: "20px",
-                padding: "8px 16px",
-                fontSize: "14px !important",
-                "&.Mui-selected": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  borderRadius: "20px",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                  },
-                },
-                "&:hover": {
-                  backgroundColor: "#F3E8FF !important",
-                  color: "#5C17E5 !important",
-                  borderRadius: "20px",
-                },
-              },
-              "& .MuiMonthCalendar-root": {
-                marginLeft: "-18px",
-                width: "264px",
-                columnGap: "38px",
-              },
-              "& .MuiPickersMonth-root": {
-                fontSize: "14px !important",
-                "&.Mui-selected": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                  },
-                },
-                "&:hover": {
-                  backgroundColor: "#F3E8FF !important",
-                  color: "#5C17E5 !important",
-                },
-              },
-              "& .MuiMonthCalendar-button": {
-                fontSize: "14px !important",
-                "&.Mui-selected": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
-                  },
-                },
-              },
-              "& .MuiDayCalendar-header": {
-                width: "242px",
-                marginTop:"-6px",
-              },
-              "& .MuiPickersSlideTransition-root": {
-                display: "block",
-                position: "relative",
-                overflowX: "hidden",
-                minHeight: "242px",
-                height: "300px !important",
-                width: "242px",
-                maxWidth: "242px",
-              },
-              "& .MuiPickersCalendarHeader-root": {
-                padding: "0 8px 16px 8px",
-                width:"242px",
-                marginTop:"-6px",
-
-
-                "& .MuiPickersCalendarHeader-labelContainer": {
-                  "& .MuiPickersCalendarHeader-label": {
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: "16px",
-                    fontWeight: 600,
-                    color: "#202B3C",
-                    width:"242px",
-
-                  },
-                },
-                "& .MuiIconButton-root": {
-                  color: "#5C17E5",
-                  "&:hover": {
-                    backgroundColor: "#F3E8FF",
-                  },
-                },
-              },
-              "& .MuiDayCalendar-weekContainer": {
-                marginBottom: "4px",
-              },
-              "& .MuiDayCalendar-weekDayLabel": {
-                color: "#5C17E5",
-                fontFamily: "'Lexend', sans-serif",
-                fontWeight: 600,
-                fontSize: "12px",
-                width: "32px",
-                height: "32px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              },
-              "& .MuiPickersDay-root": {
-                width: "32px",
-                height: "32px",
-                minWidth: "32px",
-                minHeight: "32px",
-                maxWidth: "32px",
-                maxHeight: "32px",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#1A212B",
-                fontFamily: "'Lexend', sans-serif",
-                borderRadius: "50%",
-                margin: "2px",
-                padding: "0 !important",
-                backgroundColor: "transparent",
-                display: "flex !important",
-                alignItems: "center !important",
-                justifyContent: "center !important",
-                overflow: "hidden",
-                boxSizing: "border-box",
-                "& > *": {
-                  display: "flex !important",
-                  alignItems: "center !important",
-                  justifyContent: "center !important",
-                  width: "100%",
-                  height: "100%",
-                },
-                "&:hover": {
-                  backgroundColor: "#F3E8FF !important",
-                  color: "#5C17E5 !important",
-                },
-                "&.Mui-selected": {
-                  backgroundColor: "#5C17E5 !important",
-                  color: "#ffffff !important",
-                  "&:hover": {
-                    backgroundColor: "#4A14C7 !important",
+                  "&::-moz-selection": {
+                    backgroundColor: "#5C17E5 !important",
                     color: "#ffffff !important",
                   },
                 },
-                "&.MuiPickersDay-today": {
-                  backgroundColor: "transparent !important",
-                  color: "#5C17E5 !important",
-                  border: "2px solid #5C17E5 !important",
-                  fontWeight: 600,
+                "& .MuiInputBase-input": {
+                  color: "#728197 !important",
+                  WebkitTextFillColor: "#728197 !important",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  "&::selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                  "&::-moz-selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                },
+                "& .MuiPickersInputBase-root input": {
+                  color: "#728197 !important",
+                  WebkitTextFillColor: "#728197 !important",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  "&::selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                  "&::-moz-selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                },
+                "& .MuiOutlinedInput-root input": {
+                  color: "#728197 !important",
+                  WebkitTextFillColor: "#728197 !important",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  "&::selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                  "&::-moz-selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                },
+                "& input[type='text']": {
+                  color: "#728197 !important",
+                  WebkitTextFillColor: "#728197 !important",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  "&::selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                  "&::-moz-selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                },
+                "& input[readonly]": {
+                  color: "#728197 !important",
+                  WebkitTextFillColor: "#728197 !important",
+                  fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
+                  "&::selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                  "&::-moz-selection": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                  },
+                },
+                "& .MuiOutlinedInput-input::placeholder": {
+                  color: "#728197",
+                  opacity: 1,
+                  fontSize: "10px !important",
+                },
+                "& input::placeholder": {
+                  fontSize: "10px !important",
+                  color: "#728197 !important",
+                  opacity: "1 !important",
+                },
+                "& input::-webkit-input-placeholder": {
+                  fontSize: "10px !important",
+                  color: "#728197 !important",
+                  opacity: "1 !important",
+                },
+                "& input::-moz-placeholder": {
+                  fontSize: "10px !important",
+                  color: "#728197 !important",
+                  opacity: "1 !important",
+                },
+                "& .MuiPickersInputBase-input::placeholder": {
+                  fontSize: "10px !important",
+                  color: "#728197 !important",
+                  opacity: "1 !important",
+                },
+                "& .MuiInputBase-input::placeholder": {
+                  fontSize: "10px !important",
+                  color: "#728197 !important",
+                  opacity: "1 !important",
+                },
+                "& .MuiInputLabel-root": {
+                  fontFamily: "'Lexend', sans-serif",
+                  fontSize: "16px",
+                  color: "#1A212B",
+                  "&.Mui-focused": {
+                    color: "#5C17E5 !important",
+                  },
+                },
+                "& .MuiInputAdornment-root": {
+                  display: "flex !important",
+                  visibility: "visible !important",
+                  opacity: "1 !important",
+                  pointerEvents: "auto !important",
+                  "& .MuiIconButton-root": {
+                    color: "#6B7280 !important",
+                    padding: "4px",
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    display: "flex !important",
+                    visibility: "visible !important",
+                    opacity: "1 !important",
+                    pointerEvents: disabled ? 'none' : 'auto',
+                    "&:hover": {
+                      backgroundColor: disabled ? "transparent" : "rgba(0, 0, 0, 0.04)",
+                    },
+                    "& svg": {
+                      fontSize: "20px !important",
+                      display: "block !important",
+                      visibility: "visible !important",
+                      opacity: "1 !important",
+                      width: "20px !important",
+                      height: "20px !important",
+                    },
+                    "&:focus": {
+                      outline: "none",
+                    },
+                  },
+                },
+                "& .MuiPickersInputAdornment-root": {
+                  display: "flex !important",
+                  visibility: "visible !important",
+                  opacity: "1 !important",
+                  "& .MuiIconButton-root": {
+                    color: "#6B7280 !important",
+                    padding: "4px",
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    display: "flex !important",
+                    visibility: "visible !important",
+                    opacity: "1 !important",
+                    "&:hover": {
+                      backgroundColor: disabled ? "transparent" : "rgba(0, 0, 0, 0.04)",
+                    },
+                    "& svg": {
+                      fontSize: "20px !important",
+                      display: "block !important",
+                      visibility: "visible !important",
+                      opacity: "1 !important",
+                      width: "20px !important",
+                      height: "20px !important",
+                    },
+                    "&:focus": {
+                      outline: "none",
+                    },
+                  },
+                },
+                "& .MuiInputAdornment-positionEnd": {
+                  display: "flex !important",
+                  visibility: "visible !important",
+                  opacity: "1 !important",
+                  pointerEvents: "auto !important",
+                  "& .MuiIconButton-root": {
+                    display: "flex !important",
+                    visibility: "visible !important",
+                    opacity: "1 !important",
+                  },
+                },
+                "& .MuiPickersInputAdornment-root.MuiInputAdornment-positionEnd": {
+                  display: "flex !important",
+                  visibility: "visible !important",
+                  opacity: "1 !important",
+                  pointerEvents: "auto !important",
+                },
+                "& .MuiInputBase-inputAdornedEnd": {
+                  paddingRight: "40px !important",
+                },
+                "& .MuiOutlinedInput-adornedEnd": {
+                  paddingRight: "8px !important",
+                  "& .MuiInputAdornment-root": {
+                    marginLeft: "0 !important",
+                  },
+                },
+              },
+            },
+            popper: {
+              placement: "bottom-start",
+              disablePortal: false,
+              modifiers: [
+                {
+                  name: "flip",
+                  enabled: false,
+                },
+                {
+                  name: "offset",
+                  options: {
+                    offset: [0, 8],
+                  },
+                },
+                {
+                  name: "preventOverflow",
+                  enabled: true,
+                  options: {
+                    rootBoundary: "viewport",
+                    boundary: "viewport",
+                    tether: false,
+                    altAxis: false,
+                    padding: 8,
+                  },
+                },
+                {
+                  name: "computeStyles",
+                  options: {
+                    adaptive: true,
+                    roundOffsets: true,
+                  },
+                },
+              ],
+              sx: {
+                zIndex: 1300,
+                "& .MuiPaper-root": {
+                  borderRadius: "12px",
+                  border: "1px solid #E6ECF5",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  padding: "16px",
+                  width: "242px",
+                  maxWidth: "242px",
+                  minWidth: "273px",
+                  height: "300px !important",
+                  minHeight: "318px !important",
+                  position: "relative",
+                  overflow: "hidden",
+                },
+                "& .MuiDayCalendar-root": {
+                  width: "242px",
+                  maxWidth: "242px",
+                  marginTop: "-6px",
+                  height: "300px !important",
+                  minHeight: "300px !important",
+                },
+                "& .MuiYearCalendar-root": {
+                  width: "242px",
+                  maxWidth: "242px",
+                  height: "223px",
+                },
+                "& .MuiPickersYear-root": {
+                  borderRadius: "20px",
+                  padding: "8px 16px",
+                  fontSize: "14px !important",
+                  "&.Mui-selected": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                    borderRadius: "20px",
+                    "&:hover": {
+                      backgroundColor: "#4A14C7 !important",
+                    },
+                  },
                   "&:hover": {
                     backgroundColor: "#F3E8FF !important",
                     color: "#5C17E5 !important",
-                    border: "2px solid #5C17E5 !important",
+                    borderRadius: "20px",
+                  },
+                },
+                "& .MuiMonthCalendar-root": {
+                  marginLeft: "-18px",
+                  width: "264px",
+                  columnGap: "38px",
+                },
+                "& .MuiPickersMonth-root": {
+                  fontSize: "14px !important",
+                  "&.Mui-selected": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                    "&:hover": {
+                      backgroundColor: "#4A14C7 !important",
+                    },
+                  },
+                  "&:hover": {
+                    backgroundColor: "#F3E8FF !important",
+                    color: "#5C17E5 !important",
+                  },
+                },
+                "& .MuiMonthCalendar-button": {
+                  fontSize: "14px !important",
+                  "&.Mui-selected": {
+                    backgroundColor: "#5C17E5 !important",
+                    color: "#ffffff !important",
+                    "&:hover": {
+                      backgroundColor: "#4A14C7 !important",
+                    },
+                  },
+                },
+                "& .MuiDayCalendar-header": {
+                  width: "242px",
+                  marginTop: "-6px",
+                },
+                "& .MuiPickersSlideTransition-root": {
+                  display: "block",
+                  position: "relative",
+                  overflowX: "hidden",
+                  minHeight: "242px",
+                  height: "300px !important",
+                  width: "242px",
+                  maxWidth: "242px",
+                },
+                "& .MuiPickersCalendarHeader-root": {
+                  padding: "0 8px 16px 8px",
+                  width: "242px",
+                  marginTop: "-6px",
+
+
+                  "& .MuiPickersCalendarHeader-labelContainer": {
+                    "& .MuiPickersCalendarHeader-label": {
+                      fontFamily: "'Lexend', sans-serif",
+                      fontSize: "16px",
+                      fontWeight: 600,
+                      color: "#202B3C",
+                      width: "242px",
+
+                    },
+                  },
+                  "& .MuiIconButton-root": {
+                    color: "#5C17E5",
+                    "&:hover": {
+                      backgroundColor: "#F3E8FF",
+                    },
+                  },
+                },
+                "& .MuiDayCalendar-weekContainer": {
+                  marginBottom: "4px",
+                },
+                "& .MuiDayCalendar-weekDayLabel": {
+                  color: "#5C17E5",
+                  fontFamily: "'Lexend', sans-serif",
+                  fontWeight: 600,
+                  fontSize: "12px",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+                "& .MuiPickersDay-root": {
+                  width: "32px",
+                  height: "32px",
+                  minWidth: "32px",
+                  minHeight: "32px",
+                  maxWidth: "32px",
+                  maxHeight: "32px",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#1A212B",
+                  fontFamily: "'Lexend', sans-serif",
+                  borderRadius: "50%",
+                  margin: "2px",
+                  padding: "0 !important",
+                  backgroundColor: "transparent",
+                  display: "flex !important",
+                  alignItems: "center !important",
+                  justifyContent: "center !important",
+                  overflow: "hidden",
+                  boxSizing: "border-box",
+                  "& > *": {
+                    display: "flex !important",
+                    alignItems: "center !important",
+                    justifyContent: "center !important",
+                    width: "100%",
+                    height: "100%",
+                  },
+                  "&:hover": {
+                    backgroundColor: "#F3E8FF !important",
+                    color: "#5C17E5 !important",
                   },
                   "&.Mui-selected": {
                     backgroundColor: "#5C17E5 !important",
                     color: "#ffffff !important",
-                    border: "2px solid #5C17E5 !important",
                     "&:hover": {
                       backgroundColor: "#4A14C7 !important",
-                      border: "2px solid #4A14C7 !important",
+                      color: "#ffffff !important",
+                    },
+                  },
+                  "&.MuiPickersDay-today": {
+                    backgroundColor: "transparent !important",
+                    color: "#5C17E5 !important",
+                    border: "2px solid #5C17E5 !important",
+                    fontWeight: 600,
+                    "&:hover": {
+                      backgroundColor: "#F3E8FF !important",
+                      color: "#5C17E5 !important",
+                      border: "2px solid #5C17E5 !important",
+                    },
+                    "&.Mui-selected": {
+                      backgroundColor: "#5C17E5 !important",
+                      color: "#ffffff !important",
+                      border: "2px solid #5C17E5 !important",
+                      "&:hover": {
+                        backgroundColor: "#4A14C7 !important",
+                        border: "2px solid #4A14C7 !important",
+                      },
                     },
                   },
                 },
               },
             },
-          },
-        }}
-      />
+          }}
+        />
       </div>
     </LocalizationProvider>
   );

@@ -86,7 +86,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ px: 3, py: 3, minHeight: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography
+        <Box
           id="alert-dialog-description"
           sx={{
             color: '#374151',
@@ -98,7 +98,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           }}
         >
           {message}
-        </Typography>
+        </Box>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3, pt: 0, justifyContent: 'center', gap: 2 }}>

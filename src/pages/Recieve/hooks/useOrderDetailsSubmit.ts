@@ -139,14 +139,29 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
     const createdBy = user?.username || user?.first_name || "meher";
 
-    return {
+    const payload = {
       supplier_name: supplierName.trim(),
       supplier_id: selectedSupplierData.supplier_id,
       po_number: poNumber.trim(),
       notes: "",
       created_by: createdBy,
-      lines: lines
+      lines: lines,
+      total_amount: pharmaTableData.reduce((sum, item) => {
+        const unitPrice = Number(item.pp) || 0;
+        const qty = Number(item.qtyReceived) || 0;
+        const cgst = Number(item.cgst) || 0;
+        const sgst = Number(item.sgst) || 0;
+        const igst = Number(item.igst) || 0;
+        const discount = Number(item.disc) || 0;
+
+        const baseAmount = unitPrice * qty;
+        const discountAmount = baseAmount * (discount / 100);
+        const amountAfterDiscount = baseAmount - discountAmount;
+        const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+        return sum + (amountAfterDiscount + taxAmount);
+      }, 0)
     };
+    return payload;
   };
 
   const detectChanges = () => {
@@ -267,6 +282,20 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
       notes: "",
       created_by: "meher",
+      total_amount: pharmaTableData.reduce((sum, item) => {
+        const unitPrice = Number(item.pp) || 0;
+        const qty = Number(item.qtyReceived) || 0;
+        const cgst = Number(item.cgst) || 0;
+        const sgst = Number(item.sgst) || 0;
+        const igst = Number(item.igst) || 0;
+        const discount = Number(item.disc) || 0;
+
+        const baseAmount = unitPrice * qty;
+        const discountAmount = baseAmount * (discount / 100);
+        const amountAfterDiscount = baseAmount - discountAmount;
+        const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+        return sum + (amountAfterDiscount + taxAmount);
+      }, 0),
       Deleted: deleted,
       Added: added,
       Edited: edited

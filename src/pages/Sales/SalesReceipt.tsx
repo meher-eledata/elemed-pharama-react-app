@@ -9,16 +9,21 @@ import CustomerModal from '../../components/Modal/NewCustomer/CustomerModal';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
+
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
+import PaymentSplitModal from './components/Modal/PaymentSplit/PaymentSplitModal';
 import {
   useGetDoctorNamesQuery,
   useSubmitSaleMutation,
   useUpdateSalesMutation,
   useAddCustomerMutation,
-  useGetCustomersQuery,
+  // useGetCustomersQuery,
   useGetAllCustomerNamesQuery,
   useGetInvoiceDetailsMutation,
   useEditSaleMutation,
+  useDeleteSalesMutation,
+  useUpsertInvoicePaymentsMutation,
+  useSearchCustomersMutation,
   Customer,
   DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
@@ -73,9 +78,12 @@ const SalesReceipt: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
-  const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
+  const [upsertInvoicePayments] = useUpsertInvoicePaymentsMutation();
+  const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
+  const [deleteSales] = useDeleteSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
+  const [searchCustomers] = useSearchCustomersMutation();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
 
@@ -86,7 +94,7 @@ const SalesReceipt: React.FC = () => {
     );
   }, [doctorNamesData]);
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
-  const { data: customersData = [] } = useGetCustomersQuery();
+  // const { data: customersData = [] } = useGetCustomersQuery(); // Endpoint 404s
 
   const {
     data: apiProducts = [],
@@ -140,6 +148,10 @@ const SalesReceipt: React.FC = () => {
   const [totalDiscount, setTotalDiscount] = useState('');
   const [taxAmount, setTaxAmount] = useState('');
   const [totalPayableAmount, setTotalPayableAmount] = useState('');
+
+  // Multiple Payment State
+  const [isPaymentSplitModalOpen, setIsPaymentSplitModalOpen] = useState(false);
+  const [splitPayments, setSplitPayments] = useState<any[]>([]);
 
   const [salesItems, setSalesItems] = useState<SalesReceiptItem[]>([]);
 
@@ -351,7 +363,8 @@ const SalesReceipt: React.FC = () => {
                   const raw = invoice.patient_type !== undefined ? invoice.patient_type : (invoice as any).patientType;
                   if (raw === null || raw === undefined) return 'Out Patient';
                   const str = String(raw).trim().toUpperCase();
-                  if (raw === 0 || str === '0' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
+                  // Fix: 0 is Out Patient, 1 is In Patient
+                  if (raw === 1 || str === '1' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
                     return 'In Patient';
                   }
                   return 'Out Patient';
@@ -525,15 +538,22 @@ const SalesReceipt: React.FC = () => {
     }
   }, [salesItems]);
 
-  // Handle customer phone fetching
   const handleCustomerAutoFill = useCallback((customer: Customer) => {
     setCustomerMobile(customer.mobile);
-    setSelectedCustomer(customer);
+    // Protect newly added customer with ID from being overwritten by id: 0 auto-fill during refetch
+    setSelectedCustomer(prev => {
+      if (prev && prev.id > 0 && prev.name.toLowerCase() === customer.name.toLowerCase()) {
+        console.log('🛡️ State Protection: Preserving valid customer ID:', prev.id);
+        return prev;
+      }
+      return customer;
+    });
   }, []);
 
   const handlePhoneClear = useCallback(() => {
     setCustomerMobile('');
-    setSelectedCustomer(null);
+    // Protect valid customer ID from being cleared just because search is refetching
+    setSelectedCustomer(prev => (prev && prev.id > 0) ? prev : null);
   }, []);
 
   const { shouldFetchImmediatelyRef } = useCustomerPhones({
@@ -546,35 +566,32 @@ const SalesReceipt: React.FC = () => {
     onPhoneClear: handlePhoneClear
   });
 
-  const handleCustomerNameChange = (newName: string) => {
+  const handleCustomerNameChange = async (newName: string) => {
     const normalizedNewName = newName.trim().toLowerCase();
     const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
 
     if (isExactMatch && newName.trim()) {
       shouldFetchImmediatelyRef.current = true;
+
+      // Fetch customer details to get the ID
+      try {
+        const results = await searchCustomers({ searchTerm: newName.trim() }).unwrap();
+        // Find exact match
+        const match = results.find(c => c.name.toLowerCase() === normalizedNewName);
+        if (match) {
+          console.log('✅ Found customer ID:', match.id);
+          setSelectedCustomer(match);
+        }
+      } catch (err) {
+        console.warn('Failed to resolve customer ID', err);
+      }
+    } else {
+      // FIX: Only clear if the name actually changed from what we have and we don't have a valid ID for current name
+      setSelectedCustomer(prev => (prev && prev.id > 0 && prev.name.toLowerCase() === normalizedNewName) ? prev : null);
     }
 
     setCustomerName(newName);
   };
-
-  // Handle customer selection from dropdown
-  // Since /sales/get-customers might not exist, we'll rely on get-customer-phones
-  // which is already handled by useCustomerPhones hook
-  // This function just ensures the name is set correctly
-  const handleCustomerSelectFromDropdown = useCallback((customerName: string) => {
-    if (!customerName || !customerName.trim()) {
-      setSelectedCustomer(null);
-      return;
-    }
-
-    // Set flag to fetch immediately when selecting from dropdown
-    shouldFetchImmediatelyRef.current = true;
-    // We don't have endpoints to get customer IDs
-    // Just set the name - useCustomerPhones will fetch the phone number
-    setCustomerName(customerName.trim());
-    // Don't set selectedCustomer here - let useCustomerPhones handle it
-    // selectedCustomer will only have an ID if customer was just added via add-customer
-  }, [shouldFetchImmediatelyRef]);
 
   // Handle doctor phone and email fetching
   const handleDoctorAutoFill = useCallback((phone: string, email: string) => {
@@ -641,7 +658,9 @@ const SalesReceipt: React.FC = () => {
       if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
     }, []),
     onCustomerRestored: useCallback((customer) => {
-      setSelectedCustomer(customer);
+      if (!customer) return;
+      // Protect from restoring a stale ID:0 object if we already have a valid one
+      setSelectedCustomer(prev => (prev && prev.id > 0 && prev.name.toLowerCase() === customer.name.toLowerCase()) ? prev : customer);
     }, [])
   });
 
@@ -777,6 +796,7 @@ const SalesReceipt: React.FC = () => {
       refetchCustomerNames,
       showToast,
       onCustomerAdded: (customer: Customer) => {
+        console.log('🎯 Setting selected customer from modal (success):', customer);
         setCustomerName(customer.name);
         setCustomerMobile(customer.mobile);
         setSelectedCustomer(customer);
@@ -959,6 +979,7 @@ const SalesReceipt: React.FC = () => {
     setTotalPayableAmount('');
     setSelectedRows([]);
     setEditingRowId(null);
+    setSplitPayments([]); // Reset split payments
 
     dispatch(clearCart());
     dispatch(clearFormData());
@@ -1096,8 +1117,8 @@ const SalesReceipt: React.FC = () => {
     );
     const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
 
-    // Find customer_id from customersData matching selected customerName
-    const matchedCustomerData = customersData.find((c: any) => c.name === customerName);
+    // We no longer rely on customersData matching since we handle it in real-time
+    // during selection/search or via auto-creation in executeSave
 
     await executeSave({
       customerName,
@@ -1117,7 +1138,7 @@ const SalesReceipt: React.FC = () => {
       totalDiscount,
       taxAmount,
       totalPayableAmount,
-      selectedCustomer: matchedCustomerData || selectedCustomer,
+      selectedCustomer,
       apiProducts,
       isProductsLoading,
       isProductsError,
@@ -1136,8 +1157,10 @@ const SalesReceipt: React.FC = () => {
       originalSalesItems: originalInvoiceData?.salesItems,
       skipNavigation,
       onSuccess,
+      splitPayments, // Pass split payments to save handler
+      upsertInvoicePayments, // Pass the mutation function
     });
-  }, [customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm]);
+  }, [customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {
@@ -1217,16 +1240,7 @@ const SalesReceipt: React.FC = () => {
             selectedCustomer={selectedCustomer}
             customerNames={customerNames}
             availablePhones={availablePhones}
-            onCustomerNameChange={isReturnDetailsMode ? () => { } : (newName: string) => {
-              // When name changes and it's an exact match from dropdown, set immediate fetch flag first
-              const normalizedNewName = newName.trim().toLowerCase();
-              const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
-              if (isExactMatch && newName.trim()) {
-                // Set flag to fetch immediately when selecting from dropdown
-                shouldFetchImmediatelyRef.current = true;
-              }
-              handleCustomerNameChange(newName);
-            }}
+            onCustomerNameChange={isReturnDetailsMode ? () => { } : handleCustomerNameChange}
             onCustomerSelect={isReturnDetailsMode ? () => { } : handleCustomerSelect}
             onCustomerMobileChange={isReturnDetailsMode ? () => { } : setCustomerMobile}
             onCustomerCityChange={isReturnDetailsMode ? () => { } : setCustomerCity}
@@ -1252,13 +1266,15 @@ const SalesReceipt: React.FC = () => {
             paymentMode={paymentMode}
             insuranceCompany={insuranceCompany}
             invoiceNumber={invoiceNumber}
-            invoiceDate={invoiceDate}
-            onPaymentModeChange={isReturnDetailsMode ? () => { } : setPaymentMode}
-            onInsuranceCompanyChange={isReturnDetailsMode ? () => { } : setInsuranceCompany}
-            onInvoiceNumberChange={isReturnDetailsMode ? () => { } : setInvoiceNumber}
-            onInvoiceDateChange={isReturnDetailsMode ? () => { } : setInvoiceDate}
+            invoiceDate={invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-GB') : ''}
+            onPaymentModeChange={setPaymentMode}
+            onInsuranceCompanyChange={setInsuranceCompany}
+            onInvoiceNumberChange={setInvoiceNumber}
+            onInvoiceDateChange={setInvoiceDate}
             isReturnDetailsMode={isReturnDetailsMode}
             returnDate={returnDate}
+            onOpenSplitPayment={() => setIsPaymentSplitModalOpen(true)}
+            hasSplitPayments={splitPayments.length > 0}
           />
         </CustomerDoctorSection>
 
@@ -1437,6 +1453,15 @@ const SalesReceipt: React.FC = () => {
           onConfirm={handleConfirmDialogConfirm}
           isLoading={isSubmittingSale || isUpdatingSale}
           actionType={pendingAction || 'save'}
+        />
+
+        {/* Payment Split Modal */}
+        <PaymentSplitModal
+          open={isPaymentSplitModalOpen}
+          onClose={() => setIsPaymentSplitModalOpen(false)}
+          onSave={(payments) => setSplitPayments(payments)}
+          totalAmount={parseFloat(totalPayableAmount) || 0}
+          existingPayments={splitPayments}
         />
       </SalesReceiptContainer>
     </>
