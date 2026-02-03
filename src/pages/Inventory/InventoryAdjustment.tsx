@@ -43,12 +43,12 @@ import {
 
 type BatchRow = {
   id: string;
-  batchNumber: string | number; 
+  batchNumber: string | number;
   quantity: number;
-  oldQuantity: number; 
+  oldQuantity: number;
   expiryDate: string;
   oldExpiryDate: string;
-  quantityInput?: string; 
+  quantityInput?: string;
 };
 
 type SelectedBrand = Brand | null;
@@ -131,7 +131,7 @@ const InventoryAdjustment: React.FC = () => {
   const [getTypesForBrandAndProduct] = useGetTypesForBrandAndProductMutation();
   const [adjustInventoryBatches, { isLoading: isSaving }] = useAdjustInventoryBatchesMutation();
   const { data: brands = [], isLoading: isLoadingBrands } = useGetAllBrandsQuery();
-  
+
   const [selectedBrand, setSelectedBrand] = useState<SelectedBrand>(null);
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct>(null);
   const [selectedType, setSelectedType] = useState<SelectedType>(null);
@@ -139,7 +139,7 @@ const InventoryAdjustment: React.FC = () => {
   const [typesForProduct, setTypesForProduct] = useState<TypeForBrandAndProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
-  
+
   const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
   const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
@@ -242,14 +242,14 @@ const InventoryAdjustment: React.FC = () => {
   const fetchBatchesForProduct = useCallback(async (productId: number) => {
     try {
       const result = await getBatchesForProduct({ product_id: productId }).unwrap();
-      
+
       // Transform API batches to BatchRow format
       const transformedBatches: BatchRow[] = result.batches.map((batch: any) => {
         const expiryDateStr = batch.expiry_date ? dayjs(batch.expiry_date).format('YYYY-MM-DD') : '';
         // batch_number from API can be string (like "CTZ-2026-06-A") or number
         // We'll use it as-is for the API call
         const batchNumber = batch.batch_number || batch.batchNumber;
-        
+
         return {
           id: String(batchNumber), // Use batch_number as the id for display
           batchNumber: batchNumber, // Store batch_number for API calls
@@ -259,11 +259,11 @@ const InventoryAdjustment: React.FC = () => {
           oldExpiryDate: expiryDateStr // Store original expiry date
         };
       });
-      
+
       startTransition(() => {
         setProductInfo(result.product);
         setBatchRows(transformedBatches);
-        
+
         // If selectedType is null (searching by Product ID), create it from productInfo
         if (!selectedType && result.product) {
           setSelectedType({
@@ -296,12 +296,12 @@ const InventoryAdjustment: React.FC = () => {
                 brand_id: brand.id,
                 product_name: product.name,
               }).unwrap();
-              
+
               for (const type of types) {
                 try {
                   const batchResult = await getBatchesForProduct({ product_id: type.product_id }).unwrap();
                   const productInfo = batchResult.product;
-                  
+
                   // Add to product ID options
                   if (!productIds.find(p => p.id === productInfo.product_id)) {
                     productIds.push({
@@ -340,7 +340,7 @@ const InventoryAdjustment: React.FC = () => {
     const rowsCopy = [...batchRows];
     const activeSortKey = sortConfig.key || 'id';
     const activeSortDirection = sortConfig.direction || 'asc';
-    
+
     return rowsCopy.sort((a, b) => {
       let aValue: string | number = '';
       let bValue: string | number = '';
@@ -418,7 +418,7 @@ const InventoryAdjustment: React.FC = () => {
     setSelectedType(typeData);
     if (typeData) {
       fetchBatchesForProduct(typeData.product_id);
-      } else {
+    } else {
       setProductInfo(null);
       setBatchRows([]);
     }
@@ -427,7 +427,7 @@ const InventoryAdjustment: React.FC = () => {
   const handleQuantityChange = (batchId: string, value: string) => {
     // Only allow numeric input
     const numericValue = value.replace(/[^0-9]/g, '');
-    
+
     setBatchRows((prev) =>
       prev.map((batch) => {
         if (batch.id === batchId) {
@@ -435,8 +435,8 @@ const InventoryAdjustment: React.FC = () => {
           const inputValue = numericValue === '' ? '' : numericValue;
           // Parse to number for storage (remove leading zeros)
           const parsed = numericValue === '' ? 0 : parseInt(numericValue, 10);
-          return { 
-            ...batch, 
+          return {
+            ...batch,
             quantity: Number.isNaN(parsed) ? 0 : parsed,
             quantityInput: inputValue
           };
@@ -475,11 +475,11 @@ const InventoryAdjustment: React.FC = () => {
         prev.map((b) =>
           b.id === rowToCancel
             ? {
-                ...b,
-                quantity: originalValues.quantity,
-                expiryDate: originalValues.expiryDate,
-                quantityInput: undefined, // Clear input value
-              }
+              ...b,
+              quantity: originalValues.quantity,
+              expiryDate: originalValues.expiryDate,
+              quantityInput: undefined, // Clear input value
+            }
             : b
         )
       );
@@ -501,7 +501,7 @@ const InventoryAdjustment: React.FC = () => {
             const parsed = parseInt(b.quantityInput, 10);
             finalQuantity = Number.isNaN(parsed) ? 0 : parsed;
           }
-          
+
           return {
             ...b,
             quantity: finalQuantity, // Ensure quantity is set from quantityInput if it exists
@@ -512,7 +512,7 @@ const InventoryAdjustment: React.FC = () => {
         return b;
       })
     );
-    
+
     // Exit edit mode
     setEditingRowId(null);
     setOriginalValues(null);
@@ -521,7 +521,7 @@ const InventoryAdjustment: React.FC = () => {
   const handleConfirmAdjustment = async () => {
     // When searching by Product ID, selectedType may be null, but productInfo has product_id
     const productId = selectedType?.product_id || productInfo?.product_id;
-    
+
     if (!productInfo || !productId || batchRows.length === 0) {
       setConfirmDialogOpen(false);
       return;
@@ -529,7 +529,7 @@ const InventoryAdjustment: React.FC = () => {
 
     try {
       const username = user?.username || 'admin';
-      
+
       // Get all batches that have been modified (quantity or expiry date changed)
       const modifiedBatches = batchRows.filter((batch) => {
         const quantityChanged = batch.quantity !== batch.oldQuantity;
@@ -546,12 +546,12 @@ const InventoryAdjustment: React.FC = () => {
         // Use batch.batchNumber (the original batch_number from API) for the API call
         // The backend expects batch_number, not batch_id
         const batchNumber = batch.batchNumber; // This is the batch_number (string or number) like "AMX-2026-02-A"
-        
+
         if (batchNumber === undefined || batchNumber === null) {
           console.error('Invalid batchNumber for batch:', batch);
           throw new Error(`Invalid batch_number for batch ${batch.id}`);
         }
-        
+
         return {
           batch_number: batchNumber, // Use batch_number (string or number) for API as backend expects
           old_qty: batch.oldQuantity,
@@ -572,16 +572,16 @@ const InventoryAdjustment: React.FC = () => {
           const modified = modifiedBatches.find(mb => mb.id === b.id);
           return modified
             ? {
-                ...b,
-                oldQuantity: b.quantity, // Update old quantity to current quantity
-                oldExpiryDate: b.expiryDate, // Update old expiry date to current expiry date
-              }
+              ...b,
+              oldQuantity: b.quantity, // Update old quantity to current quantity
+              oldExpiryDate: b.expiryDate, // Update old expiry date to current expiry date
+            }
             : b;
         })
       );
 
       setConfirmDialogOpen(false);
-      
+
       // Refresh batches to get latest data
       const productIdToRefresh = selectedType?.product_id || productInfo?.product_id;
       if (productIdToRefresh) {
@@ -617,11 +617,11 @@ const InventoryAdjustment: React.FC = () => {
   const handleSave = () => {
     // When searching by Product ID, selectedType may be null, but productInfo has product_id
     const productId = selectedType?.product_id || productInfo?.product_id;
-    
+
     if (!productInfo || !productId || batchRows.length === 0) {
       return;
     }
-    
+
     const modifiedBatches = batchRows.filter((batch) => {
       const quantityChanged = batch.quantity !== batch.oldQuantity;
       const expiryDateChanged = batch.expiryDate !== batch.oldExpiryDate;
@@ -665,62 +665,62 @@ const InventoryAdjustment: React.FC = () => {
       ),
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
-        
+
         // Use quantityInput if available (during editing), otherwise use quantity
-        const displayValue = isEditing && batch.quantityInput !== undefined 
-          ? batch.quantityInput 
+        const displayValue = isEditing && batch.quantityInput !== undefined
+          ? batch.quantityInput
           : (batch.quantity === 0 ? '' : batch.quantity.toString());
-        
+
         return (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-          <TextField
-            value={displayValue}
-            size="small"
-            type="text"
-            onChange={(event) => handleQuantityChange(batch.id, event.target.value)}
-            onBlur={(event) => {
-              // On blur, ensure we have a valid number, default to 0 if empty
-              const value = event.target.value.trim();
-              if (value === '') {
-                setBatchRows((prev) =>
-                  prev.map((b) => 
-                    b.id === batch.id 
-                      ? { ...b, quantity: 0, quantityInput: '' } 
-                      : b
-                  )
-                );
-              } else {
-                // Clear quantityInput so it uses the parsed number
-                setBatchRows((prev) =>
-                  prev.map((b) => 
-                    b.id === batch.id 
-                      ? { ...b, quantityInput: undefined } 
-                      : b
-                  )
-                );
-              }
-            }}
-            inputProps={{ 
-              inputMode: 'numeric',
-              pattern: '[0-9]*'
-            }}
-            disabled={!isEditing}
-            placeholder="0"
-            sx={{ 
-              ...inputFieldStyles, 
-              width: 120,
-              textAlign: 'left',
-              '& .MuiInputBase-input': {
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <TextField
+              value={displayValue}
+              size="small"
+              type="text"
+              onChange={(event) => handleQuantityChange(batch.id, event.target.value)}
+              onBlur={(event) => {
+                // On blur, ensure we have a valid number, default to 0 if empty
+                const value = event.target.value.trim();
+                if (value === '') {
+                  setBatchRows((prev) =>
+                    prev.map((b) =>
+                      b.id === batch.id
+                        ? { ...b, quantity: 0, quantityInput: '' }
+                        : b
+                    )
+                  );
+                } else {
+                  // Clear quantityInput so it uses the parsed number
+                  setBatchRows((prev) =>
+                    prev.map((b) =>
+                      b.id === batch.id
+                        ? { ...b, quantityInput: undefined }
+                        : b
+                    )
+                  );
+                }
+              }}
+              inputProps={{
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
+              }}
+              disabled={!isEditing}
+              placeholder="0"
+              sx={{
+                ...inputFieldStyles,
+                width: 120,
                 textAlign: 'left',
-              },
-              '& .MuiInputBase-input.Mui-disabled': {
-                WebkitTextFillColor: '#1f2937',
-                backgroundColor: 'transparent',
-                textAlign: 'left',
-              }
-            }}
-          />
-        </Box>
+                '& .MuiInputBase-input': {
+                  textAlign: 'left',
+                },
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#1f2937',
+                  backgroundColor: 'transparent',
+                  textAlign: 'left',
+                }
+              }}
+            />
+          </Box>
         );
       }
     },
@@ -731,24 +731,24 @@ const InventoryAdjustment: React.FC = () => {
       columnWidth: '180px',
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
-        
+
         return (
-        <Box sx={{ width: 150, maxWidth: 150 }}>
-          <PharmaDatePicker
-            value={batch.expiryDate ? dayjs(batch.expiryDate) : null}
-            onChange={(newValue) => {
-              setBatchRows((prev) =>
-                prev.map((row) =>
-                  row.id === batch.id ? { ...row, expiryDate: newValue ? newValue.format('YYYY-MM-DD') : '' } : row
-                )
-              );
-            }}
-            minDate={dayjs().startOf('day')} // Only allow today and future dates
-            disabled={!isEditing}
-            width={150}
-            height={36}
-          />
-        </Box>
+          <Box sx={{ width: 150, maxWidth: 150 }}>
+            <PharmaDatePicker
+              value={batch.expiryDate ? dayjs(batch.expiryDate) : null}
+              onChange={(newValue) => {
+                setBatchRows((prev) =>
+                  prev.map((row) =>
+                    row.id === batch.id ? { ...row, expiryDate: newValue ? newValue.format('YYYY-MM-DD') : '' } : row
+                  )
+                );
+              }}
+              minDate={dayjs().startOf('day')} // Only allow today and future dates
+              disabled={!isEditing}
+              width={150}
+              height={36}
+            />
+          </Box>
         );
       }
     },
@@ -762,15 +762,15 @@ const InventoryAdjustment: React.FC = () => {
       ),
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
-        
+
         return (
-        <Box display="flex" justifyContent="center" gap={1}>
+          <Box display="flex" justifyContent="center" gap={1}>
             {isEditing ? (
               <>
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={() => handleConfirmEdit(batch.id)}
-                  sx={{ 
+                  sx={{
                     padding: '0.25rem', // 4px = 0.25rem
                     color: '#5C17E5',
                     '&:hover': {
@@ -781,11 +781,11 @@ const InventoryAdjustment: React.FC = () => {
                 >
                   <CheckIcon fontSize="small" />
                 </IconButton>
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={() => handleCancelEdit(batch.id)}
                   title="Cancel editing"
-                  sx={{ 
+                  sx={{
                     padding: '4px',
                     color: '#728197',
                     '&:hover': {
@@ -799,10 +799,10 @@ const InventoryAdjustment: React.FC = () => {
               </>
             ) : (
               <>
-                <IconButton 
+                <IconButton
                   size="small"
                   onClick={() => handleEditRow(batch.id)}
-                  sx={{ 
+                  sx={{
                     padding: '4px',
                     color: '#728197',
                     '&:hover': {
@@ -812,10 +812,10 @@ const InventoryAdjustment: React.FC = () => {
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={() => handleRemoveRow(batch.id)}
-                  sx={{ 
+                  sx={{
                     padding: '4px',
                     color: '#728197',
                     '&:hover': {
@@ -824,18 +824,18 @@ const InventoryAdjustment: React.FC = () => {
                     }
                   }}
                 >
-                  <img 
-                    src={DeleteNewIcon} 
-                    alt="Delete" 
-                    style={{ 
-                      width: '16px', 
+                  <img
+                    src={DeleteNewIcon}
+                    alt="Delete"
+                    style={{
+                      width: '16px',
                       height: '16px'
-                    }} 
+                    }}
                   />
                 </IconButton>
               </>
             )}
-        </Box>
+          </Box>
         );
       }
     }
@@ -853,16 +853,16 @@ const InventoryAdjustment: React.FC = () => {
             <Box className="product-selection-header">
               <Typography variant="h6" className="product-selection-title">
                 Product Selection
-            </Typography>
-              <StandardButton 
-                variant="outline" 
-                size="medium" 
+              </Typography>
+              <StandardButton
+                variant="outline"
+                size="medium"
                 onClick={handleReset}
                 sx={{ minWidth: '100px' }}
               >
                 Clear All
-            </StandardButton>
-          </Box>
+              </StandardButton>
+            </Box>
             <Box className="search-type-wrapper">
               <FormControl component="fieldset">
                 <RadioGroup
@@ -929,6 +929,36 @@ const InventoryAdjustment: React.FC = () => {
                           sx={inputFieldStyles}
                         />
                       )}
+                      slotProps={{
+                        popper: {
+                          sx: {
+                            "& .MuiPaper-root": {
+                              borderRadius: "12px",
+                              marginTop: "4px",
+                              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                              border: "1px solid #E6ECF5",
+                              height: "auto !important",
+                              padding: "0px !important",
+                              overflow: "hidden",
+                              minHeight: "unset !important",
+                              "& .MuiAutocomplete-listbox": {
+                                padding: "0px !important",
+                                maxHeight: "300px !important",
+                                overflow: "auto",
+                                minHeight: "unset !important",
+                              },
+                            },
+                          },
+                        },
+                      }}
+                      ListboxProps={{
+                        sx: {
+                          padding: '0px !important',
+                          maxHeight: '300px !important',
+                          minHeight: 'unset !important',
+                          overflow: 'auto',
+                        }
+                      }}
                       sx={{ width: '100%' }}
                     />
                   </Box>
@@ -960,6 +990,36 @@ const InventoryAdjustment: React.FC = () => {
                           sx={inputFieldStyles}
                         />
                       )}
+                      slotProps={{
+                        popper: {
+                          sx: {
+                            "& .MuiPaper-root": {
+                              borderRadius: "12px",
+                              marginTop: "4px",
+                              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                              border: "1px solid #E6ECF5",
+                              height: "auto !important",
+                              padding: "0px !important",
+                              overflow: "hidden",
+                              minHeight: "unset !important",
+                              "& .MuiAutocomplete-listbox": {
+                                padding: "0px !important",
+                                maxHeight: "300px !important",
+                                overflow: "auto",
+                                minHeight: "unset !important",
+                              },
+                            },
+                          },
+                        },
+                      }}
+                      ListboxProps={{
+                        sx: {
+                          padding: '0px !important',
+                          maxHeight: '300px !important',
+                          minHeight: 'unset !important',
+                          overflow: 'auto',
+                        }
+                      }}
                       sx={{ width: '100%' }}
                     />
                   </Box>
@@ -989,6 +1049,36 @@ const InventoryAdjustment: React.FC = () => {
                           sx={inputFieldStyles}
                         />
                       )}
+                      slotProps={{
+                        popper: {
+                          sx: {
+                            "& .MuiPaper-root": {
+                              borderRadius: "12px",
+                              marginTop: "4px",
+                              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                              border: "1px solid #E6ECF5",
+                              height: "auto !important",
+                              padding: "0px !important",
+                              overflow: "hidden",
+                              minHeight: "unset !important",
+                              "& .MuiAutocomplete-listbox": {
+                                padding: "0px !important",
+                                maxHeight: "300px !important",
+                                overflow: "auto",
+                                minHeight: "unset !important",
+                              },
+                            },
+                          },
+                        },
+                      }}
+                      ListboxProps={{
+                        sx: {
+                          padding: '0px !important',
+                          maxHeight: '300px !important',
+                          minHeight: 'unset !important',
+                          overflow: 'auto',
+                        }
+                      }}
                       sx={{ width: '100%' }}
                     />
                   </Box>
@@ -1027,6 +1117,36 @@ const InventoryAdjustment: React.FC = () => {
                         sx={inputFieldStyles}
                       />
                     )}
+                    slotProps={{
+                      popper: {
+                        sx: {
+                          "& .MuiPaper-root": {
+                            borderRadius: "12px",
+                            marginTop: "4px",
+                            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                            border: "1px solid #E6ECF5",
+                            height: "auto !important",
+                            minHeight: "unset !important",
+                            padding: "0px !important",
+                            overflow: "hidden",
+                            "& .MuiAutocomplete-listbox": {
+                              padding: "0px !important",
+                              maxHeight: "300px !important",
+                              minHeight: "unset !important",
+                              overflow: "auto",
+                            },
+                          },
+                        },
+                      },
+                    }}
+                    ListboxProps={{
+                      sx: {
+                        padding: '0px !important',
+                        maxHeight: '300px !important',
+                        minHeight: 'unset !important',
+                        overflow: 'auto',
+                      }
+                    }}
                     sx={{ width: '100%' }}
                   />
                 </Box>
@@ -1038,54 +1158,54 @@ const InventoryAdjustment: React.FC = () => {
                       Product Details
                     </Typography>
                     {productInfo ? (
-                    <Box className="product-details-grid">
+                      <Box className="product-details-grid">
                         <Typography variant="body2" className="detail-label">
                           Product Name
-                      </Typography>
+                        </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.product_name}
-                      </Typography>
+                        </Typography>
 
                         <Typography variant="body2" className="detail-label">
                           Type
-                      </Typography>
+                        </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.type}
-                      </Typography>
+                        </Typography>
 
                         <Typography variant="body2" className="detail-label">
                           Brand Name
-                      </Typography>
+                        </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.brand_name || (brands.find(b => b.id.toString() === productInfo.brand_id)?.brand_name || productInfo.brand_id)}
-                      </Typography>
+                        </Typography>
 
                         <Typography variant="body2" className="detail-label">
                           HSN ID
-                      </Typography>
+                        </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.hsn_id}
-                      </Typography>
+                        </Typography>
 
                         <Typography variant="body2" className="detail-label">
                           Total Quantity
-                      </Typography>
+                        </Typography>
                         <Typography variant="body2" className="detail-value">
                           {productInfo.total_quantity ?? totalQuantity}
                         </Typography>
-                    </Box>
+                      </Box>
                     ) : (
                       <Box className="product-details-empty">
                         <Typography variant="body2" className="empty-message">
                           Select a product to view details
-              </Typography>
-            </Box>
-          )}
+                        </Typography>
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
+              </Box>
             </Box>
-            </Box>
-            </Box>
+          </Box>
 
           {batchesError && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -1093,55 +1213,55 @@ const InventoryAdjustment: React.FC = () => {
             </Alert>
           )}
 
-            <Box className="inventory-table-wrapper" sx={{ position: 'relative' }}>
-              <Typography variant="subtitle1" className="section-title">
-                Inventory Details
-              </Typography>
-              {isLoadingBatches && (
-                <Box sx={{ 
-                  position: 'absolute', 
-                  top: '48px', // Start below the title
-                  left: 0, 
-                  right: 0, 
-                  bottom: 0, 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                  zIndex: 1
-                }}>
-                  <CircularProgress />
-                </Box>
-              )}
-              <ReusableTable
-                data={filteredRows}
-                columns={batchColumns}
-                selectedRows={selectedRows}
-                setSelectedRows={setSelectedRows}
-                searchAndFilterConfig={searchAndFilterConfig}
-                currentSearchTerm={searchTerm}
-                onSearchChange={(event) => setSearchTerm(event.target.value)}
-                showFilters={false}
-                onShowFiltersToggle={() => undefined}
-                currentFilterKey=""
-                onFilterSelect={() => undefined}
-                totalRows={filteredRows.length}
-                rowsPerPage={Math.max(filteredRows.length, 1)}
-                currentPage={1}
-                onPageChange={() => undefined}
-                onSortRequest={handleSortRequest}
-                sortConfig={sortConfig}
-                emptyMessage={productInfo ? "No batches for this product" : "No data available"}
-              />
-            </Box>
+          <Box className="inventory-table-wrapper" sx={{ position: 'relative' }}>
+            <Typography variant="subtitle1" className="section-title">
+              Inventory Details
+            </Typography>
+            {isLoadingBatches && (
+              <Box sx={{
+                position: 'absolute',
+                top: '48px', // Start below the title
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                zIndex: 1
+              }}>
+                <CircularProgress />
+              </Box>
+            )}
+            <ReusableTable
+              data={filteredRows}
+              columns={batchColumns}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
+              searchAndFilterConfig={searchAndFilterConfig}
+              currentSearchTerm={searchTerm}
+              onSearchChange={(event) => setSearchTerm(event.target.value)}
+              showFilters={false}
+              onShowFiltersToggle={() => undefined}
+              currentFilterKey=""
+              onFilterSelect={() => undefined}
+              totalRows={filteredRows.length}
+              rowsPerPage={Math.max(filteredRows.length, 1)}
+              currentPage={1}
+              onPageChange={() => undefined}
+              onSortRequest={handleSortRequest}
+              sortConfig={sortConfig}
+              emptyMessage={productInfo ? "No batches for this product" : "No data available"}
+            />
+          </Box>
 
           <Box className="actions-row">
             <StandardButton variant="outline" size="large" onClick={handleReset}>
               Cancel
             </StandardButton>
-            <StandardButton 
-              variant="primary" 
-              size="large" 
+            <StandardButton
+              variant="primary"
+              size="large"
               onClick={handleSave}
               disabled={!productInfo || batchRows.length === 0 || isSaving}
             >

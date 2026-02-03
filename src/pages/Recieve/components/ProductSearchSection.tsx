@@ -48,7 +48,7 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
   handleFileChange,
   handleRemoveFile,
 }) => {
-  const isImage = invoiceFile?.type?.startsWith('image/') || 
+  const isImage = invoiceFile?.type?.startsWith('image/') ||
     (invoiceAttachmentUrl && (invoiceAttachmentUrl.startsWith('data:image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(invoiceAttachmentUrl)));
 
   return (
@@ -103,15 +103,27 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
                       width: "fit-content",
                       padding: "0 !important",
                       marginTop: "4px !important",
-                      maxHeight: "300px !important",
                       height: "auto !important",
-                      "& ul": {
-                        padding: "4px 0 !important",
+                      minHeight: "unset !important",
+                      overflow: "hidden",
+                      "& .MuiAutocomplete-listbox": {
+                        padding: "0px !important",
                         margin: "0 !important",
+                        maxHeight: "300px !important",
+                        minHeight: "unset !important",
+                        overflow: "auto",
                       },
                     },
                   },
                 },
+              }}
+              ListboxProps={{
+                sx: {
+                  padding: '0px !important',
+                  maxHeight: '300px !important',
+                  minHeight: 'unset !important',
+                  overflow: 'auto',
+                }
               }}
               renderOption={(props, option) => {
                 const isAddProduct = option === orderLabels.addProducts;
@@ -240,7 +252,7 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
           <Typography sx={orderDetailsStyles.labelText}>
             {orderLabels.invoiceAttachment || "Invoice Attachment"}
           </Typography>
-          
+
           <input
             type="file"
             ref={fileInputRef}
@@ -283,7 +295,7 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
                   />
                 </a>
               ) : null}
-              
+
               <Box sx={{ flex: 1, overflow: 'hidden' }}>
                 <Typography
                   sx={{

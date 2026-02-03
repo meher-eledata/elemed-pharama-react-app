@@ -890,7 +890,29 @@ const InventoryModule: React.FC = () => {
                         enabled: false,
                       },
                     ],
+                    sx: {
+                      "& .MuiPaper-root": {
+                        padding: "0px !important",
+                        height: "auto !important",
+                        minHeight: "unset !important",
+                        overflow: "hidden",
+                        "& .MuiAutocomplete-listbox": {
+                          padding: "0px !important",
+                          maxHeight: "300px !important",
+                          minHeight: "unset !important",
+                          overflow: "auto",
+                        },
+                      },
+                    },
                   },
+                }}
+                ListboxProps={{
+                  sx: {
+                    padding: '0px !important',
+                    maxHeight: '300px !important',
+                    minHeight: 'unset !important',
+                    overflow: 'auto',
+                  }
                 }}
                 renderInput={(params) => (
                   <TextField

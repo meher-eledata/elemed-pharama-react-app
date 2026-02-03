@@ -114,6 +114,36 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
           forcePopupIcon
           popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
           sx={{ width: '165px' }}
+          slotProps={{
+            popper: {
+              sx: {
+                "& .MuiPaper-root": {
+                  borderRadius: "12px",
+                  marginTop: "4px",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid #E6ECF5",
+                  height: "auto !important",
+                  minHeight: "unset !important",
+                  padding: "0px !important",
+                  overflow: "hidden",
+                  "& .MuiAutocomplete-listbox": {
+                    padding: "0px !important",
+                    maxHeight: "300px !important",
+                    minHeight: "unset !important",
+                    overflow: "auto",
+                  },
+                },
+              },
+            },
+          }}
+          ListboxProps={{
+            sx: {
+              padding: '0px !important',
+              maxHeight: '300px !important',
+              minHeight: 'unset !important',
+              overflow: 'auto',
+            }
+          }}
           renderInput={(params) => (
             <TextField
               {...params}

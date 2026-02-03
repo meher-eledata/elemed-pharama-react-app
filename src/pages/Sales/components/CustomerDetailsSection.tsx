@@ -142,6 +142,36 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           disableClearable={!customerName}
           forcePopupIcon
           popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+          slotProps={{
+            popper: {
+              sx: {
+                "& .MuiPaper-root": {
+                  borderRadius: "12px",
+                  marginTop: "4px",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid #E6ECF5",
+                  height: "auto !important",
+                  minHeight: "unset !important",
+                  padding: "0px !important",
+                  overflow: "hidden",
+                  "& .MuiAutocomplete-listbox": {
+                    padding: "0px !important",
+                    maxHeight: "300px !important",
+                    minHeight: "unset !important",
+                    overflow: "auto",
+                  },
+                },
+              },
+            },
+          }}
+          ListboxProps={{
+            sx: {
+              padding: "0px !important",
+              maxHeight: "300px !important",
+              minHeight: "unset !important",
+              overflow: "auto",
+            },
+          }}
           sx={{ width: '220px' }}
           renderInput={(params) => (
             <TextField
@@ -231,10 +261,35 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           forcePopupIcon
           popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
           sx={{ width: '180px' }}
+          slotProps={{
+            popper: {
+              sx: {
+                zIndex: 1300,
+                "& .MuiPaper-root": {
+                  borderRadius: "12px",
+                  marginTop: "4px",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid #E6ECF5",
+                  height: "auto !important",
+                  minHeight: "unset !important",
+                  padding: "0px !important",
+                  overflow: "hidden",
+                  "& .MuiAutocomplete-listbox": {
+                    padding: "0px !important",
+                    maxHeight: "300px !important",
+                    minHeight: "unset !important",
+                    overflow: "auto",
+                  },
+                },
+              },
+            },
+          }}
           ListboxProps={{
             sx: {
               zIndex: 1300,
-              padding: '0px',
+              padding: '0px !important',
+              maxHeight: '300px !important',
+              minHeight: 'unset !important',
               '& .MuiAutocomplete-option': {
                 minHeight: '36px',
                 padding: '6px 12px',
@@ -248,13 +303,6 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                     backgroundColor: '#F3F4F6',
                   },
                 },
-              },
-            },
-          }}
-          componentsProps={{
-            popper: {
-              sx: {
-                zIndex: 1300,
               },
             },
           }}
@@ -342,6 +390,36 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           {...(!customerCity ? { disableClearable: true } : {})}
           forcePopupIcon
           popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+          slotProps={{
+            popper: {
+              sx: {
+                "& .MuiPaper-root": {
+                  borderRadius: "12px",
+                  marginTop: "4px",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid #E6ECF5",
+                  height: "auto !important",
+                  minHeight: "unset !important",
+                  padding: "0px !important",
+                  overflow: "hidden",
+                  "& .MuiAutocomplete-listbox": {
+                    padding: "0px !important",
+                    maxHeight: "300px !important",
+                    minHeight: "unset !important",
+                    overflow: "auto",
+                  },
+                },
+              },
+            },
+          }}
+          ListboxProps={{
+            sx: {
+              padding: "0px !important",
+              maxHeight: "300px !important",
+              minHeight: "unset !important",
+              overflow: "auto",
+            },
+          }}
           sx={{ width: '165px' }}
           renderInput={(params) => (
             <TextField

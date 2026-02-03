@@ -181,34 +181,44 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             }}
             disableClearable
             popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
-            ListboxProps={{
-              style: {
-                overflowY: 'auto',
-                padding: '0px',
-              }
-            }}
-            componentsProps={{
-              paper: {
-                elevation: 0,
+            slotProps={{
+              popper: {
                 sx: {
-                  borderRadius: "12px",
-                  boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.1)",
-                  marginTop: "8px",
-                  border: "1px solid #E5E7EB",
-                  "& .MuiAutocomplete-listbox": {
-                    padding: "0px",
-                    "& .MuiAutocomplete-option": {
-                      borderRadius: "8px",
-                      margin: "2px 0",
-                      "&[aria-selected='true']": {
-                        backgroundColor: "#F3F4F6",
-                      },
-                      "&:hover": {
-                        backgroundColor: "#F9FAFB",
+                  "& .MuiPaper-root": {
+                    borderRadius: "12px",
+                    boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.1)",
+                    marginTop: "8px",
+                    border: "1px solid #E5E7EB",
+                    height: "auto !important",
+                    minHeight: "unset !important",
+                    padding: "0px !important",
+                    overflow: "hidden",
+                    "& .MuiAutocomplete-listbox": {
+                      padding: "0px !important",
+                      maxHeight: "300px !important",
+                      minHeight: "unset !important",
+                      overflow: "auto",
+                      "& .MuiAutocomplete-option": {
+                        borderRadius: "8px",
+                        margin: "2px 0",
+                        "&[aria-selected='true']": {
+                          backgroundColor: "#F3F4F6",
+                        },
+                        "&:hover": {
+                          backgroundColor: "#F9FAFB",
+                        },
                       },
                     },
                   },
-                }
+                },
+              },
+            }}
+            ListboxProps={{
+              sx: {
+                padding: '0px !important',
+                maxHeight: '300px !important',
+                minHeight: 'unset !important',
+                overflow: 'auto',
               }
             }}
             renderInput={(params) => (
@@ -707,10 +717,34 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
               loading={isLoadingDoctorNames}
               noOptionsText="No doctors found"
               popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+              slotProps={{
+                popper: {
+                  sx: {
+                    "& .MuiPaper-root": {
+                      borderRadius: "12px",
+                      marginTop: "4px",
+                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                      border: "1px solid #E6ECF5",
+                      height: "auto !important",
+                      minHeight: "unset !important",
+                      padding: "0px !important",
+                      overflow: "hidden",
+                      "& .MuiAutocomplete-listbox": {
+                        padding: "0px !important",
+                        maxHeight: "300px !important",
+                        minHeight: "unset !important",
+                        overflow: "auto",
+                      },
+                    },
+                  },
+                },
+              }}
               ListboxProps={{
-                style: {
-                  overflowY: 'auto',
-                  padding: '0px',
+                sx: {
+                  padding: '0px !important',
+                  maxHeight: '300px !important',
+                  minHeight: 'unset !important',
+                  overflow: 'auto',
                 }
               }}
               renderInput={(params) => (

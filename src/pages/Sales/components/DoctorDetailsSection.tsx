@@ -65,10 +65,10 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
   return (
     <DoctorInvoiceColumn sx={{ marginLeft: '-6px' }}>
       <Box sx={{ marginBottom: '8px' }}>
-        <Typography sx={{ 
-          fontFamily: "'Lexend', sans-serif", 
-          fontWeight: 600, 
-          fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION, 
+        <Typography sx={{
+          fontFamily: "'Lexend', sans-serif",
+          fontWeight: 600,
+          fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION,
           color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY,
           marginBottom: '8px'
         }}>
@@ -90,8 +90,8 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
           }}
           onChange={(_, newValue) => {
             // Extract name if it's an object, otherwise use the string value
-            const doctorNameValue = typeof newValue === 'string' 
-              ? newValue 
+            const doctorNameValue = typeof newValue === 'string'
+              ? newValue
               : (newValue && typeof newValue === 'object' && 'name' in newValue ? (newValue as { name: string }).name : null);
             onDoctorSelect(doctorNameValue);
           }}
@@ -107,6 +107,41 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
           forcePopupIcon
           popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
           sx={{ width: `${SALES_RECEIPT_CONSTANTS.DOCTOR_NAME_WIDTH}px` }}
+          slotProps={{
+            popper: {
+              sx: {
+                "& .MuiPaper-root": {
+                  borderRadius: "12px",
+                  marginTop: "4px",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid #E6ECF5",
+                  height: "auto !important",
+                  minHeight: "unset !important",
+                  padding: "0px !important",
+                  overflow: "hidden",
+                  "& .MuiAutocomplete-listbox": {
+                    padding: "0px !important",
+                    maxHeight: "300px !important",
+                    minHeight: "unset !important",
+                    overflow: "auto",
+                  },
+                },
+              },
+            },
+          }}
+          ListboxProps={{
+            sx: {
+              padding: '0px !important',
+              maxHeight: '300px !important',
+              minHeight: 'unset !important',
+              overflow: 'auto',
+              '& .MuiAutocomplete-option': {
+                fontSize: '14px',
+                borderRadius: '8px',
+                margin: '2px 0',
+              }
+            }
+          }}
           renderInput={(params) => (
             <TextField
               {...params}

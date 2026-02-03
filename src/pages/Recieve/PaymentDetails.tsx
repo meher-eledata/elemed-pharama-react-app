@@ -210,6 +210,36 @@ const PaymentDetails: React.FC = () => {
             value={editingData.paymentMethod || row.paymentMethod}
             onChange={(_, newValue) => setEditingData({ ...editingData, paymentMethod: newValue || "" })}
             disableClearable
+            slotProps={{
+              popper: {
+                sx: {
+                  "& .MuiPaper-root": {
+                    borderRadius: "12px",
+                    marginTop: "4px",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                    border: "1px solid #E6ECF5",
+                    height: "auto !important",
+                    minHeight: "unset !important",
+                    padding: "0px !important",
+                    overflow: "hidden",
+                    "& .MuiAutocomplete-listbox": {
+                      padding: "0px !important",
+                      maxHeight: "300px !important",
+                      minHeight: "unset !important",
+                      overflow: "auto",
+                    },
+                  },
+                },
+              },
+            }}
+            ListboxProps={{
+              sx: {
+                padding: "0px !important",
+                maxHeight: "300px !important",
+                minHeight: "unset !important",
+                overflow: "auto",
+              },
+            }}
             sx={{ width: "150px" }}
             renderInput={(params) => (
               <TextField
@@ -710,6 +740,35 @@ const PaymentDetails: React.FC = () => {
                   }
                 }}
                 disableClearable
+                slotProps={{
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        borderRadius: "12px",
+                        marginTop: "4px",
+                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                        border: "1px solid #E6ECF5",
+                        height: "auto !important",
+                        minHeight: "unset !important",
+                        padding: "0px !important",
+                        overflow: "hidden",
+                        "& .MuiAutocomplete-listbox": {
+                          padding: "0px !important",
+                          maxHeight: "300px !important",
+                          minHeight: "unset !important",
+                          overflow: "auto",
+                        },
+                      },
+                    },
+                  },
+                }}
+                ListboxProps={{
+                  sx: {
+                    padding: "0px !important",
+                    maxHeight: "300px !important",
+                    minHeight: "unset !important",
+                  },
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -790,13 +849,16 @@ const PaymentDetails: React.FC = () => {
                         width: "fit-content",
                         padding: "0 !important",
                         marginTop: "4px !important",
-                        maxHeight: "none !important",
                         height: "auto !important",
-                        "& ul": {
+                        minHeight: "unset !important",
+                        overflow: "hidden",
+                        "& .MuiAutocomplete-listbox": {
                           padding: "4px 0 !important",
                           margin: "0 !important",
-                          maxHeight: "none !important",
-                          "& li:last-child": {
+                          maxHeight: "300px !important",
+                          minHeight: "unset !important",
+                          overflow: "auto",
+                          "& .MuiAutocomplete-option": {
                             marginBottom: "0 !important",
                             paddingBottom: "8px !important",
                           },

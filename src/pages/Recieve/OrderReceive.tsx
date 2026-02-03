@@ -403,15 +403,27 @@ const OrderReceive: React.FC = () => {
                                   width: "fit-content",
                                   padding: "0 !important",
                                   marginTop: "4px !important",
-                                  maxHeight: "300px !important",
                                   height: "auto !important",
-                                  "& ul": {
-                                    padding: "4px 0 !important",
+                                  minHeight: "unset !important",
+                                  overflow: "hidden",
+                                  "& .MuiAutocomplete-listbox": {
+                                    padding: "0px !important",
                                     margin: "0 !important",
+                                    maxHeight: "300px !important",
+                                    minHeight: "unset !important",
+                                    overflow: "auto",
                                   },
                                 },
                               },
                             },
+                          }}
+                          ListboxProps={{
+                            sx: {
+                              padding: '0px !important',
+                              maxHeight: '300px !important',
+                              minHeight: 'unset !important',
+                              overflow: 'auto',
+                            }
                           }}
                           sx={{
                             width: '15rem',

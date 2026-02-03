@@ -528,14 +528,26 @@ const AuditLog: React.FC = () => {
                           marginTop: "4px",
                           boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
                           border: "1px solid #E6ECF5",
-                          height: "auto", // Ensure height matches content
+                          height: "auto !important",
+                          minHeight: "unset !important",
+                          padding: "0px !important",
+                          overflow: "hidden",
+                          "& .MuiAutocomplete-listbox": {
+                            padding: "0px !important",
+                            maxHeight: "300px !important",
+                            minHeight: "unset !important",
+                            overflow: "auto",
+                          },
                         },
                       },
                     },
                   }}
                   ListboxProps={{
                     sx: {
-                      padding: "0px",
+                      padding: "0px !important",
+                      maxHeight: "300px !important",
+                      minHeight: "unset !important",
+                      overflow: "auto",
                       "& .MuiAutocomplete-option": {
                         fontSize: "14px",
                         borderRadius: "8px",
@@ -594,14 +606,26 @@ const AuditLog: React.FC = () => {
                           marginTop: "4px",
                           boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
                           border: "1px solid #E6ECF5",
-                          height: "auto",
+                          height: "auto !important",
+                          minHeight: "unset !important",
+                          padding: "0px !important",
+                          overflow: "hidden",
+                          "& .MuiAutocomplete-listbox": {
+                            padding: "0px !important",
+                            maxHeight: "300px !important",
+                            minHeight: "unset !important",
+                            overflow: "auto",
+                          },
                         },
                       },
                     },
                   }}
                   ListboxProps={{
                     sx: {
-                      padding: "0px",
+                      padding: "0px !important",
+                      maxHeight: "300px !important",
+                      minHeight: "unset !important",
+                      overflow: "auto",
                       "& .MuiAutocomplete-option": {
                         fontSize: "14px",
                         borderRadius: "8px",
@@ -667,7 +691,10 @@ const AuditLog: React.FC = () => {
                   }}
                   ListboxProps={{
                     sx: {
-                      padding: "0px",
+                      padding: "0px !important",
+                      maxHeight: "300px !important",
+                      minHeight: "unset !important",
+                      overflow: "auto",
                       "& .MuiAutocomplete-option": {
                         fontSize: "14px",
                         borderRadius: "8px",
@@ -733,7 +760,10 @@ const AuditLog: React.FC = () => {
                   }}
                   ListboxProps={{
                     sx: {
-                      padding: "0px",
+                      padding: "0px !important",
+                      maxHeight: "300px !important",
+                      minHeight: "unset !important",
+                      overflow: "auto",
                       "& .MuiAutocomplete-option": {
                         fontSize: "14px",
                         borderRadius: "8px",
