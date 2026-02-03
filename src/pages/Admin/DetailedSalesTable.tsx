@@ -49,7 +49,16 @@ const DetailedSalesTable: React.FC = () => {
       transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
       invoiceNumber: item.invoice_number,
       customerName: item.customer_name || 'N/A',
-      paymentType: item.payment_type,
+      paymentType: (() => {
+        const raw = (item.payment_type || '').trim().toUpperCase();
+        if (!raw || raw === 'UNKNOWN' || raw === 'NULL') {
+          return 'Cash'; // Graceful fallback
+        }
+        // Normalize to Title Case (e.g., "CREDIT CARD" -> "Credit Card")
+        return raw.split(' ').map(word =>
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ');
+      })(),
       saleAmount: parseFloat(item.sales_amount) || 0,
       discount: parseFloat(item.discount_amount) || 0,
       cgst: parseFloat(item.cgst) || 0,
@@ -66,6 +75,7 @@ const DetailedSalesTable: React.FC = () => {
         return 'Out Patient';
       })(),
       rawPatientType: item.patient_type || 'N/A',
+      rawPaymentType: item.payment_type || 'N/A', // Keep raw for debugging
     }));
   }, [apiData]);
 

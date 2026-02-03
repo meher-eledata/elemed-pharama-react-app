@@ -96,24 +96,17 @@ export default function SaleReturn() {
     const baseAmount = unitPrice * quantity;
 
     const discountMultiplier = 1 - (discountPercent / 100);
-    const subtotalInclusive = baseAmount * discountMultiplier;
+    const discountedAmount = baseAmount * discountMultiplier;
 
     const discountAmount = (unitPrice * discountPercent / 100 * quantity).toFixed(2);
 
-    // Calculate total tax percentage
-    const totalTaxPercent = cgstPercent + sgstPercent + igstPercent;
-
-    // Extract base amount (refund) from inclusive subtotal
-    // Base = Inclusive / (1 + TaxRate/100)
-    const refundAmount = subtotalInclusive / (1 + totalTaxPercent / 100);
-
     // Calculate individual tax amounts for record (though removed from summary)
-    const cgstAmount = refundAmount * cgstPercent / 100;
-    const sgstAmount = refundAmount * sgstPercent / 100;
-    const igstAmount = refundAmount * igstPercent / 100;
+    const cgstAmount = discountedAmount * cgstPercent / 100;
+    const sgstAmount = discountedAmount * sgstPercent / 100;
+    const igstAmount = discountedAmount * igstPercent / 100;
 
     return {
-      amount: refundAmount.toFixed(2), // This is the amount to be returned (Total - Tax)
+      amount: discountedAmount.toFixed(2), // Refund the base amount after discount (Total Value - Discount)
       discount: discountAmount,
       cgst: cgstAmount.toFixed(2),
       sgst: sgstAmount.toFixed(2),

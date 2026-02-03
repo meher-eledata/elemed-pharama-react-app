@@ -264,7 +264,13 @@ export default function SaleHistory() {
           (parseFloat(invoice.returned_qty || invoice.returned_quantity || '0') > 0) ||
           (parseFloat(invoice.total_returned_amount || '0') > 0),
         lastReturnStatus: (invoice.last_return_status && String(invoice.last_return_status).toLowerCase() !== 'null') ? String(invoice.last_return_status) : null,
-        paymentMode: invoice.payment_mode || 'Cash',
+        paymentMode: (() => {
+          const raw = (invoice.payment_mode || invoice.paymentMode || '').trim().toUpperCase();
+          if (!raw || raw === 'UNKNOWN' || raw === 'NULL') return 'Cash';
+          return raw.split(' ').map((word: string) =>
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(' ');
+        })(),
         insuranceCompany: invoice.insurance_company || '',
         totalDiscount: parseFloat(invoice.discount || invoice.total_discount || '0') || 0,
         taxAmount: parseFloat(invoice.tax_amount || '0') || 0,
@@ -309,7 +315,13 @@ export default function SaleHistory() {
           doctorMobile: savedItem.doctorMobile || item.doctorMobile,
           doctorEmail: savedItem.doctorEmail || item.doctorEmail,
           username: savedItem.username || item.username,
-          paymentMode: savedItem.paymentMode || item.paymentMode,
+          paymentMode: (() => {
+            const raw = (savedItem.paymentMode || item.paymentMode || '').trim().toUpperCase();
+            if (!raw || raw === 'UNKNOWN' || raw === 'NULL') return 'Cash';
+            return raw.split(' ').map((word: string) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ');
+          })(),
           insuranceCompany: savedItem.insuranceCompany || item.insuranceCompany,
           patientType: (savedItem.patientType && savedItem.patientType.toLowerCase().includes('in')) ? 'In Patient' : item.patientType,
         };
@@ -500,7 +512,13 @@ export default function SaleHistory() {
         doctorName: mergedItem.doctorName || 'N/A',
         doctorMobile: mergedItem.doctorMobile === 'N/A' ? '' : (mergedItem.doctorMobile || ''),
         doctorEmail: mergedItem.doctorEmail === 'N/A' ? '' : (mergedItem.doctorEmail || ''),
-        paymentMode: (mergedItem as any).paymentMode || 'Cash',
+        paymentMode: (() => {
+          const raw = ((mergedItem as any).paymentMode || '').trim().toUpperCase();
+          if (!raw || raw === 'UNKNOWN' || raw === 'NULL') return 'Cash';
+          return raw.split(' ').map((word: string) =>
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(' ');
+        })(),
         insuranceCompany: (mergedItem as any).insuranceCompany || '',
         invoiceNumber: mergedItem.invoiceNumber || '',
         invoiceDate: mergedItem.invoiceDate || '',

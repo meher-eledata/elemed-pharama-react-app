@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -41,6 +41,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigate = useNavigate();
   const [addSupplier] = useAddSupplierMutation();
   const [getBatchesForProduct] = useGetBatchesForProductMutation();
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   // Initialize form hook first to get isEditMode and receiptId
   const form = useOrderDetailsForm();
@@ -234,8 +238,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       form.setIsNewSupplierModalOpen(false);
       await data.fetchSupplierNames();
       form.setSupplierName(supplierData.supplierName);
+      setSnackbarMessage('Supplier added successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
     } catch (error) {
       console.error('Error adding supplier:', error);
+      setSnackbarMessage('Failed to add supplier. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
       throw error;
     }
   };
@@ -492,7 +502,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       <NewProductModal
         open={form.isNewProductModalOpen}
         onClose={() => form.setIsNewProductModalOpen(false)}
-        onProductAdded={() => data.fetchAllProducts()}
+        onProductAdded={() => {
+          data.fetchAllProducts();
+          setSnackbarMessage('Product added successfully!');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+        }}
       />
 
       <NewSupplierModal
@@ -564,6 +579,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       <Snackbar open={form.deleteSuccess} autoHideDuration={3000} onClose={() => form.setDeleteSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert onClose={() => form.setDeleteSuccess(false)} severity="success" sx={{ width: '100%' }}>Receipt deleted successfully!</Alert>
+      </Snackbar>
+
+      <Snackbar open={snackbarOpen} autoHideDuration={4000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>{snackbarMessage}</Alert>
       </Snackbar>
     </>
   );

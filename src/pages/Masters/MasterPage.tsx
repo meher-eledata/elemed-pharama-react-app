@@ -14,7 +14,7 @@ import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
 import {
   useAddCustomerMutation
 } from "../../redux/slices/salesApi";
-import { 
+import {
   useGetMasterCountsQuery,
   useAddSupplierMutation,
   useAddDoctorMutation
@@ -48,7 +48,7 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
       position: 'relative',
     }}
   >
-    
+
     <Box
       sx={{
         position: 'absolute',
@@ -83,23 +83,23 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
       </Box>
     </Box>
 
-    <Typography 
-      sx={{ 
-        fontWeight: 700, 
-        color: MASTER_DATA_CONSTANTS.CARDS.TITLE_COLOR, 
-        fontSize: '18px', 
+    <Typography
+      sx={{
+        fontWeight: 700,
+        color: MASTER_DATA_CONSTANTS.CARDS.TITLE_COLOR,
+        fontSize: '18px',
         fontFamily: "'Lexend', sans-serif",
-        pr: 8, 
+        pr: 8,
       }}
     >
       {title}
     </Typography>
 
-    <Typography 
-      sx={{ 
-        color: MASTER_DATA_CONSTANTS.CARDS.DESC_COLOR, 
-        fontSize: '14px', 
-        lineHeight: 1.5, 
+    <Typography
+      sx={{
+        color: MASTER_DATA_CONSTANTS.CARDS.DESC_COLOR,
+        fontSize: '14px',
+        lineHeight: 1.5,
         fontFamily: "'Lexend', sans-serif",
         pr: 8,
       }}
@@ -134,7 +134,7 @@ const Masterpage: React.FC = () => {
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [doctorModalOpen, setDoctorModalOpen] = useState(false);
-  
+
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
@@ -163,7 +163,7 @@ const Masterpage: React.FC = () => {
         gender: customerData.gender === 'Male' ? 0 : customerData.gender === 'Female' ? 1 : null,
       }).unwrap();
       setCustomerModalOpen(false);
-      setSnackbarMessage('Customer added successfully!');
+      setSnackbarMessage(`Customer "${customerData.customerName}" created successfully!`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
@@ -192,7 +192,7 @@ const Masterpage: React.FC = () => {
         notes: supplierData.tinNumber || '',
       }).unwrap();
       setSupplierModalOpen(false);
-      setSnackbarMessage('Supplier added successfully!');
+      setSnackbarMessage(`Supplier "${supplierData.supplierName}" added successfully!`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
@@ -219,15 +219,15 @@ const Masterpage: React.FC = () => {
         cst_number: '',
         notes: doctorData.role || '',
       };
-      
+
       // Only include email if it has a value
       if (doctorData.email && doctorData.email.trim()) {
         doctorPayload.email = doctorData.email.trim();
       }
-      
+
       await addDoctor(doctorPayload).unwrap();
       setDoctorModalOpen(false);
-      setSnackbarMessage('Doctor added successfully!');
+      setSnackbarMessage(`Doctor "${doctorData.doctorName}" added successfully!`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
@@ -240,10 +240,10 @@ const Masterpage: React.FC = () => {
   }, [addDoctor]);
 
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: 2, 
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2,
       padding: '24px',
       paddingTop: '12px',
       overflow: 'hidden',
@@ -256,9 +256,9 @@ const Masterpage: React.FC = () => {
     }}>
       <Box sx={{ mb: -1, mt: -1 }}>
         <Typography
-          variant="h4" 
-          sx={{ 
-            fontWeight: 700, 
+          variant="h4"
+          sx={{
+            fontWeight: 700,
             fontSize: '32px',
             color: '#1A212B',
             fontFamily: "'Lexend', sans-serif",
@@ -267,9 +267,9 @@ const Masterpage: React.FC = () => {
         >
           {MASTER_DATA_LABELS.PAGE_TITLE}
         </Typography>
-        <Typography 
-          sx={{ 
-            color: '#1A212B', 
+        <Typography
+          sx={{
+            color: '#1A212B',
             fontSize: '16px',
             fontFamily: "'Lexend', sans-serif",
             fontWeight: 400
@@ -371,9 +371,9 @@ const Masterpage: React.FC = () => {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSnackbarOpen(false)} 
-          severity={snackbarSeverity} 
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
           sx={{ width: '100%' }}
         >
           {snackbarMessage}

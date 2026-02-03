@@ -109,7 +109,8 @@ export const useOrderDetailsTable = (
     const subtotal = qty * price;
     const discountAmount = subtotal * (discount / 100);
     const afterDiscount = subtotal - discountAmount;
-    const taxAmount = afterDiscount * ((cgst + sgst + igst) / 100);
+    // Calculate taxes based on subtotal (gross amount) for consistency
+    const taxAmount = subtotal * ((cgst + sgst + igst) / 100);
     return afterDiscount + taxAmount;
   };
 

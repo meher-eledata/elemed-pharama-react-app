@@ -199,7 +199,19 @@ const OrderReceive: React.FC = () => {
           try {
             const result = await getReceiptLinesTrigger({ receipt_id: receiptId }).unwrap();
             if (Array.isArray(result)) {
-              const total = result.reduce((sum: number, line: any) => {
+              // Deduplicate receipt lines by receipt_line_id to handle backend join issues, matching OrderDetails logic
+              const uniqueLinesMap = new Map();
+              result.forEach((line: any) => {
+                const lineId = line.receipt_line_id || line.id;
+                if (lineId && !uniqueLinesMap.has(lineId)) {
+                  uniqueLinesMap.set(lineId, line);
+                } else if (!lineId) {
+                  uniqueLinesMap.set(line, line);
+                }
+              });
+              const uniqueLines = Array.from(uniqueLinesMap.values());
+
+              const total = uniqueLines.reduce((sum: number, line: any) => {
                 // Calculate Total logic mirroring OrderDetails
                 const qty = Number(line.received_qty) || 0;
                 const price = parseFloat(line.unit_price) || 0;
@@ -211,7 +223,8 @@ const OrderReceive: React.FC = () => {
                 const subtotal = qty * price;
                 const discountAmount = subtotal * (discount / 100);
                 const afterDiscount = subtotal - discountAmount;
-                const taxAmount = afterDiscount * ((cgst + sgst + igst) / 100);
+                // Calculate taxes based on subtotal (gross amount) for consistency
+                const taxAmount = subtotal * ((cgst + sgst + igst) / 100);
                 return sum + afterDiscount + taxAmount;
               }, 0);
               newTotals[receiptId] = total;
@@ -236,10 +249,15 @@ const OrderReceive: React.FC = () => {
     if (activeTab !== 2) return sortedData;
     return (sortedData as OrderReceiveRow[]).map(row => {
       if (activeReceiptTotals[row.receiptId]) {
+        const enrichedAmt = activeReceiptTotals[row.receiptId];
+        // Calculate pendingAmount as (Enriched Total - Amount Paid) to ensure UI consistency 
+        // when we've corrected the total on the frontend.
+        const recalculatedPending = Math.max(0, enrichedAmt - (row.amountPaid || 0));
+
         return {
           ...row,
-          amt: activeReceiptTotals[row.receiptId]
-          // We could also update pendingAmount here if we wanted to be super precise about debt
+          amt: enrichedAmt,
+          pendingAmount: recalculatedPending
         };
       }
       return row;

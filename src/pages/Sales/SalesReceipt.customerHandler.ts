@@ -46,7 +46,7 @@ export const handleCustomerSubmit = async ({
 
     await refetchCustomerNames();
 
-    showToast(`Customer "${newCustomer.name}" added successfully!`, 'success');
+    showToast(`Customer created successfully!`, 'success');
     onClose();
 
   } catch (error: unknown) {

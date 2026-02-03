@@ -33,10 +33,10 @@ export const recalculateSalesItemAmount = (item: SalesReceiptItem): SalesReceipt
   // Calculate discount amount
   const discountAmount = (unitPrice * discountPercent / 100 * quantity).toFixed(2);
 
-  // Calculate taxes based on discounted amount
-  const cgstAmount = discountedAmount * cgstPercent / 100;
-  const sgstAmount = discountedAmount * sgstPercent / 100;
-  const igstAmount = discountedAmount * igstPercent / 100;
+  // Calculate taxes based on base amount (pre-discount) as per user requirement
+  const cgstAmount = baseAmount * cgstPercent / 100;
+  const sgstAmount = baseAmount * sgstPercent / 100;
+  const igstAmount = baseAmount * igstPercent / 100;
 
   // Final amount = discounted amount + CGST + SGST + IGST
   const finalAmount = discountedAmount + cgstAmount + sgstAmount + igstAmount;

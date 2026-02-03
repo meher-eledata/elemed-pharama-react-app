@@ -231,9 +231,12 @@ export const executeSave = async ({
     const patientTypeNumber = patientType === 'In Patient' ? 1 : 0;
 
     // Helper to map UI payment modes to backend keys
-    // Aligned with other modules to send raw strings (e.g., "Cash", "Credit Card")
+    // Aligned with other modules to send UPPERCASE strings (e.g., "CASH", "CREDIT CARD")
+    // This ensures backend report logic can correctly categorize the payment type.
     const getBackendPaymentMethod = (mode: string) => {
-      return (mode || 'Cash').trim();
+      const normalized = (mode || 'CASH').trim().toUpperCase();
+      // Handle "CASH" as the default if empty or invalid
+      return normalized || 'CASH';
     };
 
     const backendPaymentMethod = getBackendPaymentMethod(paymentMode);

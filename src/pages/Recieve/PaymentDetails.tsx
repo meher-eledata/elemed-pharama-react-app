@@ -147,6 +147,7 @@ const PaymentDetails: React.FC = () => {
   const [isFinalSaveConfirmationOpen, setIsFinalSaveConfirmationOpen] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [successMessage, setSuccessMessage] = useState<string>("");
 
   // Form fields for adding new payment
   const [transactionNumber, setTransactionNumber] = useState<string>(navigationState?.transactionNumber || "");
@@ -504,6 +505,7 @@ const PaymentDetails: React.FC = () => {
 
       setIsCreditModalOpen(false);
       setIsCreditManuallyEdited(false);
+      setSuccessMessage("Supplier credit updated successfully");
       setSaveSuccess(true);
     } catch (error) {
       console.error("Failed to adjust credit:", error);
@@ -567,6 +569,7 @@ const PaymentDetails: React.FC = () => {
 
       await upsertReceiptPayments(payload).unwrap();
 
+      setSuccessMessage("Payment details saved successfully!");
       setSaveSuccess(true);
       setIsFinalSaveConfirmationOpen(false);
 
@@ -1162,7 +1165,7 @@ const PaymentDetails: React.FC = () => {
           severity="success"
           sx={{ width: '100%' }}
         >
-          Payment details saved successfully!
+          {successMessage}
         </Alert>
       </Snackbar>
 

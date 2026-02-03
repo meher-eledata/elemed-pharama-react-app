@@ -157,7 +157,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         const baseAmount = unitPrice * qty;
         const discountAmount = baseAmount * (discount / 100);
         const amountAfterDiscount = baseAmount - discountAmount;
-        const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+        // Calculate taxes based on base amount (pre-discount) for consistency
+        const taxAmount = baseAmount * ((cgst + sgst + igst) / 100);
         return sum + (amountAfterDiscount + taxAmount);
       }, 0)
     };
@@ -293,7 +294,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         const baseAmount = unitPrice * qty;
         const discountAmount = baseAmount * (discount / 100);
         const amountAfterDiscount = baseAmount - discountAmount;
-        const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
+        // Calculate taxes based on base amount (pre-discount) for consistency
+        const taxAmount = baseAmount * ((cgst + sgst + igst) / 100);
         return sum + (amountAfterDiscount + taxAmount);
       }, 0),
       Deleted: deleted,

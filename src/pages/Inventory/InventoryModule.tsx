@@ -10,7 +10,9 @@ import {
   Autocomplete,
   TextField,
   Chip,
-  Tooltip
+  Tooltip,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
@@ -96,6 +98,10 @@ const InventoryModule: React.FC = () => {
 
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
     useState<boolean>(false);
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   const { data: lowStockItems = [], isLoading: isLowStockLoading, error: lowStockError } =
     useGetLowStockQuery();
@@ -581,6 +587,10 @@ const InventoryModule: React.FC = () => {
           open={isNewProductModalOpen}
           onClose={() => setIsNewProductModalOpen(false)}
           onProductAdded={() => {
+            setSnackbarMessage('Product added successfully!');
+            setSnackbarSeverity('success');
+            setSnackbarOpen(true);
+            setIsNewProductModalOpen(false);
           }}
         />
 
@@ -992,6 +1002,20 @@ const InventoryModule: React.FC = () => {
           }
         />
       )}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
