@@ -1334,7 +1334,7 @@ export default function SaleHistory() {
                 )}
                 ListboxProps={{
                   sx: {
-                    maxHeight: '300px',
+                    padding: '0px',
                     '& .MuiAutocomplete-option': {
                       fontSize: '14px',
                       fontWeight: 500,
@@ -1376,7 +1376,7 @@ export default function SaleHistory() {
                 )}
                 ListboxProps={{
                   sx: {
-                    maxHeight: '300px',
+                    padding: '0px',
                     '& .MuiAutocomplete-option': {
                       fontSize: '14px',
                       fontWeight: 500,
@@ -1418,7 +1418,7 @@ export default function SaleHistory() {
                 )}
                 ListboxProps={{
                   sx: {
-                    maxHeight: '300px',
+                    padding: '0px',
                     '& .MuiAutocomplete-option': {
                       fontSize: '14px',
                       fontWeight: 500,

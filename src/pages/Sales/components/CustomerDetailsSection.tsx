@@ -16,7 +16,7 @@ import {
 
 // City options for dropdown
 const cityOptions = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
+  'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad',
   'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur',
   'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad',
   'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik',
@@ -59,22 +59,22 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
 
   return (
     <CustomerDetailsColumn>
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
         marginBottom: '8px',
         gap: '12px'
       }}>
-        <Typography sx={{ 
-          fontFamily: "'Lexend', sans-serif", 
-          fontWeight: 600, 
-          fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION, 
+        <Typography sx={{
+          fontFamily: "'Lexend', sans-serif",
+          fontWeight: 600,
+          fontSize: SALES_RECEIPT_CONSTANTS.FONT_SIZE_SECTION,
           color: SALES_RECEIPT_CONSTANTS.TEXT_PRIMARY,
           marginBottom: 0
         }}>
           {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
         </Typography>
-        <StandardButton 
+        <StandardButton
           onClick={onAddNewCustomer}
           variant="primary"
           size="small"
@@ -234,7 +234,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
           ListboxProps={{
             sx: {
               zIndex: 1300,
-              padding: '4px 0',
+              padding: '0px',
               '& .MuiAutocomplete-option': {
                 minHeight: '36px',
                 padding: '6px 12px',

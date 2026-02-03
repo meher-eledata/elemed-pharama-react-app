@@ -183,9 +183,8 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
             popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
             ListboxProps={{
               style: {
-                maxHeight: '200px',
                 overflowY: 'auto',
-                paddingBottom: '0px',
+                padding: '0px',
               }
             }}
             componentsProps={{
@@ -197,7 +196,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   marginTop: "8px",
                   border: "1px solid #E5E7EB",
                   "& .MuiAutocomplete-listbox": {
-                    padding: "8px",
+                    padding: "0px",
                     "& .MuiAutocomplete-option": {
                       borderRadius: "8px",
                       margin: "2px 0",
@@ -710,8 +709,8 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
               popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
               ListboxProps={{
                 style: {
-                  maxHeight: '200px',
                   overflowY: 'auto',
+                  padding: '0px',
                 }
               }}
               renderInput={(params) => (

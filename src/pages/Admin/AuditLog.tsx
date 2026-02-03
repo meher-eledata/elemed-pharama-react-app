@@ -30,9 +30,9 @@ interface AuditLogEntry {
 
 const AuditLog: React.FC = () => {
   const navigate = useNavigate();
-  
+
   const { data: activityLogData, isLoading, error } = useGetActivityLogQuery();
-  
+
   const sampleData: AuditLogEntry[] = useMemo(() => {
     const entries = Array.isArray(activityLogData)
       ? activityLogData
@@ -74,7 +74,7 @@ const AuditLog: React.FC = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [currentFilter, setCurrentFilter] = useState<{ [key: string]: string | null }>({});
-  
+
   // Filter states
   const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
   const [selectedAccessLevel, setSelectedAccessLevel] = useState<string | null>(null);
@@ -105,7 +105,7 @@ const AuditLog: React.FC = () => {
 
     // Username filter
     if (selectedUsername) {
-      filtered = filtered.filter(entry => 
+      filtered = filtered.filter(entry =>
         entry.username.toLowerCase().includes(selectedUsername.toLowerCase())
       );
     }
@@ -120,14 +120,14 @@ const AuditLog: React.FC = () => {
 
     // Module filter
     if (selectedModule) {
-      filtered = filtered.filter(entry => 
+      filtered = filtered.filter(entry =>
         entry.module.toLowerCase().includes(selectedModule.toLowerCase())
       );
     }
 
     // Event Type filter
     if (selectedEventType) {
-      filtered = filtered.filter(entry => 
+      filtered = filtered.filter(entry =>
         entry.eventType.toLowerCase().includes(selectedEventType.toLowerCase())
       );
     }
@@ -165,15 +165,15 @@ const AuditLog: React.FC = () => {
   const sortedData = useMemo(() => {
     const activeSortKey = sortConfig.key || AUDIT_LOG_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY;
     const activeSortDirection = sortConfig.direction || AUDIT_LOG_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION;
-    
+
     return [...filteredData].sort((a, b) => {
       const aValue = a[activeSortKey as keyof AuditLogEntry];
       const bValue = b[activeSortKey as keyof AuditLogEntry];
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        const compareResult = aValue.localeCompare(bValue, undefined, { 
-          numeric: true, 
-          sensitivity: 'base' 
+        const compareResult = aValue.localeCompare(bValue, undefined, {
+          numeric: true,
+          sensitivity: 'base'
         });
         return activeSortDirection === 'asc' ? compareResult : -compareResult;
       }
@@ -190,8 +190,8 @@ const AuditLog: React.FC = () => {
       header: AUDIT_LOG_LABELS.TABLE.TIME,
       sortable: true,
       render: (entry) => (
-        <Typography sx={{ 
-          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE, 
+        <Typography sx={{
+          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
           color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY
         }}>
           {entry.eventTime}
@@ -203,8 +203,8 @@ const AuditLog: React.FC = () => {
       header: AUDIT_LOG_LABELS.TABLE.MODULE,
       sortable: true,
       render: (entry) => (
-        <Typography sx={{ 
-          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE, 
+        <Typography sx={{
+          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
           color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY
         }}>
           {entry.module}
@@ -216,8 +216,8 @@ const AuditLog: React.FC = () => {
       header: AUDIT_LOG_LABELS.TABLE.EVENT_TYPE,
       sortable: true,
       render: (entry) => (
-        <Typography sx={{ 
-          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE, 
+        <Typography sx={{
+          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
           color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY
         }}>
           {entry.eventType}
@@ -229,8 +229,8 @@ const AuditLog: React.FC = () => {
       header: AUDIT_LOG_LABELS.TABLE.RELATED_ID,
       sortable: true,
       render: (entry) => (
-        <Typography sx={{ 
-          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE, 
+        <Typography sx={{
+          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
           color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY
         }}>
           {entry.relatedId || '-'}
@@ -242,8 +242,8 @@ const AuditLog: React.FC = () => {
       header: AUDIT_LOG_LABELS.TABLE.QUANTITY_CHANGED,
       sortable: true,
       render: (entry) => (
-        <Typography sx={{ 
-          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE, 
+        <Typography sx={{
+          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
           color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY
         }}>
           {entry.quantityChanged}
@@ -257,22 +257,22 @@ const AuditLog: React.FC = () => {
       render: (entry) => {
         const maxLength = 25;
         const isLongText = entry.eventDetails.length > maxLength;
-        const truncatedText = isLongText 
-          ? `${entry.eventDetails.substring(0, maxLength)}...` 
+        const truncatedText = isLongText
+          ? `${entry.eventDetails.substring(0, maxLength)}...`
           : entry.eventDetails;
-        
+
         return (
-          <Tooltip 
-            title={entry.eventDetails} 
-            arrow 
+          <Tooltip
+            title={entry.eventDetails}
+            arrow
             placement="top"
             enterDelay={300}
             leaveDelay={100}
           >
-            <Typography 
+            <Typography
               onClick={() => isLongText && setEventDetailsDialog({ open: true, details: entry.eventDetails })}
-              sx={{ 
-                fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE, 
+              sx={{
+                fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
                 color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -350,7 +350,7 @@ const AuditLog: React.FC = () => {
   const handleFilterSelect = (key: string, value: string | null) => {
     setCurrentFilter(prev => ({
       ...prev,
-      [key]: prev[key] ? null : 'active' 
+      [key]: prev[key] ? null : 'active'
     }));
   };
 
@@ -368,596 +368,592 @@ const AuditLog: React.FC = () => {
           }
         `}
       </style>
-    <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: AUDIT_LOG_CONSTANTS.LAYOUT.PAGE_GAP, 
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: AUDIT_LOG_CONSTANTS.LAYOUT.PAGE_GAP,
         p: AUDIT_LOG_CONSTANTS.LAYOUT.PAGE_PADDING,
         position: 'relative',
         minHeight: 'calc(100vh - 200px)',
         pb: 10,
       }}>
-      {/* Page Title Section */}
-      <Box sx={{ mt: -3 }}>
-        <Typography 
-          variant={AUDIT_LOG_CONSTANTS.TYPOGRAPHY.TITLE_VARIANT} 
-          fontWeight={AUDIT_LOG_CONSTANTS.TYPOGRAPHY.TITLE_FONT_WEIGHT} 
-          sx={{ mb: AUDIT_LOG_CONSTANTS.LAYOUT.TITLE_MARGIN_BOTTOM }}
-        >
-          {AUDIT_LOG_LABELS.PAGE_TITLE}
-        </Typography>
-        <Typography sx={{ 
-          color: AUDIT_LOG_CONSTANTS.TYPOGRAPHY.SUBTITLE_COLOR, 
-          fontSize: AUDIT_LOG_CONSTANTS.TYPOGRAPHY.SUBTITLE_FONT_SIZE 
-        }}>
-          {AUDIT_LOG_LABELS.SUBTITLE}
-        </Typography>
-      </Box>
+        {/* Page Title Section */}
+        <Box sx={{ mt: -3 }}>
+          <Typography
+            variant={AUDIT_LOG_CONSTANTS.TYPOGRAPHY.TITLE_VARIANT}
+            fontWeight={AUDIT_LOG_CONSTANTS.TYPOGRAPHY.TITLE_FONT_WEIGHT}
+            sx={{ mb: AUDIT_LOG_CONSTANTS.LAYOUT.TITLE_MARGIN_BOTTOM }}
+          >
+            {AUDIT_LOG_LABELS.PAGE_TITLE}
+          </Typography>
+          <Typography sx={{
+            color: AUDIT_LOG_CONSTANTS.TYPOGRAPHY.SUBTITLE_COLOR,
+            fontSize: AUDIT_LOG_CONSTANTS.TYPOGRAPHY.SUBTITLE_FONT_SIZE
+          }}>
+            {AUDIT_LOG_LABELS.SUBTITLE}
+          </Typography>
+        </Box>
 
-      {/* Search and Filter Section */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        mb: 3,
-        bgcolor: '#F6F8FB',
-        borderRadius: '16px',
-        border: '1px solid #E6ECF5',
-        p: '12px',
-      }}>
-        <TextField
-          placeholder={AUDIT_LOG_LABELS.SEARCH_PLACEHOLDER}
-          value={currentSearchTerm}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: !currentSearchTerm.trim() ? (
-              <InputAdornment position="start" sx={{ marginRight: '0px' }}>
-                <SearchIcon sx={{ color: '#8A99AF', fontSize: '24px' }} />
-              </InputAdornment>
-            ) : null,
-          }}
-          sx={{
-            height: '40px',
-            borderRadius: '12px',
-            backgroundColor: '#fff',
-            width: '600px',
-            '& .MuiOutlinedInput-root': {
+        {/* Search and Filter Section */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          mb: 3,
+          bgcolor: '#F6F8FB',
+          borderRadius: '16px',
+          border: '1px solid #E6ECF5',
+          p: '12px',
+        }}>
+          <TextField
+            placeholder={AUDIT_LOG_LABELS.SEARCH_PLACEHOLDER}
+            value={currentSearchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: !currentSearchTerm.trim() ? (
+                <InputAdornment position="start" sx={{ marginRight: '0px' }}>
+                  <SearchIcon sx={{ color: '#8A99AF', fontSize: '24px' }} />
+                </InputAdornment>
+              ) : null,
+            }}
+            sx={{
               height: '40px',
               borderRadius: '12px',
               backgroundColor: '#fff',
-              boxShadow: 'inset 0 0 0 1px #BFD1E6',
-              '& .MuiOutlinedInput-notchedOutline': { 
-                border: 'none !important',
-                display: 'none !important'
-              },
-              '&:hover': { 
-                boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
-                '& .MuiOutlinedInput-notchedOutline': { 
+              width: '600px',
+              '& .MuiOutlinedInput-root': {
+                height: '40px',
+                borderRadius: '12px',
+                backgroundColor: '#fff',
+                boxShadow: 'inset 0 0 0 1px #BFD1E6',
+                '& .MuiOutlinedInput-notchedOutline': {
                   border: 'none !important',
                   display: 'none !important'
                 },
-              },
-              '&.Mui-focused': { 
-                boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
-                '& .MuiOutlinedInput-notchedOutline': { 
-                  border: 'none !important',
-                  display: 'none !important'
+                '&:hover': {
+                  boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: 'none !important',
+                    display: 'none !important'
+                  },
+                },
+                '&.Mui-focused': {
+                  boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: 'none !important',
+                    display: 'none !important'
+                  },
                 },
               },
+              '& .MuiInputBase-input': {
+                padding: '10px 14px',
+                paddingLeft: '6px',
+              },
+              '& .MuiOutlinedInput-input::placeholder': {
+                textAlign: 'left',
+                fontSize: '16px',
+                opacity: 1,
+                color: '#9CA3AF',
+              },
+            }}
+          />
+          <StandardButton
+            startIcon={
+              showFilters
+                ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+                : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+            }
+            onClick={handleShowFiltersToggle}
+            variant="secondary"
+            size="medium"
+            sx={{
+              minWidth: 160,
+              borderRadius: '12px',
+              bgcolor: '#EEF2F7',
+              color: '#1A212B',
+              border: '1px solid #D7DFEA',
+              boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
+              fontSize: '14px',
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {showFilters ? 'Hide filters' : 'Show filters'}
+          </StandardButton>
+        </Box>
+
+        {/* Custom Filters Section */}
+        {showFilters && (
+          <Box sx={{
+            display: 'flex',
+            gap: 3,
+            mb: 3,
+            mt: -1,
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+          }}>
+            <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', flexWrap: 'wrap', flex: 1 }}>
+              {/* Username Filter */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.USERNAME}</Typography>
+                <Autocomplete
+                  key={`username-${selectedUsername}`}
+                  value={selectedUsername}
+                  onChange={(event, newValue) => setSelectedUsername(newValue)}
+                  options={getUniqueUsernames}
+                  freeSolo
+                  forcePopupIcon
+                  clearOnEscape
+                  disableClearable={false}
+                  isOptionEqualToValue={(option, value) => option === value}
+                  popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                  sx={{
+                    width: 220,
+                    "& .MuiOutlinedInput-root": {
+                      height: '40px',
+                      borderRadius: '12px',
+                      backgroundColor: '#ffffff',
+                      paddingRight: '32px !important',
+                      "& fieldset": { borderColor: "#D1D5DB" },
+                      "&:hover fieldset": { borderColor: "#D1D5DB" },
+                      "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                    },
+                  }}
+                  slotProps={{
+                    popper: {
+                      sx: {
+                        "& .MuiPaper-root": {
+                          borderRadius: "12px",
+                          marginTop: "4px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                          border: "1px solid #E6ECF5",
+                          height: "auto", // Ensure height matches content
+                        },
+                      },
+                    },
+                  }}
+                  ListboxProps={{
+                    sx: {
+                      padding: "0px",
+                      "& .MuiAutocomplete-option": {
+                        fontSize: "14px",
+                        borderRadius: "8px",
+                        margin: "2px 0",
+                        "&:hover": {
+                          backgroundColor: "#F3E8FF",
+                          color: "#5C17E5",
+                        },
+                        '&[aria-selected="true"]': {
+                          backgroundColor: "#5C17E5",
+                          color: "#ffffff",
+                        },
+                      },
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Search username..."
+                    />
+                  )}
+                />
+              </Box>
+
+              {/* Access Level Filter */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.ACCESS_LEVEL}</Typography>
+                <Autocomplete
+                  key={`accessLevel-${selectedAccessLevel}`}
+                  value={selectedAccessLevel}
+                  onChange={(event, newValue) => setSelectedAccessLevel(newValue)}
+                  options={getUniqueAccessLevels}
+                  freeSolo
+                  forcePopupIcon
+                  clearOnEscape
+                  disableClearable={false}
+                  isOptionEqualToValue={(option, value) => option === value}
+                  popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                  sx={{
+                    width: 220,
+                    "& .MuiOutlinedInput-root": {
+                      height: '40px',
+                      borderRadius: '12px',
+                      backgroundColor: '#ffffff',
+                      paddingRight: '32px !important',
+                      "& fieldset": { borderColor: "#D1D5DB" },
+                      "&:hover fieldset": { borderColor: "#D1D5DB" },
+                      "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                    },
+                  }}
+                  slotProps={{
+                    popper: {
+                      sx: {
+                        "& .MuiPaper-root": {
+                          borderRadius: "12px",
+                          marginTop: "4px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                          border: "1px solid #E6ECF5",
+                          height: "auto",
+                        },
+                      },
+                    },
+                  }}
+                  ListboxProps={{
+                    sx: {
+                      padding: "0px",
+                      "& .MuiAutocomplete-option": {
+                        fontSize: "14px",
+                        borderRadius: "8px",
+                        margin: "2px 0",
+                        "&:hover": {
+                          backgroundColor: "#F3E8FF",
+                          color: "#5C17E5",
+                        },
+                        '&[aria-selected="true"]': {
+                          backgroundColor: "#5C17E5",
+                          color: "#ffffff",
+                        },
+                      },
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Search access level..."
+                    />
+                  )}
+                />
+              </Box>
+
+              {/* Module Filter */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.MODULE}</Typography>
+                <Autocomplete
+                  key={`module-${selectedModule}`}
+                  value={selectedModule}
+                  onChange={(event, newValue) => setSelectedModule(newValue)}
+                  options={getUniqueModules}
+                  freeSolo
+                  forcePopupIcon
+                  clearOnEscape
+                  disableClearable={false}
+                  isOptionEqualToValue={(option, value) => option === value}
+                  popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                  sx={{
+                    width: 220,
+                    "& .MuiOutlinedInput-root": {
+                      height: '40px',
+                      borderRadius: '12px',
+                      backgroundColor: '#ffffff',
+                      paddingRight: '32px !important',
+                      "& fieldset": { borderColor: "#D1D5DB" },
+                      "&:hover fieldset": { borderColor: "#D1D5DB" },
+                      "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                    },
+                  }}
+                  slotProps={{
+                    popper: {
+                      sx: {
+                        "& .MuiPaper-root": {
+                          borderRadius: "12px",
+                          marginTop: "4px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                          border: "1px solid #E6ECF5",
+                          height: "auto",
+                        },
+                      },
+                    },
+                  }}
+                  ListboxProps={{
+                    sx: {
+                      padding: "0px",
+                      "& .MuiAutocomplete-option": {
+                        fontSize: "14px",
+                        borderRadius: "8px",
+                        margin: "2px 0",
+                        "&:hover": {
+                          backgroundColor: "#F3E8FF",
+                          color: "#5C17E5",
+                        },
+                        '&[aria-selected="true"]': {
+                          backgroundColor: "#5C17E5",
+                          color: "#ffffff",
+                        },
+                      },
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Search module..."
+                    />
+                  )}
+                />
+              </Box>
+
+              {/* Event Type Filter */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.EVENT_TYPE}</Typography>
+                <Autocomplete
+                  key={`eventType-${selectedEventType}`}
+                  value={selectedEventType}
+                  onChange={(event, newValue) => setSelectedEventType(newValue)}
+                  options={getUniqueEventTypes}
+                  freeSolo
+                  forcePopupIcon
+                  clearOnEscape
+                  disableClearable={false}
+                  isOptionEqualToValue={(option, value) => option === value}
+                  popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
+                  sx={{
+                    width: 220,
+                    "& .MuiOutlinedInput-root": {
+                      height: '40px',
+                      borderRadius: '12px',
+                      backgroundColor: '#ffffff',
+                      paddingRight: '32px !important',
+                      "& fieldset": { borderColor: "#D1D5DB" },
+                      "&:hover fieldset": { borderColor: "#D1D5DB" },
+                      "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
+                    },
+                  }}
+                  slotProps={{
+                    popper: {
+                      sx: {
+                        "& .MuiPaper-root": {
+                          borderRadius: "12px",
+                          marginTop: "4px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                          border: "1px solid #E6ECF5",
+                          height: "auto",
+                        },
+                      },
+                    },
+                  }}
+                  ListboxProps={{
+                    sx: {
+                      padding: "0px",
+                      "& .MuiAutocomplete-option": {
+                        fontSize: "14px",
+                        borderRadius: "8px",
+                        margin: "2px 0",
+                        "&:hover": {
+                          backgroundColor: "#F3E8FF",
+                          color: "#5C17E5",
+                        },
+                        '&[aria-selected="true"]': {
+                          backgroundColor: "#5C17E5",
+                          color: "#ffffff",
+                        },
+                      },
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Search event type..."
+                    />
+                  )}
+                />
+              </Box>
+
+              {/* Event Time Filter */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.TABLE.TIME}</Typography>
+                <PharmaDatePicker
+                  value={eventTime}
+                  onChange={(newValue) => setEventTime(newValue)}
+                  width={260}
+                  height={40}
+                />
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+              <StandardButton
+                onClick={clearAllFilters}
+                variant="secondary"
+                size="medium"
+                sx={{
+                  minWidth: 160,
+                  height: '40px',
+                  backgroundColor: '#F5F5F5',
+                  border: '1px solid #D1D5DB',
+                  color: '#1A212B',
+                  fontWeight: 500,
+                  '&:hover': {
+                    backgroundColor: '#E0E0E0',
+                    border: '1px solid #D1D5DB',
+                  }
+                }}
+              >
+                {AUDIT_LOG_LABELS.FILTERS.RESET}
+              </StandardButton>
+            </Box>
+          </Box>
+        )}
+
+        {/* Table with built-in search and filters */}
+        {isLoading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+            <CircularProgress />
+            <Typography variant="body1" sx={{ ml: 2 }}>{AUDIT_LOG_LABELS.MESSAGES.LOADING}</Typography>
+          </Box>
+        ) : error ? (
+          <Box p={4} textAlign="center" color="error.main">
+            <Typography variant="body1">
+              {extractErrorMessage(error, AUDIT_LOG_LABELS.MESSAGES.ERROR)}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{
+            marginTop: 1,
+            overflowX: 'auto',
+            backgroundColor: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BACKGROUND,
+            borderRadius: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
+            border: 'none',
+            fontFamily: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+            padding: 0,
+            '& .MuiTableContainer-root': {
+              boxShadow: 'none',
+              borderRadius: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
+              border: 'none',
             },
-            '& .MuiInputBase-input': {
-              padding: '10px 14px',
-              paddingLeft: '6px',
+            '& .MuiTable-root': {
+              borderCollapse: 'separate',
+              borderSpacing: 0,
             },
-            '& .MuiOutlinedInput-input::placeholder': {
-              textAlign: 'left',
-              fontSize: '16px',
-              opacity: 1,
-              color: '#9CA3AF',
+            '& .MuiTableCell-root': {
+              fontFamily: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+              padding: `${AUDIT_LOG_CONSTANTS.TABLE.CELL_PADDING} !important`,
+              border: AUDIT_LOG_CONSTANTS.TABLE.CELL_BORDER,
+              borderBottom: AUDIT_LOG_CONSTANTS.TABLE.ROW_BORDER,
             },
-          }}
-        />
-        <StandardButton
-          startIcon={
-            showFilters 
-              ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
-              : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
-          }
-          onClick={handleShowFiltersToggle}
-          variant="secondary"
-          size="medium"
+            '& .MuiTableHead .MuiTableCell-root, & .MuiTableHead .MuiTableCell-root[class*="MuiTableCell-root"]': {
+              fontFamily: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+              fontWeight: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_WEIGHT,
+              fontSize: `${AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_SIZE} !important`,
+              lineHeight: `${AUDIT_LOG_CONSTANTS.TABLE.HEADER_LINE_HEIGHT} !important`,
+              color: AUDIT_LOG_CONSTANTS.TABLE.HEADER_COLOR,
+              backgroundColor: AUDIT_LOG_CONSTANTS.TABLE.HEADER_BACKGROUND,
+              padding: `${AUDIT_LOG_CONSTANTS.TABLE.HEADER_PADDING} !important`,
+              minHeight: 'auto !important',
+              height: 'auto !important',
+              borderRight: AUDIT_LOG_CONSTANTS.TABLE.HEADER_CELL_BORDER_RIGHT,
+              borderBottom: AUDIT_LOG_CONSTANTS.TABLE.ROW_BORDER,
+              whiteSpace: 'nowrap',
+              '&:last-child': {
+                borderRight: 'none',
+              },
+            },
+            '& .MuiTableBody .MuiTableRow:nth-of-type(odd)': {
+              backgroundColor: `${AUDIT_LOG_CONSTANTS.TABLE.ROW_BACKGROUND_ODD} !important`,
+            },
+            '& .MuiTableBody .MuiTableRow:nth-of-type(even)': {
+              backgroundColor: `${AUDIT_LOG_CONSTANTS.TABLE.ROW_BACKGROUND_EVEN} !important`,
+            },
+            '& .MuiTableBody .MuiTableRow': {
+              borderBottom: AUDIT_LOG_CONSTANTS.TABLE.ROW_BORDER,
+              '&:last-child': {
+                borderBottom: 'none',
+              },
+              '&:hover': {
+                backgroundColor: `${AUDIT_LOG_CONSTANTS.TABLE.ROW_HOVER_BACKGROUND} !important`,
+              },
+            },
+            '& .MuiTableBody .MuiTableCell-root': {
+              borderRight: 'none',
+            },
+          }}>
+            <ReusableTable
+              columns={columns}
+              data={sortedData}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
+              searchAndFilterConfig={{ filterOptions: [] }}
+              currentSearchTerm=""
+              onSearchChange={() => { }}
+              showFilters={false}
+              onShowFiltersToggle={() => { }}
+              currentFilterKey=""
+              onFilterSelect={() => { }}
+              currentFilter={{}}
+              totalRows={sortedData.length}
+              rowsPerPage={rowsPerPage}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              onSortRequest={handleSortRequest}
+              sortConfig={sortConfig}
+            />
+          </Box>
+        )}
+
+        {/* Back Button */}
+        <Button
+          variant="contained"
+          onClick={handleBack}
           sx={{
-            minWidth: 160,
-            borderRadius: '12px',
-            bgcolor: '#EEF2F7',
-            color: '#1A212B',
-            border: '1px solid #D7DFEA',
-            boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
-            fontSize: '14px',
-            textTransform: 'none',
-            fontWeight: 600,
+            ...AUDIT_LOG_CONSTANTS.LAYOUT.BACK_BUTTON_POSITION,
+            backgroundColor: AUDIT_LOG_CONSTANTS.BUTTON.BACK.BACKGROUND_COLOR,
+            color: AUDIT_LOG_CONSTANTS.BUTTON.BACK.COLOR,
+            textTransform: AUDIT_LOG_CONSTANTS.BUTTON.BACK.TEXT_TRANSFORM,
+            px: AUDIT_LOG_CONSTANTS.BUTTON.BACK.PADDING_X,
+            borderRadius: AUDIT_LOG_CONSTANTS.BUTTON.BACK.BORDER_RADIUS,
+            height: AUDIT_LOG_CONSTANTS.BUTTON.BACK.HEIGHT,
+            minWidth: AUDIT_LOG_CONSTANTS.BUTTON.BACK.MIN_WIDTH,
+            '&:hover': {
+              backgroundColor: AUDIT_LOG_CONSTANTS.BUTTON.BACK.HOVER_BACKGROUND,
+            },
           }}
         >
-          {showFilters ? 'Hide filters' : 'Show filters'}
-        </StandardButton>
-      </Box>
+          {AUDIT_LOG_LABELS.BACK_BUTTON}
+        </Button>
 
-      {/* Custom Filters Section */}
-      {showFilters && (
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 3, 
-          mb: 3, 
-          mt: -1,
-          alignItems: 'flex-start', 
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-        }}>
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', flexWrap: 'wrap', flex: 1 }}>
-            {/* Username Filter */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.USERNAME}</Typography>
-              <Autocomplete
-                key={`username-${selectedUsername}`}
-                value={selectedUsername}
-                onChange={(event, newValue) => setSelectedUsername(newValue)}
-                options={getUniqueUsernames}
-                freeSolo
-                forcePopupIcon
-                clearOnEscape
-                disableClearable={false}
-                isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
-                sx={{
-                  width: 220,
-                  "& .MuiOutlinedInput-root": {
-                    height: '40px',
-                    borderRadius: '12px',
-                    backgroundColor: '#ffffff',
-                    paddingRight: '32px !important',
-                    "& fieldset": { borderColor: "#D1D5DB" },
-                    "&:hover fieldset": { borderColor: "#D1D5DB" },
-                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
-                  },
-                }}
-                slotProps={{
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        borderRadius: "12px",
-                        marginTop: "4px",
-                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                        border: "1px solid #E6ECF5",
-                        height: "auto", // Ensure height matches content
-                      },
-                    },
-                  },
-                }}
-                ListboxProps={{
-                  sx: {
-                    maxHeight: "250px", // Prevent it from being too tall
-                    padding: "4px",
-                    "& .MuiAutocomplete-option": {
-                      fontSize: "14px",
-                      borderRadius: "8px",
-                      margin: "2px 0",
-                      "&:hover": {
-                        backgroundColor: "#F3E8FF",
-                        color: "#5C17E5",
-                      },
-                      '&[aria-selected="true"]': {
-                        backgroundColor: "#5C17E5",
-                        color: "#ffffff",
-                      },
-                    },
-                  },
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search username..."
-                  />
-                )}
-              />
-            </Box>
-
-            {/* Access Level Filter */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.ACCESS_LEVEL}</Typography>
-              <Autocomplete
-                key={`accessLevel-${selectedAccessLevel}`}
-                value={selectedAccessLevel}
-                onChange={(event, newValue) => setSelectedAccessLevel(newValue)}
-                options={getUniqueAccessLevels}
-                freeSolo
-                forcePopupIcon
-                clearOnEscape
-                disableClearable={false}
-                isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
-                sx={{
-                  width: 220,
-                  "& .MuiOutlinedInput-root": {
-                    height: '40px',
-                    borderRadius: '12px',
-                    backgroundColor: '#ffffff',
-                    paddingRight: '32px !important',
-                    "& fieldset": { borderColor: "#D1D5DB" },
-                    "&:hover fieldset": { borderColor: "#D1D5DB" },
-                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
-                  },
-                }}
-                slotProps={{
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        borderRadius: "12px",
-                        marginTop: "4px",
-                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                        border: "1px solid #E6ECF5",
-                        height: "auto",
-                      },
-                    },
-                  },
-                }}
-                ListboxProps={{
-                  sx: {
-                    maxHeight: "250px",
-                    padding: "4px",
-                    "& .MuiAutocomplete-option": {
-                      fontSize: "14px",
-                      borderRadius: "8px",
-                      margin: "2px 0",
-                      "&:hover": {
-                        backgroundColor: "#F3E8FF",
-                        color: "#5C17E5",
-                      },
-                      '&[aria-selected="true"]': {
-                        backgroundColor: "#5C17E5",
-                        color: "#ffffff",
-                      },
-                    },
-                  },
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search access level..."
-                  />
-                )}
-              />
-            </Box>
-
-            {/* Module Filter */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.MODULE}</Typography>
-              <Autocomplete
-                key={`module-${selectedModule}`}
-                value={selectedModule}
-                onChange={(event, newValue) => setSelectedModule(newValue)}
-                options={getUniqueModules}
-                freeSolo
-                forcePopupIcon
-                clearOnEscape
-                disableClearable={false}
-                isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
-                sx={{
-                  width: 220,
-                  "& .MuiOutlinedInput-root": {
-                    height: '40px',
-                    borderRadius: '12px',
-                    backgroundColor: '#ffffff',
-                    paddingRight: '32px !important',
-                    "& fieldset": { borderColor: "#D1D5DB" },
-                    "&:hover fieldset": { borderColor: "#D1D5DB" },
-                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
-                  },
-                }}
-                slotProps={{
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        borderRadius: "12px",
-                        marginTop: "4px",
-                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                        border: "1px solid #E6ECF5",
-                        height: "auto",
-                      },
-                    },
-                  },
-                }}
-                ListboxProps={{
-                  sx: {
-                    maxHeight: "250px",
-                    padding: "4px",
-                    "& .MuiAutocomplete-option": {
-                      fontSize: "14px",
-                      borderRadius: "8px",
-                      margin: "2px 0",
-                      "&:hover": {
-                        backgroundColor: "#F3E8FF",
-                        color: "#5C17E5",
-                      },
-                      '&[aria-selected="true"]': {
-                        backgroundColor: "#5C17E5",
-                        color: "#ffffff",
-                      },
-                    },
-                  },
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search module..."
-                  />
-                )}
-              />
-            </Box>
-
-            {/* Event Type Filter */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.FILTERS.EVENT_TYPE}</Typography>
-              <Autocomplete
-                key={`eventType-${selectedEventType}`}
-                value={selectedEventType}
-                onChange={(event, newValue) => setSelectedEventType(newValue)}
-                options={getUniqueEventTypes}
-                freeSolo
-                forcePopupIcon
-                clearOnEscape
-                disableClearable={false}
-                isOptionEqualToValue={(option, value) => option === value}
-                popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: 24 }} />}
-                sx={{
-                  width: 220,
-                  "& .MuiOutlinedInput-root": {
-                    height: '40px',
-                    borderRadius: '12px',
-                    backgroundColor: '#ffffff',
-                    paddingRight: '32px !important',
-                    "& fieldset": { borderColor: "#D1D5DB" },
-                    "&:hover fieldset": { borderColor: "#D1D5DB" },
-                    "&.Mui-focused fieldset": { borderColor: "#D1D5DB", borderWidth: "1px" },
-                  },
-                }}
-                slotProps={{
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        borderRadius: "12px",
-                        marginTop: "4px",
-                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                        border: "1px solid #E6ECF5",
-                        height: "auto",
-                      },
-                    },
-                  },
-                }}
-                ListboxProps={{
-                  sx: {
-                    maxHeight: "250px",
-                    padding: "4px",
-                    "& .MuiAutocomplete-option": {
-                      fontSize: "14px",
-                      borderRadius: "8px",
-                      margin: "2px 0",
-                      "&:hover": {
-                        backgroundColor: "#F3E8FF",
-                        color: "#5C17E5",
-                      },
-                      '&[aria-selected="true"]': {
-                        backgroundColor: "#5C17E5",
-                        color: "#ffffff",
-                      },
-                    },
-                  },
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search event type..."
-                  />
-                )}
-              />
-            </Box>
-
-            {/* Event Time Filter */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography sx={{ fontSize: '12px', color: '#728197' }}>{AUDIT_LOG_LABELS.TABLE.TIME}</Typography>
-              <PharmaDatePicker
-                value={eventTime}
-                onChange={(newValue) => setEventTime(newValue)}
-                width={260}
-                height={40}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
-            <StandardButton
-              onClick={clearAllFilters}
-              variant="secondary"
-              size="medium"
-              sx={{
-                minWidth: 160,
-                height: '40px',
-                backgroundColor: '#F5F5F5',
-                border: '1px solid #D1D5DB',
-                color: '#1A212B',
-                fontWeight: 500,
-                '&:hover': {
-                  backgroundColor: '#E0E0E0',
-                  border: '1px solid #D1D5DB',
-                }
-              }}
-            >
-              {AUDIT_LOG_LABELS.FILTERS.RESET}
-            </StandardButton>
-          </Box>
-        </Box>
-      )}
-
-      {/* Table with built-in search and filters */}
-      {isLoading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" p={4}>
-          <CircularProgress />
-          <Typography variant="body1" sx={{ ml: 2 }}>{AUDIT_LOG_LABELS.MESSAGES.LOADING}</Typography>
-        </Box>
-      ) : error ? (
-        <Box p={4} textAlign="center" color="error.main">
-          <Typography variant="body1">
-            {extractErrorMessage(error, AUDIT_LOG_LABELS.MESSAGES.ERROR)}
-          </Typography>
-        </Box>
-      ) : (
-        <Box sx={{ 
-        marginTop: 1,
-        overflowX: 'auto',
-        backgroundColor: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BACKGROUND,
-        borderRadius: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
-        border: 'none',
-        fontFamily: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
-        padding: 0,
-        '& .MuiTableContainer-root': {
-          boxShadow: 'none',
-          borderRadius: AUDIT_LOG_CONSTANTS.TABLE.CONTAINER_BORDER_RADIUS,
-          border: 'none',
-        },
-        '& .MuiTable-root': {
-          borderCollapse: 'separate',
-          borderSpacing: 0,
-        },
-        '& .MuiTableCell-root': {
-          fontFamily: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
-          padding: `${AUDIT_LOG_CONSTANTS.TABLE.CELL_PADDING} !important`,
-          border: AUDIT_LOG_CONSTANTS.TABLE.CELL_BORDER,
-          borderBottom: AUDIT_LOG_CONSTANTS.TABLE.ROW_BORDER,
-        },
-        '& .MuiTableHead .MuiTableCell-root, & .MuiTableHead .MuiTableCell-root[class*="MuiTableCell-root"]': {
-          fontFamily: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
-          fontWeight: AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_WEIGHT,
-          fontSize: `${AUDIT_LOG_CONSTANTS.TABLE.HEADER_FONT_SIZE} !important`,
-          lineHeight: `${AUDIT_LOG_CONSTANTS.TABLE.HEADER_LINE_HEIGHT} !important`,
-          color: AUDIT_LOG_CONSTANTS.TABLE.HEADER_COLOR,
-          backgroundColor: AUDIT_LOG_CONSTANTS.TABLE.HEADER_BACKGROUND,
-          padding: `${AUDIT_LOG_CONSTANTS.TABLE.HEADER_PADDING} !important`,
-          minHeight: 'auto !important',
-          height: 'auto !important',
-          borderRight: AUDIT_LOG_CONSTANTS.TABLE.HEADER_CELL_BORDER_RIGHT,
-          borderBottom: AUDIT_LOG_CONSTANTS.TABLE.ROW_BORDER,
-          whiteSpace: 'nowrap',
-          '&:last-child': {
-            borderRight: 'none',
-          },
-        },
-        '& .MuiTableBody .MuiTableRow:nth-of-type(odd)': {
-          backgroundColor: `${AUDIT_LOG_CONSTANTS.TABLE.ROW_BACKGROUND_ODD} !important`,
-        },
-        '& .MuiTableBody .MuiTableRow:nth-of-type(even)': {
-          backgroundColor: `${AUDIT_LOG_CONSTANTS.TABLE.ROW_BACKGROUND_EVEN} !important`,
-        },
-        '& .MuiTableBody .MuiTableRow': {
-          borderBottom: AUDIT_LOG_CONSTANTS.TABLE.ROW_BORDER,
-          '&:last-child': {
-            borderBottom: 'none',
-          },
-          '&:hover': {
-            backgroundColor: `${AUDIT_LOG_CONSTANTS.TABLE.ROW_HOVER_BACKGROUND} !important`,
-          },
-        },
-        '& .MuiTableBody .MuiTableCell-root': {
-          borderRight: 'none',
-        },
-      }}>
-        <ReusableTable
-          columns={columns}
-          data={sortedData}
-          selectedRows={selectedRows}
-          setSelectedRows={setSelectedRows}
-          searchAndFilterConfig={{ filterOptions: [] }}
-          currentSearchTerm=""
-          onSearchChange={() => {}}
-          showFilters={false}
-          onShowFiltersToggle={() => {}}
-          currentFilterKey=""
-          onFilterSelect={() => {}}
-          currentFilter={{}}
-          totalRows={sortedData.length}
-          rowsPerPage={rowsPerPage}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-          onSortRequest={handleSortRequest}
-          sortConfig={sortConfig}
-        />
-      </Box>
-      )}
-
-      {/* Back Button */}
-      <Button
-        variant="contained"
-        onClick={handleBack}
-        sx={{
-          ...AUDIT_LOG_CONSTANTS.LAYOUT.BACK_BUTTON_POSITION,
-          backgroundColor: AUDIT_LOG_CONSTANTS.BUTTON.BACK.BACKGROUND_COLOR,
-          color: AUDIT_LOG_CONSTANTS.BUTTON.BACK.COLOR,
-          textTransform: AUDIT_LOG_CONSTANTS.BUTTON.BACK.TEXT_TRANSFORM,
-          px: AUDIT_LOG_CONSTANTS.BUTTON.BACK.PADDING_X,
-          borderRadius: AUDIT_LOG_CONSTANTS.BUTTON.BACK.BORDER_RADIUS,
-          height: AUDIT_LOG_CONSTANTS.BUTTON.BACK.HEIGHT,
-          minWidth: AUDIT_LOG_CONSTANTS.BUTTON.BACK.MIN_WIDTH,
-          '&:hover': { 
-            backgroundColor: AUDIT_LOG_CONSTANTS.BUTTON.BACK.HOVER_BACKGROUND,
-          },
-        }}
-      >
-        {AUDIT_LOG_LABELS.BACK_BUTTON}
-      </Button>
-
-      {/* Event Details Dialog */}
-      <Dialog
-        open={eventDetailsDialog.open}
-        onClose={() => setEventDetailsDialog({ open: false, details: '' })}
-        maxWidth="md"
-        fullWidth
-        sx={{
-          '& .MuiDialog-paper': {
-            borderRadius: '12px',
-            maxHeight: '80vh',
-          },
-        }}
-      >
-        <DialogTitle sx={{ 
-          fontSize: '18px', 
-          fontWeight: 600, 
-          color: '#1A212B',
-          borderBottom: '1px solid #E0E0E0',
-          pb: 2,
-        }}>
-          {AUDIT_LOG_LABELS.DIALOG.EVENT_DETAILS_TITLE}
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3, pb: 2 }}>
-          <Typography sx={{ 
-            fontSize: '14px', 
+        {/* Event Details Dialog */}
+        <Dialog
+          open={eventDetailsDialog.open}
+          onClose={() => setEventDetailsDialog({ open: false, details: '' })}
+          maxWidth="md"
+          fullWidth
+          sx={{
+            '& .MuiDialog-paper': {
+              borderRadius: '12px',
+              maxHeight: '80vh',
+            },
+          }}
+        >
+          <DialogTitle sx={{
+            fontSize: '18px',
+            fontWeight: 600,
             color: '#1A212B',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            lineHeight: 1.6,
+            borderBottom: '1px solid #E0E0E0',
+            pb: 2,
           }}>
-            {eventDetailsDialog.details}
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
-          <StandardButton
-            onClick={() => setEventDetailsDialog({ open: false, details: '' })}
-            variant="primary"
-            size="medium"
-          >
-            {AUDIT_LOG_LABELS.DIALOG.CLOSE_BUTTON}
-          </StandardButton>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            {AUDIT_LOG_LABELS.DIALOG.EVENT_DETAILS_TITLE}
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3, pb: 2 }}>
+            <Typography sx={{
+              fontSize: '14px',
+              color: '#1A212B',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              lineHeight: 1.6,
+            }}>
+              {eventDetailsDialog.details}
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+            <StandardButton
+              onClick={() => setEventDetailsDialog({ open: false, details: '' })}
+              variant="primary"
+              size="medium"
+            >
+              {AUDIT_LOG_LABELS.DIALOG.CLOSE_BUTTON}
+            </StandardButton>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </>
   );
 };
