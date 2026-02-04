@@ -124,9 +124,9 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    
+
     const missingFields: string[] = [];
-    
+
     if (!supplierData.supplierName || !supplierData.supplierName.trim()) {
       missingFields.push('Supplier name');
     }
@@ -136,7 +136,16 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
     if (!supplierData.phoneNumber || !supplierData.phoneNumber.trim()) {
       missingFields.push('Phone number');
     }
-    
+    if (!supplierData.emailId || !supplierData.emailId.trim()) {
+      missingFields.push('Email id');
+    }
+    if (!supplierData.supplierCode || !supplierData.supplierCode.trim()) {
+      missingFields.push('Supplier code');
+    }
+    if (!supplierData.gstin || !supplierData.gstin.trim()) {
+      missingFields.push('GSTIN');
+    }
+
     if (missingFields.length > 0) {
       setErrorMessage(`Please fill in the following required fields: ${missingFields.join(', ')}`);
       return;
@@ -150,9 +159,9 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
   };
 
   return (
-    <Modal 
-      open={isOpen} 
-      onClose={onClose} 
+    <Modal
+      open={isOpen}
+      onClose={onClose}
       aria-labelledby="new-supplier-modal-title"
       sx={{
         display: 'flex',
@@ -163,20 +172,20 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
       }}
     >
       <Box sx={style} component="form" onSubmit={handleSubmit}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: '1px solid #e2e8f0',
           pb: 1.5,
           mb: 1
         }}>
           <Box>
-            <Typography 
-              id="new-supplier-modal-title" 
-              variant="h5" 
-              component="h2" 
-              sx={{ 
+            <Typography
+              id="new-supplier-modal-title"
+              variant="h5"
+              component="h2"
+              sx={{
                 fontFamily: "'Lexend', sans-serif",
                 fontWeight: 600,
                 fontSize: '22px',
@@ -187,8 +196,8 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
             >
               New Supplier
             </Typography>
-            <Typography 
-              variant="body2" 
+            <Typography
+              variant="body2"
               sx={{
                 color: '#718096',
                 fontSize: '14px',
@@ -198,10 +207,10 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
               Enter the supplier's details below to create a new supplier.
             </Typography>
           </Box>
-          <IconButton 
-            aria-label="close" 
-            onClick={onClose} 
-            sx={{ 
+          <IconButton
+            aria-label="close"
+            onClick={onClose}
+            sx={{
               color: '#718096',
               backgroundColor: '#f7fafc',
               borderRadius: '8px',
@@ -219,9 +228,9 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
 
         <Box sx={{ flex: 1, overflow: 'auto', px: 4, pb: 3 }}>
           {errorMessage && (
-            <Alert 
-              severity="error" 
-              sx={{ 
+            <Alert
+              severity="error"
+              sx={{
                 mb: 2,
                 borderRadius: '8px',
                 '& .MuiAlert-message': {
@@ -243,7 +252,7 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="Supplier name"
+                  placeholder="Supplier name *"
                   name="supplierName"
                   value={supplierData.supplierName}
                   onChange={handleInputChange}
@@ -252,7 +261,7 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="Contact name"
+                  placeholder="Contact name *"
                   name="contactName"
                   value={supplierData.contactName}
                   onChange={handleInputChange}
@@ -261,7 +270,7 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="Phone number"
+                  placeholder="Phone number *"
                   name="phoneNumber"
                   value={supplierData.phoneNumber}
                   onChange={handleInputChange}
@@ -270,7 +279,7 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="Email id"
+                  placeholder="Email id *"
                   name="emailId"
                   value={supplierData.emailId}
                   onChange={handleInputChange}
@@ -340,7 +349,7 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="Supplier code"
+                  placeholder="Supplier code *"
                   name="supplierCode"
                   value={supplierData.supplierCode}
                   onChange={handleInputChange}
@@ -349,7 +358,7 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="GSTIN"
+                  placeholder="GSTIN *"
                   name="gstin"
                   value={supplierData.gstin}
                   onChange={handleInputChange}
@@ -378,10 +387,10 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
           </Grid>
         </Box>
 
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
-          gap: '12px', 
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '12px',
           pt: 3,
           borderTop: '1px solid #e2e8f0',
           mt: 'auto'
@@ -393,8 +402,8 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
           >
             Cancel
           </StandardButton>
-          <StandardButton 
-            type="submit" 
+          <StandardButton
+            type="submit"
             variant="primary"
             size="medium"
           >

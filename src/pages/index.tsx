@@ -23,6 +23,8 @@ import AuditLog from "./Admin/AuditLog";
 import DetailedSalesTable from "./Admin/DetailedSalesTable";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
+import { ProtectedRoute } from "../guards/ProtectedRoute";
+import { RoleGuard } from "../guards/RoleGuard";
 
 export const Pages = () => {
   return (
@@ -36,40 +38,46 @@ export const Pages = () => {
         <Route path="accept-invite" element={<CreatePassword />} />
       </Route>
 
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardMain />} />
-      </Route>
+      {/* App Routes - Protected by Authentication */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<DashboardMain />} />
+        </Route>
 
-      <Route path="/inventory" element={<DashboardLayout />}>
-        <Route index element={<InventoryModule />} />
-        <Route path="adjust" element={<InventoryAdjustment />} />
-      </Route>
+        <Route path="/inventory" element={<DashboardLayout />}>
+          <Route index element={<InventoryModule />} />
+          <Route path="adjust" element={<InventoryAdjustment />} />
+        </Route>
 
-      <Route path="/receive" element={<DashboardLayout />}>
-        <Route path="order-receive" element={<OrderReceive />} />
-        <Route path="order-details" element={<OrderDetails labels={orderLabels} />} />
-        <Route path="payment-details" element={<PaymentDetails />} />
-      </Route>
+        <Route path="/receive" element={<DashboardLayout />}>
+          <Route path="order-receive" element={<OrderReceive />} />
+          <Route path="order-details" element={<OrderDetails labels={orderLabels} />} />
+          <Route path="payment-details" element={<PaymentDetails />} />
+        </Route>
 
-      <Route path="/master" element={<DashboardLayout />}> 
-        <Route index element={<Masterpage />} />
-      </Route>
+        <Route path="/master" element={<DashboardLayout />}>
+          <Route index element={<Masterpage />} />
+        </Route>
 
-      <Route path="/sales" element={<DashboardLayout />}>
-        <Route index element={<SaleHistory />} />
-        <Route path="new" element={<Sale />} />
-        <Route path="receipt" element={<SalesReceipt />} />
-        <Route path="sale-return" element={<SaleReturn />} />
-      </Route>
+        <Route path="/sales" element={<DashboardLayout />}>
+          <Route index element={<SaleHistory />} />
+          <Route path="new" element={<Sale />} />
+          <Route path="receipt" element={<SalesReceipt />} />
+          <Route path="sale-return" element={<SaleReturn />} />
+        </Route>
 
-      <Route path={ADMIN_CONSTANTS.ROUTE_BASE} element={<DashboardLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="users" element={<Users />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
-        <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
-        <Route path="settings" element={<AdminSettings />} />
-        <Route path="audit" element={<AuditLog />} />
+        {/* Admin Routes - Restricted to 'Admin' roles */}
+        <Route element={<RoleGuard allowedRoles={['admin', 'Admin']} />}>
+          <Route path={ADMIN_CONSTANTS.ROUTE_BASE} element={<DashboardLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<Users />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
+            <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
+            <Route path="settings" element={<AdminSettings />} />
+            <Route path="audit" element={<AuditLog />} />
+          </Route>
+        </Route>
       </Route>
     </Routes>
   );

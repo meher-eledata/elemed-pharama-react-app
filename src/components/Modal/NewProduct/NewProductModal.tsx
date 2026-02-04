@@ -227,17 +227,17 @@ export const NEW_PRODUCT_MODAL_CONSTANTS = {
 export const NEW_PRODUCT_MODAL_LABELS = {
   TITLE: 'New Product',
   FIELDS: [
-    { key: 'product_name', label: 'Product name', type: 'text' },
-    { key: 'expiry', label: 'Expiry date', type: 'date' },
-    { key: 'type', label: 'Type', type: 'text' },
-    { key: 'brand_name', label: 'Brand name', type: 'text' },
-    { key: 'hsn_id', label: 'HSN code', type: 'text' },
+    { key: 'product_name', label: 'Product name *', type: 'text' },
+    { key: 'expiry', label: 'Expiry date *', type: 'date' },
+    { key: 'type', label: 'Type *', type: 'text' },
+    { key: 'brand_name', label: 'Brand name *', type: 'text' },
+    { key: 'hsn_id', label: 'HSN code *', type: 'text' },
     { key: 'package_info', label: 'Package info', type: 'text' },
-    { key: 'unit_of_measure', label: 'Unit of measure', type: 'text' },
-    { key: 'mrp', label: 'MRP', type: 'number' },
-    { key: 'min_quantity', label: 'Minimum quantity', type: 'number' },
+    { key: 'unit_of_measure', label: 'Unit of measure *', type: 'text' },
+    { key: 'mrp', label: 'MRP *', type: 'number' },
+    { key: 'min_quantity', label: 'Minimum quantity *', type: 'number' },
     { key: 'max_quantity', label: 'Maximum quantity', type: 'number' },
-    { key: 'product_code', label: 'Product code', type: 'text' }
+    { key: 'product_code', label: 'Product code *', type: 'text' }
   ],
   BUTTON_CANCEL: 'Cancel',
   BUTTON_ADD: 'Add'
@@ -251,23 +251,23 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
     fontSize: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
     transition: 'all 0.2s ease-in-out',
-    
+
     '& fieldset': {
       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
       borderWidth: '2px',
       transition: 'border-color 0.2s ease-in-out',
     },
-    
+
     '&:hover fieldset': {
       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
     },
-    
+
     '&.Mui-focused fieldset': {
       borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       borderWidth: '2px',
     },
-    
+
     '&.Mui-error fieldset': {
       borderColor: '#e53e3e',
       borderWidth: '2px',
@@ -282,7 +282,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     fontWeight: 500,
     color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.INPUT_COLOR,
     fontSize: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FONT_SIZE,
-    
+
     '&::placeholder': {
       color: '#a0aec0',
       opacity: 1,
@@ -297,13 +297,13 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
     backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
     padding: '0 4px',
-    
+
     '&.MuiInputLabel-shrink': {
       transform: 'translate(14px, -9px) scale(0.85)',
       color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
       backgroundColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BG,
     },
-    
+
     '&.Mui-focused': {
       color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
     },
@@ -326,7 +326,7 @@ interface NewProductModalProps {
 
 const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProductAdded }) => {
   const [addProduct, { isLoading, error, isSuccess }] = useAddProductMutation();
-  
+
   // Form state
   const [formData, setFormData] = useState({
     product_name: '',
@@ -354,17 +354,17 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.product_name.trim()) errors.product_name = 'Product name is required';
     if (!formData.product_code.trim()) errors.product_code = 'Product code is required';
     if (!formData.type.trim()) errors.type = 'Type is required';
     if (!formData.brand_name.trim()) errors.brand_name = 'Brand name is required';
     if (!formData.hsn_id.trim()) errors.hsn_id = 'HSN code is required';
-    if (!formData.package_info.trim()) errors.package_info = 'Package info is required';
+    // Package info is NOT mandatory
     if (!formData.unit_of_measure.trim()) errors.unit_of_measure = 'Unit of measure is required';
     if (!formData.mrp || isNaN(Number(formData.mrp))) errors.mrp = 'Valid MRP is required';
     if (!formData.min_quantity || isNaN(Number(formData.min_quantity))) errors.min_quantity = 'Valid minimum quantity is required';
-    if (!formData.max_quantity || isNaN(Number(formData.max_quantity))) errors.max_quantity = 'Valid maximum quantity is required';
+    // Maximum quantity is NOT mandatory
     if (!expiryDate) errors.expiry = 'Expiry date is required';
 
     setFormErrors(errors);
@@ -410,7 +410,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
 
       console.log('Submitting product data:', productData);
       await addProduct(productData).unwrap();
-      
+
       // Reset form and close modal on success
       setFormData({
         product_name: '',
@@ -426,12 +426,12 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       });
       setExpiryDate(null);
       setFormErrors({});
-      
+
       // Notify parent component that a product was added
       if (onProductAdded) {
         onProductAdded();
       }
-      
+
       onClose();
     } catch (err: any) {
       console.error('Error adding product:', err);
@@ -480,100 +480,100 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         }}
       >
         <Box sx={{
-        position: 'relative',
-        width: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.WIDTH,
-        maxWidth: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
-        bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BACKGROUND,
-        borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
-        boxShadow: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BOX_SHADOW,
-        p: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.PADDING,
-        display: 'flex',
-        flexDirection: 'column' as const,
-        gap: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.GAP,
-        outline: 'none',
-        maxHeight: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
-        overflowY: 'auto',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-      }}>
-        {/* Enhanced Header */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          borderBottom: '1px solid #e2e8f0',
-          pb: 1.5,
-          mb: 1
+          position: 'relative',
+          width: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.WIDTH,
+          maxWidth: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_WIDTH,
+          bgcolor: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BACKGROUND,
+          borderRadius: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BORDER_RADIUS,
+          boxShadow: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.BOX_SHADOW,
+          p: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.PADDING,
+          display: 'flex',
+          flexDirection: 'column' as const,
+          gap: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.GAP,
+          outline: 'none',
+          maxHeight: NEW_PRODUCT_MODAL_CONSTANTS.MODAL.MAX_HEIGHT,
+          overflowY: 'auto',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
         }}>
-          <Box>
-            <Typography
-              id="new-product-modal-title"
-              variant="h5"
-              component="h2"
-              sx={{
-                fontFamily: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
-                fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
-                fontSize: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
-                color: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
-                margin: 0,
-                mb: 0.5,
-              }}
-            >
-              {NEW_PRODUCT_MODAL_LABELS.TITLE}
-            </Typography>
-            <Typography 
-              variant="body2" 
+          {/* Enhanced Header */}
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #e2e8f0',
+            pb: 1.5,
+            mb: 1
+          }}>
+            <Box>
+              <Typography
+                id="new-product-modal-title"
+                variant="h5"
+                component="h2"
+                sx={{
+                  fontFamily: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_FONT_FAMILY,
+                  fontWeight: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_WEIGHT,
+                  fontSize: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_SIZE,
+                  color: NEW_PRODUCT_MODAL_CONSTANTS.HEADER.TITLE_COLOR,
+                  margin: 0,
+                  mb: 0.5,
+                }}
+              >
+                {NEW_PRODUCT_MODAL_LABELS.TITLE}
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: '#718096',
+                  fontSize: '14px',
+                  fontFamily: "'Lexend', sans-serif",
+                }}
+              >
+                Enter the product details below to add a new product.
+              </Typography>
+            </Box>
+            <IconButton
+              aria-label="close"
+              onClick={handleClose}
               sx={{
                 color: '#718096',
-                fontSize: '14px',
-                fontFamily: "'Lexend', sans-serif",
+                backgroundColor: '#f7fafc',
+                borderRadius: '8px',
+                width: '32px',
+                height: '32px',
+                '&:hover': {
+                  backgroundColor: '#edf2f7',
+                  color: '#2d3748',
+                }
               }}
             >
-              Enter the product details below to add a new product.
-            </Typography>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Box>
-          <IconButton 
-            aria-label="close" 
-            onClick={handleClose} 
-            sx={{ 
-              color: '#718096',
-              backgroundColor: '#f7fafc',
-              borderRadius: '8px',
-              width: '32px',
-              height: '32px',
-              '&:hover': {
-                backgroundColor: '#edf2f7',
-                color: '#2d3748',
-              }
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
 
-        {error && (
-          <Alert 
-            severity="error" 
-            sx={{ 
-              mb: 3,
-              borderRadius: '12px',
-              backgroundColor: '#fed7d7',
-              color: '#c53030',
-              border: '1px solid #feb2b2',
-              '& .MuiAlert-icon': {
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 3,
+                borderRadius: '12px',
+                backgroundColor: '#fed7d7',
                 color: '#c53030',
-              }
-            }}
-          >
-            {extractErrorMessage(error, 'Failed to add product. Please try again.')}
-          </Alert>
-        )}
+                border: '1px solid #feb2b2',
+                '& .MuiAlert-icon': {
+                  color: '#c53030',
+                }
+              }}
+            >
+              {extractErrorMessage(error, 'Failed to add product. Please try again.')}
+            </Alert>
+          )}
 
-        {/* Enhanced Form Grid */}
-        <Box sx={{ flex: 1 }}>
-          
-            <Grid 
-              container 
-              spacing={NEW_PRODUCT_MODAL_CONSTANTS.GRID.SPACING} 
+          {/* Enhanced Form Grid */}
+          <Box sx={{ flex: 1 }}>
+
+            <Grid
+              container
+              spacing={NEW_PRODUCT_MODAL_CONSTANTS.GRID.SPACING}
               rowSpacing={NEW_PRODUCT_MODAL_CONSTANTS.GRID.ROW_SPACING}
               sx={{ mb: 2 }}
             >
@@ -581,10 +581,10 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                 <Grid key={idx} item xs={12} sm={6} component="div">
                   {field.key === 'expiry' ? (
                     <Box sx={{ width: '100%' }}>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mb: 0.5,
                           color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                           fontSize: '14px',
                           fontWeight: 500,
@@ -608,11 +608,11 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                           error={!!formErrors.expiry}
                         />
                         {formErrors.expiry && (
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: '#e53e3e', 
-                              mt: 0.5, 
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: '#e53e3e',
+                              mt: 0.5,
                               ml: 1.5,
                               fontSize: '12px'
                             }}
@@ -624,10 +624,10 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                     </Box>
                   ) : (
                     <Box>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          mb: 0.5, 
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mb: 0.5,
                           color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
                           fontSize: '14px',
                           fontWeight: 500,
@@ -636,9 +636,9 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                       >
                         {field.label}
                       </Typography>
-                      <StyledTextField 
-                        fullWidth 
-                        variant="outlined" 
+                      <StyledTextField
+                        fullWidth
+                        variant="outlined"
                         placeholder={`Enter ${field.label.toLowerCase()}`}
                         type={field.type}
                         value={formData[field.key as keyof typeof formData]}
@@ -665,38 +665,38 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                 </Grid>
               ))}
             </Grid>
-          
-        </Box>
 
-        {/* Enhanced Action Buttons */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
-          gap: '12px', 
-          pt: 2,
-          borderTop: '1px solid #e2e8f0',
-          mt: 'auto'
-        }}>
-          <StandardButton
-            variant="secondary"
-            size="medium"
-            onClick={handleClose}
-            disabled={isLoading}
-          >
-            {NEW_PRODUCT_MODAL_LABELS.BUTTON_CANCEL}
-          </StandardButton>
-          <StandardButton
-            variant="primary"
-            size="medium"
-            onClick={handleSubmit}
-            disabled={isLoading}
-            startIcon={isLoading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : undefined}
-          >
-            {isLoading ? 'Adding Product...' : NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD}
-          </StandardButton>
+          </Box>
+
+          {/* Enhanced Action Buttons */}
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            pt: 2,
+            borderTop: '1px solid #e2e8f0',
+            mt: 'auto'
+          }}>
+            <StandardButton
+              variant="secondary"
+              size="medium"
+              onClick={handleClose}
+              disabled={isLoading}
+            >
+              {NEW_PRODUCT_MODAL_LABELS.BUTTON_CANCEL}
+            </StandardButton>
+            <StandardButton
+              variant="primary"
+              size="medium"
+              onClick={handleSubmit}
+              disabled={isLoading}
+              startIcon={isLoading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : undefined}
+            >
+              {isLoading ? 'Adding Product...' : NEW_PRODUCT_MODAL_LABELS.BUTTON_ADD}
+            </StandardButton>
+          </Box>
         </Box>
-      </Box>
-    </Modal>
+      </Modal>
     </>
   );
 };
