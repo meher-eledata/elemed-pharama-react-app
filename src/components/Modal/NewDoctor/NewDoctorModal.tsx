@@ -1,29 +1,29 @@
-import React,{useState,useEffect,ChangeEvent,FormEvent}from 'react';
-import {Modal,Box,Typography,TextField,Select,FormControl,InputLabel,MenuItem,Grid,Stack,IconButton,Alert} from '@mui/material';
-import {StandardButton} from '../../Common';
+import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import { Modal, Box, Typography, TextField, Select, FormControl, InputLabel, MenuItem, Grid, Stack, IconButton, Alert } from '@mui/material';
+import { StandardButton } from '../../Common';
 import CloseIcon from '@mui/icons-material/Close';
 
 
-interface DoctorData{
-    doctorName:string;
-    role:string;
-    branch:string;
-    mobileNumber:string;
-    email:string;
+interface DoctorData {
+    doctorName: string;
+    role: string;
+    branch: string;
+    mobileNumber: string;
+    email: string;
 }
 
-interface NewDoctorModalProps{
-    isOpen:boolean,
-    onClose():void,
-    onSubmit(data:DoctorData):void,
+interface NewDoctorModalProps {
+    isOpen: boolean,
+    onClose(): void,
+    onSubmit(data: DoctorData): void,
 }
 
-const initialDoctorState:DoctorData={
-    doctorName:"",
-    role:"",
-    branch:"",
-    mobileNumber:"",
-    email:"",
+const initialDoctorState: DoctorData = {
+    doctorName: "",
+    role: "",
+    branch: "",
+    mobileNumber: "",
+    email: "",
 }
 
 // Styling Constants
@@ -140,22 +140,13 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setErrorMessage('');
-        
+
         const missingFields: string[] = [];
-        
+
         if (!doctorData.doctorName || !doctorData.doctorName.trim()) {
             missingFields.push('Name');
         }
-        if (!doctorData.role || !doctorData.role.trim()) {
-            missingFields.push('Role');
-        }
-        if (!doctorData.branch || !doctorData.branch.trim()) {
-            missingFields.push('Branch');
-        }
-        if (!doctorData.email || !doctorData.email.trim()) {
-            missingFields.push('Email id');
-        }
-        
+
         if (missingFields.length > 0) {
             setErrorMessage(`Please fill in the following required fields: ${missingFields.join(', ')}`);
             return;
@@ -169,9 +160,9 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
     };
 
     return (
-        <Modal 
-            open={isOpen} 
-            onClose={onClose} 
+        <Modal
+            open={isOpen}
+            onClose={onClose}
             aria-labelledby="new-doctor-modal-title"
             sx={{
                 display: 'flex',
@@ -183,20 +174,20 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
         >
             <Box sx={style} component="form" onSubmit={handleSubmit}>
                 {/* Header */}
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'space-between',
                     borderBottom: '1px solid #e2e8f0',
                     pb: 1.5,
                     mb: 1
                 }}>
                     <Box>
-                        <Typography 
-                            id="new-doctor-modal-title" 
-                            variant="h5" 
-                            component="h2" 
-                            sx={{ 
+                        <Typography
+                            id="new-doctor-modal-title"
+                            variant="h5"
+                            component="h2"
+                            sx={{
                                 fontFamily: "'Lexend', sans-serif",
                                 fontWeight: 600,
                                 fontSize: '22px',
@@ -207,8 +198,8 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                         >
                             New Doctor / User
                         </Typography>
-                        <Typography 
-                            variant="body2" 
+                        <Typography
+                            variant="body2"
                             sx={{
                                 color: '#718096',
                                 fontSize: '14px',
@@ -218,10 +209,10 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                             Enter the doctor/user details below to create a new profile.
                         </Typography>
                     </Box>
-                    <IconButton 
-                        aria-label="close" 
-                        onClick={onClose} 
-                        sx={{ 
+                    <IconButton
+                        aria-label="close"
+                        onClick={onClose}
+                        sx={{
                             color: '#718096',
                             backgroundColor: '#f7fafc',
                             borderRadius: '8px',
@@ -240,9 +231,9 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                 {/* Content Area */}
                 <Box sx={{ flex: 1, overflow: 'auto', px: 1 }}>
                     {errorMessage && (
-                        <Alert 
-                            severity="error" 
-                            sx={{ 
+                        <Alert
+                            severity="error"
+                            sx={{
                                 mb: 2,
                                 borderRadius: '8px',
                                 '& .MuiAlert-message': {
@@ -265,7 +256,7 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                                 <TextField
                                     fullWidth
                                     variant="outlined"
-                                    placeholder="Name"
+                                    placeholder="Name *"
                                     name="doctorName"
                                     value={doctorData.doctorName}
                                     onChange={handleInputChange}
@@ -273,7 +264,7 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                                 />
 
                                 <FormControl fullWidth sx={inputStyle}>
-                                    <InputLabel 
+                                    <InputLabel
                                         id="role-select-label"
                                         sx={{
                                             color: '#B0B7C3',
@@ -369,10 +360,10 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                 </Box>
 
                 {/* Action Buttons */}
-                <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-end', 
-                    gap: '12px', 
+                <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '12px',
                     pt: 2,
                     borderTop: '1px solid #e2e8f0',
                     mt: 'auto'
@@ -384,8 +375,8 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                     >
                         Cancel
                     </StandardButton>
-                    <StandardButton 
-                        type="submit" 
+                    <StandardButton
+                        type="submit"
                         variant="primary"
                         size="medium"
                     >

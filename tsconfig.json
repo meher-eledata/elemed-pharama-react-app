@@ -1,4 +1,3 @@
-
 {
   "compilerOptions": {
     "target": "ESNext",
@@ -9,8 +8,9 @@
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "types": ["jest", "node"]   
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

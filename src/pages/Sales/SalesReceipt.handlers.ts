@@ -13,9 +13,6 @@ export const validateCustomerData = (customerData: any): { isValid: boolean; err
   if (!customerData.mobileNumber || !customerData.mobileNumber.trim()) {
     return { isValid: false, error: 'Phone number is required' };
   }
-  if (!customerData.billingAddress || !customerData.billingAddress.trim()) {
-    return { isValid: false, error: 'Billing address is required' };
-  }
 
   if (customerData.emailId && customerData.emailId.trim()) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,9 +63,9 @@ export const transformCustomerDataToApiPayload = (customerData: any) => {
     name: customerData.customerName.trim(),
     email: customerData.emailId && customerData.emailId.trim() ? customerData.emailId.trim() : null,
     phone: customerData.mobileNumber.trim(),
-    billing_address: customerData.billingAddress.trim(),
+    billing_address: customerData.billingAddress && customerData.billingAddress.trim() ? customerData.billingAddress.trim() : "",
     shipping_address: customerData.shippingAddressSameAsBilling
-      ? customerData.billingAddress.trim()
+      ? (customerData.billingAddress && customerData.billingAddress.trim() ? customerData.billingAddress.trim() : "")
       : (customerData.shippingAddress && customerData.shippingAddress.trim() ? customerData.shippingAddress.trim() : null),
     gstin: customerData.gstin || null,
     pancard_num: customerData.pancardNumber || null,
