@@ -63,7 +63,7 @@ const cartSlice = createSlice({
     addToCart: (state, action: PayloadAction<Product>) => {
       const product = action.payload;
       const existingItem = state.items.find(item => item.id === product.id);
-      
+
       if (existingItem) {
         existingItem.quantity += product.quantity;
         const discountMultiplier = 1 - (existingItem.discount / 100);
@@ -81,7 +81,7 @@ const cartSlice = createSlice({
         };
         state.items.push(newItem);
       }
-      
+
       // Recalculate total
       state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
     },
@@ -90,7 +90,7 @@ const cartSlice = createSlice({
     removeFromCart: (state, action: PayloadAction<string>) => {
       const itemId = action.payload;
       state.items = state.items.filter(item => item.id !== itemId);
-      
+
       // Recalculate total
       state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
     },
@@ -99,12 +99,12 @@ const cartSlice = createSlice({
     updateItemQuantity: (state, action: PayloadAction<{ id: string; quantity: number }>) => {
       const { id, quantity } = action.payload;
       const item = state.items.find(item => item.id === id);
-      
+
       if (item) {
         item.quantity = Math.max(1, quantity); // Minimum quantity of 1
         const discountMultiplier = 1 - (item.discount / 100);
         item.totalPrice = item.quantity * item.sp * discountMultiplier;
-        
+
         // Recalculate total
         state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
       }
@@ -114,16 +114,16 @@ const cartSlice = createSlice({
     updateItemDetails: (state, action: PayloadAction<{ id: string; updates: Partial<CartItem> }>) => {
       const { id, updates } = action.payload;
       const item = state.items.find(item => item.id === id);
-      
+
       if (item) {
         Object.assign(item, updates);
-        
+
         // Recalculate total price if quantity, price, or discount changed
         if (updates.quantity || updates.sp || updates.discount !== undefined) {
           const discountMultiplier = 1 - ((item.discount || 0) / 100);
           item.totalPrice = item.quantity * item.sp * discountMultiplier;
         }
-        
+
         // Recalculate total
         state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
       }
@@ -173,7 +173,7 @@ const cartSlice = createSlice({
     bulkDeleteItems: (state, action: PayloadAction<string[]>) => {
       const idsToDelete = action.payload;
       state.items = state.items.filter(item => !idsToDelete.includes(item.id));
-      
+
       // Recalculate total
       state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
     },

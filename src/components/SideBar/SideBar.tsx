@@ -100,11 +100,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector((state: any) => state.auth.user);
-  const isAdmin = useMemo(() => {
-    if (!user) return false;
-    const role = user.role;
-    return role === 'admin' || role === 0 || role === '0' || user.is_admin;
-  }, [user]);
 
   const adminItems: SidebarItem[] = useMemo(() => [
     { id: 'admin-home', icon: <WhiteIcon><DashboardIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Dashboard', label: 'Dashboard', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin', isComponent: true },
@@ -117,14 +112,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
 
   const sidebarItems = useMemo(() => {
     if (location.pathname.startsWith('/admin')) return adminItems;
-    if (isAdmin) {
-      return [
-        ...baseItems,
-        { id: 'admin-link', icon: GearIcon, alt: 'Admin', label: 'Admin', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin' },
-      ];
-    }
     return baseItems;
-  }, [isAdmin, location.pathname, adminItems]);
+  }, [location.pathname, adminItems]);
 
   useEffect(() => {
     const currentPath = location.pathname;

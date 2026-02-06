@@ -379,7 +379,7 @@ export const generatePrintHTML = (data: {
                   <td>${item.cgstPercent}%</td>
                   <td>${item.sgstPercent}%</td>
                   <td>${item.igstPercent}%</td>
-                  <td style="font-weight: 600">${parseFloat(item.amount || '0').toFixed(0)}</td>
+                  <td style="font-weight: 600">${parseFloat(item.amount || '0').toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -390,15 +390,15 @@ export const generatePrintHTML = (data: {
           <div class="summary-left">
             <div class="summary-item">
               <div class="summary-label">Total Value</div>
-              <div class="summary-value">${parseFloat(totalValue || '0').toFixed(0)}</div>
+              <div class="summary-value">${parseFloat(totalValue || '0').toFixed(2)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Total Discount</div>
-              <div class="summary-value">${parseFloat(totalDiscount || '0').toFixed(0)}</div>
+              <div class="summary-value">${parseFloat(totalDiscount || '0').toFixed(2)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Tax Amount</div>
-              <div class="summary-value">${parseFloat(taxAmount || '0').toFixed(0)}</div>
+              <div class="summary-value">${parseFloat(taxAmount || '0').toFixed(2)}</div>
             </div>
           </div>
           <div class="summary-right">
