@@ -79,8 +79,9 @@ const LoginForm: React.FC = () => {
       dispatch(setCredentials(response));
 
       const userRole = response?.user?.role;
-      const roleLower = typeof userRole === 'string' ? userRole.toLowerCase() : '';
-      if (roleLower === 'admin') {
+      const isAdmin = userRole === 0 || userRole === '0' || String(userRole).toLowerCase() === 'admin';
+
+      if (isAdmin) {
         navigate("/admin");
       } else {
         navigate("/dashboard");

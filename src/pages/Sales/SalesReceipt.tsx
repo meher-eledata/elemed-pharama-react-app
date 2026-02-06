@@ -266,7 +266,18 @@ const SalesReceipt: React.FC = () => {
             if (result) {
               const invoice = result.invoice || {};
               const lines = result.lines || [];
+              const payments = result.payments || [];
 
+              // Map payments from API to splitPayments state
+              if (Array.isArray(payments) && payments.length > 0) {
+                const mappedPayments = payments.map((p: any) => ({
+                  mode: p.payment_method || 'Cash',
+                  amount: parseFloat(p.payment_amount || '0').toString()
+                }));
+                // Filter out return payments (OUT direction) if necessary, 
+                // but usually we want to see what was paid.
+                setSplitPayments(mappedPayments.filter((p: any) => parseFloat(p.amount) > 0));
+              }
 
               const mappedSalesItems = lines.length > 0 ? lines.map((line: any) => {
                 const unitPrice = parseFloat(line.rate || line.unit_price || '0');
@@ -861,6 +872,7 @@ const SalesReceipt: React.FC = () => {
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
+        splitPayments: splitPayments,
       });
 
       printWindow.document.write(htmlContent);
@@ -1431,6 +1443,7 @@ const SalesReceipt: React.FC = () => {
               hideActionButtons={true}
               brandIcon={bgWhiteIcon}
               pageSize={pageSize.toLowerCase() as 'a4' | 'a5'}
+              splitPayments={splitPayments}
             />
           }
           onClose={handleClosePrintModal}

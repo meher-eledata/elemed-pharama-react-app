@@ -84,6 +84,7 @@ export interface InvoiceDetails {
   totalDiscount: string;
   taxAmount: string;
   totalPayableAmount: string;
+  splitPayments?: any[];
 }
 
 export default function SaleHistory() {
@@ -527,28 +528,44 @@ export default function SaleHistory() {
         taxAmount: taxAmount,
         totalPayableAmount: totalPayableAmount,
         patientType: mergedItem.patientType || 'Out Patient',
-        items: items
+        items: items,
+        splitPayments: savedItem?.splitPayments || []
       };
 
       console.log('📋 Invoice details loaded:', initialDetails);
       setInvoiceDetails(initialDetails);
 
-      // 2. Fetch full details from API to get fields missing from the main list (like doctor mobile/email)
-      // Note: API endpoint not yet implemented on backend, so skip for now
-      // try {
-      //   console.log('🔍 Fetching full invoice details for preview:', selectedInvoiceId);
-      //   const result = await getInvoiceDetails({ invoice_id: selectedInvoiceId }).unwrap();
-      //   
-      //   if (result) {
-      //     console.log('✅ Full details received:', result);
-      //     // ... update logic here
-      //   }
-      // } catch (error) {
-      //   console.error('❌ Error fetching full invoice details:', error);
-      // }
+      // 2. Fetch full details from API to get fields missing from the main list (like doctor mobile/email and payments)
+      try {
+        console.log('🔍 Fetching full invoice details for preview:', selectedInvoiceId);
+        let result;
+        if (typeof selectedInvoiceId === 'number' || !isNaN(Number(selectedInvoiceId))) {
+          result = await getInvoiceDetails({ invoice_id: Number(selectedInvoiceId) }).unwrap();
+        } else {
+          const numericPart = String(mergedItem.invoiceNumber).replace(/^INV/i, '').trim();
+          result = await getInvoiceDetails({ invoice_number: numericPart }).unwrap();
+        }
 
-      // For now, just use the initial details that were already set above
-      console.log('📋 Using initial invoice details (API endpoint not yet implemented)');
+        if (result) {
+          console.log('✅ Full details received:', result);
+          const apiPayments = result.payments || [];
+          const mappedSplitPayments = apiPayments.length > 0
+            ? apiPayments.map((p: any) => ({
+              mode: p.payment_method || 'Cash',
+              amount: parseFloat(p.payment_amount || '0').toString()
+            })).filter((p: any) => parseFloat(p.amount) > 0)
+            : initialDetails.splitPayments;
+
+          setInvoiceDetails({
+            ...initialDetails,
+            splitPayments: mappedSplitPayments,
+            doctorMobile: result.doctor?.mobile || initialDetails.doctorMobile,
+            doctorEmail: result.doctor?.email || initialDetails.doctorEmail,
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error fetching full invoice details:', error);
+      }
     };
 
     fetchFullDetails();
@@ -1029,6 +1046,7 @@ export default function SaleHistory() {
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
         patientType: invoiceDetails.patientType || 'Out Patient',
         labels: SALES_RECEIPT_LABELS,
+        splitPayments: invoiceDetails.splitPayments || []
       });
 
       printWindow.document.write(htmlContent);
@@ -1614,6 +1632,7 @@ export default function SaleHistory() {
               totalDiscount={invoiceDetails.totalDiscount || '0'}
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
+              splitPayments={invoiceDetails.splitPayments || []}
               patientType={invoiceDetails.patientType || 'Out Patient'}
               onCancel={handleCancelPrint}
               onPrint={handlePrintClick}

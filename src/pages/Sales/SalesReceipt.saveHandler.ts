@@ -351,6 +351,26 @@ export const executeSave = async ({
       console.log('📦 Payload:', JSON.stringify(editSalePayload, null, 2));
       const result = await editSale(editSalePayload).unwrap();
       console.log('✅ Backend API Response (edit-sale):', result);
+
+      // Synchronize multiple payments in Edit Mode
+      if (invoiceId && splitPayments && splitPayments.length > 0 && upsertInvoicePayments) {
+        console.log('🔄 Syncing split payments during Edit Mode...');
+        try {
+          await upsertInvoicePayments({
+            invoice_id: Number(invoiceId),
+            created_by: user?.username || 'Guest',
+            payments: splitPayments.map(p => ({
+              payment_method: getBackendPaymentMethod(p.paymentMethod),
+              payment_amount: Number(p.amount),
+              payment_id: 0
+            }))
+          }).unwrap();
+          console.log('✅ Edit-mode payments synced successfully');
+        } catch (paymentError) {
+          console.error('❌ Failed to sync payments during edit:', paymentError);
+          showToast('Sale updated, but failed to sync updated payment details.', 'warning');
+        }
+      }
     } else {
       // New sale mode: Call the submitSale API endpoint
       // Debug: Log the payload to verify discount_authority is being sent
@@ -552,6 +572,7 @@ export const executeSave = async ({
       totalDiscount,
       taxAmount,
       totalPayableAmount,
+      splitPayments,
     };
     saveSalesHistoryToStorage(historyItem, invoiceId);
 

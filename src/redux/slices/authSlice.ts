@@ -6,30 +6,30 @@ const TOKEN_KEY = 'pharma_auth_token';
 const USER_KEY = 'pharma_user';
 
 const loadAuthFromStorage = () => {
-  try {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const userStr = localStorage.getItem(USER_KEY);
-    const user = userStr ? JSON.parse(userStr) : null;
-    return { token, user };
-  } catch (error) {
-    return { token: null, user: null };
-  }
+    try {
+        const token = localStorage.getItem(TOKEN_KEY);
+        const userStr = localStorage.getItem(USER_KEY);
+        const user = userStr ? JSON.parse(userStr) : null;
+        return { token, user };
+    } catch (error) {
+        return { token: null, user: null };
+    }
 };
 
 const saveAuthToStorage = (token: string, user: User) => {
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  } catch (error) {
-  }
+    try {
+        localStorage.setItem(TOKEN_KEY, token);
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } catch (error) {
+    }
 };
 
 const removeAuthFromStorage = () => {
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-  } catch (error) {
-  }
+    try {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+    } catch (error) {
+    }
 };
 
 export const authApi = createApi({
@@ -59,7 +59,7 @@ export const authApi = createApi({
                 body,
             }),
         }),
-        
+
         createPassword: builder.mutation<CreatePasswordResponse, CreatePasswordRequest>({
             query: (body) => ({
                 url: 'create-new-password',
@@ -78,7 +78,7 @@ export interface User {
     email: string;
     first_name: string;
     last_name: string;
-    role?: string;
+    role?: string | number;
 }
 
 interface LoginResponse {
@@ -143,14 +143,14 @@ export const authSlice = createSlice({
             state.token = action.payload.token;
             state.user = action.payload.user;
             state.isAuthenticated = true;
-            
+
             saveAuthToStorage(action.payload.token, action.payload.user);
         },
         logout: (state) => {
             state.token = null;
             state.user = null;
             state.isAuthenticated = false;
-            
+
             removeAuthFromStorage();
         },
     },

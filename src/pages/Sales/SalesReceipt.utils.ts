@@ -63,7 +63,7 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
     totalValue: totalValue.toFixed(2),
     totalDiscount: totalDiscount.toFixed(2),
     taxAmount: taxAmount.toFixed(2),
-    totalPayableAmount: totalPayableAmount.toFixed(2),
+    totalPayableAmount: Math.round(totalPayableAmount).toFixed(0),
   };
 };
 
@@ -95,6 +95,7 @@ export const generatePrintHTML = (data: {
   labels: any;
   brandIcon?: string;
   pageSize?: 'A4' | 'A5';
+  splitPayments?: any[];
 }): string => {
   const {
     customerName,
@@ -116,6 +117,7 @@ export const generatePrintHTML = (data: {
     labels,
     brandIcon,
     pageSize = 'A4',
+    splitPayments = [],
   } = data;
 
   return `
@@ -329,15 +331,16 @@ export const generatePrintHTML = (data: {
             <div class="detail-section">
               <div class="detail-title">Doctor Details</div>
               <div class="detail-item"><strong>Name:</strong> ${doctorName || ''}</div>
-              <div class="detail-item"><strong>Mobile:</strong> ${doctorMobile || ''}</div>
-              <div class="detail-item"><strong>Email:</strong> ${doctorEmail || ''}</div>
             </div>
           </div>
           <div class="receipt-details-row">
             <div class="detail-section">
               <div class="detail-title">Payment Details</div>
-              <div class="detail-item"><strong>Mode:</strong> ${paymentMode || 'Cash'}</div>
-              ${paymentMode === 'Insurance' ? `<div class="detail-item"><strong>Company:</strong> ${insuranceCompany || ''}</div>` : ''}
+              ${splitPayments && splitPayments.length > 0
+      ? splitPayments.map((p: any) => `<div class="detail-item"><strong>${p.mode || p.paymentMethod || 'Cash'}:</strong> ₹${parseFloat(p.amount || '0').toFixed(0)}</div>`).join('')
+      : `<div class="detail-item"><strong>Mode:</strong> ${paymentMode || 'Cash'}</div>`
+    }
+              ${paymentMode === 'Insurance' && !splitPayments?.length ? `<div class="detail-item"><strong>Company:</strong> ${insuranceCompany || ''}</div>` : ''}
             </div>
             <div class="detail-section">
               <div class="detail-title">Invoice Details</div>
@@ -376,7 +379,7 @@ export const generatePrintHTML = (data: {
                   <td>${item.cgstPercent}%</td>
                   <td>${item.sgstPercent}%</td>
                   <td>${item.igstPercent}%</td>
-                  <td style="font-weight: 600">${parseFloat(item.amount || '0').toFixed(1)}</td>
+                  <td style="font-weight: 600">${parseFloat(item.amount || '0').toFixed(0)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -387,23 +390,29 @@ export const generatePrintHTML = (data: {
           <div class="summary-left">
             <div class="summary-item">
               <div class="summary-label">Total Value</div>
-              <div class="summary-value">${parseFloat(totalValue || '0').toFixed(1)}</div>
+              <div class="summary-value">${parseFloat(totalValue || '0').toFixed(0)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Total Discount</div>
-              <div class="summary-value">${parseFloat(totalDiscount || '0').toFixed(1)}</div>
+              <div class="summary-value">${parseFloat(totalDiscount || '0').toFixed(0)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Tax Amount</div>
-              <div class="summary-value">${parseFloat(taxAmount || '0').toFixed(1)}</div>
+              <div class="summary-value">${parseFloat(taxAmount || '0').toFixed(0)}</div>
             </div>
           </div>
           <div class="summary-right">
             <div class="payable-label">NET PAYABLE</div>
-            <div class="payable-value">${parseFloat(totalPayableAmount || '0').toFixed(1)}</div>
+            <div class="payable-value">${parseFloat(totalPayableAmount || '0').toFixed(0)}</div>
           </div>
         </div>
         
+        <div style="margin-top: 60px; display: flex; justify-content: flex-start;">
+          <div style="border-top: 1px solid #000; width: 150px; text-align: center; font-size: 12px; font-weight: 600; padding-top: 5px;">
+            Pharmacist Signature
+          </div>
+        </div>
+
         <div style="margin-top: 40px; text-align: center; font-size: 10px; color: #6B7280;">
           This is a computer generated invoice.
         </div>

@@ -30,6 +30,7 @@ interface PrintPreviewModalProps {
   brandIcon?: string;
   showHospitalDetails?: boolean;
   pageSize?: 'a4' | 'a5';
+  splitPayments?: any[];
 }
 
 const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
@@ -57,6 +58,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   brandIcon,
   showHospitalDetails = true,
   pageSize = 'a4',
+  splitPayments = [],
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
 
@@ -206,12 +208,6 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
                 {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
               </Typography>
-              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-                {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
-              </Typography>
-              <Typography sx={{ fontSize: '10px', color: '#374151', lineHeight: 1.4 }}>
-                {SALES_RECEIPT_LABELS.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}
-              </Typography>
             </Box>
           </Box>
 
@@ -236,18 +232,28 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1A212B', marginBottom: '12px' }}>
                 {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
               </Typography>
-              <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-                {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
-              </Typography>
-              {paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
-                <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
-                  {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}
-                </Typography>
-              ) : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
-                <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
-                  {SALES_RECEIPT_LABELS.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}
-                </Typography>
-              ) : null}
+              {splitPayments && splitPayments.length > 0 ? (
+                splitPayments.map((payment, idx) => (
+                  <Typography key={idx} sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                    <strong>{payment.mode || payment.paymentMethod}:</strong> ₹{parseFloat(payment.amount || '0').toFixed(0)}
+                  </Typography>
+                ))
+              ) : (
+                <>
+                  <Typography sx={{ fontSize: '11px', color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                    {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
+                  </Typography>
+                  {paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
+                    <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
+                      {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}
+                    </Typography>
+                  ) : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
+                    <Typography sx={{ fontSize: '11px', color: '#374151', lineHeight: 1.4 }}>
+                      {SALES_RECEIPT_LABELS.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}
+                    </Typography>
+                  ) : null}
+                </>
+              )}
             </Box>
 
             {/* Invoice Details */}
@@ -358,7 +364,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                     <Box>{item.cgstPercent}%</Box>
                     <Box>{item.sgstPercent}%</Box>
                     <Box>{item.igstPercent}%</Box>
-                    <Box sx={{ fontWeight: 600 }}>{parseFloat(item.amount || '0').toFixed(1)}</Box>
+                    <Box sx={{ fontWeight: 600 }}>{parseFloat(item.amount || '0').toFixed(0)}</Box>
                   </Box>
                 ))
               ) : (
@@ -389,15 +395,15 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           <Box sx={{ display: 'flex', gap: '60px', fontSize: '13px', color: '#1A212B' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TOTAL_VALUE_LABEL}</Box>
-              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(totalValue || '0').toFixed(1)}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(totalValue || '0').toFixed(0)}</Box>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TOTAL_DISCOUNT_LABEL}</Box>
-              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(totalDiscount || '0').toFixed(1)}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(totalDiscount || '0').toFixed(0)}</Box>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <Box sx={{ fontWeight: 500, fontSize: '12px', color: '#6B7280' }}>{SALES_RECEIPT_LABELS.TAX_AMOUNT_LABEL}</Box>
-              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(taxAmount || '0').toFixed(1)}</Box>
+              <Box sx={{ fontWeight: 700, fontSize: '14px' }}>{parseFloat(taxAmount || '0').toFixed(0)}</Box>
             </Box>
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
@@ -405,10 +411,26 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               {SALES_RECEIPT_LABELS.TOTAL_PAYABLE_LABEL}
             </Box>
             <Box sx={{ fontSize: '20px', fontWeight: 700, color: '#1A212B' }}>
-              {parseFloat(totalPayableAmount || '0').toFixed(1)}
+              {parseFloat(totalPayableAmount || '0').toFixed(0)}
             </Box>
           </Box>
         </Box>
+
+        {/* Pharmacist Signature */}
+        <Box sx={{ marginTop: '60px', display: 'flex', justifyContent: 'flex-start' }}>
+          <Box sx={{
+            borderTop: '1px solid #000',
+            width: '150px',
+            textAlign: 'center',
+            fontSize: '12px',
+            fontWeight: 600,
+            paddingTop: '5px',
+            color: '#1A212B'
+          }}>
+            Pharmacist Signature
+          </Box>
+        </Box>
+
         <Typography sx={{ marginTop: '10px', textAlign: 'right', fontSize: '8px', fontWeight: 600, color: '#1A212B' }}>
           Powered by Elemed
         </Typography>

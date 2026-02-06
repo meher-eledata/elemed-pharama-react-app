@@ -418,7 +418,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               <TableCell sx={{ padding: '12px 16px' }} />
               <TableCell sx={{ padding: '12px 16px' }} />
               <TableCell sx={{ padding: '12px 12px', textAlign: 'left', fontFamily: "'Lexend', sans-serif", fontWeight: 600, fontSize: '16px', color: '#1A212B' }}>
-                ₹{calculateTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₹{Math.round(calculateTotalAmount()).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </TableCell>
               <TableCell sx={{ padding: '12px 16px' }} />
             </TableRow>
