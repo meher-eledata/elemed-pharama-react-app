@@ -17,9 +17,10 @@ export const RoleGuard = ({ allowedRoles }: RoleGuardProps) => {
         return <Navigate to="/" replace />;
     }
 
-    const userRole = user?.role;
+    const ROLE_MAP: Record<number, string> = { 0: 'admin', 1: 'pharmacist' };
+    const userRole = typeof user?.role === 'number' ? ROLE_MAP[user.role] : user?.role;
 
-    if (!userRole || !allowedRoles.includes(userRole)) {
+    if (userRole === undefined || userRole === null || !allowedRoles.includes(userRole)) {
         // If user's role is not allowed, redirect to dashboard or show unauthorized
         // For now, redirecting to dashboard
         return <Navigate to="/dashboard" replace />;
