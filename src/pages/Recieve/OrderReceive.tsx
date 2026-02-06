@@ -249,10 +249,10 @@ const OrderReceive: React.FC = () => {
     if (activeTab !== 2) return sortedData;
     return (sortedData as OrderReceiveRow[]).map(row => {
       if (activeReceiptTotals[row.receiptId]) {
-        const enrichedAmt = activeReceiptTotals[row.receiptId];
+        const enrichedAmt = Math.round(activeReceiptTotals[row.receiptId]);
         // Calculate pendingAmount as (Enriched Total - Amount Paid) to ensure UI consistency 
         // when we've corrected the total on the frontend.
-        const recalculatedPending = Math.max(0, enrichedAmt - (row.amountPaid || 0));
+        const recalculatedPending = Math.round(Math.max(0, enrichedAmt - (row.amountPaid || 0)));
 
         return {
           ...row,

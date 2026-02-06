@@ -318,7 +318,7 @@ export const getProductTableColumns = ({
 
           return (
             <span>
-              ₹{rowTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₹{Math.round(rowTotal).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
           );
         }

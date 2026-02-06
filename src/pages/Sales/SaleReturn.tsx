@@ -1112,7 +1112,7 @@ export default function SaleReturn() {
             Total amount to be returned (Rs)
           </Typography>
           <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>
-            {totalAmountReturned.toFixed(2)}
+            {totalAmountReturned.toFixed(0)}
           </Typography>
         </Box>
       </Box>

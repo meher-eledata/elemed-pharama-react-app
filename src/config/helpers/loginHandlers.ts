@@ -37,7 +37,7 @@ export const handleLoginEffect = ({
     const isAdmin =
       userRole === 0 ||
       userRole === '0' ||
-      (typeof userRole === 'string' && userRole.trim().toLowerCase() === 'admin');
+      String(userRole).toLowerCase() === 'admin';
 
     if (isAdmin) {
       navigate("/admin");

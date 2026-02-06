@@ -315,7 +315,7 @@ export const getTableColumns = ({
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_AMOUNT,
       render: (item) => (
         <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-          ₹{item.amount}
+          ₹{parseFloat(item.amount || '0').toFixed(2)}
         </Typography>
       )
     },

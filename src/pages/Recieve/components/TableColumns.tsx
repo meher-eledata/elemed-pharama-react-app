@@ -136,7 +136,7 @@ export const getOrderReceiveColumns = (
             style={{ width: '100%', boxSizing: 'border-box' }}
           />
         ) : (
-          <span>₹{row.amt !== undefined ? row.amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+          <span>₹{row.amt !== undefined ? Math.round(row.amt).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0'}</span>
         )
       )
     },
@@ -145,7 +145,7 @@ export const getOrderReceiveColumns = (
       header: ORDER_RECEIVE_TABLE_HEADERS.AMOUNT_PAID,
       sortable: true,
       render: (row) => (
-        <span>{row.amountPaid !== undefined && row.amountPaid > 0 ? row.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+        <span>{row.amountPaid !== undefined && row.amountPaid > 0 ? Math.round(row.amountPaid).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0'}</span>
       )
     },
     {
@@ -153,7 +153,7 @@ export const getOrderReceiveColumns = (
       header: ORDER_RECEIVE_TABLE_HEADERS.PENDING_AMOUNT,
       sortable: true,
       render: (row) => (
-        <span>{row.pendingAmount !== undefined && row.pendingAmount > 0 ? row.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+        <span>{row.pendingAmount !== undefined && row.pendingAmount > 0 ? Math.round(row.pendingAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0'}</span>
       )
     },
     {
@@ -176,7 +176,7 @@ export const getOrderReceiveColumns = (
       ),
       sortable: true,
       render: (row) => (
-        <span>{row.creditAvailable !== undefined && row.creditAvailable > 0 ? row.creditAvailable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+        <span>{row.creditAvailable !== undefined && row.creditAvailable > 0 ? Math.round(row.creditAvailable).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '0'}</span>
       )
     },
     {
@@ -284,8 +284,8 @@ export const getPurchaseOrderColumns = (
       key: "totalAmount",
       header: PURCHASE_ORDER_TABLE_HEADERS.TOTAL_AMOUNT,
       render: (row) => {
-        const amount = parseFloat(row.totalAmount || '0');
-        return <span>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+        const amount = Math.round(parseFloat(row.totalAmount || '0'));
+        return <span>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>;
       }
     },
     {

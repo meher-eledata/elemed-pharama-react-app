@@ -14,7 +14,7 @@ const SupplierTotalsCard: React.FC<SupplierTotalsCardProps> = ({
   if (!supplierName) return null;
 
   const formatCurrency = (value: number) => {
-    return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₹${Math.round(value).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   return (

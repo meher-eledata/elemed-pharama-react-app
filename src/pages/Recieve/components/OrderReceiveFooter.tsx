@@ -53,7 +53,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ₹{Math.round(totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </TableCell>
 
       <TableCell
@@ -67,7 +67,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{totalAmountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ₹{Math.round(totalAmountPaid).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </TableCell>
 
       <TableCell
@@ -81,7 +81,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{totalPendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ₹{Math.round(totalPendingAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </TableCell>
 
       <TableCell
@@ -95,7 +95,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{totalCreditAvailable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ₹{Math.round(totalCreditAvailable).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </TableCell>
 
       <TableCell sx={{ padding: '12px 16px' }} />
