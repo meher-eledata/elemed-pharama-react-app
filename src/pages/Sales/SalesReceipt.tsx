@@ -66,7 +66,7 @@ import {
   CustomerDoctorSection,
 } from './SalesReceipt.styles';
 
-import { printStyles, fieldStyles } from './SalesReceipt.printStyles';
+import { getPrintStyles, fieldStyles } from './SalesReceipt.printStyles';
 import bgWhiteIcon from '../../assets/BG_White.svg';
 
 const SalesReceipt: React.FC = () => {
@@ -158,6 +158,7 @@ const SalesReceipt: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
+  const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
 
   // Check if we're in edit mode or return details mode from location state
   const editModeData = (location.state as any) || null;
@@ -859,6 +860,7 @@ const SalesReceipt: React.FC = () => {
         patientType,
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
+        pageSize: pageSize,
       });
 
       printWindow.document.write(htmlContent);
@@ -1218,7 +1220,7 @@ const SalesReceipt: React.FC = () => {
 
   return (
     <>
-      <style>{printStyles}</style>
+      <style>{getPrintStyles(pageSize)}</style>
       <style>{fieldStyles}</style>
       <SalesReceiptContainer id="sales-receipt-content">
         <SalesReceiptHeader>
@@ -1370,6 +1372,8 @@ const SalesReceipt: React.FC = () => {
             onPrint={handlePrint}
             isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
             hidePrintButton={isEditMode}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
           />
         )}
 
@@ -1426,6 +1430,7 @@ const SalesReceipt: React.FC = () => {
               onSaveClick={handleSaveFromModal}
               hideActionButtons={true}
               brandIcon={bgWhiteIcon}
+              pageSize={pageSize.toLowerCase() as 'a4' | 'a5'}
             />
           }
           onClose={handleClosePrintModal}
@@ -1455,7 +1460,6 @@ const SalesReceipt: React.FC = () => {
           actionType={pendingAction || 'save'}
         />
 
-        {/* Payment Split Modal */}
         <PaymentSplitModal
           open={isPaymentSplitModalOpen}
           onClose={() => setIsPaymentSplitModalOpen(false)}

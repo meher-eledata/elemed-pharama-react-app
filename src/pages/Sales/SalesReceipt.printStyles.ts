@@ -1,6 +1,6 @@
 // Print and Field Styles for SalesReceipt
 
-export const printStyles = `
+export const getPrintStyles = (pageSize: 'A4' | 'A5' = 'A4') => `
   @media print {
     * {
       -webkit-print-color-adjust: exact !important;
@@ -43,7 +43,7 @@ export const printStyles = `
     .MuiTable-root,
     .MuiTable-root * {
       width: 100% !important;
-      min-width: 1600px !important;
+      min-width: ${pageSize === 'A4' ? '1600px' : '850px'} !important;
       max-width: none !important;
       table-layout: fixed !important;
       border-collapse: collapse !important;
@@ -67,20 +67,20 @@ export const printStyles = `
       font-weight: 600 !important;
     }
     
-    .MuiTable-root .MuiTableCell-root:nth-child(1) { width: 25% !important; min-width: 160px !important; max-width: none !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(2) { width: 5% !important; min-width: 45px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(3) { width: 6% !important; min-width: 55px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(4) { width: 7% !important; min-width: 65px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(5) { width: 6% !important; min-width: 60px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(6) { width: 5% !important; min-width: 45px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(7) { width: 5% !important; min-width: 45px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(8) { width: 5% !important; min-width: 45px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(9) { width: 5% !important; min-width: 45px !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(10) { width: 18% !important; min-width: 90px !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(1) { width: ${pageSize === 'A4' ? '25%' : '20%'} !important; min-width: ${pageSize === 'A4' ? '160px' : '100px'} !important; max-width: none !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(2) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(3) { width: 6% !important; min-width: ${pageSize === 'A4' ? '55px' : '40px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(4) { width: 7% !important; min-width: ${pageSize === 'A4' ? '65px' : '50px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(5) { width: 6% !important; min-width: ${pageSize === 'A4' ? '60px' : '45px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(6) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(7) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(8) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(9) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(10) { width: 18% !important; min-width: ${pageSize === 'A4' ? '90px' : '70px'} !important; }
     .MuiTable-root .MuiTableCell-root:nth-child(11) { width: 13% !important; min-width: 80px !important; display: none !important; }
     
     @page {
-      size: A4 landscape !important;
+      size: ${pageSize} ${pageSize === 'A4' ? 'landscape' : 'portrait'} !important;
       margin: 0.3in !important;
     }
     

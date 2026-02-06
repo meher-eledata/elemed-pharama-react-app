@@ -29,6 +29,7 @@ interface PrintPreviewModalProps {
   hideActionButtons?: boolean; // Hide the action buttons (for view-only mode)
   brandIcon?: string;
   showHospitalDetails?: boolean;
+  pageSize?: 'a4' | 'a5';
 }
 
 const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
@@ -55,6 +56,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   hideActionButtons = false,
   brandIcon,
   showHospitalDetails = true,
+  pageSize = 'a4',
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
 
@@ -75,7 +77,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         },
         jsPDF: {
           unit: 'mm',
-          format: 'a4',
+          format: pageSize,
           orientation: 'portrait' as const
         }
       };
@@ -104,37 +106,38 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         {/* Branded Receipt Header */}
         <Box sx={{
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: pageSize === 'a4' ? 'space-between' : 'center',
           alignItems: 'center',
           marginBottom: '20px',
           paddingBottom: '10px',
-          borderBottom: '2px solid #1A212B'
+          borderBottom: '2px solid #1A212B',
+          gap: pageSize === 'a4' ? 0 : '20px'
         }}>
-          <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+          <Box sx={{ flex: pageSize === 'a4' ? 1 : 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
             {brandIcon && showHospitalDetails && (
               <Box
                 component="img"
                 src={brandIcon}
                 sx={{
-                  width: '90px',
+                  width: pageSize === 'a4' ? '90px' : '70px',
                   height: 'auto',
-                  marginTop: '-15px',
-                  marginLeft: '-10px'
+                  marginTop: pageSize === 'a4' ? '-15px' : 0,
+                  marginLeft: pageSize === 'a4' ? '-10px' : 0
                 }}
                 alt="Logo"
               />
             )}
           </Box>
-          <Box sx={{ flex: 3, textAlign: 'center' }}>
+          <Box sx={{ flex: pageSize === 'a4' ? 3 : 'none', textAlign: pageSize === 'a4' ? 'center' : 'left' }}>
             {showHospitalDetails && (
               <>
-                <Typography sx={{ fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
+                <Typography sx={{ fontSize: pageSize === 'a4' ? '20px' : '16px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
                   ELITE PHARMACY
                 </Typography>
-                <Typography sx={{ fontSize: '9px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
+                <Typography sx={{ fontSize: pageSize === 'a4' ? '9px' : '8px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
                   (SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)
                 </Typography>
-                <Typography sx={{ fontSize: '8px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
+                <Typography sx={{ fontSize: pageSize === 'a4' ? '8px' : '7px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
                   PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
                   DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
                   GSTIN No: 37AAQCS3213C2ZH<br />

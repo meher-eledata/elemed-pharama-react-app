@@ -94,6 +94,7 @@ export const generatePrintHTML = (data: {
   patientType: string;
   labels: any;
   brandIcon?: string;
+  pageSize?: 'A4' | 'A5';
 }): string => {
   const {
     customerName,
@@ -114,6 +115,7 @@ export const generatePrintHTML = (data: {
     patientType,
     labels,
     brandIcon,
+    pageSize = 'A4',
   } = data;
 
   return `
@@ -124,7 +126,7 @@ export const generatePrintHTML = (data: {
           @media print {
             @page { 
               margin: 0.3in;
-              size: A4;
+              size: ${pageSize} ${pageSize === 'A4' ? 'landscape' : 'portrait'};
             }
             * {
               -webkit-print-color-adjust: exact !important;
@@ -143,42 +145,43 @@ export const generatePrintHTML = (data: {
           }
           .receipt-header { 
             display: flex;
-            justify-content: space-between;
+            justify-content: ${pageSize === 'A4' ? 'space-between' : 'center'};
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid #1A212B;
+            gap: ${pageSize === 'A4' ? '0' : '20px'};
           }
           .header-left {
-            flex: 1;
+            flex: ${pageSize === 'A4' ? '1' : 'none'};
             display: flex;
             align-items: flex-start;
             justify-content: flex-start;
           }
           .header-logo {
-            width: 110px;
+            width: ${pageSize === 'A4' ? '110px' : '80px'};
             height: auto;
-            margin-top: -15px;
-            margin-left: -10px;
+            margin-top: ${pageSize === 'A4' ? '-15px' : '0'};
+            margin-left: ${pageSize === 'A4' ? '-10px' : '0'};
           }
           .header-center {
-            flex: 3;
-            text-align: center;
+            flex: ${pageSize === 'A4' ? '3' : 'none'};
+            text-align: ${pageSize === 'A4' ? 'center' : 'left'};
           }
           .hospital-name {
-            font-size: 24px;
+            font-size: ${pageSize === 'A4' ? '24px' : '18px'};
             font-weight: 800;
             margin: 0;
             letter-spacing: 1px;
             text-transform: uppercase;
           }
           .hospital-subtext {
-            font-size: 12px;
+            font-size: ${pageSize === 'A4' ? '12px' : '10px'};
             font-weight: 500;
             margin: 2px 0;
           }
           .hospital-details {
-            font-size: 10px;
+            font-size: ${pageSize === 'A4' ? '10px' : '8px'};
             margin: 4px 0;
             line-height: 1.2;
           }
@@ -211,13 +214,13 @@ export const generatePrintHTML = (data: {
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           }
           .detail-title { 
-            font-size: 14px;
+            font-size: ${pageSize === 'A4' ? '14px' : '12px'};
             font-weight: 600; 
             color: #1A212B;
-            margin-bottom: 12px; 
+            margin-bottom: ${pageSize === 'A4' ? '12px' : '8px'}; 
           }
           .detail-item { 
-            font-size: 11px; 
+            font-size: ${pageSize === 'A4' ? '11px' : '9px'}; 
             color: #374151;
             margin-bottom: 4px;
             line-height: 1.4;
@@ -235,16 +238,16 @@ export const generatePrintHTML = (data: {
           }
           .items-table th { 
             background-color: #F9FAFB !important; 
-            padding: 12px 16px; 
+            padding: ${pageSize === 'A4' ? '12px 16px' : '8px 6px'}; 
             font-weight: 600; 
-            font-size: 12px; 
+            font-size: ${pageSize === 'A4' ? '12px' : '10px'}; 
             text-align: left;
             color: #1A212B;
             border-bottom: 2px solid #E5E7EB;
           }
           .items-table td { 
-            padding: 12px 16px; 
-            font-size: 12px; 
+            padding: ${pageSize === 'A4' ? '12px 16px' : '8px 6px'}; 
+            font-size: ${pageSize === 'A4' ? '12px' : '10px'}; 
             color: #374151;
             border-top: 1px solid #E5E7EB;
           }
