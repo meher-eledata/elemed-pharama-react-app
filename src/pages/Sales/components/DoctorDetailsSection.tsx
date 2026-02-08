@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Typography, Autocomplete, TextField, CircularProgress } from '@mui/material';
+import { Box, Typography, Autocomplete, TextField, CircularProgress, InputAdornment, IconButton } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ClearIcon from '@mui/icons-material/Clear';
 import { DoctorPhoneEmailInfo } from '../../../redux/slices/salesApi';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../../config/constants/SalesReceipt.constants';
@@ -189,8 +190,12 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
                   fontFamily: "'Lexend', sans-serif",
                   fontSize: '16px',
                   color: '#1A212B',
+                  transform: 'translate(14px, 12px) scale(1)',
                   '&.Mui-focused': {
                     color: '#5C17E5',
+                  },
+                  '&.MuiInputLabel-shrink': {
+                    transform: 'translate(14px, -9px) scale(0.75)',
                   },
                 },
               }}
@@ -208,6 +213,19 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
           onChange={(e) => {
             onDoctorMobileChange(e.target.value);
           }}
+          InputProps={{
+            endAdornment: doctorMobile && (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => onDoctorMobileChange('')}
+                  sx={{ padding: '2px', marginRight: '-8px' }}
+                >
+                  <ClearIcon sx={{ fontSize: '18px', color: '#6B7280' }} />
+                </IconButton>
+              </InputAdornment>
+            )
+          }}
         />
         <CityField
           label={SALES_RECEIPT_LABELS.EMAIL_LABEL}
@@ -216,6 +234,19 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
           value={doctorEmail}
           onChange={(e) => {
             onDoctorEmailChange(e.target.value);
+          }}
+          InputProps={{
+            endAdornment: doctorEmail && (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => onDoctorEmailChange('')}
+                  sx={{ padding: '2px', marginRight: '-8px' }}
+                >
+                  <ClearIcon sx={{ fontSize: '18px', color: '#6B7280' }} />
+                </IconButton>
+              </InputAdornment>
+            )
           }}
         />
       </SectionRow>

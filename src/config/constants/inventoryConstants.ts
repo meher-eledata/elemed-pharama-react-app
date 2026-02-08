@@ -75,4 +75,4 @@ export const ASSET_PATHS = {
 };
 
 // Fixed numbers
-export const ROWS_PER_PAGE = 3;
+export const ROWS_PER_PAGE = 10;

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Box, Typography, Autocomplete, TextField } from '@mui/material';
+import { Box, Typography, Autocomplete, TextField, InputAdornment, IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ClearIcon from '@mui/icons-material/Clear';
 import { StandardButton } from '../../../components/Common';
 import { Customer } from '../../../redux/slices/salesApi';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
@@ -211,8 +212,12 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                   fontFamily: "'Lexend', sans-serif",
                   fontSize: '16px',
                   color: '#1A212B',
+                  transform: 'translate(14px, 12px) scale(1)',
                   '&.Mui-focused': {
                     color: '#5C17E5',
+                  },
+                  '&.MuiInputLabel-shrink': {
+                    transform: 'translate(14px, -9px) scale(0.75)',
                   },
                 },
               }}
@@ -343,8 +348,12 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                   fontFamily: "'Lexend', sans-serif",
                   fontSize: '16px',
                   color: '#1A212B',
+                  transform: 'translate(14px, 12px) scale(1)',
                   '&.Mui-focused': {
                     color: '#5C17E5',
+                  },
+                  '&.MuiInputLabel-shrink': {
+                    transform: 'translate(14px, -9px) scale(0.75)',
                   },
                 },
               }}
@@ -366,6 +375,22 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
             if (selectedCustomer && newMobile !== selectedCustomer.mobile) {
               onCustomerSelect(null);
             }
+          }}
+          InputProps={{
+            endAdornment: customerMobile && (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    onCustomerMobileChange('');
+                    if (selectedCustomer) onCustomerSelect(null);
+                  }}
+                  sx={{ padding: '2px', marginRight: '-8px' }}
+                >
+                  <ClearIcon sx={{ fontSize: '18px', color: '#6B7280' }} />
+                </IconButton>
+              </InputAdornment>
+            )
           }}
         />
         <Autocomplete
@@ -458,8 +483,12 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
                   fontFamily: "'Lexend', sans-serif",
                   fontSize: '16px',
                   color: '#1A212B',
+                  transform: 'translate(14px, 12px) scale(1)',
                   '&.Mui-focused': {
                     color: '#5C17E5',
+                  },
+                  '&.MuiInputLabel-shrink': {
+                    transform: 'translate(14px, -9px) scale(0.75)',
                   },
                 },
               }}

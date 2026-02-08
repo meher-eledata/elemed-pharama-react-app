@@ -229,8 +229,12 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
               fontFamily: "'Lexend', sans-serif",
               fontSize: '16px',
               color: '#1A212B',
+              transform: 'translate(14px, 12px) scale(1)',
               '&.Mui-focused': {
                 color: '#5C17E5',
+              },
+              '&.MuiInputLabel-shrink': {
+                transform: 'translate(14px, -9px) scale(0.75)',
               },
             },
           }}
@@ -279,8 +283,12 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
                 fontFamily: "'Lexend', sans-serif",
                 fontSize: '16px',
                 color: '#1A212B',
+                transform: 'translate(14px, 12px) scale(1)',
                 '&.Mui-focused': {
                   color: '#5C17E5',
+                },
+                '&.MuiInputLabel-shrink': {
+                  transform: 'translate(14px, -9px) scale(0.75)',
                 },
               },
             }}
@@ -325,8 +333,12 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
                 fontFamily: "'Lexend', sans-serif",
                 fontSize: '16px',
                 color: '#1A212B',
+                transform: 'translate(14px, 12px) scale(1)',
                 '&.Mui-focused': {
                   color: '#5C17E5',
+                },
+                '&.MuiInputLabel-shrink': {
+                  transform: 'translate(14px, -9px) scale(0.75)',
                 },
               },
             }}
@@ -387,8 +399,12 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
                 fontFamily: "'Lexend', sans-serif",
                 fontSize: '16px',
                 color: '#1A212B',
+                transform: 'translate(14px, 12px) scale(1)',
                 '&.Mui-focused': {
                   color: '#5C17E5',
+                },
+                '&.MuiInputLabel-shrink': {
+                  transform: 'translate(14px, -9px) scale(0.75)',
                 },
               },
             },

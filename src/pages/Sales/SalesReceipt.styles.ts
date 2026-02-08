@@ -81,10 +81,10 @@ export const HorizontalDivider = styled(Divider)({
 // Section Layout Components
 export const CustomerDoctorSection = styled(Box)({
   display: 'flex',
-  gap: '40px', 
-  marginTop: '24px', 
+  gap: '40px',
+  marginTop: '24px',
   position: 'relative',
-  paddingBottom: '24px', 
+  paddingBottom: '24px',
   '@media (max-width: 1200px)': {
     flexDirection: 'column',
     gap: '32px',
@@ -94,7 +94,7 @@ export const CustomerDoctorSection = styled(Box)({
 export const CustomerDetailsColumn = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
-  gap: '20px', 
+  gap: '20px',
   minWidth: '380px',
   flex: '1',
   position: 'relative',
@@ -103,9 +103,9 @@ export const CustomerDetailsColumn = styled(Box)({
 export const DoctorInvoiceColumn = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
-  gap: '20px', 
+  gap: '20px',
   minWidth: '380px',
-  flex: '1', 
+  flex: '1',
 });
 
 export const PaymentDetailsContainer = styled(Box)({
@@ -129,6 +129,7 @@ export const SectionRow = styled(Box)({
 // Text Field Components
 export const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
+    height: '48px',
     borderRadius: '8px',
     backgroundColor: '#FFFFFF !important',
     '& fieldset': {
@@ -153,9 +154,13 @@ export const StyledTextField = styled(TextField)({
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
+    transform: 'translate(14px, 12px) scale(1)', // Center the label properly for 48px height
     '&.Mui-focused': {
       color: '#5C17E5 !important',
+    },
+    '&.MuiInputLabel-shrink': {
+      transform: 'translate(14px, -9px) scale(0.75)', // Correct position when shrunk
     },
   },
   '& .MuiInputBase-input': {
@@ -175,13 +180,12 @@ export const StyledTextField = styled(TextField)({
 
 export const CustomerNameField = styled(StyledTextField)({
   width: '350px',
-  height: '48px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
     '&.Mui-focused': {
-      color: '#5C17E5 !important', 
+      color: '#5C17E5 !important',
     },
   },
   '& .MuiInputBase-input': {
@@ -200,14 +204,13 @@ export const CustomerNameField = styled(StyledTextField)({
 });
 
 export const PhoneNoField = styled(StyledTextField)({
-  width: '165px', 
-  height: '48px',
+  width: '165px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
     '&.Mui-focused': {
-      color: '#5C17E5 !important', 
+      color: '#5C17E5 !important',
     },
   },
   '& .MuiInputBase-input': {
@@ -227,13 +230,12 @@ export const PhoneNoField = styled(StyledTextField)({
 
 export const CityField = styled(StyledTextField)({
   width: '165px',
-  height: '48px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
     '&.Mui-focused': {
-      color: '#5C17E5 !important', 
+      color: '#5C17E5 !important',
     },
   },
   '& .MuiInputBase-input': {
@@ -253,13 +255,12 @@ export const CityField = styled(StyledTextField)({
 
 export const DoctorNameField = styled(StyledTextField)({
   width: '350px',
-  height: '48px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
     '&.Mui-focused': {
-      color: '#5C17E5 !important', 
+      color: '#5C17E5 !important',
     },
   },
   '& .MuiInputBase-input': {
@@ -278,14 +279,13 @@ export const DoctorNameField = styled(StyledTextField)({
 });
 
 export const HospitalIdField = styled(StyledTextField)({
-  width: '165px', 
-  height: '48px',
+  width: '165px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
     '&.Mui-focused': {
-      color: '#5C17E5 !important', 
+      color: '#5C17E5 !important',
     },
   },
   '& .MuiInputBase-input': {
@@ -305,13 +305,12 @@ export const HospitalIdField = styled(StyledTextField)({
 
 export const PaymentField = styled(StyledTextField)({
   width: '275px',
-  height: '48px',
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
     '&.Mui-focused': {
-      color: '#5C17E5 !important', 
+      color: '#5C17E5 !important',
     },
   },
   '& .MuiInputBase-input': {
@@ -331,14 +330,13 @@ export const PaymentField = styled(StyledTextField)({
 
 export const InsuranceField = styled(StyledTextField)({
   width: '275px',
-  height: '48px',
-  marginTop:"-11px",
+  marginTop: "-11px",
   '& .MuiInputLabel-root': {
     fontFamily: "'Lexend', sans-serif",
     fontSize: '16px',
-    color: '#1A212B !important', 
+    color: '#1A212B !important',
     '&.Mui-focused': {
-      color: '#5C17E5 !important', 
+      color: '#5C17E5 !important',
     },
   },
   '& .MuiInputBase-input': {
@@ -370,7 +368,7 @@ export const AddButton = styled(Button)({
   padding: '12px 16px',
   borderRadius: '5px',
   textTransform: 'none',
-  width:"180px",
+  width: "180px",
   position: 'absolute',
   top: '0px',
   right: '0px',
@@ -414,16 +412,16 @@ export const SummaryFieldsGroup = styled(Box)({
 
 export const SummaryFieldRight = styled(Box)({
   display: 'flex',
-  alignItems: 'center', 
-  gap: SALES_RECEIPT_CONSTANTS.SUMMARY_FIELD_GAP, 
-  minHeight: SALES_RECEIPT_CONSTANTS.SUMMARY_INPUT_HEIGHT, 
+  alignItems: 'center',
+  gap: SALES_RECEIPT_CONSTANTS.SUMMARY_FIELD_GAP,
+  minHeight: SALES_RECEIPT_CONSTANTS.SUMMARY_INPUT_HEIGHT,
 });
 
 export const SummaryField = styled(Box)({
   display: 'flex',
-  alignItems: 'center', 
-  gap: SALES_RECEIPT_CONSTANTS.SUMMARY_FIELD_GAP, 
-  minHeight: SALES_RECEIPT_CONSTANTS.SUMMARY_INPUT_HEIGHT, 
+  alignItems: 'center',
+  gap: SALES_RECEIPT_CONSTANTS.SUMMARY_FIELD_GAP,
+  minHeight: SALES_RECEIPT_CONSTANTS.SUMMARY_INPUT_HEIGHT,
 });
 
 export const SummaryLabel = styled(Typography)({
@@ -435,8 +433,8 @@ export const SummaryLabel = styled(Typography)({
   textAlign: 'left',
   whiteSpace: 'nowrap',
   display: 'flex',
-  alignItems: 'flex-start', 
-  justifyContent: 'flex-start', 
+  alignItems: 'flex-start',
+  justifyContent: 'flex-start',
 });
 
 export const SummaryInput = styled('input')({
