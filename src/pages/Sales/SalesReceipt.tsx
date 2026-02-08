@@ -192,6 +192,9 @@ const SalesReceipt: React.FC = () => {
     }
   }, [isEditMode, isReturnDetailsMode, dispatch]);
 
+  const safeTrim = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+
   useEffect(() => {
     if ((isEditMode || isReturnDetailsMode) && editModeData) {
       let invoiceId: number | null = null;
@@ -410,8 +413,8 @@ const SalesReceipt: React.FC = () => {
                 setSelectedDoctor(invoiceData.doctorName);
                 shouldFetchDoctorInfoRef.current = true;
               }
-              if (invoiceData.doctorMobile) setDoctorMobile(invoiceData.doctorMobile);
-              if (invoiceData.doctorEmail) setDoctorEmail(invoiceData.doctorEmail);
+                  setDoctorMobile(invoiceData.doctorMobile ?? '');
+                  setDoctorEmail(invoiceData.doctorEmail ?? '');
               if (invoiceData.paymentMode) setPaymentMode(invoiceData.paymentMode);
               if (invoiceData.insuranceCompany) setInsuranceCompany(invoiceData.insuranceCompany);
               if (invoiceData.patientType) setPatientType(invoiceData.patientType);
@@ -1031,17 +1034,17 @@ const SalesReceipt: React.FC = () => {
 
     // Compare form fields
     if (
-      customerName.trim() !== originalInvoiceData.customerName.trim() ||
-      customerMobile.trim() !== originalInvoiceData.customerMobile.trim() ||
-      customerCity.trim() !== originalInvoiceData.customerCity.trim() ||
-      doctorName.trim() !== originalInvoiceData.doctorName.trim() ||
-      doctorMobile.trim() !== originalInvoiceData.doctorMobile.trim() ||
-      doctorEmail.trim() !== originalInvoiceData.doctorEmail.trim() ||
-      paymentMode.trim() !== originalInvoiceData.paymentMode.trim() ||
-      patientType.trim() !== originalInvoiceData.patientType.trim() ||
-      insuranceCompany.trim() !== originalInvoiceData.insuranceCompany.trim() ||
-      invoiceNumber.trim() !== originalInvoiceData.invoiceNumber.trim() ||
-      invoiceDate.trim() !== originalInvoiceData.invoiceDate.trim()
+      safeTrim(customerName) !== safeTrim(originalInvoiceData.customerName) ||
+      safeTrim(customerMobile) !== safeTrim(originalInvoiceData.customerMobile) ||
+      safeTrim(customerCity) !== safeTrim(originalInvoiceData.customerCity) ||
+      safeTrim(doctorName) !== safeTrim(originalInvoiceData.doctorName) ||
+      safeTrim(doctorMobile) !== safeTrim(originalInvoiceData.doctorMobile) ||
+      safeTrim(doctorEmail) !== safeTrim(originalInvoiceData.doctorEmail) ||
+      safeTrim(paymentMode) !== safeTrim(originalInvoiceData.paymentMode) ||
+      safeTrim(patientType) !== safeTrim(originalInvoiceData.patientType) ||
+      safeTrim(insuranceCompany) !== safeTrim(originalInvoiceData.insuranceCompany) ||
+      safeTrim(invoiceNumber) !== safeTrim(originalInvoiceData.invoiceNumber) ||
+      safeTrim(invoiceDate) !== safeTrim(originalInvoiceData.invoiceDate)
     ) {
       return true;
     }

@@ -78,7 +78,7 @@ export interface User {
     email: string;
     first_name: string;
     last_name: string;
-    role?: string | number;
+    role?: number | string;
 }
 
 interface LoginResponse {
