@@ -60,6 +60,7 @@ export interface PharmaTableRow {
   expiryDate: Dayjs | null;
   pp: number;
   sp: number;
+  pack?: string;
   mrp: number;
   cgst: number;
   sgst: number;

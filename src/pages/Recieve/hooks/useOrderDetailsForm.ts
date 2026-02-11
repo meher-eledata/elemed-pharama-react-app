@@ -14,6 +14,7 @@ interface LocationState {
   transactionNumber?: string;
   paymentVendor?: string;
   invoiceDate?: string;
+  invoiceNumber?: string;
 }
 
 export const useOrderDetailsForm = () => {
@@ -31,6 +32,7 @@ export const useOrderDetailsForm = () => {
   const navigationTransactionNumber = locationState.transactionNumber || "";
   const navigationPaymentVendor = locationState.paymentVendor || "";
   const navigationInvoiceDate = locationState.invoiceDate || "";
+  const navigationInvoiceNumber = locationState.invoiceNumber || "";
 
   // Form fields state
   const [supplierName, setSupplierName] = useState<string>(
@@ -41,6 +43,7 @@ export const useOrderDetailsForm = () => {
     isEditMode && selectedOrder ? selectedOrder.poNo : selectedPO
   );
   const [invoiceDate, setInvoiceDate] = useState<string>("");
+  const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [transactionNumber, setTransactionNumber] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
   const [paymentVendor, setPaymentVendor] = useState<string>("");
@@ -58,6 +61,7 @@ export const useOrderDetailsForm = () => {
     supplierName: '',
     poNumber: '',
     invoiceDate: '',
+    invoiceNumber: '',
     transactionNumber: '',
     paymentVendor: '',
     paymentMethod: 'Cash',
@@ -130,6 +134,7 @@ export const useOrderDetailsForm = () => {
     setSupplierName("");
     setPoNumber("");
     setInvoiceDate("");
+    setInvoiceNumber("");
     setTransactionNumber("");
     setPaymentVendor("");
     setInvoiceFile(null);
@@ -150,6 +155,7 @@ export const useOrderDetailsForm = () => {
     navigationTransactionNumber,
     navigationPaymentVendor,
     navigationInvoiceDate,
+    navigationInvoiceNumber,
     user,
 
     // Form fields
@@ -161,6 +167,8 @@ export const useOrderDetailsForm = () => {
     setPoNumber,
     invoiceDate,
     setInvoiceDate,
+    invoiceNumber,
+    setInvoiceNumber,
     transactionNumber,
     setTransactionNumber,
     paymentMethod,

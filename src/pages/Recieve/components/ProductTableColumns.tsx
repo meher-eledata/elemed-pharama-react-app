@@ -80,6 +80,25 @@ export const getProductTableColumns = ({
       ),
     },
     {
+      key: "pack",
+      header: orderLabels.packingInfo,
+      sortable: false,
+      render: (row) => (
+        editingRowId === row.id ? (
+          <TextField
+            size="small"
+            value={editingData.pack || ""}
+            onChange={(e) => updateEditingData("pack", e.target.value)}
+            variant="outlined"
+            fullWidth
+            sx={inputFieldStyles}
+          />
+        ) : (
+          <span>{row.pack || '-'}</span>
+        )
+      ),
+    },
+    {
       key: "batchNumber",
       header: orderLabels.batchNumber,
       sortable: false,
@@ -102,6 +121,33 @@ export const getProductTableColumns = ({
           />
         ) : (
           <span>{row.batchNumber || '-'}</span>
+        )
+      ),
+    },
+    {
+      key: "expiryDate",
+      header: orderLabels.expiryDate,
+      sortable: false,
+      render: (row) => (
+        editingRowId === row.id ? (
+          <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+            <PharmaDatePicker
+              value={
+                'expiryDate' in editingData
+                  ? editingData.expiryDate ?? null
+                  : row.expiryDate ?? null
+              }
+              onChange={(newValue: Dayjs | null) => {
+                updateEditingData("expiryDate", newValue);
+              }}
+              minDate={dayjs().startOf('day')}
+              placeholder="MM/DD/YYYY"
+              width="100%"
+              height={32}
+            />
+          </Box>
+        ) : (
+          <span>{row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid() ? row.expiryDate.format('DD/MM/YYYY') : '-'}</span>
         )
       ),
     },
@@ -146,35 +192,28 @@ export const getProductTableColumns = ({
       ),
     },
     {
-      key: "expiryDate",
-      header: orderLabels.expiryDate,
+      key: "mrp",
+      header: orderLabels.mrp,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
-          <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
-            <PharmaDatePicker
-              value={
-                'expiryDate' in editingData
-                  ? editingData.expiryDate ?? null
-                  : row.expiryDate ?? null
-              }
-              onChange={(newValue: Dayjs | null) => {
-                updateEditingData("expiryDate", newValue);
-              }}
-              minDate={dayjs().startOf('day')}
-              placeholder="MM/DD/YYYY"
-              width="100%"
-              height={32}
-            />
-          </Box>
+          <TextField
+            size="small"
+            type="number"
+            value={editingData.mrp || ""}
+            onChange={(e) => updateEditingData("mrp", Number(e.target.value))}
+            variant="outlined"
+            fullWidth
+            sx={numberInputStyles}
+          />
         ) : (
-          <span>{row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid() ? row.expiryDate.format('DD/MM/YYYY') : '-'}</span>
+          <span>{row.mrp || 0}</span>
         )
       ),
     },
     {
       key: "pp",
-      header: orderLabels.unitPrice,
+      header: orderLabels.purchasePrice,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -191,6 +230,26 @@ export const getProductTableColumns = ({
           </Box>
         ) : (
           <span>{row.pp}</span>
+        )
+      ),
+    },
+    {
+      key: "sp",
+      header: orderLabels.sellingPrice,
+      sortable: false,
+      render: (row) => (
+        editingRowId === row.id ? (
+          <TextField
+            size="small"
+            type="number"
+            value={editingData.sp || ""}
+            onChange={(e) => updateEditingData("sp", Number(e.target.value))}
+            variant="outlined"
+            fullWidth
+            sx={numberInputStyles}
+          />
+        ) : (
+          <span>{row.sp || 0}</span>
         )
       ),
     },
@@ -292,22 +351,17 @@ export const getProductTableColumns = ({
       sortable: false,
       render: (row) => {
         if (editingRowId === row.id) {
-          const defaultAmount = calculateAmount(row, editingData);
-          const amountValue = editingData.amount !== undefined
-            ? ((editingData.amount as any) === "" || editingData.amount === null ? "" : Number(editingData.amount))
-            : defaultAmount;
-
+          const currentAmount = calculateAmount(row, editingData);
           return (
             <TextField
               size="small"
-              type="number"
-              value={amountValue}
-              onChange={(e) => {
-                const val = e.target.value;
-                updateEditingData("amount" as keyof PharmaTableRow, val === "" ? ("" as any) : Number(val) || 0);
-              }}
+              value={`₹${Math.round(currentAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
               variant="outlined"
               fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { fontWeight: 600, color: '#1A212B', backgroundColor: '#F9FAFB' }
+              }}
               sx={numberInputStyles}
             />
           );
