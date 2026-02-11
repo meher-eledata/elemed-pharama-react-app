@@ -64,6 +64,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     supplierOptions: data.supplierOptions,
     poNumber: form.poNumber,
     invoiceDate: form.invoiceDate,
+    invoiceNumber: form.invoiceNumber,
     transactionNumber: form.transactionNumber,
     paymentVendor: form.paymentVendor,
     paymentMethod: form.paymentMethod,
@@ -96,13 +97,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     data.fetchAllProducts();
   }, []);
 
-  // Load receipt lines in edit mode
-  useEffect(() => {
-    if (form.isEditMode && form.receiptId) {
-      loadReceiptLines();
-    }
-  }, [form.isEditMode, form.receiptId, data.productOptionsWithIds]);
-
   const loadReceiptLines = async () => {
     try {
       // Set supplier and PO from navigation state immediately
@@ -110,6 +104,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         form.setSupplierName(form.selectedOrder.supplier || '');
         form.setSupplierSearchTerm(form.selectedOrder.supplier || '');
         form.setPoNumber(form.selectedOrder.poNo || '');
+        if (form.selectedOrder.invoiceNumber) {
+          form.setInvoiceNumber(form.selectedOrder.invoiceNumber);
+        }
       }
 
       const response = await fetch(
@@ -155,9 +152,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           form.navigationPaymentVendor ||
           ''
         );
+        form.setInvoiceNumber(
+          firstLine.invoice_number ||
+          form.navigationInvoiceNumber ||
+          ''
+        );
       } else {
         form.setTransactionNumber(form.navigationTransactionNumber || '');
         form.setPaymentVendor(form.navigationPaymentVendor || '');
+        form.setInvoiceNumber(form.navigationInvoiceNumber || '');
       }
 
       if (form.navigationInvoiceDate) {
@@ -188,6 +191,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           expiryDate: expiryDateValue,
           pp: parseFloat(line.unit_price) || 0,
           sp: parseFloat(line.selling_price) || parseFloat(line.unit_price) || 0,
+          pack: line.package_info || line.packing_info || '',
           mrp: parseFloat(line.mrp) || parseFloat(line.unit_price) || 0,
           cgst: parseFloat(line.cgst) || 0,
           sgst: parseFloat(line.sgst) || 0,
@@ -211,6 +215,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           form.setInvoiceFileName(receipt.receipt_file_name || 'Invoice Receipt');
           form.setIsExistingFile(true);
         }
+        if (receipt?.invoice_number) {
+          form.setInvoiceNumber(receipt.invoice_number);
+        }
       }
     } catch (error) {
       console.error('Error loading receipt lines:', error);
@@ -218,6 +225,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       form.setOriginalReceiptLines([]);
     }
   };
+
+  // Load receipt lines in edit mode
+  useEffect(() => {
+    if (form.isEditMode && form.receiptId) {
+      loadReceiptLines();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.isEditMode, form.receiptId, data.productOptionsWithIds]);
 
   const handleSupplierSubmit = async (supplierData: any) => {
     try {
@@ -359,6 +374,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setPoNumber={form.setPoNumber}
         invoiceDate={form.invoiceDate}
         setInvoiceDate={form.setInvoiceDate}
+        invoiceNumber={form.invoiceNumber}
+        setInvoiceNumber={form.setInvoiceNumber}
       />
 
       <Divider sx={{ marginTop: "10px", border: "0.3px solid #CBD4E14D" }} />

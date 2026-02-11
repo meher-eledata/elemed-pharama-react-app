@@ -42,6 +42,7 @@ export interface Receipt {
   transaction_number?: string; // Alias for last_transaction_number
   payment_vendor?: string; // Alias for last_payment_vendor
   invoice_date?: string; // Invoice date from form
+  invoice_number?: string; // Invoice number from form
   invoice_attachment?: string; // Invoice attachment (base64 data URL)
 }
 
@@ -54,6 +55,7 @@ export interface EditReceiptRequest {
   payment_method: string;
   payment_vendor: string;
   transaction_number: string;
+  invoice_number?: string;
   invoice_date?: string; // Invoice date in ISO format
   invoice_attachment?: string; // Invoice attachment (base64 data URL)
   notes: string;
@@ -68,11 +70,14 @@ export interface EditReceiptRequest {
     received_qty: number;
     free_qty: number;
     expiry_date: string;
-    unit_price: number;
+    purchase_price: number;
     cgst: number;
     sgst: number;
     igst: number;
     discount: number;
+    mrp: number;
+    selling_price: number;
+    package_info?: string;
   }>;
   Edited: Array<{
     receipt_line_id: number;
@@ -84,11 +89,14 @@ export interface EditReceiptRequest {
     received_qty: number;
     free_qty: number;
     expiry_date: string;
-    unit_price: string;
+    purchase_price: string;
     cgst: string;
     sgst: string;
     igst: string;
     discount: string;
+    mrp: string;
+    selling_price: string;
+    package_info?: string;
   }>;
 }
 
@@ -354,6 +362,7 @@ export const receiveApi = createApi({
         supplier_name: string;
         supplier_id: number;
         po_number: string;
+        invoice_number?: string;
         notes: string;
         created_by: string;
         total_amount?: number;
@@ -364,11 +373,14 @@ export const receiveApi = createApi({
           received_qty: number;
           free_qty: number;
           expiry_date: string;
-          unit_price: number;
+          purchase_price: number;
           cgst: number;
           sgst: number;
           igst: number;
           discount: number;
+          mrp?: number;
+          selling_price?: number;
+          package_info?: string;
         }>;
       }
     >({

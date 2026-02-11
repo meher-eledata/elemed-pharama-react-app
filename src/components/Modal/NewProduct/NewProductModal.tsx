@@ -159,8 +159,7 @@
 
 import React, { useState } from 'react';
 import { Modal, Box, Typography, TextField, Grid, IconButton, Alert, CircularProgress } from '@mui/material';
-import { StandardButton, PharmaDatePicker } from '../../Common';
-import dayjs, { Dayjs } from 'dayjs';
+import { StandardButton } from '../../Common';
 import CloseIcon from '@mui/icons-material/Close';
 import styled from '@mui/system/styled';
 import { useAddProductMutation } from '../../../redux/slices/inventoryApi';
@@ -228,16 +227,12 @@ export const NEW_PRODUCT_MODAL_LABELS = {
   TITLE: 'New Product',
   FIELDS: [
     { key: 'product_name', label: 'Product name *', type: 'text' },
-    { key: 'expiry', label: 'Expiry date *', type: 'date' },
     { key: 'type', label: 'Type *', type: 'text' },
     { key: 'brand_name', label: 'Brand name *', type: 'text' },
     { key: 'hsn_id', label: 'HSN code *', type: 'text' },
-    { key: 'package_info', label: 'Package info', type: 'text' },
     { key: 'unit_of_measure', label: 'Unit of measure *', type: 'text' },
-    { key: 'mrp', label: 'MRP *', type: 'number' },
     { key: 'min_quantity', label: 'Minimum quantity *', type: 'number' },
     { key: 'max_quantity', label: 'Maximum quantity', type: 'number' },
-    { key: 'product_code', label: 'Product code *', type: 'text' }
   ],
   BUTTON_CANCEL: 'Cancel',
   BUTTON_ADD: 'Add'
@@ -330,18 +325,14 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
   // Form state
   const [formData, setFormData] = useState({
     product_name: '',
-    product_code: '',
     type: '',
     brand_name: '',
     hsn_id: '',
-    package_info: '',
     unit_of_measure: '',
-    mrp: '',
     min_quantity: '',
     max_quantity: ''
   });
 
-  const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (key: string, value: string) => {
@@ -356,16 +347,12 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
     const errors: Record<string, string> = {};
 
     if (!formData.product_name.trim()) errors.product_name = 'Product name is required';
-    if (!formData.product_code.trim()) errors.product_code = 'Product code is required';
     if (!formData.type.trim()) errors.type = 'Type is required';
     if (!formData.brand_name.trim()) errors.brand_name = 'Brand name is required';
     if (!formData.hsn_id.trim()) errors.hsn_id = 'HSN code is required';
-    // Package info is NOT mandatory
     if (!formData.unit_of_measure.trim()) errors.unit_of_measure = 'Unit of measure is required';
-    if (!formData.mrp || isNaN(Number(formData.mrp))) errors.mrp = 'Valid MRP is required';
     if (!formData.min_quantity || isNaN(Number(formData.min_quantity))) errors.min_quantity = 'Valid minimum quantity is required';
     // Maximum quantity is NOT mandatory
-    if (!expiryDate) errors.expiry = 'Expiry date is required';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -374,23 +361,14 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    if (!expiryDate) {
-      setFormErrors({ expiry: 'Expiry date is required' });
-      return;
-    }
-
     try {
       const productData = {
         product_name: formData.product_name.trim(),
-        product_code: formData.product_code.trim(),
         type: formData.type.trim(),
         hsn_id: formData.hsn_id.trim(),
-        package_info: formData.package_info.trim(),
         unit_of_measure: formData.unit_of_measure.trim(),
         max_quantity: Number(formData.max_quantity),
         min_quantity: Number(formData.min_quantity),
-        expiry: expiryDate.format('YYYY-MM-DD'),
-        mrp: Number(formData.mrp),
         brand_name: formData.brand_name.trim(),
       };
 
@@ -403,10 +381,6 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         setFormErrors({ min_quantity: 'Valid minimum quantity is required' });
         return;
       }
-      if (isNaN(productData.mrp) || productData.mrp < 0) {
-        setFormErrors({ mrp: 'Valid MRP is required' });
-        return;
-      }
 
       console.log('Submitting product data:', productData);
       await addProduct(productData).unwrap();
@@ -414,17 +388,13 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       // Reset form and close modal on success
       setFormData({
         product_name: '',
-        product_code: '',
         type: '',
         brand_name: '',
         hsn_id: '',
-        package_info: '',
         unit_of_measure: '',
-        mrp: '',
         min_quantity: '',
         max_quantity: ''
       });
-      setExpiryDate(null);
       setFormErrors({});
 
       // Notify parent component that a product was added
@@ -442,17 +412,13 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
   const handleClose = () => {
     setFormData({
       product_name: '',
-      product_code: '',
       type: '',
       brand_name: '',
       hsn_id: '',
-      package_info: '',
       unit_of_measure: '',
-      mrp: '',
       min_quantity: '',
       max_quantity: ''
     });
-    setExpiryDate(null);
     setFormErrors({});
     onClose();
   };
@@ -579,89 +545,44 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
             >
               {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((field, idx) => (
                 <Grid key={idx} item xs={12} sm={6} component="div">
-                  {field.key === 'expiry' ? (
-                    <Box sx={{ width: '100%' }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          mb: 0.5,
-                          color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        {field.label}
-                      </Typography>
-                      <Box sx={{ width: '100%' }}>
-                        <PharmaDatePicker
-                          value={expiryDate}
-                          onChange={(newValue) => {
-                            setExpiryDate(newValue);
-                            if (formErrors.expiry) {
-                              setFormErrors(prev => ({ ...prev, expiry: '' }));
-                            }
-                          }}
-                          minDate={dayjs().startOf('day')} // Only allow today and future dates
-                          width="100%"
-                          height={NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.HEIGHT}
-                          error={!!formErrors.expiry}
-                        />
-                        {formErrors.expiry && (
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: '#e53e3e',
-                              mt: 0.5,
-                              ml: 1.5,
-                              fontSize: '12px'
-                            }}
-                          >
-                            {formErrors.expiry}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Box>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          mb: 0.5,
-                          color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif"
-                        }}
-                      >
-                        {field.label}
-                      </Typography>
-                      <StyledTextField
-                        fullWidth
-                        variant="outlined"
-                        placeholder={`Enter ${field.label.toLowerCase()}`}
-                        type={field.type}
-                        value={formData[field.key as keyof typeof formData]}
-                        onChange={(e) => handleInputChange(field.key, e.target.value)}
-                        error={!!formErrors[field.key]}
-                        helperText={formErrors[field.key]}
-                        InputProps={{
-                          sx: {
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
-                            },
-                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
-                            },
-                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                              borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
-                              borderWidth: '2px',
-                            },
-                          }
-                        }}
-                      />
-                    </Box>
-                  )}
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mb: 0.5,
+                        color: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        fontFamily: "'Lexend', sans-serif"
+                      }}
+                    >
+                      {field.label}
+                    </Typography>
+                    <StyledTextField
+                      fullWidth
+                      variant="outlined"
+                      placeholder={`Enter ${field.label.toLowerCase()}`}
+                      type={field.type}
+                      value={formData[field.key as keyof typeof formData]}
+                      onChange={(e) => handleInputChange(field.key, e.target.value)}
+                      error={!!formErrors[field.key]}
+                      helperText={formErrors[field.key]}
+                      InputProps={{
+                        sx: {
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: NEW_PRODUCT_MODAL_CONSTANTS.TEXTFIELD.FOCUS_BORDER_COLOR,
+                            borderWidth: '2px',
+                          },
+                        }
+                      }}
+                    />
+                  </Box>
                 </Grid>
               ))}
             </Grid>

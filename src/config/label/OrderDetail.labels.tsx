@@ -27,11 +27,14 @@ export const orderLabels = {
   receivedQty: 'Received Qty',
   freeQty: 'Free Qty',
   expiryDate: 'Expiry date',
-  unitPrice: 'Unit Price',
+  purchasePrice: 'Purchase Price',
   cgst: 'CGST',
   sgst: 'SGST',
   igst: 'IGST',
   discount: 'Discount',
+  mrp: 'MRP',
+  sellingPrice: 'Selling Price',
+  packingInfo: 'Packing Info',
   actions: 'Actions',
 
   // Buttons
