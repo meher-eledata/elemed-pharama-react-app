@@ -136,9 +136,7 @@ export default function SaleReturn() {
       }
     }
 
-    // Only use invoiceId from state if it's a valid number. 
-    // Do NOT fall back to parsing numeric invoice numbers as IDs, 
-    // as invoice_number is NOT unique in the database and will cause mismatches.
+
     console.log('📋 invoiceData received:', {
       invoiceId: invoiceData.invoiceId,
       invoiceNumber: invoiceData.invoiceNumber,
@@ -149,7 +147,6 @@ export default function SaleReturn() {
       const invoiceNumber = invoiceData.invoiceNumber;
 
       if (!invoiceNumber && !invoiceIdToFetch) {
-        // loadItemsFromStateOrStorage(); // Removed
         alert('Invalid invoice data passed to return page.');
         navigate('/sales');
         return;

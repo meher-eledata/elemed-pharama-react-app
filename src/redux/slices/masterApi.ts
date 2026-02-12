@@ -1,5 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQueryWithReauth } from '../baseQuery';
+import { salesApi } from './salesApi';
 
 // Request interfaces
 export interface AddSupplierRequest {
@@ -97,6 +98,12 @@ export const masterApi = createApi({
         body,
       }),
       invalidatesTags: ['Master'],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(salesApi.util.invalidateTags(['Sales']));
+        } catch (error) { }
+      },
     }),
     addDoctor: builder.mutation<AddDoctorResponse, AddDoctorRequest>({
       query: (body) => ({
@@ -105,6 +112,12 @@ export const masterApi = createApi({
         body,
       }),
       invalidatesTags: ['Master'],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(salesApi.util.invalidateTags(['Sales']));
+        } catch (error) { }
+      },
     }),
     getMasterCounts: builder.query<MasterCountsResponse, void>({
       query: () => ({

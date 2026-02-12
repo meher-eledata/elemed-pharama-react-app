@@ -407,6 +407,7 @@ export const salesApi = createApi({
     // Get all doctors
     getDoctors: builder.query<Doctor[], void>({
       query: () => "sales/get-doctors",
+      providesTags: ["Sales"],
       transformResponse: (response: any): Doctor[] => {
         // Handle different response formats
         if (Array.isArray(response)) {

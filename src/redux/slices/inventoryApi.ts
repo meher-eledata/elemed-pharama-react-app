@@ -27,15 +27,11 @@ export interface InventorySummary {
 // Add Product interfaces
 export interface AddProductRequest {
   product_name: string;
-  product_code: string;
   type: string;
   hsn_id: string;
-  package_info: string;
   unit_of_measure: string;
   max_quantity: number;
   min_quantity: number;
-  expiry: string;
-  mrp: number;
   brand_name: string;
 }
 
@@ -50,14 +46,14 @@ export interface AddProductResponse {
     brand_id: string;
     hsn_id: string;
     description: string | null;
-    package_info: string;
+    package_info: string; // Not Used for Product. Stored in Inventory Batch
     unit_of_measure: string;
     dosage: string | null;
     current_qty: number;
     min_qty: number;
     max_qty: number;
-    mrp: number;
-    selling_price: number;
+    mrp: number; // Not Used for Product. Stored in Inventory Batch
+    selling_price: number; // Not Used for Product. No longer stored
     discount: string;
     created_at: string;
     updated_at: string;
@@ -130,7 +126,7 @@ export interface GetBrandsFromProductIdResponse {
 }
 
 export interface AdjustInventoryBatchLine {
-  batch_number: string | number; 
+  batch_number: string | number;
   old_qty: number;
   new_qty: number;
   expiry_date: string;
@@ -206,18 +202,18 @@ export const inventoryApi = createApi({
       providesTags: ["Inventory"],
       transformResponse: (response: any, meta, arg): InventoryItem[] => {
         if (!response || typeof response !== 'object') return [];
-        
-        const itemsArray = arg.months === 1 
+
+        const itemsArray = arg.months === 1
           ? (response.withinOneMonth || [])
           : (response.withinThreeMonths || []);
-        
+
         if (!Array.isArray(itemsArray)) return [];
-        
+
         return itemsArray.map((item: any) => ({
           id: item.product_id?.toString() || item.id?.toString() || `${item.name}-${item.batchNumber}`,
           name: item.name || '',
-          currentQuantity: typeof item.currentQuantity === 'string' 
-            ? parseFloat(item.currentQuantity) 
+          currentQuantity: typeof item.currentQuantity === 'string'
+            ? parseFloat(item.currentQuantity)
             : (item.current_qty ?? item.currentQuantity ?? 0),
           batchNumber: item.batchNumber || item.batch_number,
           expiryDate: item.expiryDate || item.expiry_date,

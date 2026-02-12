@@ -189,7 +189,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
 
   const columns = getColumns();
 
-  const MODAL_ROWS_PER_PAGE = 5;
+  const MODAL_ROWS_PER_PAGE = 10;
 
   const sortedModalData = React.useMemo(() => {
     if (!modalData || modalData.length === 0) {

@@ -14,6 +14,7 @@ interface SubmitHookParams {
   supplierOptions: SupplierOption[];
   poNumber: string;
   invoiceDate: string;
+  invoiceNumber: string;
   transactionNumber: string;
   paymentVendor: string;
   paymentMethod: string;
@@ -52,6 +53,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     supplierOptions,
     poNumber,
     invoiceDate,
+    invoiceNumber,
     transactionNumber,
     paymentVendor,
     paymentMethod,
@@ -125,11 +127,14 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         received_qty: Number(row.qtyReceived) || 0,
         free_qty: Number(row.qtyFree) || 0,
         expiry_date: expiryDateFormatted,
-        unit_price: Number(row.pp) || 0,
+        purchase_price: Number(row.pp) || 0,
         cgst: Number(row.cgst) || 0,
         sgst: Number(row.sgst) || 0,
         igst: Number(row.igst) || 0,
-        discount: Number(row.disc) || 0
+        discount: Number(row.disc) || 0,
+        mrp: Number(row.mrp) || 0,
+        selling_price: Number(row.sp) || 0,
+        pack_qty: row.pack || ""
       };
     });
 
@@ -143,6 +148,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       supplier_name: supplierName.trim(),
       supplier_id: selectedSupplierData.supplier_id,
       po_number: poNumber.trim(),
+      invoice_number: invoiceNumber.trim(),
       notes: "",
       created_by: createdBy,
       lines: lines,
@@ -200,11 +206,14 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           received_qty: row.qtyReceived,
           free_qty: row.qtyFree,
           expiry_date: formatExpiryDate(row),
-          unit_price: row.pp,
+          purchase_price: row.pp,
           cgst: row.cgst,
           sgst: row.sgst,
           igst: row.igst,
-          discount: typeof row.disc === 'number' ? row.disc : 0
+          discount: typeof row.disc === 'number' ? row.disc : 0,
+          mrp: row.mrp,
+          selling_price: row.sp,
+          pack_qty: row.pack
         };
       });
 
@@ -229,6 +238,9 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           originalRow.sgst !== currentRow.sgst ||
           originalRow.igst !== currentRow.igst ||
           originalRow.disc !== currentRow.disc ||
+          originalRow.mrp !== currentRow.mrp ||
+          originalRow.sp !== currentRow.sp ||
+          (originalRow.pack || '') !== (currentRow.pack || '') ||
           expiryDateChanged
         );
       })
@@ -247,11 +259,14 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           received_qty: row.qtyReceived,
           free_qty: row.qtyFree,
           expiry_date: expiryDateFormatted,
-          unit_price: row.pp.toString(),
+          purchase_price: row.pp.toString(),
           cgst: row.cgst.toString(),
           sgst: row.sgst.toString(),
           igst: row.igst.toString(),
-          discount: (typeof row.disc === 'number' ? row.disc : 0).toString()
+          discount: (typeof row.disc === 'number' ? row.disc : 0).toString(),
+          mrp: row.mrp.toString(),
+          selling_price: row.sp.toString(),
+          pack_qty: (row.pack || '').toString()
         };
       });
 
@@ -280,6 +295,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       payment_method: paymentMethod,
       payment_vendor: paymentVendor,
       transaction_number: transactionNumber,
+      invoice_number: invoiceNumber,
       ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
       notes: "",
       created_by: "meher",
@@ -381,6 +397,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       if (!isEditMode) {
         localStorage.setItem('lastReceiptData', JSON.stringify({
           poNumber,
+          invoiceNumber,
           supplierName,
           timestamp: new Date().toISOString()
         }));
@@ -490,6 +507,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
             supplierId,
             poNumber,
             invoiceDate,
+            invoiceNumber,
             pharmaTableData,
             isEditMode: false,
             receiptId: newReceiptId,

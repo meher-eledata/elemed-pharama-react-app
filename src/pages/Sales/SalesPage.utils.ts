@@ -153,13 +153,18 @@ export const createCartItem = (
     : [];
   const finalProductType = productType || (typesArray.length > 0 ? typesArray[0] : 'UNKNOWN');
 
+  // Always set SP = MRP if discount is 0, otherwise use backend selling_price
+  let sp = validatedData.selling_price;
+  if (discount === 0 || !discount) {
+    sp = validatedData.mrp;
+  }
   return {
     id: Date.now().toString(),
     name: findProduct,
     batch: batch || `BATCH-${Date.now()}`,
     avlQty: qty.toString(),
     mrp: validatedData.mrp,
-    sp: validatedData.selling_price,
+    sp: sp,
     expiry: defaultExpiry,
     quantity: qty,
     type: finalProductType,

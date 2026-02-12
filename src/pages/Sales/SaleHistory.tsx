@@ -24,13 +24,13 @@ import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
-import { generatePrintHTML, calculateFinancialSummary } from './SalesReceipt.utils';
+import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 
 export interface SalesHistoryItem {
-  id: number | string; // Changed from number to allow synthetic IDs like 'saved_0'
+  id: number;
   invoiceNumber: string;
   invoiceDate: string;
   customerName: string;
@@ -43,12 +43,9 @@ export interface SalesHistoryItem {
   patientType?: string; // Patient type: "In Patient" or "Out Patient"
   totalAmount: number;
   totalReturnedAmount: number;
-  soldQty?: number;
-  returnedQty?: number;
-  returnStatus?: string | null;
   // Return information (populated directly from backend list)
   hasReturn: boolean;
-  lastReturnStatus?: string | null;
+  lastReturnStatus: string | null;
   returnInfo?: {
     totalItems: number; // Total items in invoice
     returnedItems: number; // Total items returned
@@ -60,12 +57,6 @@ export interface SalesHistoryItem {
       returnDate?: string;
     }>;
   };
-  // Extra fields for Edit/View/Print details
-  paymentMode?: string;
-  insuranceCompany?: string;
-  totalDiscount?: number | string;
-  taxAmount?: number | string;
-  totalPayableAmount?: number | string;
 }
 
 export interface InvoiceDetails {
@@ -84,20 +75,19 @@ export interface InvoiceDetails {
   totalDiscount: string;
   taxAmount: string;
   totalPayableAmount: string;
-  splitPayments?: any[];
 }
 
 export default function SaleHistory() {
   const navigate = useNavigate();
   const location = useLocation();
-
+  
   const user = useSelector((state: RootState) => state.auth.user);
-
+  
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
-
-  const [returnInfoMap, setReturnInfoMap] = useState<Map<number | string, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
-
+  
+  const [returnInfoMap, setReturnInfoMap] = useState<Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
+  
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -113,16 +103,16 @@ export default function SaleHistory() {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
-
+  
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
   const [invoiceDetails, setInvoiceDetails] = useState<any>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
-
+  
   // Force refresh of saved history when location changes (e.g., after edit or return)
   const [refreshKey, setRefreshKey] = useState(0);
-
+  
   useEffect(() => {
     // Reload saved history when component mounts or when navigating back
     setRefreshKey(prev => prev + 1);
@@ -131,48 +121,25 @@ export default function SaleHistory() {
   }, [location.pathname, refetchInvoices]);
 
   const savedHistory = useMemo(() => getSalesHistoryFromStorage(), [refreshKey]);
-
+  
   const salesHistoryData: SalesHistoryItem[] = useMemo(() => {
-    const savedItems: SalesHistoryItem[] = savedHistory.map((item: any, index: number) => {
-      // Robust check for invalid invoice numbers (null, undefined, NaN, INVNaN)
-      const invNum = String(item.invoiceNumber || '').trim();
-      const isInvalid = !invNum ||
-        invNum.toLowerCase() === 'null' ||
-        invNum.toLowerCase() === 'nan' ||
-        invNum.toLowerCase() === 'invnan' ||
-        invNum.toUpperCase().endsWith('NAN');
-
-      let sanitizedInvoiceNumber = item.invoiceNumber || '';
-      if (isInvalid) {
-        // Fix bad data from previous buggy versions
-        sanitizedInvoiceNumber = item.id && !isNaN(Number(item.id)) && String(item.id).toLowerCase() !== 'nan'
-          ? `INV${item.id}`
-          : `INV-S${index + 1000}`; // S prefix for Saved items fallback
-      }
-
-      return {
-        id: item.id || `saved_${index}`,
-        invoiceNumber: sanitizedInvoiceNumber,
-        invoiceDate: item.invoiceDate || '',
-        customerName: item.customerName || '',
-        customerMobile: item.customerMobile || '',
-        customerCity: item.customerCity || '',
-        doctorName: item.doctorName || '',
-        doctorMobile: item.doctorMobile || '',
-        doctorEmail: item.doctorEmail || '',
-        username: item.username || 'Guest',
-        patientType: (() => {
-          const raw = item.patientType;
-          if (raw === null || raw === undefined || raw === '') return 'Out Patient';
-          const str = String(raw).toUpperCase().trim();
-          return (raw === 1 || str === '1' || str === 'INPATIENT' || (str.startsWith('IN') && !str.includes('OUT'))) ? 'In Patient' : 'Out Patient';
-        })(),
-        totalAmount: item.totalAmount || 0,
-        totalReturnedAmount: 0,
-        hasReturn: false,
-        lastReturnStatus: null,
-      };
-    });
+    const savedItems: SalesHistoryItem[] = savedHistory.map((item: any, index: number) => ({
+      id: item.id || `saved_${index}`,
+      invoiceNumber: item.invoiceNumber || '',
+      invoiceDate: item.invoiceDate || '',
+      customerName: item.customerName || '',
+      customerMobile: item.customerMobile || '',
+      customerCity: item.customerCity || '',
+      doctorName: item.doctorName || '',
+      doctorMobile: item.doctorMobile || '',
+      doctorEmail: item.doctorEmail || '',
+      username: item.username || 'Guest',
+      patientType: item.patientType || 'Out Patient', // Default to "Out Patient" if not specified
+      totalAmount: item.totalAmount || 0,
+      totalReturnedAmount: 0,
+      hasReturn: false,
+      lastReturnStatus: null,
+    }));
     const savedItemsMap = new Map<string, SalesHistoryItem>();
     savedItems.forEach(item => {
       if (item.invoiceNumber) {
@@ -186,48 +153,43 @@ export default function SaleHistory() {
     }
 
     const apiItems: SalesHistoryItem[] = invoicesData.map((invoice: any, index: number) => {
-      const invoiceDate = invoice.created_at
+      const invoiceDate = invoice.created_at 
         ? dayjs(invoice.created_at).format('DD/MM/YYYY')
         : '';
-
-      // Convert patient_type from number or string to normalized string
-      const patientType = (() => {
-        const raw = invoice.patient_type !== undefined ? invoice.patient_type : invoice.patientType;
-        if (raw === null || raw === undefined || raw === '') return 'Out Patient';
-        const str = String(raw).toUpperCase().trim();
-        return (raw === 1 || str === '1' || str === 'INPATIENT' || (str.startsWith('IN') && !str.includes('OUT'))) ? 'In Patient' : 'Out Patient';
-      })();
-
-      // Backend SQL query uses "i.id AS invoice_id"
-      const safeInvoiceId = (invoice.invoice_id && !isNaN(Number(invoice.invoice_id))) ? Number(invoice.invoice_id) : null;
-      const numericInvoiceNumber = invoice.invoice_number ? parseInt(String(invoice.invoice_number).replace(/^INV/i, '')) : null;
-      const dbInvoiceId = safeInvoiceId || numericInvoiceNumber || index + 1000;
-
+      
+      // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
+      let patientType = 'Out Patient'; // Default
+      if (invoice.patient_type !== undefined && invoice.patient_type !== null) {
+        patientType = invoice.patient_type === 0 ? 'In Patient' : 'Out Patient';
+      }
+      
+      const dbInvoiceId = invoice.id || parseInt(invoice.invoice_number) || index + 1000;
+      
       // Handle invoice_number formatting - use invoice_number if available, otherwise use invoice.id
       let formattedInvoiceNumber: string;
-
+      
       // Check if invoice_number is valid (not null, undefined, empty string, or string "null")
       const invoiceNum = invoice.invoice_number;
       const invoiceNumStr = String(invoiceNum || '').trim();
-
+      
       // Check if invoice_number already has "INV" prefix (backend might store it with prefix)
       const hasInvPrefix = invoiceNumStr.toUpperCase().startsWith('INV');
-      const numericPart = hasInvPrefix
+      const numericPart = hasInvPrefix 
         ? invoiceNumStr.replace(/^INV/i, '').trim()
         : invoiceNumStr;
-
+      
       const numValue = Number(numericPart);
-      const hasValidInvoiceNumber = invoiceNum !== null
-        && invoiceNum !== undefined
-        && invoiceNum !== ''
+      const hasValidInvoiceNumber = invoiceNum !== null 
+        && invoiceNum !== undefined 
+        && invoiceNum !== '' 
         && invoiceNumStr.toLowerCase() !== 'null'
         && !isNaN(numValue)
         && numValue > 0; // Must be a positive number
-
+      
       if (hasValidInvoiceNumber) {
-
+      
         formattedInvoiceNumber = hasInvPrefix ? invoiceNumStr : `INV${numericPart}`;
-      } else if (invoice.id && !isNaN(Number(invoice.id)) && String(invoice.id).toLowerCase() !== 'nan') {
+      } else if (invoice.id) {
         // invoice_number is null/undefined/invalid, use invoice.id as fallback
         // This handles old invoices where invoice_number wasn't set
         formattedInvoiceNumber = `INV${invoice.id}`;
@@ -240,10 +202,10 @@ export default function SaleHistory() {
           });
         }
       } else {
-        // Fallback if neither exists or is invalid (e.g., invoice.id is NaN)
+        // Fallback if neither exists (shouldn't happen, but handle gracefully)
         formattedInvoiceNumber = `INV${index + 1000}`;
       }
-
+      
       return {
         id: dbInvoiceId, // Use database invoice ID for proper matching
         invoiceNumber: formattedInvoiceNumber, // Use "INV" format, not "RB"
@@ -256,103 +218,62 @@ export default function SaleHistory() {
         doctorEmail: invoice.doctor_email || 'N/A',
         username: invoice.created_by ? (isNaN(Number(invoice.created_by)) ? invoice.created_by : `User ${invoice.created_by}`) : 'Guest',
         patientType: patientType,
-        totalAmount: parseFloat(invoice.total_amount || invoice.totalAmount || '0') || 0,
-        totalReturnedAmount: parseFloat(invoice.total_returned_amount || invoice.totalReturnedAmount || '0') || 0,
-        soldQty: parseFloat(invoice.sold_qty || invoice.quantity || invoice.qty || '0') || 0,
-        returnedQty: parseFloat(invoice.returned_qty || invoice.returned_quantity || invoice.return_qty || '0') || 0,
-        returnStatus: (invoice.return_status && String(invoice.return_status).toLowerCase() !== 'null') ? String(invoice.return_status) : null,
-        hasReturn: (invoice.has_return && invoice.has_return !== '0' && invoice.has_return !== 'false') ||
-          (parseFloat(invoice.returned_qty || invoice.returned_quantity || '0') > 0) ||
-          (parseFloat(invoice.total_returned_amount || '0') > 0),
-        lastReturnStatus: (invoice.last_return_status && String(invoice.last_return_status).toLowerCase() !== 'null') ? String(invoice.last_return_status) : null,
-        paymentMode: (() => {
-          const raw = (invoice.payment_mode || invoice.paymentMode || '').trim().toUpperCase();
-          if (!raw || raw === 'UNKNOWN' || raw === 'NULL') return 'Cash';
-          return raw.split(' ').map((word: string) =>
-            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-          ).join(' ');
-        })(),
-        insuranceCompany: invoice.insurance_company || '',
-        totalDiscount: parseFloat(invoice.discount || invoice.total_discount || '0') || 0,
-        taxAmount: parseFloat(invoice.tax_amount || '0') || 0,
-        totalPayableAmount: parseFloat(invoice.total_payable_amount || invoice.total_amount || '0') || 0,
+        totalAmount: parseFloat(invoice.total_amount) || 0,
+        totalReturnedAmount: parseFloat(invoice.total_returned_amount) || 0,
+        hasReturn: invoice.has_return || false,
+        lastReturnStatus: invoice.last_return_status || null,
       };
     });
-
+    
     // Combine and remove duplicates
     // STRATEGY: 
     // 1. Add API items first (these are the source of truth for return status)
     // 2. Add saved items ONLY if they don't exist in the API yet (e.g., new sales not yet synced)
-    // CRITICAL: Use unique database 'id' as key, NOT invoiceNumber (duplicates exist)
-    const resultMap = new Map<string | number, SalesHistoryItem>();
-
+    const resultMap = new Map<string, SalesHistoryItem>();
+    
     // First add all API items (source of truth for return status)
     apiItems.forEach(item => {
-      // Normalize invoice number for matching (remove spaces, uppercase)
-      const normalize = (str: string) => str ? str.replace(/\s+/g, '').toUpperCase() : '';
-      const itemInv = normalize(item.invoiceNumber);
-
-      // Look for this item in local storage to see if we have names the API might be missing
-      const savedItem = uniqueSavedItems.find(s => {
-        if (String(s.id) === String(item.id)) return true;
-        if (!s.invoiceNumber) return false;
-
-        const sInv = normalize(s.invoiceNumber);
-        if (sInv === itemInv) return true;
-
-        const sNum = sInv.replace(/\D/g, '');
-        const itemNum = itemInv.replace(/\D/g, '');
-        return sNum && itemNum && sNum === itemNum;
-      });
-
-      if (savedItem) {
-        // Prioritize saved data for names if API returns generic placeholders
-        const mergedItem = {
-          ...item,
-          customerName: savedItem.customerName || item.customerName,
-          customerMobile: savedItem.customerMobile || item.customerMobile,
-          customerCity: savedItem.customerCity || item.customerCity,
-          doctorName: savedItem.doctorName || item.doctorName,
-          doctorMobile: savedItem.doctorMobile || item.doctorMobile,
-          doctorEmail: savedItem.doctorEmail || item.doctorEmail,
-          username: savedItem.username || item.username,
-          paymentMode: (() => {
-            const raw = (savedItem.paymentMode || item.paymentMode || '').trim().toUpperCase();
-            if (!raw || raw === 'UNKNOWN' || raw === 'NULL') return 'Cash';
-            return raw.split(' ').map((word: string) =>
-              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-            ).join(' ');
-          })(),
-          insuranceCompany: savedItem.insuranceCompany || item.insuranceCompany,
-          patientType: (savedItem.patientType && savedItem.patientType.toLowerCase().includes('in')) ? 'In Patient' : item.patientType,
-        };
-
-        resultMap.set(item.id, mergedItem);
-      } else {
-        resultMap.set(item.id, item);
+      if (item.invoiceNumber) {
+        // Look for this item in local storage to see if we have names the API might be missing
+        const savedItem = uniqueSavedItems.find(s => s.invoiceNumber === item.invoiceNumber);
+        
+        if (savedItem) {
+          // Helper to check if a value is a fallback placeholder (e.g., "Customer 123", "Doctor 456", "User 10")
+          const isFallbackValue = (value: string) => {
+            return !value || value === 'N/A' || /^Customer\s+\d+$/i.test(value) || /^Doctor\s+\d+$/i.test(value) || /^User\s+\d+$/i.test(value);
+          };
+          
+          resultMap.set(item.invoiceNumber, {
+            ...item,
+            // If API has null names/mobile or fallback placeholders, use the ones from local storage
+            customerName: isFallbackValue(item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
+            customerMobile: (item.customerMobile === 'N/A' || !item.customerMobile) ? (savedItem.customerMobile || item.customerMobile) : item.customerMobile,
+            customerCity: (item.customerCity === 'N/A' || !item.customerCity) ? (savedItem.customerCity || item.customerCity) : item.customerCity,
+            doctorName: isFallbackValue(item.doctorName) ? (savedItem.doctorName || item.doctorName) : item.doctorName,
+            doctorMobile: (item.doctorMobile === 'N/A' || !item.doctorMobile) ? (savedItem.doctorMobile || item.doctorMobile) : item.doctorMobile,
+            doctorEmail: (item.doctorEmail === 'N/A' || !item.doctorEmail) ? (savedItem.doctorEmail || item.doctorEmail) : item.doctorEmail,
+            username: isFallbackValue(item.username) ? (savedItem.username || item.username) : item.username,
+          });
+        } else {
+          resultMap.set(item.invoiceNumber, item);
+        }
       }
     });
-
-    // Then add saved items that aren't in the API yet (e.g. offline or just submitted)
+    
+    // Then add saved items that aren't in the API yet
     uniqueSavedItems.forEach(item => {
-      // Check if this item is already accounted for in resultMap (by ID or Invoice Number)
-      const alreadyExists = Array.from(resultMap.values()).some(existing => {
-        if (String(existing.id) === String(item.id)) return true;
-        if (existing.invoiceNumber && item.invoiceNumber && existing.invoiceNumber === item.invoiceNumber) return true;
-        return false;
-      });
-
-      if (!alreadyExists) {
-        resultMap.set(item.id, {
+      if (item.invoiceNumber && !resultMap.has(item.invoiceNumber)) {
+        // Add default return info for local-only items
+        resultMap.set(item.invoiceNumber, {
           ...item,
           hasReturn: false,
           lastReturnStatus: null
         });
       }
     });
-
+    
     const finalItems = Array.from(resultMap.values());
-
+    
     // Merge extra return info from returnInfoMap if available (from detailed fetch)
     return finalItems.map(item => {
       const returnInfo = returnInfoMap.get(item.id);
@@ -369,60 +290,69 @@ export default function SaleHistory() {
       return item;
     });
   }, [savedHistory, invoicesData, returnInfoMap]);
-
+  
   // Fetch return information for all invoices
   // TODO: Enable this when the API is ready
-  const ENABLE_RETURN_STATUS_API = true; // Set to true when API is ready
-
+  const ENABLE_RETURN_STATUS_API = false; // Set to true when API is ready
+  
   useEffect(() => {
     if (!ENABLE_RETURN_STATUS_API) {
       // API not ready yet - skip fetching return info
       console.log('⚠️ Return status API is disabled - showing default "No return" status');
       return;
     }
-
+    
     if (!invoicesData || invoicesData.length === 0) return;
-
+    
     const fetchReturnInfo = async () => {
       const newReturnInfoMap = new Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>();
-
+      
       // Fetch return info for each invoice
       const promises = invoicesData.map(async (invoice: any) => {
         try {
-          const invoiceId = invoice.invoice_id || invoice.id;
+          const invoiceId = invoice.id;
           const invoiceNumber = invoice.invoice_number;
-
+          
           if (!invoiceId && !invoiceNumber) return;
-
+          
           let result;
           if (invoiceId) {
-            result = await getInvoiceDetails({ invoice_id: Number(invoiceId) }).unwrap();
+            result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
           } else if (invoiceNumber) {
             const numericInvoiceNumber = String(invoiceNumber).replace(/^INV/i, '').trim();
             result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
           }
-
+          
           if (result && result.lines) {
             const lines = result.lines || [];
             let totalItems = 0;
             let returnedItems = 0;
-
+            
             lines.forEach((line: any) => {
-              const soldQty = parseFloat(line.quantity || line.sold_qty || line.qty || '0');
-              const returnedQty = parseFloat(line.returned_quantity || line.returned_qty || line.return_qty || '0');
+              const soldQty = parseFloat(line.quantity || '0');
+              const returnedQty = parseFloat(line.returned_quantity || '0');
               totalItems += soldQty;
               returnedItems += returnedQty;
             });
-
+            
             // Check if all items are returned: returnedItems should equal or exceed totalItems
             // Using >= to handle edge cases, but typically they should be equal
             const isFullReturn = totalItems > 0 && returnedItems > 0 && returnedItems >= totalItems;
+            const mapKey = invoiceId || parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0;
+            newReturnInfoMap.set(mapKey, {
+              totalItems: Math.round(totalItems),
+              returnedItems: Math.round(returnedItems),
+              isFullReturn
+            });
+            
+            // Debug log for fully returned items
             if (isFullReturn) {
-              const mapKey = invoiceId || parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0;
-              newReturnInfoMap.set(mapKey, {
-                totalItems: Math.round(totalItems),
-                returnedItems: Math.round(returnedItems),
-                isFullReturn
+              console.log('✅ Full return detected for invoice:', {
+                invoiceId,
+                invoiceNumber,
+                totalItems,
+                returnedItems,
+                mapKey
               });
             }
           }
@@ -430,14 +360,15 @@ export default function SaleHistory() {
           console.error('Error fetching return info for invoice:', invoice.id, error);
         }
       });
-
+      
       await Promise.all(promises);
       setReturnInfoMap(newReturnInfoMap);
+      console.log('📊 Return info map updated:', Array.from(newReturnInfoMap.entries()));
     };
-
+    
     fetchReturnInfo();
   }, [invoicesData, getInvoiceDetails, refreshKey, ENABLE_RETURN_STATUS_API]);
-
+  
 
   useEffect(() => {
     const fetchFullDetails = async () => {
@@ -448,63 +379,8 @@ export default function SaleHistory() {
       if (!mergedItem) return;
 
       // Try to get items from saved history first (has full detail with items)
-      let savedItem = null;
-      if (typeof selectedInvoiceId === 'string' && selectedInvoiceId.startsWith('saved_')) {
-        const index = parseInt(selectedInvoiceId.split('_')[1], 10);
-        if (!isNaN(index) && index >= 0 && index < savedHistory.length) {
-          savedItem = savedHistory[index];
-        }
-      } else {
-        // Robust lookup by ID (loose type check) or Invoice Number
-        savedItem = savedHistory.find((item: any) =>
-          String(item.id) === String(selectedInvoiceId) ||
-          (item.invoiceNumber && item.invoiceNumber === mergedItem.invoiceNumber)
-        );
-      }
+      const savedItem = savedHistory.find((item: any) => item.id === selectedInvoiceId || item.invoiceNumber === mergedItem.invoiceNumber);
       const itemsFromSaved = savedItem?.salesItems || savedItem?.items || [];
-
-      // Calculate financial summary from items
-      let totalValue = (mergedItem.totalAmount || 0).toString();
-      let totalDiscount = (mergedItem as any).totalDiscount || '0';
-      let taxAmount = (mergedItem as any).taxAmount || '0';
-      let totalPayableAmount = (mergedItem.totalAmount || 0).toString();
-
-      const items = itemsFromSaved.length > 0 ? itemsFromSaved.map((item: any) => {
-        // Construct base item from raw data
-        const baseItem = {
-          id: item.id || '',
-          productName: item.productName || item.name || '',
-          quantity: item.quantity?.toString() || '0',
-          unitPrice: item.unitPrice?.toString() || '0',
-          mrp: item.mrp?.toString() || '0',
-          discount: item.discount || '0',
-          discountPercent: item.discountPercent?.toString() || '0',
-          cgst: item.cgst || '0',
-          cgstPercent: item.cgstPercent?.toString() || '0',
-          sgst: item.sgst || '0',
-          sgstPercent: item.sgstPercent?.toString() || '0',
-          igst: item.igst || '0',
-          igstPercent: item.igstPercent?.toString() || '0',
-          amount: item.amount?.toString() || '0',
-          batch: item.batch || '',
-          type: item.type || 'N/A',
-          manufacturer: item.manufacturer || 'N/A',
-          expiryDate: item.expiryDate || '',
-        };
-
-        // Recalculate to ensure all derived fields (discount amount, tax amount) are correct
-        // This handles cases where only percentages might be stored
-        return recalculateSalesItemAmount(baseItem);
-      }) : [];
-
-      // If we have items, calculate the summary fields from them
-      if (items.length > 0) {
-        const summary = calculateFinancialSummary(items);
-        totalValue = summary.totalValue;
-        totalDiscount = summary.totalDiscount;
-        taxAmount = summary.taxAmount;
-        totalPayableAmount = summary.totalPayableAmount;
-      }
 
       const initialDetails = {
         customerName: mergedItem.customerName || 'N/A',
@@ -513,59 +389,62 @@ export default function SaleHistory() {
         doctorName: mergedItem.doctorName || 'N/A',
         doctorMobile: mergedItem.doctorMobile === 'N/A' ? '' : (mergedItem.doctorMobile || ''),
         doctorEmail: mergedItem.doctorEmail === 'N/A' ? '' : (mergedItem.doctorEmail || ''),
-        paymentMode: (() => {
-          const raw = ((mergedItem as any).paymentMode || '').trim().toUpperCase();
-          if (!raw || raw === 'UNKNOWN' || raw === 'NULL') return 'Cash';
-          return raw.split(' ').map((word: string) =>
-            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-          ).join(' ');
-        })(),
+        paymentMode: (mergedItem as any).paymentMode || 'Cash',
         insuranceCompany: (mergedItem as any).insuranceCompany || '',
         invoiceNumber: mergedItem.invoiceNumber || '',
         invoiceDate: mergedItem.invoiceDate || '',
-        totalValue: totalValue,
-        totalDiscount: totalDiscount,
-        taxAmount: taxAmount,
-        totalPayableAmount: totalPayableAmount,
-        patientType: mergedItem.patientType || 'Out Patient',
-        items: items,
-        splitPayments: savedItem?.splitPayments || []
+        totalValue: (mergedItem.totalAmount || 0).toString(),
+        totalDiscount: (mergedItem as any).totalDiscount || '0',
+        taxAmount: (mergedItem as any).taxAmount || '0',
+        totalPayableAmount: (mergedItem.totalAmount || 0).toString(),
+        items: itemsFromSaved.length > 0 ? itemsFromSaved.map((item: any) => {
+          // Handle both SalesReceiptItem format and any other format
+          if (item.id && item.productName) {
+            return item;
+          }
+          // Try to transform if it's in a different format
+          return {
+            id: item.id || '',
+            productName: item.productName || item.name || '',
+            quantity: item.quantity?.toString() || '0',
+            unitPrice: item.unitPrice?.toString() || '0',
+            mrp: item.mrp?.toString() || '0',
+            discount: item.discount || '0',
+            discountPercent: item.discountPercent?.toString() || '0',
+            cgst: item.cgst || '0',
+            cgstPercent: item.cgstPercent?.toString() || '0',
+            sgst: item.sgst || '0',
+            sgstPercent: item.sgstPercent?.toString() || '0',
+            igst: item.igst || '0',
+            igstPercent: item.igstPercent?.toString() || '0',
+            amount: item.amount?.toString() || '0',
+            batch: item.batch || '',
+            type: item.type || 'N/A',
+            manufacturer: item.manufacturer || 'N/A',
+            expiryDate: item.expiryDate || '',
+          };
+        }) : []
       };
 
       console.log('📋 Invoice details loaded:', initialDetails);
       setInvoiceDetails(initialDetails);
 
-      // 2. Fetch full details from API to get fields missing from the main list (like doctor mobile/email and payments)
-      try {
-        console.log('🔍 Fetching full invoice details for preview:', selectedInvoiceId);
-        let result;
-        if (typeof selectedInvoiceId === 'number' || !isNaN(Number(selectedInvoiceId))) {
-          result = await getInvoiceDetails({ invoice_id: Number(selectedInvoiceId) }).unwrap();
-        } else {
-          const numericPart = String(mergedItem.invoiceNumber).replace(/^INV/i, '').trim();
-          result = await getInvoiceDetails({ invoice_number: numericPart }).unwrap();
-        }
-
-        if (result) {
-          console.log('✅ Full details received:', result);
-          const apiPayments = result.payments || [];
-          const mappedSplitPayments = apiPayments.length > 0
-            ? apiPayments.map((p: any) => ({
-              mode: p.payment_method || 'Cash',
-              amount: parseFloat(p.payment_amount || '0').toString()
-            })).filter((p: any) => parseFloat(p.amount) > 0)
-            : initialDetails.splitPayments;
-
-          setInvoiceDetails({
-            ...initialDetails,
-            splitPayments: mappedSplitPayments,
-            doctorMobile: result.doctor?.mobile || initialDetails.doctorMobile,
-            doctorEmail: result.doctor?.email || initialDetails.doctorEmail,
-          });
-        }
-      } catch (error) {
-        console.error('❌ Error fetching full invoice details:', error);
-      }
+      // 2. Fetch full details from API to get fields missing from the main list (like doctor mobile/email)
+      // Note: API endpoint not yet implemented on backend, so skip for now
+      // try {
+      //   console.log('🔍 Fetching full invoice details for preview:', selectedInvoiceId);
+      //   const result = await getInvoiceDetails({ invoice_id: selectedInvoiceId }).unwrap();
+      //   
+      //   if (result) {
+      //     console.log('✅ Full details received:', result);
+      //     // ... update logic here
+      //   }
+      // } catch (error) {
+      //   console.error('❌ Error fetching full invoice details:', error);
+      // }
+      
+      // For now, just use the initial details that were already set above
+      console.log('📋 Using initial invoice details (API endpoint not yet implemented)');
     };
 
     fetchFullDetails();
@@ -575,30 +454,28 @@ export default function SaleHistory() {
     let filtered = [...salesHistoryData];
 
     if (currentSearchTerm) {
-      const searchLower = currentSearchTerm.trim().toLowerCase();
-      filtered = filtered.filter(item =>
+      const searchLower = currentSearchTerm.toLowerCase();
+      filtered = filtered.filter(item => 
         item.invoiceNumber.toLowerCase().includes(searchLower) ||
         item.customerName.toLowerCase().includes(searchLower) ||
-        item.customerMobile.toLowerCase().includes(searchLower) ||
-        item.doctorName.toLowerCase().includes(searchLower) ||
-        item.username.toLowerCase().includes(searchLower)
+        item.customerMobile.includes(searchLower)
       );
     }
 
     if (selectedDoctor) {
-      filtered = filtered.filter(item =>
+      filtered = filtered.filter(item => 
         item.doctorName.toLowerCase().includes(selectedDoctor.toLowerCase())
       );
     }
 
     if (selectedCustomer) {
-      filtered = filtered.filter(item =>
+      filtered = filtered.filter(item => 
         item.customerName.toLowerCase().includes(selectedCustomer.toLowerCase())
       );
     }
 
     if (selectedUsername) {
-      filtered = filtered.filter(item =>
+      filtered = filtered.filter(item => 
         item.username.toLowerCase().includes(selectedUsername.toLowerCase())
       );
     }
@@ -608,11 +485,11 @@ export default function SaleHistory() {
         const itemDate = dayjs(item.invoiceDate, 'DD/MM/YYYY');
         const startDate = dateRange[0];
         const endDate = dateRange[1];
-
+        
         if (startDate && endDate) {
-          return itemDate.isSame(startDate, 'day') ||
-            itemDate.isSame(endDate, 'day') ||
-            (itemDate.isAfter(startDate, 'day') && itemDate.isBefore(endDate, 'day'));
+          return itemDate.isSame(startDate, 'day') || 
+                 itemDate.isSame(endDate, 'day') || 
+                 (itemDate.isAfter(startDate, 'day') && itemDate.isBefore(endDate, 'day'));
         } else if (startDate) {
           return itemDate.isSame(startDate, 'day') || itemDate.isAfter(startDate, 'day');
         } else if (endDate) {
@@ -632,27 +509,22 @@ export default function SaleHistory() {
     });
 
     return filtered;
-  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedCustomer, selectedUsername, dateRange]);
+  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedUsername, dateRange]);
 
   const getUniqueDoctors = useMemo(() => {
-    const doctors = [...new Set(salesHistoryData.map(item => (item.doctorName || '').trim()))];
-    return doctors.filter(Boolean).sort((a, b) => a.localeCompare(b));
+    const doctors = [...new Set(salesHistoryData.map(item => item.doctorName))];
+    return doctors.sort();
   }, [salesHistoryData]);
 
   const getUniqueCustomers = useMemo(() => {
-    const customers = [...new Set(salesHistoryData.map(item => (item.customerName || '').trim()))];
-    return customers.filter(Boolean).sort((a, b) => a.localeCompare(b));
+    const customers = [...new Set(salesHistoryData.map(item => item.customerName))];
+    return customers.sort();
   }, [salesHistoryData]);
 
   const getUniqueUsernames = useMemo(() => {
-    const usernames = [...new Set(salesHistoryData.map(item => (item.username || '').trim()))];
-    return usernames.filter(Boolean).sort((a, b) => a.localeCompare(b));
+    const usernames = [...new Set(salesHistoryData.map(item => item.username))];
+    return usernames.sort();
   }, [salesHistoryData]);
-
-  // Reset page to 1 when any filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [currentSearchTerm, selectedDoctor, selectedCustomer, selectedUsername, dateRange, currentFilter]);
 
   const clearAllFilters = () => {
     setSelectedDoctor(null);
@@ -666,7 +538,7 @@ export default function SaleHistory() {
   const sortedData = useMemo(() => {
     const activeSortKey = sortConfig.key || 'invoiceDate';
     const activeSortDirection = sortConfig.direction || 'desc';
-
+    
     return [...filteredData].sort((a, b) => {
       const aValue = a[activeSortKey as keyof SalesHistoryItem];
       const bValue = b[activeSortKey as keyof SalesHistoryItem];
@@ -690,107 +562,59 @@ export default function SaleHistory() {
   // Table columns configuration
   // Helper function to get return status
   const getReturnStatus = (item: SalesHistoryItem) => {
-    const soldQty = item.soldQty || item.returnInfo?.totalItems || 0;
-    const returnedQty = item.returnedQty || item.returnInfo?.returnedItems || 0;
-    const totalAmount = item.totalAmount || 0;
-    const returnedAmount = item.totalReturnedAmount || 0;
-
-    // 1. Handle "No Return" case first (Highest priority - if no quantites/amounts, it's not a return)
-    const hasGenuineReturnData = returnedQty > 0 || returnedAmount > 0 || item.returnInfo?.isFullReturn;
-    const hasReturnStatusString = !!item.returnStatus || !!item.lastReturnStatus;
-
-    if (!hasGenuineReturnData && !hasReturnStatusString && !item.hasReturn) {
-      return { status: 'none' as const, label: 'No Return', returned: 0, total: 0 };
-    }
-
-    // 2. Check for "Full" indicators (Only if there is genuine return activity)
-    const isFullByQty = soldQty > 0 && returnedQty > 0 && returnedQty >= soldQty;
-    const isFullByAmount = totalAmount > 0 && returnedAmount > 0 && Math.abs(returnedAmount - totalAmount) < 0.01;
-    const isFullByInfo = item.returnInfo?.isFullReturn || false;
-    const isFullByStatus = (item.returnStatus || item.lastReturnStatus || '').toLowerCase().includes('full');
-
-    const isFull = isFullByQty || isFullByAmount || isFullByInfo || isFullByStatus;
-
-    // 3. Double check: If not 'full' and no quantities/amounts, it might be a false positive status string
-    if (!isFull && !hasGenuineReturnData && hasReturnStatusString) {
-      // If status is something like "Completed" or "Paid", it's not a return
-      const statusStr = (item.returnStatus || item.lastReturnStatus || '').toLowerCase();
-      const nonReturnTerms = ['completed', 'paid', 'success', 'pending', 'confirmed'];
-      if (nonReturnTerms.some(term => statusStr.includes(term))) {
-        return { status: 'none' as const, label: 'No Return', returned: 0, total: 0 };
+    // Priority 1: Use direct status from backend list if available
+    if (item.hasReturn && item.lastReturnStatus) {
+      let statusText = item.lastReturnStatus;
+      const statusLower = statusText.toLowerCase();
+      
+      // If backend just says "Completed", let's try to be more specific
+      if (statusLower === 'completed' || statusLower === 'paid') {
+        // Use a small tolerance (0.01) for decimal comparison
+        const isFullByAmount = Math.abs(item.totalReturnedAmount - item.totalAmount) < 0.01 && item.totalAmount > 0;
+        
+        if (isFullByAmount) {
+          statusText = 'Fully Returned';
+        } else if (item.returnInfo) {
+          // Fallback to detailed returnInfo if available
+          statusText = item.returnInfo.isFullReturn ? 'Fully Returned' : 'Partly Returned';
+        } else {
+          statusText = 'Partly Returned';
+        }
       }
+
+      const isFull = statusText.toLowerCase().includes('full');
+      const returned = item.returnInfo?.returnedItems || 0;
+      const total = item.returnInfo?.totalItems || 0;
+      
+      return { 
+        status: isFull ? 'full' as const : 'partial' as const, 
+        label: statusText, 
+        returned, 
+        total 
+      };
     }
 
-    // 3. Determine Label
-    let label = item.returnStatus || item.lastReturnStatus;
-
-    // If no label but there is a return, use defaults
-    if (!label) {
-      label = isFull ? 'Full Return' : 'Partly Returned';
+    // Priority 2: Fallback to calculated returnInfo if API detail fetching is enabled
+    if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
+      return { status: 'none' as const, label: 'No return', returned: 0, total: 0 };
     }
-
-    // If it's a full return but the label is vague (like "Completed" or just "Returned"), improve it
-    const vagueLabels = ['completed', 'paid', 'returned', 'completed_return'];
-    if (isFull && (vagueLabels.includes(label.toLowerCase()) || !label.toLowerCase().includes('full'))) {
-      label = 'Full Return';
+    
+    const { returnedItems, totalItems, isFullReturn } = item.returnInfo;
+    if (isFullReturn) {
+      return { status: 'full' as const, label: 'All items returned', returned: returnedItems, total: totalItems };
     }
-
-    return {
-      status: isFull ? 'full' as const : 'partial' as const,
-      label: label,
-      returned: returnedQty,
-      total: soldQty
-    };
+    return { status: 'partial' as const, label: 'Some items returned', returned: returnedItems, total: totalItems };
   };
-
+  
   // Handler to navigate to return details
-  const handleViewReturnDetails = useCallback((invoiceId: number | string) => {
-    const invoice = salesHistoryData.find(item => String(item.id) === String(invoiceId));
+  const handleViewReturnDetails = useCallback((invoiceId: number) => {
+    const invoice = salesHistoryData.find(item => item.id === invoiceId);
     if (invoice) {
-      // Get invoice details from storage - use robust lookup
-      const savedItem = savedHistory.find((item: any) =>
-        String(item.id) === String(invoiceId) ||
-        (item.invoiceNumber && item.invoiceNumber === invoice.invoiceNumber)
-      );
-      const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
-
-      // Validate that we have invoice items with invoice_line_id
-      if (invoiceItems.length === 0) {
-        console.error('❌ Cannot process return: No invoice items found');
-        alert(
-          `Cannot return Invoice ${invoice.invoiceNumber}\n\n` +
-          `Reason: Invoice line items are not available.\n\n` +
-          `This happens when:\n` +
-          `• The invoice was created in a previous session\n` +
-          `• Local storage was cleared\n` +
-          `• The invoice wasn't properly saved\n\n` +
-          `Solution: Contact support or re-create the sale.`
-        );
-        return;
-      }
-
-      // Validate that items have invoice_line_id (required for returns)
-      const hasInvoiceLineIds = invoiceItems.every((item: any) => item.invoice_line_id);
-      if (!hasInvoiceLineIds) {
-        console.error('❌ Cannot process return: Some items missing invoice_line_id');
-        console.warn('Items:', invoiceItems);
-        alert(
-          `Cannot return Invoice ${invoice.invoiceNumber}\n\n` +
-          `Reason: Invoice line items are missing required IDs.\n\n` +
-          `This is a data integrity issue. The invoice may not have been\n` +
-          `properly saved to the database.\n\n` +
-          `Solution: Contact support to investigate this invoice.`
-        );
-        return;
-      }
-
-
       // Navigate to SalesReceipt in return details mode
       navigate('/sales/receipt', {
         state: {
           isReturnDetailsMode: true,
           invoiceId: invoice.id,
-          invoice_id: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
           customerName: invoice.customerName,
@@ -799,11 +623,10 @@ export default function SaleHistory() {
           username: invoice.username,
           totalAmount: invoice.totalAmount,
           patientType: invoice.patientType,
-          salesItems: invoiceItems, // Pass items for fallback
         }
       });
     }
-  }, [navigate, salesHistoryData, savedHistory]);
+  }, [navigate, salesHistoryData]);
 
   // Helper function to get return details for tooltip
   const getReturnTooltipContent = (item: SalesHistoryItem) => {
@@ -828,21 +651,21 @@ export default function SaleHistory() {
     {
       key: 'invoiceNumber',
       header: SALES_HISTORY_LABELS.TABLE.INVOICE,
-      sortable: true,
+        sortable: true,
       render: (item) => (
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'row', 
+          alignItems: 'center', 
           gap: '0.125rem', // 2px = 0.125rem
           minHeight: '1.5rem', // 24px = 1.5rem
           width: '100%',
           position: 'relative'
         }}>
           <VisibilityIcon
-            sx={{
-              fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
-              color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
+            sx={{ 
+              fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE, 
+              color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR, 
               cursor: 'pointer',
               padding: '0.125rem', // 2px = 0.125rem
               borderRadius: '0.25rem', // 4px = 0.25rem
@@ -858,7 +681,7 @@ export default function SaleHistory() {
             }}
             onClick={() => handleViewInvoice(item.id)}
           />
-          <span style={{
+          <span style={{ 
             flex: 1,
             marginLeft: '0.25rem', // 4px = 0.25rem
             fontWeight: 500,
@@ -867,13 +690,13 @@ export default function SaleHistory() {
           }}>
             {item.invoiceNumber}
           </span>
-        </Box>
-      ),
+            </Box>
+        ),
     },
     {
       key: 'invoiceDate',
       header: SALES_HISTORY_LABELS.TABLE.INVOICE_DATE,
-      sortable: true,
+        sortable: true,
     },
     {
       key: 'customerName',
@@ -894,9 +717,7 @@ export default function SaleHistory() {
       key: 'patientType',
       header: 'Patient Type',
       sortable: true,
-      render: (item) => (
-        (Number(item.patientType) === 1 || String(item.patientType || '').toUpperCase().includes('IN') && !String(item.patientType || '').toUpperCase().includes('OUT')) ? 'In Patient' : 'Out Patient'
-      ),
+      render: (item) => item.patientType || 'Out Patient',
     },
     {
       key: 'username',
@@ -906,7 +727,7 @@ export default function SaleHistory() {
     {
       key: 'totalAmount',
       header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
-      sortable: true,
+        sortable: true,
       render: (item) => (
         <Typography variant="body2" sx={{ fontWeight: 500 }}>
           {item.totalAmount.toLocaleString()}
@@ -920,12 +741,12 @@ export default function SaleHistory() {
       render: (item) => {
         const returnStatus = getReturnStatus(item);
         const statusText = returnStatus.label;
-
+        
         if (returnStatus.status === 'none') {
           return (
-            <Typography
-              variant="body2"
-              sx={{
+            <Typography 
+              variant="body2" 
+              sx={{ 
                 color: '#9CA3AF',
                 cursor: 'pointer',
                 '&:hover': {
@@ -960,21 +781,21 @@ export default function SaleHistory() {
       },
     },
     {
-      key: 'actions',
-      header: '',
-      sortable: false,
+        key: 'actions',
+        header: '',
+        sortable: false,
       render: (item) => (
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'row', 
+          alignItems: 'center', 
           gap: '0.5rem' // 8px = 0.5rem 
         }}>
           <Tooltip title="Edit" arrow placement="top">
             <EditIcon
-              sx={{
+              sx={{ 
                 fontSize: '1.5rem', // 24px = 1.5rem 
-                color: '#000000',
+                color: '#000000', 
                 cursor: 'pointer',
                 padding: '0.25rem', // 4px = 0.25rem
                 borderRadius: '0.25rem', // 4px = 0.25rem
@@ -988,9 +809,9 @@ export default function SaleHistory() {
           </Tooltip>
           <Tooltip title="Return" arrow placement="top">
             <UndoIcon
-              sx={{
+              sx={{ 
                 fontSize: '1.5rem', // 24px = 1.5rem 
-                color: '#000000',
+                color: '#000000', 
                 cursor: 'pointer',
                 padding: '0.25rem', // 4px = 0.25rem
                 borderRadius: '0.25rem', // 4px = 0.25rem
@@ -1002,18 +823,62 @@ export default function SaleHistory() {
               onClick={() => handleReturnInvoice(item.id)}
             />
           </Tooltip>
-
+          {(() => {
+            const returnStatus = getReturnStatus(item);
+            if (returnStatus.status === 'none') {
+              return null;
+            }
+            const tooltipContent = getReturnTooltipContent(item);
+            return (
+              <Tooltip 
+                title={tooltipContent}
+                arrow
+                placement="top"
+              >
+                <Badge
+                  badgeContent={returnStatus.status === 'partial' && returnStatus.total > 0 ? `${returnStatus.returned}/${returnStatus.total}` : '!'}
+                  color={returnStatus.status === 'full' ? 'error' : 'warning'}
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      fontSize: '0.625rem', // 10px = 0.625rem
+                      minWidth: '1.25rem', // 20px = 1.25rem
+                      height: '1.25rem', // 20px = 1.25rem
+                      padding: '0 0.25rem', // 4px = 0.25rem
+                    }
+                  }}
+                >
+                  <WarningIcon
+                    sx={{ 
+                      fontSize: '1.5rem', // 24px = 1.5rem 
+                      color: returnStatus.status === 'full' ? '#DC2626' : '#D97706', 
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                      '&:hover': {
+                        backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
+                        color: returnStatus.status === 'full' ? '#DC2626' : '#D97706'
+                      }
+                    }}
+                    onClick={() => {
+                      // TODO: Add alert/warning handler logic - maybe open a modal with return details
+                      console.log('Alert clicked for invoice:', item.id, 'Return info:', item.returnInfo);
+                    }}
+                  />
+                </Badge>
+              </Tooltip>
+            );
+          })()}
         </Box>
       ),
     },
-  ];
+];
 
   // Event handlers
   const handleStartNewSale = () => {
     navigate('/sales/new');
   };
 
-  const handleViewInvoice = (invoiceId: number | string) => {
+  const handleViewInvoice = (invoiceId: number) => {
     setSelectedInvoiceId(invoiceId);
     setIsInvoiceModalOpen(true);
   };
@@ -1025,7 +890,7 @@ export default function SaleHistory() {
 
   const handlePrintToPDF = () => {
     if (!invoiceDetails) return;
-
+    
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const htmlContent = generatePrintHTML({
@@ -1044,9 +909,7 @@ export default function SaleHistory() {
         totalDiscount: invoiceDetails.totalDiscount || '0',
         taxAmount: invoiceDetails.taxAmount || '0',
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
-        patientType: invoiceDetails.patientType || 'Out Patient',
         labels: SALES_RECEIPT_LABELS,
-        splitPayments: invoiceDetails.splitPayments || []
       });
 
       printWindow.document.write(htmlContent);
@@ -1084,7 +947,7 @@ export default function SaleHistory() {
 
   const handleConfirmDialogConfirm = () => {
     setIsConfirmDialogOpen(false);
-
+    
     if (pendingAction === 'save') {
       // Handle save logic here
       // You can call handleAfterSave() here or implement save logic
@@ -1093,79 +956,163 @@ export default function SaleHistory() {
       // Handle print logic here
       handlePrintToPDF();
     }
-
+    
     setPendingAction(null);
     // Close the invoice modal after confirmation
     setIsInvoiceModalOpen(false);
     setSelectedInvoiceId(null);
   };
 
-  const handleEditInvoice = (invoiceId: number | string) => {
-    const invoice = salesHistoryData.find(item => String(item.id) === String(invoiceId));
+  const handleEditInvoice = (invoiceId: number) => {
+    const invoice = salesHistoryData.find(item => item.id === invoiceId);
     if (invoice) {
       console.log('🔍 Edit invoice clicked:', {
         frontendInvoiceId: invoiceId,
         invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        totalAmount: invoice.totalAmount
       });
-
-      // Simple navigation - let the target page handle fetching
-      navigate('/sales/receipt', {
-        state: {
-          isEditMode: true,
-          invoiceId: invoice.id,
-          invoiceNumber: invoice.invoiceNumber,
-          invoiceDate: invoice.invoiceDate,
+      
+      // Get invoice details from storage first (this has the correct database ID)
+      const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
+      
+      // Determine the database invoice ID to use for fetching
+      let databaseInvoiceId: number = 0;
+      
+      // Priority 1: Use the ID from saved item (this is the database invoice ID we stored)
+      if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
+        databaseInvoiceId = savedItem.id;
+        console.log('✅ Using database invoice ID from saved item:', databaseInvoiceId);
+      } 
+      // Priority 2: Parse from invoice number (e.g., "INV8" -> 8)
+      else if (invoice.invoiceNumber) {
+        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
+        const parsed = parseInt(cleanedNumber, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
+          databaseInvoiceId = parsed;
+          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
+        }
+      }
+      // Priority 3: Use frontend ID if it's reasonable (not a timestamp)
+      else if (invoiceId && invoiceId < 1000000) {
+        databaseInvoiceId = invoiceId;
+        console.log('⚠️ Using frontend invoice ID as fallback:', databaseInvoiceId);
+      }
+      
+      console.log('🔍 Final database invoice ID to use:', databaseInvoiceId);
+      
+      if (savedItem) {
+        // Use saved invoice details
+        const invoiceData = {
+          customerName: savedItem.customerName || invoice.customerName,
+          customerMobile: savedItem.customerMobile || invoice.customerMobile,
+          customerCity: savedItem.customerCity || '',
+          doctorName: savedItem.doctorName || invoice.doctorName,
+          doctorMobile: savedItem.doctorMobile || '',
+          doctorEmail: savedItem.doctorEmail || '',
+          paymentMode: savedItem.paymentMode || 'Cash',
+          insuranceCompany: savedItem.insuranceCompany || '',
+          invoiceNumber: savedItem.invoiceNumber || invoice.invoiceNumber,
+          invoiceDate: savedItem.invoiceDate || invoice.invoiceDate,
+          salesItems: savedItem.items || savedItem.salesItems || [],
+          totalValue: savedItem.totalValue || savedItem.totalPayableAmount || invoice.totalAmount.toString(),
+          totalDiscount: savedItem.totalDiscount || '0',
+          taxAmount: savedItem.taxAmount || '0',
+          totalPayableAmount: savedItem.totalPayableAmount || invoice.totalAmount.toString(),
+        };
+        
+        navigate('/sales/receipt', { 
+          state: { 
+            isEditMode: true,
+            invoiceId: databaseInvoiceId || invoice.id, // Use parsed database ID, fallback to frontend ID
+            invoice_id: databaseInvoiceId || invoice.id, // Also include as invoice_id for API compatibility
+            ...invoiceData
+          } 
+        });
+      } else {
+        // Construct from basic invoice data
+        const invoiceData = {
           customerName: invoice.customerName,
           customerMobile: invoice.customerMobile,
-          customerCity: invoice.customerCity,
+          customerCity: '',
           doctorName: invoice.doctorName,
-          doctorMobile: invoice.doctorMobile,
-          doctorEmail: invoice.doctorEmail,
-          paymentMode: invoice.paymentMode,
-          insuranceCompany: invoice.insuranceCompany,
-          totalAmount: invoice.totalAmount,
-          totalDiscount: invoice.totalDiscount,
-          taxAmount: invoice.taxAmount,
-          totalPayableAmount: invoice.totalPayableAmount
-        }
-      });
+          doctorMobile: '',
+          doctorEmail: '',
+          paymentMode: 'Cash',
+          insuranceCompany: '',
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          salesItems: [],
+          totalValue: invoice.totalAmount.toString(),
+          totalDiscount: '0',
+          taxAmount: '0',
+          totalPayableAmount: invoice.totalAmount.toString(),
+        };
+        
+        navigate('/sales/receipt', { 
+          state: { 
+            isEditMode: true,
+            invoiceId: databaseInvoiceId || invoice.id, // Use parsed database ID, fallback to frontend ID
+            invoice_id: databaseInvoiceId || invoice.id, // Also include as invoice_id for API compatibility
+            ...invoiceData
+          } 
+        });
+      }
     }
   };
 
-  const handleReturnInvoice = (invoiceId: number | string) => {
-    const invoice = salesHistoryData.find(item => String(item.id) === String(invoiceId));
+  const handleReturnInvoice = useCallback((invoiceId: number) => {
+    const invoice = salesHistoryData.find(item => item.id === invoiceId);
     if (invoice) {
-      console.log('🔍 Return invoice clicked:', {
-        frontendInvoiceId: invoiceId,
-        invoiceNumber: invoice.invoiceNumber,
-      });
-
-      // Simple navigation - let the target page handle fetching
-      navigate('/sales/sale-return', {
-        state: {
-          invoiceId: invoice.id,
+      // Get invoice details from storage - use memoized savedHistory instead of calling storage again
+      const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
+      const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
+      
+      // Determine the database invoice ID to use for fetching
+      // Priority 1: Use the ID from saved item (this is the database invoice ID we stored when sale was submitted)
+      let databaseInvoiceId: number = 0;
+      
+      if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
+        databaseInvoiceId = savedItem.id;
+        console.log('✅ Using database invoice ID from saved item:', databaseInvoiceId);
+      } 
+      // Priority 2: Parse from invoice number (e.g., "INV56" -> 56)
+      else if (invoice.invoiceNumber) {
+        // Remove "INV" or "RB" prefix if present and parse
+        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+        const parsed = parseInt(cleanedNumber, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
+          databaseInvoiceId = parsed;
+          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
+        }
+      }
+      // Priority 3: Use frontend ID if it's reasonable (not a timestamp)
+      else if (invoiceId && invoiceId < 1000000) {
+        databaseInvoiceId = invoiceId;
+        console.log('⚠️ Using frontend invoice ID as fallback:', databaseInvoiceId);
+      }
+      
+      console.log('🔍 Final database invoice ID to use for return:', databaseInvoiceId);
+      
+      // Navigate immediately without blocking
+      navigate('/sales/sale-return', { 
+        state: { 
+          invoiceId: databaseInvoiceId || invoice.id, // Use database invoice ID, fallback to invoice.id
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
           customerName: invoice.customerName,
           customerMobile: invoice.customerMobile,
-          customerCity: invoice.customerCity,
           doctorName: invoice.doctorName,
-          doctorMobile: invoice.doctorMobile,
-          doctorEmail: invoice.doctorEmail,
-          paymentMode: invoice.paymentMode,
-          insuranceCompany: invoice.insuranceCompany,
           username: invoice.username,
           totalAmount: invoice.totalAmount,
-          totalDiscount: invoice.totalDiscount,
-          taxAmount: invoice.taxAmount,
-          totalPayableAmount: invoice.totalPayableAmount,
-          // Do NOT pass items - let the return page fetch them
-        }
+          items: invoiceItems, // Pass the invoice items
+          paymentMode: savedItem?.paymentMode || 'Cash'
+        } 
       });
     }
-  };
+  }, [salesHistoryData, savedHistory, navigate]);
 
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setCurrentSearchTerm(event.target.value);
   };
 
@@ -1181,22 +1128,23 @@ export default function SaleHistory() {
   };
 
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
+        setCurrentPage(newPage);
   };
 
   const handleSortRequest = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
     } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
       setSortConfig({ key: 'invoiceDate', direction: 'desc' });
       return;
-    }
-    setSortConfig({ key, direction });
+        }
+        setSortConfig({ key, direction });
   };
 
-  return (
+    return (
     <Box sx={{ p: 0 }}>
+      {/* Page Title and Action Button */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>
           {SALES_HISTORY_LABELS.PAGE_TITLE}
@@ -1224,9 +1172,10 @@ export default function SaleHistory() {
         </StandardButton>
       </Box>
 
-      <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
+      {/* Search and Filter Section */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
         justifyContent: 'space-between',
         mb: 3,
         bgcolor: '#F6F8FB',
@@ -1255,20 +1204,20 @@ export default function SaleHistory() {
               borderRadius: '0.75rem', // 12px = 0.75rem
               backgroundColor: '#fff',
               boxShadow: 'inset 0 0 0 0.0625rem #BFD1E6', // 1px = 0.0625rem
-              '& .MuiOutlinedInput-notchedOutline': {
+              '& .MuiOutlinedInput-notchedOutline': { 
                 border: 'none !important',
                 display: 'none !important'
               },
-              '&:hover': {
+              '&:hover': { 
                 boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
-                '& .MuiOutlinedInput-notchedOutline': {
+                '& .MuiOutlinedInput-notchedOutline': { 
                   border: 'none !important',
                   display: 'none !important'
                 },
               },
-              '&.Mui-focused': {
+              '&.Mui-focused': { 
                 boxShadow: 'inset 0 0 0 1px #BFD1E6 !important',
-                '& .MuiOutlinedInput-notchedOutline': {
+                '& .MuiOutlinedInput-notchedOutline': { 
                   border: 'none !important',
                   display: 'none !important'
                 },
@@ -1288,7 +1237,7 @@ export default function SaleHistory() {
         />
         <StandardButton
           startIcon={
-            showFilters
+            showFilters 
               ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
               : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
           }
@@ -1313,11 +1262,11 @@ export default function SaleHistory() {
 
       {/* Custom Filters Section */}
       {showFilters && (
-        <Box sx={{
-          display: 'flex',
-          gap: 3,
-          mb: 3,
-          alignItems: 'flex-start',
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 3, 
+          mb: 3, 
+          alignItems: 'flex-start', 
           justifyContent: 'space-between',
           flexWrap: 'wrap'
         }}>
@@ -1350,34 +1299,9 @@ export default function SaleHistory() {
                     }}
                   />
                 )}
-                slotProps={{
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        borderRadius: "12px",
-                        marginTop: "4px",
-                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                        border: "1px solid #E6ECF5",
-                        height: "auto !important",
-                        minHeight: "unset !important",
-                        padding: "0px !important",
-                        overflow: "hidden",
-                        "& .MuiAutocomplete-listbox": {
-                          padding: "0px !important",
-                          maxHeight: "300px !important",
-                          minHeight: "unset !important",
-                          overflow: "auto",
-                        },
-                      },
-                    },
-                  },
-                }}
                 ListboxProps={{
                   sx: {
-                    maxHeight: '300px !important',
-                    padding: '0px !important',
-                    minHeight: 'unset !important',
-                    overflow: 'auto',
+                    maxHeight: '300px',
                     '& .MuiAutocomplete-option': {
                       fontSize: '14px',
                       fontWeight: 500,
@@ -1417,34 +1341,9 @@ export default function SaleHistory() {
                     }}
                   />
                 )}
-                slotProps={{
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        borderRadius: "12px",
-                        marginTop: "4px",
-                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                        border: "1px solid #E6ECF5",
-                        height: "auto !important",
-                        minHeight: "unset !important",
-                        padding: "0px !important",
-                        overflow: "hidden",
-                        "& .MuiAutocomplete-listbox": {
-                          padding: "0px !important",
-                          maxHeight: "300px !important",
-                          minHeight: "unset !important",
-                          overflow: "auto",
-                        },
-                      },
-                    },
-                  },
-                }}
                 ListboxProps={{
                   sx: {
-                    maxHeight: '300px !important',
-                    padding: '0px !important',
-                    minHeight: 'unset !important',
-                    overflow: 'auto',
+                    maxHeight: '300px',
                     '& .MuiAutocomplete-option': {
                       fontSize: '14px',
                       fontWeight: 500,
@@ -1484,34 +1383,9 @@ export default function SaleHistory() {
                     }}
                   />
                 )}
-                slotProps={{
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        borderRadius: "12px",
-                        marginTop: "4px",
-                        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                        border: "1px solid #E6ECF5",
-                        height: "auto !important",
-                        minHeight: "unset !important",
-                        padding: "0px !important",
-                        overflow: "hidden",
-                        "& .MuiAutocomplete-listbox": {
-                          padding: "0px !important",
-                          maxHeight: "300px !important",
-                          minHeight: "unset !important",
-                          overflow: "auto",
-                        },
-                      },
-                    },
-                  },
-                }}
                 ListboxProps={{
                   sx: {
-                    maxHeight: '300px !important',
-                    padding: '0px !important',
-                    minHeight: 'unset !important',
-                    overflow: 'auto',
+                    maxHeight: '300px',
                     '& .MuiAutocomplete-option': {
                       fontSize: '14px',
                       fontWeight: 500,
@@ -1600,11 +1474,11 @@ export default function SaleHistory() {
           sortConfig={sortConfig}
           searchAndFilterConfig={{ filterOptions: [] }}
           currentSearchTerm=""
-          onSearchChange={() => { }}
+          onSearchChange={() => {}}
           showFilters={false}
-          onShowFiltersToggle={() => { }}
+          onShowFiltersToggle={() => {}}
           currentFilterKey=""
-          onFilterSelect={() => { }}
+          onFilterSelect={() => {}}
           currentFilter={{}}
           emptyMessage={SALES_HISTORY_LABELS.EMPTY_MESSAGE}
         />
@@ -1632,13 +1506,10 @@ export default function SaleHistory() {
               totalDiscount={invoiceDetails.totalDiscount || '0'}
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
-              splitPayments={invoiceDetails.splitPayments || []}
-              patientType={invoiceDetails.patientType || 'Out Patient'}
               onCancel={handleCancelPrint}
               onPrint={handlePrintClick}
               onSaveClick={handleSaveClick}
               hideActionButtons={true}
-              showHospitalDetails={false}
             />
           }
           onClose={handleCloseInvoiceModal}
