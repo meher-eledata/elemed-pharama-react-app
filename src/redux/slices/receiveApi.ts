@@ -77,7 +77,7 @@ export interface EditReceiptRequest {
     discount: number;
     mrp: number;
     selling_price: number;
-    package_info?: string;
+    pack_qty?: string;
   }>;
   Edited: Array<{
     receipt_line_id: number;
@@ -96,7 +96,7 @@ export interface EditReceiptRequest {
     discount: string;
     mrp: string;
     selling_price: string;
-    package_info?: string;
+    pack_qty?: string;
   }>;
 }
 
@@ -380,7 +380,7 @@ export const receiveApi = createApi({
           discount: number;
           mrp?: number;
           selling_price?: number;
-          package_info?: string;
+          pack_qty?: string;
         }>;
       }
     >({

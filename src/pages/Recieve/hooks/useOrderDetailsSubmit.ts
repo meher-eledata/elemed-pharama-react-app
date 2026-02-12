@@ -134,7 +134,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         discount: Number(row.disc) || 0,
         mrp: Number(row.mrp) || 0,
         selling_price: Number(row.sp) || 0,
-        package_info: row.pack || ""
+        pack_qty: row.pack || ""
       };
     });
 
@@ -213,7 +213,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           discount: typeof row.disc === 'number' ? row.disc : 0,
           mrp: row.mrp,
           selling_price: row.sp,
-          package_info: row.pack
+          pack_qty: row.pack
         };
       });
 
@@ -266,7 +266,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           discount: (typeof row.disc === 'number' ? row.disc : 0).toString(),
           mrp: row.mrp.toString(),
           selling_price: row.sp.toString(),
-          package_info: (row.pack || '').toString()
+          pack_qty: (row.pack || '').toString()
         };
       });
 

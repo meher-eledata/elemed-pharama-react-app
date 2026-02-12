@@ -191,7 +191,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           expiryDate: expiryDateValue,
           pp: parseFloat(line.unit_price) || 0,
           sp: parseFloat(line.selling_price) || parseFloat(line.unit_price) || 0,
-          pack: line.package_info || line.packing_info || '',
+          pack: line.pack_qty || line.packing_info || '',
           mrp: parseFloat(line.mrp) || parseFloat(line.unit_price) || 0,
           cgst: parseFloat(line.cgst) || 0,
           sgst: parseFloat(line.sgst) || 0,

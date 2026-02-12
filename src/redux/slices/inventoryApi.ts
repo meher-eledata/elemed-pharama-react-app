@@ -46,14 +46,14 @@ export interface AddProductResponse {
     brand_id: string;
     hsn_id: string;
     description: string | null;
-    package_info: string;
+    package_info: string; // Not Used for Product. Stored in Inventory Batch
     unit_of_measure: string;
     dosage: string | null;
     current_qty: number;
     min_qty: number;
     max_qty: number;
-    mrp: number;
-    selling_price: number;
+    mrp: number; // Not Used for Product. Stored in Inventory Batch
+    selling_price: number; // Not Used for Product. No longer stored
     discount: string;
     created_at: string;
     updated_at: string;
