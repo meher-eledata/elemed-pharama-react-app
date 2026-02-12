@@ -34,7 +34,7 @@ export const orderLabels = {
   discount: 'Discount',
   mrp: 'MRP',
   sellingPrice: 'Selling Price',
-  packingInfo: 'Packing Info',
+  packageQty: 'Package Qty',
   actions: 'Actions',
 
   // Buttons

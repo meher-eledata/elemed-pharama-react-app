@@ -17,7 +17,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       const discountMultiplier = 1 - ((item.discount || 0) / 100);
       amount = (item.sp * item.quantity * discountMultiplier).toFixed(2);
     }
-    
+
     return {
       id: item.id,
       productName: item.name,
@@ -53,7 +53,7 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
   }, 0);
   const totalDiscount = salesItems.reduce((sum, item) => sum + parseFloat(item.discount || '0'), 0);
   // Calculate total tax amount from CGST, SGST, and IGST
-  const taxAmount = salesItems.reduce((sum, item) => 
+  const taxAmount = salesItems.reduce((sum, item) =>
     sum + parseFloat(item.cgst || '0') + parseFloat(item.sgst || '0') + parseFloat(item.igst || '0'), 0
   );
   // Total payable amount is the sum of all item amounts (which already includes discount and taxes)
@@ -92,6 +92,10 @@ export const generatePrintHTML = (data: {
   taxAmount: string;
   totalPayableAmount: string;
   labels: any;
+  patientType?: string;
+  pageSize?: 'A4' | 'A5';
+  brandIcon?: string;
+  splitPayments?: any[];
 }): string => {
   const {
     customerName,
@@ -110,7 +114,11 @@ export const generatePrintHTML = (data: {
     taxAmount,
     totalPayableAmount,
     labels,
+    patientType,
+    pageSize = 'A4',
   } = data;
+
+  const isA5 = pageSize === 'A5';
 
   return `
     <html>
@@ -119,8 +127,8 @@ export const generatePrintHTML = (data: {
         <style>
           @media print {
             @page { 
-              margin: 0.5in;
-              size: A4;
+              margin: ${isA5 ? '0.3in' : '0.5in'};
+              size: ${pageSize} ${isA5 ? 'portrait' : 'landscape'};
             }
             * {
               -webkit-print-color-adjust: exact !important;
@@ -131,6 +139,10 @@ export const generatePrintHTML = (data: {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
               color-adjust: exact !important;
+              width: 100%;
+              height: 100%;
+              margin: 0;
+              padding: 0;
             }
           }
           * {
@@ -141,28 +153,29 @@ export const generatePrintHTML = (data: {
           }
           body { 
             font-family: 'Lexend', sans-serif; 
-            margin: 20px;
-            padding: 20px;
+            margin: ${isA5 ? '10px' : '20px'};
+            padding: ${isA5 ? '10px' : '20px'};
             color: #1A212B;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+            font-size: ${isA5 ? '10px' : '12px'};
           }
           .receipt-header { 
             text-align: left; 
-            margin-bottom: 30px; 
+            margin-bottom: ${isA5 ? '15px' : '30px'}; 
           }
           .receipt-title { 
-            font-size: 28px; 
+            font-size: ${isA5 ? '20px' : '28px'}; 
             font-weight: bold; 
-            margin-bottom: 20px; 
+            margin-bottom: ${isA5 ? '10px' : '20px'}; 
             color: #1A212B;
           }
           .receipt-details { 
             display: flex; 
             flex-direction: column;
             gap: 0px; 
-            margin-bottom: 40px; 
+            margin-bottom: ${isA5 ? '20px' : '40px'}; 
             border: 1px solid #E5E7EB; 
             border-radius: 8px; 
             overflow: hidden;
@@ -177,9 +190,9 @@ export const generatePrintHTML = (data: {
           }  
           .detail-section { 
             flex: 1; 
-            min-width: 180px;
+            min-width: ${isA5 ? '120px' : '180px'};
             background-color: #F9FAFB !important; 
-            padding: 12px 8px; 
+            padding: ${isA5 ? '8px 6px' : '12px 8px'}; 
             border-right: 2px solid #9CA3AF; 
             border-bottom: 2px solid #9CA3AF;
             box-sizing: border-box;
@@ -200,27 +213,27 @@ export const generatePrintHTML = (data: {
           }
           .detail-title { 
             font-weight: bold; 
-            margin-bottom: 12px; 
-            font-size: 14px;
+            margin-bottom: ${isA5 ? '6px' : '12px'}; 
+            font-size: ${isA5 ? '11px' : '14px'};
             color: #1A212B;
           }
           .detail-item { 
-            font-size: 11px; 
-            margin-bottom: 6px;
+            font-size: ${isA5 ? '9px' : '11px'}; 
+            margin-bottom: ${isA5 ? '3px' : '6px'};
             color: #374151;
             line-height: 1.4;
           }
           .detail-item.email-item {
-            font-size: 10px;
+            font-size: ${isA5 ? '8px' : '10px'};
           }
           .items-section { 
-            margin-bottom: 40px;
+            margin-bottom: ${isA5 ? '20px' : '40px'};
             page-break-inside: avoid;
           }
           .items-title { 
             font-weight: bold; 
-            margin-bottom: 16px; 
-            font-size: 14px;
+            margin-bottom: ${isA5 ? '8px' : '16px'}; 
+            font-size: ${isA5 ? '12px' : '14px'};
             color: #1A212B;
           }
           .items-table { 
@@ -236,9 +249,9 @@ export const generatePrintHTML = (data: {
           }
           .items-table th { 
             background-color: #C7D2FE !important; 
-            padding: 18px 12px; 
+            padding: ${isA5 ? '8px 4px' : '18px 12px'}; 
             font-weight: bold; 
-            font-size: 11px; 
+            font-size: ${isA5 ? '9px' : '11px'}; 
             text-align: left;
             color: #1A212B !important;
             border-bottom: 2px solid #A5B4FC !important;
@@ -256,8 +269,8 @@ export const generatePrintHTML = (data: {
             }
           }
           .items-table td { 
-            padding: 18px 12px; 
-            font-size: 11px; 
+            padding: ${isA5 ? '8px 4px' : '18px 12px'}; 
+            font-size: ${isA5 ? '9px' : '11px'}; 
             background-color: #FFFFFF !important; 
             color: #374151 !important;
             border-top: 1px solid #E5E7EB;
@@ -275,13 +288,13 @@ export const generatePrintHTML = (data: {
           }
           .summary { 
             background-color: #C7D2FE !important; 
-            padding: 20px 24px; 
+            padding: ${isA5 ? '10px 12px' : '20px 24px'}; 
             border-radius: 8px; 
             display: flex; 
             justify-content: space-between; 
             align-items: flex-start;
             page-break-inside: avoid;
-            margin-top: 30px;
+            margin-top: ${isA5 ? '15px' : '30px'};
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
@@ -305,14 +318,14 @@ export const generatePrintHTML = (data: {
           }
           .summary-left { 
             display: flex; 
-            gap: 60px; 
-            font-size: 12px;
+            gap: ${isA5 ? '30px' : '60px'}; 
+            font-size: ${isA5 ? '10px' : '12px'};
             color: #1A212B;
           }
           .summary-item {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: ${isA5 ? '3px' : '6px'};
           }
           .summary-label {
             font-weight: 500;
@@ -320,23 +333,23 @@ export const generatePrintHTML = (data: {
           }
           .summary-value {
             font-weight: 700;
-            font-size: 14px;
+            font-size: ${isA5 ? '12px' : '14px'};
             color: #1A212B;
           }
           .summary-right { 
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: ${isA5 ? '3px' : '6px'};
             align-items: flex-end;
             text-align: right;
           }
           .summary-right-label {
-            font-size: 14px;
+            font-size: ${isA5 ? '12px' : '14px'};
             font-weight: 500;
             color: #1A212B;
           }
           .summary-right-value {
-            font-size: 20px;
+            font-size: ${isA5 ? '16px' : '20px'};
             font-weight: 700;
             color: #1A212B;
           }
@@ -369,11 +382,11 @@ export const generatePrintHTML = (data: {
               <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
               <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>
               ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
-                ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
-                : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() 
-                  ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
-                  : ''
-              }
+      ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
+      : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim()
+        ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
+        : ''
+    }
             </div>
             <div class="detail-section">
               <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>

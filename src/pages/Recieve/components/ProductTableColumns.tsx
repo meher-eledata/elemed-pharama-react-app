@@ -81,7 +81,7 @@ export const getProductTableColumns = ({
     },
     {
       key: "pack",
-      header: orderLabels.packingInfo,
+      header: orderLabels.packageQty,
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -193,6 +193,7 @@ export const getProductTableColumns = ({
     },
     {
       key: "mrp",
+      columnWidth: "80px",
       header: orderLabels.mrp,
       sortable: false,
       render: (row) => (
@@ -233,26 +234,7 @@ export const getProductTableColumns = ({
         )
       ),
     },
-    {
-      key: "sp",
-      header: orderLabels.sellingPrice,
-      sortable: false,
-      render: (row) => (
-        editingRowId === row.id ? (
-          <TextField
-            size="small"
-            type="number"
-            value={editingData.sp || ""}
-            onChange={(e) => updateEditingData("sp", Number(e.target.value))}
-            variant="outlined"
-            fullWidth
-            sx={numberInputStyles}
-          />
-        ) : (
-          <span>{row.sp || 0}</span>
-        )
-      ),
-    },
+
     {
       key: "cgst",
       header: `${orderLabels.cgst} (%)`,

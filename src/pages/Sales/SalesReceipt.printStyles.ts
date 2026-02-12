@@ -43,7 +43,7 @@ export const getPrintStyles = (pageSize: 'A4' | 'A5' = 'A4') => `
     .MuiTable-root,
     .MuiTable-root * {
       width: 100% !important;
-      min-width: ${pageSize === 'A4' ? '1600px' : '850px'} !important;
+      min-width: ${pageSize === 'A4' ? '1600px' : '100%'} !important;
       max-width: none !important;
       table-layout: fixed !important;
       border-collapse: collapse !important;
@@ -53,8 +53,8 @@ export const getPrintStyles = (pageSize: 'A4' | 'A5' = 'A4') => `
     .MuiTableCell-root,
     .MuiTableCell-root * {
       white-space: nowrap !important;
-      padding: 4px 6px !important;
-      font-size: 11px !important;
+      padding: ${pageSize === 'A4' ? '4px 6px' : '2px 4px'} !important;
+      font-size: ${pageSize === 'A4' ? '11px' : '9px'} !important;
       border: 1px solid #ccc !important;
       overflow: visible !important;
       transform: none !important;
@@ -67,21 +67,21 @@ export const getPrintStyles = (pageSize: 'A4' | 'A5' = 'A4') => `
       font-weight: 600 !important;
     }
     
-    .MuiTable-root .MuiTableCell-root:nth-child(1) { width: ${pageSize === 'A4' ? '25%' : '20%'} !important; min-width: ${pageSize === 'A4' ? '160px' : '100px'} !important; max-width: none !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(2) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(3) { width: 6% !important; min-width: ${pageSize === 'A4' ? '55px' : '40px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(4) { width: 7% !important; min-width: ${pageSize === 'A4' ? '65px' : '50px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(5) { width: 6% !important; min-width: ${pageSize === 'A4' ? '60px' : '45px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(6) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(7) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(8) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(9) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '30px'} !important; }
-    .MuiTable-root .MuiTableCell-root:nth-child(10) { width: 18% !important; min-width: ${pageSize === 'A4' ? '90px' : '70px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(1) { width: ${pageSize === 'A4' ? '25%' : '20%'} !important; min-width: ${pageSize === 'A4' ? '160px' : '80px'} !important; max-width: none !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(2) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '25px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(3) { width: 6% !important; min-width: ${pageSize === 'A4' ? '55px' : '30px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(4) { width: 7% !important; min-width: ${pageSize === 'A4' ? '65px' : '40px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(5) { width: 6% !important; min-width: ${pageSize === 'A4' ? '60px' : '35px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(6) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '25px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(7) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '25px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(8) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '25px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(9) { width: 5% !important; min-width: ${pageSize === 'A4' ? '45px' : '25px'} !important; }
+    .MuiTable-root .MuiTableCell-root:nth-child(10) { width: 18% !important; min-width: ${pageSize === 'A4' ? '90px' : '60px'} !important; }
     .MuiTable-root .MuiTableCell-root:nth-child(11) { width: 13% !important; min-width: 80px !important; display: none !important; }
     
     @page {
       size: ${pageSize} ${pageSize === 'A4' ? 'landscape' : 'portrait'} !important;
-      margin: 0.3in !important;
+      margin: ${pageSize === 'A4' ? '0.3in' : '0.2in'} !important;
     }
     
     [class*="MuiTable"],
