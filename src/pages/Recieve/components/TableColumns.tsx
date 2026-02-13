@@ -86,6 +86,13 @@ export const getOrderReceiveColumns = (
       )
     },
     {
+      key: "invoice_number", // Add Invoice Number column
+      header: "Invoice Number",
+      render: (row) => (
+        <span>{row.invoice_number || '-'}</span>
+      )
+    },
+    {
       key: "supplier",
       header: ORDER_RECEIVE_TABLE_HEADERS.SUPPLIER_NAME,
       render: (row) => (
