@@ -587,7 +587,9 @@ export const executeSave = async ({
     });
 
     if (skipNavigation) {
-      if (onSuccess) onSuccess();
+      if (onSuccess) {
+        onSuccess();
+      }
       return;
     }
 

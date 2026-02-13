@@ -413,8 +413,8 @@ const SalesReceipt: React.FC = () => {
                 setSelectedDoctor(invoiceData.doctorName);
                 shouldFetchDoctorInfoRef.current = true;
               }
-                  setDoctorMobile(invoiceData.doctorMobile ?? '');
-                  setDoctorEmail(invoiceData.doctorEmail ?? '');
+              setDoctorMobile(invoiceData.doctorMobile ?? '');
+              setDoctorEmail(invoiceData.doctorEmail ?? '');
               if (invoiceData.paymentMode) setPaymentMode(invoiceData.paymentMode);
               if (invoiceData.insuranceCompany) setInsuranceCompany(invoiceData.insuranceCompany);
               if (invoiceData.patientType) setPatientType(invoiceData.patientType);
@@ -965,7 +965,10 @@ const SalesReceipt: React.FC = () => {
         // Execute save first, but skip normal navigation
         await executeSaveWrapper(true, () => {
           // After successful save, open the print preview
-          setIsPrintModalOpen(true);
+          // Add a small delay to ensure the confirmation dialog is fully closed and focus is returned
+          setTimeout(() => {
+            setIsPrintModalOpen(true);
+          }, 300);
         });
         // Reset pending action
         setPendingAction(null);

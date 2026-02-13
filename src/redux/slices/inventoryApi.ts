@@ -71,6 +71,8 @@ export interface Batch {
   batch_number: number | string; // Batch number (can be string like "CTZ-2026-06-A")
   current_qty: number;
   expiry_date: string;
+  mrp?: number;
+  pack_qty?: number;
 }
 
 export interface ProductInfo {
@@ -130,6 +132,8 @@ export interface AdjustInventoryBatchLine {
   old_qty: number;
   new_qty: number;
   expiry_date: string;
+  mrp: number;
+  pack_qty: number;
 }
 
 export interface AdjustInventoryBatchesRequest {

@@ -49,6 +49,12 @@ type BatchRow = {
   expiryDate: string;
   oldExpiryDate: string;
   quantityInput?: string;
+  mrp: number;
+  oldMrp: number;
+  packQty: number;
+  oldPackQty: number;
+  mrpInput?: string;
+  packQtyInput?: string;
 };
 
 type SelectedBrand = Brand | null;
@@ -154,7 +160,7 @@ const InventoryAdjustment: React.FC = () => {
   const [isLoadingProductOptions, setIsLoadingProductOptions] = useState(false);
   const [selectedProductById, setSelectedProductById] = useState<{ id: number; name: string } | null>(null);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
-  const [originalValues, setOriginalValues] = useState<{ quantity: number; expiryDate: string } | null>(null);
+  const [originalValues, setOriginalValues] = useState<{ quantity: number; expiryDate: string; mrp: number; packQty: number } | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   // Ensure consistent border radius from the start
@@ -256,7 +262,11 @@ const InventoryAdjustment: React.FC = () => {
           quantity: batch.current_qty,
           oldQuantity: batch.current_qty, // Store original quantity
           expiryDate: expiryDateStr,
-          oldExpiryDate: expiryDateStr // Store original expiry date
+          oldExpiryDate: expiryDateStr, // Store original expiry date
+          mrp: batch.mrp || 0,
+          oldMrp: batch.mrp || 0,
+          packQty: batch.pack_qty || 1,
+          oldPackQty: batch.pack_qty || 1,
         };
       });
 
@@ -349,6 +359,14 @@ const InventoryAdjustment: React.FC = () => {
         case 'quantity':
           aValue = a.quantity;
           bValue = b.quantity;
+          break;
+        case 'mrp':
+          aValue = a.mrp;
+          bValue = b.mrp;
+          break;
+        case 'packQty':
+          aValue = a.packQty;
+          bValue = b.packQty;
           break;
         case 'expiryDate':
           aValue = a.expiryDate;
@@ -446,6 +464,49 @@ const InventoryAdjustment: React.FC = () => {
     );
   };
 
+  const handleMrpChange = (batchId: string, value: string) => {
+    // Allow numeric input (float)
+    const numericValue = value.replace(/[^0-9.]/g, '');
+
+    // Prevent multiple decimals
+    if ((numericValue.match(/\./g) || []).length > 1) return;
+
+    setBatchRows((prev) =>
+      prev.map((batch) => {
+        if (batch.id === batchId) {
+          const inputValue = numericValue === '' ? '' : numericValue;
+          const parsed = numericValue === '' ? 0 : parseFloat(numericValue);
+          return {
+            ...batch,
+            mrp: Number.isNaN(parsed) ? 0 : parsed,
+            mrpInput: inputValue
+          };
+        }
+        return batch;
+      })
+    );
+  };
+
+  const handlePackQtyChange = (batchId: string, value: string) => {
+    // Only allow numeric input
+    const numericValue = value.replace(/[^0-9]/g, '');
+
+    setBatchRows((prev) =>
+      prev.map((batch) => {
+        if (batch.id === batchId) {
+          const inputValue = numericValue === '' ? '' : numericValue;
+          const parsed = numericValue === '' ? 0 : parseInt(numericValue, 10);
+          return {
+            ...batch,
+            packQty: Number.isNaN(parsed) ? 0 : parsed,
+            packQtyInput: inputValue
+          };
+        }
+        return batch;
+      })
+    );
+  };
+
   const handleEditRow = (batchId: string) => {
     const batch = batchRows.find(b => b.id === batchId);
     if (batch) {
@@ -454,13 +515,20 @@ const InventoryAdjustment: React.FC = () => {
       // This way cancel restores to the last "checked" state, not the current edited state
       setOriginalValues({
         quantity: batch.oldQuantity,
-        expiryDate: batch.oldExpiryDate
+        expiryDate: batch.oldExpiryDate,
+        mrp: batch.oldMrp,
+        packQty: batch.oldPackQty
       });
-      // Initialize quantityInput with current quantity for editing
+      // Initialize quantityInput, mrpInput, packQtyInput with current values for editing
       setBatchRows((prev) =>
         prev.map((b) =>
           b.id === batchId
-            ? { ...b, quantityInput: b.quantity === 0 ? '' : b.quantity.toString() }
+            ? {
+              ...b,
+              quantityInput: b.quantity === 0 ? '' : b.quantity.toString(),
+              mrpInput: b.mrp === 0 ? '' : b.mrp.toString(),
+              packQtyInput: b.packQty === 0 ? '' : b.packQty.toString()
+            }
             : b
         )
       );
@@ -478,7 +546,11 @@ const InventoryAdjustment: React.FC = () => {
               ...b,
               quantity: originalValues.quantity,
               expiryDate: originalValues.expiryDate,
+              mrp: originalValues.mrp,
+              packQty: originalValues.packQty,
               quantityInput: undefined, // Clear input value
+              mrpInput: undefined,
+              packQtyInput: undefined,
             }
             : b
         )
@@ -495,18 +567,34 @@ const InventoryAdjustment: React.FC = () => {
     setBatchRows((prev) =>
       prev.map((b) => {
         if (b.id === batchId) {
-          // If quantityInput exists, use it to update quantity (convert string to number)
+          // If input exists, use it to update quantity (convert/parse)
           let finalQuantity = b.quantity;
           if (b.quantityInput !== undefined && b.quantityInput !== '') {
             const parsed = parseInt(b.quantityInput, 10);
             finalQuantity = Number.isNaN(parsed) ? 0 : parsed;
           }
 
+          let finalMrp = b.mrp;
+          if (b.mrpInput !== undefined && b.mrpInput !== '') {
+            const parsed = parseFloat(b.mrpInput);
+            finalMrp = Number.isNaN(parsed) ? 0 : parsed;
+          }
+
+          let finalPackQty = b.packQty;
+          if (b.packQtyInput !== undefined && b.packQtyInput !== '') {
+            const parsed = parseInt(b.packQtyInput, 10);
+            finalPackQty = Number.isNaN(parsed) ? 0 : parsed;
+          }
+
           return {
             ...b,
-            quantity: finalQuantity, // Ensure quantity is set from quantityInput if it exists
-            // Keep oldQuantity and oldExpiryDate unchanged - they represent the original loaded values
-            quantityInput: undefined, // Clear input value
+            quantity: finalQuantity,
+            mrp: finalMrp,
+            packQty: finalPackQty,
+            // Keep oldValues unchanged - they represent the original loaded values
+            quantityInput: undefined,
+            mrpInput: undefined,
+            packQtyInput: undefined,
           };
         }
         return b;
@@ -534,7 +622,9 @@ const InventoryAdjustment: React.FC = () => {
       const modifiedBatches = batchRows.filter((batch) => {
         const quantityChanged = batch.quantity !== batch.oldQuantity;
         const expiryDateChanged = batch.expiryDate !== batch.oldExpiryDate;
-        return quantityChanged || expiryDateChanged;
+        const mrpChanged = batch.mrp !== batch.oldMrp;
+        const packQtyChanged = batch.packQty !== batch.oldPackQty;
+        return quantityChanged || expiryDateChanged || mrpChanged || packQtyChanged;
       });
 
       if (modifiedBatches.length === 0) {
@@ -557,6 +647,8 @@ const InventoryAdjustment: React.FC = () => {
           old_qty: batch.oldQuantity,
           new_qty: batch.quantity,
           expiry_date: batch.expiryDate || dayjs().format('YYYY-MM-DD'),
+          mrp: batch.mrp,
+          pack_qty: batch.packQty,
         };
       });
 
@@ -575,6 +667,8 @@ const InventoryAdjustment: React.FC = () => {
               ...b,
               oldQuantity: b.quantity, // Update old quantity to current quantity
               oldExpiryDate: b.expiryDate, // Update old expiry date to current expiry date
+              oldMrp: b.mrp,
+              oldPackQty: b.packQty,
             }
             : b;
         })
@@ -625,7 +719,9 @@ const InventoryAdjustment: React.FC = () => {
     const modifiedBatches = batchRows.filter((batch) => {
       const quantityChanged = batch.quantity !== batch.oldQuantity;
       const expiryDateChanged = batch.expiryDate !== batch.oldExpiryDate;
-      return quantityChanged || expiryDateChanged;
+      const mrpChanged = batch.mrp !== batch.oldMrp;
+      const packQtyChanged = batch.packQty !== batch.oldPackQty;
+      return quantityChanged || expiryDateChanged || mrpChanged || packQtyChanged;
     });
 
     if (modifiedBatches.length === 0) {
@@ -713,6 +809,123 @@ const InventoryAdjustment: React.FC = () => {
                 '& .MuiInputBase-input': {
                   textAlign: 'left',
                 },
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#1f2937',
+                  backgroundColor: 'transparent',
+                  textAlign: 'left',
+                }
+              }}
+            />
+          </Box>
+        );
+      }
+    },
+    {
+      key: 'mrp',
+      header: 'MRP',
+      sortable: true,
+      headerRender: () => (
+        <Box sx={{ textAlign: 'left', width: '100%' }}>MRP</Box>
+      ),
+      render: (batch) => {
+        const isEditing = editingRowId === batch.id;
+        const displayValue = isEditing && batch.mrpInput !== undefined
+          ? batch.mrpInput
+          : (batch.mrp === 0 ? '' : batch.mrp.toString());
+
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <TextField
+              value={displayValue}
+              size="small"
+              type="text"
+              onChange={(event) => handleMrpChange(batch.id, event.target.value)}
+              onBlur={(event) => {
+                const value = event.target.value.trim();
+                if (value === '') {
+                  setBatchRows((prev) =>
+                    prev.map((b) =>
+                      b.id === batch.id
+                        ? { ...b, mrp: 0, mrpInput: '' }
+                        : b
+                    )
+                  );
+                } else {
+                  setBatchRows((prev) =>
+                    prev.map((b) =>
+                      b.id === batch.id
+                        ? { ...b, mrpInput: undefined }
+                        : b
+                    )
+                  );
+                }
+              }}
+              disabled={!isEditing}
+              placeholder="0.00"
+              sx={{
+                ...inputFieldStyles,
+                width: 100,
+                textAlign: 'left',
+                '& .MuiInputBase-input': { textAlign: 'left' },
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#1f2937',
+                  backgroundColor: 'transparent',
+                  textAlign: 'left',
+                }
+              }}
+            />
+          </Box>
+        );
+      }
+    },
+    {
+      key: 'packQty',
+      header: 'Pack Qty',
+      sortable: true,
+      headerRender: () => (
+        <Box sx={{ textAlign: 'left', width: '100%' }}>Pack Qty</Box>
+      ),
+      render: (batch) => {
+        const isEditing = editingRowId === batch.id;
+        const displayValue = isEditing && batch.packQtyInput !== undefined
+          ? batch.packQtyInput
+          : (batch.packQty === 0 ? '' : batch.packQty.toString());
+
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <TextField
+              value={displayValue}
+              size="small"
+              type="text"
+              onChange={(event) => handlePackQtyChange(batch.id, event.target.value)}
+              onBlur={(event) => {
+                const value = event.target.value.trim();
+                if (value === '') {
+                  setBatchRows((prev) =>
+                    prev.map((b) =>
+                      b.id === batch.id
+                        ? { ...b, packQty: 0, packQtyInput: '' }
+                        : b
+                    )
+                  );
+                } else {
+                  setBatchRows((prev) =>
+                    prev.map((b) =>
+                      b.id === batch.id
+                        ? { ...b, packQtyInput: undefined }
+                        : b
+                    )
+                  );
+                }
+              }}
+              inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+              disabled={!isEditing}
+              placeholder="1"
+              sx={{
+                ...inputFieldStyles,
+                width: 80,
+                textAlign: 'left',
+                '& .MuiInputBase-input': { textAlign: 'left' },
                 '& .MuiInputBase-input.Mui-disabled': {
                   WebkitTextFillColor: '#1f2937',
                   backgroundColor: 'transparent',
