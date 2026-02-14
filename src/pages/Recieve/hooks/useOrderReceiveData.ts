@@ -128,6 +128,7 @@ export const useOrderReceiveData = (activeTab: number) => {
           receiptId: receiptId,
           reNo: `RA${receiptId}`,
           poNo: receipt.po_number || String(receipt.po_id),
+          invoice_number: receipt.invoice_number, // Map invoice number from API
           po_id: receipt.po_id,
           supplier: supplierName,
           supplierId: receipt.supplier_id || 0,

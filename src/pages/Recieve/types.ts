@@ -31,6 +31,7 @@ export interface OrderReceiveRow {
   amountPaid?: number; // Amount paid to supplier
   pendingAmount?: number; // Pending amount
   creditAvailable?: number; // Credit available for supplier
+  invoice_number?: string;
 }
 
 export interface PurchaseOrderRow {
