@@ -545,6 +545,89 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     }
   };
 
+  const handleSaveAndPayLater = async () => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      setSaveSuccess(false);
+
+      const validationError = validateForm();
+      if (validationError) {
+        setSaveError(validationError);
+        setIsSaving(false);
+        return;
+      }
+
+      let submitPayload;
+      try {
+        submitPayload = transformFormDataToApiPayload();
+      } catch (validationError: any) {
+        setSaveError(validationError.message || 'Invalid form data.');
+        setIsSaving(false);
+        return;
+      }
+
+      let result;
+      let newReceiptId: number | null = null;
+      try {
+        // Optimistically use RTK Query
+        result = await submitReceipt(submitPayload).unwrap();
+        newReceiptId = result.receipt_id || (result as any).receiptId;
+      } catch (rtkError) {
+        // Fallback to manual fetch
+        if (!newReceiptId) {
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
+          const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(submitPayload)
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+
+          result = await response.json();
+          newReceiptId = result.receipt_id || result.receiptId;
+        }
+      }
+
+      if (newReceiptId) {
+        if (invoiceFile) {
+          try {
+            await uploadReceiptFile({ receiptId: newReceiptId, file: invoiceFile }).unwrap();
+          } catch (uploadError) {
+            console.error('Failed to upload invoice file:', uploadError);
+          }
+        }
+
+        setSaveSuccess(true);
+        // Navigate back to list after success
+        setTimeout(() => {
+          setPharmaTableData([]);
+          setFindProductTerm("");
+          setEditingRowId(null);
+          setEditingData({});
+          setIsProductSelected(false);
+          setSaveSuccess(false);
+          navigate('/receive/order-receive');
+        }, 1500);
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to submit receipt';
+      if (error?.data) {
+        if (typeof error.data === 'string') errorMessage = error.data;
+        else if (error.data.message) errorMessage = error.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      setSaveError(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const deleteReceipt = async () => {
     if (!isEditMode || !receiptId) {
       setDeleteError('No receipt selected for deletion');
@@ -587,6 +670,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     isEditingReceipt,
     proceedWithSave,
     handleProceedToPayment,
+    handleSaveAndPayLater,
     deleteReceipt,
     validateForm,
   };

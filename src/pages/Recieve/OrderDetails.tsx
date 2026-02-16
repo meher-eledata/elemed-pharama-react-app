@@ -482,6 +482,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           >
             {form.isSaving || submit.isSubmittingReceipt ? "Processing..." : form.isEditMode ? "Save" : "Proceed to Payment"}
           </StandardButton>
+          {!form.isEditMode && (
+            <StandardButton
+              variant="secondary"
+              size="large"
+              disabled={!validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
+              onClick={submit.handleSaveAndPayLater}
+              sx={{ height: "48px", width: "160px", fontSize: "12px", marginLeft: "10px" }}
+            >
+              {form.isSaving ? "Processing..." : "Save & Pay Later"}
+            </StandardButton>
+          )}
         </Box>
 
         {form.isEditMode && (
