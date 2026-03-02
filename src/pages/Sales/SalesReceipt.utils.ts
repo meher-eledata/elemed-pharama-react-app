@@ -13,9 +13,8 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
     } else if (item.totalPrice !== undefined) {
       amount = item.totalPrice.toFixed(2);
     } else {
-      // Calculate amount with discount
-      const discountMultiplier = 1 - ((item.discount || 0) / 100);
-      amount = (item.sp * item.quantity * discountMultiplier).toFixed(2);
+      // The SP is now the total selling price for that item's quantity inclusive of discount
+      amount = item.sp.toFixed(2);
     }
 
     return {
@@ -27,9 +26,10 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       expiryDate: item.expiry,
       quantity: item.quantity.toString(),
       type: item.type || 'N/A',
-      unitPrice: item.sp.toString(),
+      unitPrice: item.unit_selling_price ? item.unit_selling_price.toFixed(2) : (item.sp / item.quantity).toFixed(2), // Unit price is the base selling price
       mrp: item.mrp.toString(),
-      discount: (item.sp * item.discount / 100 * item.quantity).toFixed(2),
+      // Calculate original total without discount for receipt display
+      discount: (item.mrp - item.sp).toFixed(2),
       discountPercent: item.discount.toString(),
       discountAuthorizedBy: item.discountAuthorizedBy, // Preserve doctor name
       discountAuthorizedById: item.discountAuthorizedById, // Preserve doctor ID (important for API)

@@ -128,12 +128,12 @@ export const getTableColumns = ({
     {
       key: "mrp",
       header: "MRP",
-      render: (item) => item.mrp
+      render: (item) => item.mrp ? item.mrp.toFixed(2) : "0.00"
     },
     {
       key: "sp",
       header: "SP",
-      render: (item) => item.sp
+      render: (item) => item.sp ? item.sp.toFixed(2) : "0.00"
     },
     {
       key: "expiry",

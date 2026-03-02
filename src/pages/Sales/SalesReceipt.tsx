@@ -347,8 +347,8 @@ const SalesReceipt: React.FC = () => {
                   batch: line.batch_number || line.batch || '',
                   expiryDate: line.expiry_date || line.expiryDate || '',
                   quantity: (line.quantity || line.qty || '1').toString(),
-                  unitPrice: line.rate?.toString() || line.unit_price?.toString() || '0',
-                  mrp: line.mrp?.toString() || '0',
+                  unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(2) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price
+                  mrp: line.mrp ? (parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toString() : '0', // Calculate aggregate MRP for historic invoices
                   discount: line.discount?.toString() || '0',
                   discountPercent: discountPercentValue,
                   cgst: line.cgst?.toString() || '0',

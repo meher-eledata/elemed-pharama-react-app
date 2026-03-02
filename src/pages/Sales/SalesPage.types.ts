@@ -7,6 +7,7 @@ export interface Product {
   avlQty: string;
   mrp: number;
   sp: number;
+  unit_selling_price: number;
   expiry: string;
   quantity: number;
   type: string;

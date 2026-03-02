@@ -79,8 +79,9 @@ export const extractProductId = (apiProducts: any[], productName: string): strin
  */
 export const calculateCartTotal = (cartItems: Product[]): number => {
   return cartItems.reduce((acc, item) => {
-    const discountMultiplier = 1 - ((item.discount || 0) / 100);
-    return acc + (item.sp * item.quantity * discountMultiplier);
+    // The SP is now the total selling price for that item's quantity inclusive of discount
+    // We handle the calculation in the slice/creation
+    return acc + item.sp;
   }, 0);
 };
 
@@ -153,17 +154,22 @@ export const createCartItem = (
     : [];
   const finalProductType = productType || (typesArray.length > 0 ? typesArray[0] : 'UNKNOWN');
 
-  // Always set SP = MRP if discount is 0, otherwise use backend selling_price
-  let sp = validatedData.selling_price;
-  if (discount === 0 || !discount) {
-    sp = validatedData.mrp;
-  }
+  // Always use validatedData.selling_price as the base unit price, fallback to mrp
+  let unitSellingPrice = validatedData.selling_price || validatedData.mrp;
+
+  // Base MRP = Unit Price * Quantity
+  const mrp = unitSellingPrice * qty;
+  // Final SP = Base MRP - Discount
+  const discountMultiplier = 1 - ((discount || 0) / 100);
+  const sp = mrp * discountMultiplier;
+
   return {
     id: Date.now().toString(),
     name: findProduct,
     batch: batch || `BATCH-${Date.now()}`,
     avlQty: qty.toString(),
-    mrp: validatedData.mrp,
+    unit_selling_price: unitSellingPrice,
+    mrp: mrp,
     sp: sp,
     expiry: defaultExpiry,
     quantity: qty,
