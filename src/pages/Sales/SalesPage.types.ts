@@ -23,6 +23,7 @@ export interface Product {
   igst?: string;
   igstPercent?: string;
   amount?: string;
+  pack_qty?: number;
 }
 
 export interface ApiProduct {

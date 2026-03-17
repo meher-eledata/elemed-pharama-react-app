@@ -68,6 +68,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   onAfterSave,
   hideActionButtons = false,
   pageSize = 'a4',
+  brandIcon,
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
   const isA5 = pageSize === 'a5';
@@ -128,16 +129,49 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         maxWidth: containerMaxWidth,
         margin: '0 auto'
       }}>
-        {/* Receipt Header */}
-        <Box sx={{ textAlign: 'left', marginBottom: isA5 ? '16px' : '24px' }}>
-          <Typography sx={{
-            fontSize: headerFontSize,
-            fontWeight: 700,
-            color: '#1A212B',
-            marginBottom: '0'
-          }}>
-            {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
-          </Typography>
+        {/* Branded Receipt Header */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: isA5 ? 'center' : 'space-between',
+          alignItems: 'center',
+          marginBottom: isA5 ? '16px' : '20px',
+          paddingBottom: '10px',
+          borderBottom: '2px solid #1A212B',
+          gap: isA5 ? '20px' : 0
+        }}>
+          <Box sx={{ flex: isA5 ? 'none' : 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+            {brandIcon && (
+              <Box
+                component="img"
+                src={brandIcon}
+                sx={{
+                  width: isA5 ? '70px' : '90px',
+                  height: 'auto',
+                  marginTop: isA5 ? 0 : '-15px',
+                  marginLeft: isA5 ? 0 : '-10px'
+                }}
+                alt="Logo"
+              />
+            )}
+          </Box>
+          <Box sx={{ flex: isA5 ? 'none' : 3, textAlign: isA5 ? 'left' : 'center' }}>
+            <Typography sx={{ fontSize: isA5 ? '16px' : '20px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
+              ELITE PHARMACY
+            </Typography>
+            <Typography sx={{ fontSize: isA5 ? '8px' : '9px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
+              (SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)
+            </Typography>
+            <Typography sx={{ fontSize: isA5 ? '7px' : '8px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
+              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
+              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
+              GSTIN No: 37AAQCS3213C2ZH<br />
+              (M): 0891-2554040, 8096655050
+            </Typography>
+            {/* <Typography sx={{ fontSize: isA5 ? '8px' : '10px', fontWeight: 600, color: '#666', marginTop: '2px' }}>
+              {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
+            </Typography> */}
+          </Box>
+          {!isA5 && <Box sx={{ flex: 1, textAlign: 'right' }}></Box>}
         </Box>
 
         {/* Four Section Layout - 2x2 Grid */}

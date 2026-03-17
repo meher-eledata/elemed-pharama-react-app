@@ -24,6 +24,7 @@ export interface CartItem {
   igst?: string;
   igstPercent?: string;
   amount?: string;
+  pack_qty?: number;
 }
 
 export interface SalesFormData {
@@ -70,15 +71,14 @@ const cartSlice = createSlice({
         existingItem.avlQty = existingItem.quantity.toString(); // Sync avlQty
         const discountMultiplier = 1 - (existingItem.discount / 100);
 
-        // Recalculate mrp and sp
-        existingItem.mrp = existingItem.unit_selling_price * existingItem.quantity;
-        existingItem.sp = existingItem.mrp * discountMultiplier;
-        existingItem.totalPrice = existingItem.sp;
+        // Calculate total amount based on the unit_selling_price, independent of the Box MRP
+        existingItem.totalPrice = existingItem.unit_selling_price * existingItem.quantity * discountMultiplier;
       } else {
+        const discountMultiplier = 1 - (product.discount / 100);
         const newItem: CartItem = {
           ...product,
           quantity: product.quantity,
-          totalPrice: product.sp, // product.sp is already fully calculated in createCartItem
+          totalPrice: product.unit_selling_price * product.quantity * discountMultiplier,
           // Set default tax percentages if not provided
           cgstPercent: product.cgstPercent || '9',
           sgstPercent: product.sgstPercent || '9',
@@ -110,12 +110,8 @@ const cartSlice = createSlice({
         item.avlQty = item.quantity.toString(); // Sync avlQty string
         const discountMultiplier = 1 - (item.discount / 100);
 
-        // Update mrp and sp based on the base unit_selling_price and new quantity
-        item.mrp = item.unit_selling_price * item.quantity;
-        item.sp = item.mrp * discountMultiplier;
-
-        // totalPrice should basically be equal to SP at this point, but keeping original logic structure
-        item.totalPrice = item.sp;
+        // Update Total Price independent of Box MRP/SP
+        item.totalPrice = item.unit_selling_price * item.quantity * discountMultiplier;
 
         // Recalculate total
         state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
@@ -139,14 +135,11 @@ const cartSlice = createSlice({
           }
         }
 
-        // Recalculate mrp, sp, and total price if quantity (or avlQty) or discount changed.
+        // Recalculate total price if quantity (or avlQty) or discount changed.
         if (updates.quantity !== undefined || updates.avlQty !== undefined || updates.discount !== undefined) {
           const discountMultiplier = 1 - ((item.discount || 0) / 100);
 
-          item.mrp = item.unit_selling_price * item.quantity;
-          item.sp = item.mrp * discountMultiplier;
-
-          item.totalPrice = item.sp;
+          item.totalPrice = item.unit_selling_price * item.quantity * discountMultiplier;
         }
 
         // Recalculate total
@@ -164,18 +157,14 @@ const cartSlice = createSlice({
     // Set cart items (for loading from storage or API)
     setCartItems: (state, action: PayloadAction<CartItem[]>) => {
       state.items = action.payload.map(item => {
-        // Recalculate mrp, sp, and totalPrice with discount for each item based on unit_selling_price
         const discountMultiplier = 1 - ((item.discount || 0) / 100);
-        const unitSellingPrice = item.unit_selling_price || (item.mrp / item.quantity) || item.sp; // fallback for backwards compatibility
-        const mrp = unitSellingPrice * item.quantity;
-        const sp = mrp * discountMultiplier;
+        // Fallback for backwards compatibility
+        const unitSellingPrice = item.unit_selling_price || (item.mrp / item.quantity) || item.sp; 
 
         return {
           ...item,
           unit_selling_price: unitSellingPrice,
-          mrp: mrp,
-          sp: sp,
-          totalPrice: sp,
+          totalPrice: unitSellingPrice * item.quantity * discountMultiplier,
         };
       });
       state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);

@@ -126,14 +126,32 @@ export const getTableColumns = ({
       )
     },
     {
+      key: "pack_qty",
+      header: "Pack Info",
+      render: (item) => item.pack_qty || 1
+    },
+    {
+      key: "unit_price",
+      header: "Unit Price",
+      render: (item) => item.unit_selling_price ? item.unit_selling_price.toFixed(2) : "0.00"
+    },
+    {
       key: "mrp",
-      header: "MRP",
+      header: "Box MRP",
       render: (item) => item.mrp ? item.mrp.toFixed(2) : "0.00"
     },
     {
       key: "sp",
-      header: "SP",
+      header: "Box SP",
       render: (item) => item.sp ? item.sp.toFixed(2) : "0.00"
+    },
+    {
+      key: "total_amount",
+      header: "Total Amount",
+      render: (item) => {
+        const discountMultiplier = 1 - ((item.discount || 0) / 100);
+        return (item.unit_selling_price * item.quantity * discountMultiplier).toFixed(2);
+      }
     },
     {
       key: "expiry",

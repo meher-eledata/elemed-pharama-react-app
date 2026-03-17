@@ -157,11 +157,14 @@ export const createCartItem = (
   // Always use validatedData.selling_price as the base unit price, fallback to mrp
   let unitSellingPrice = validatedData.selling_price || validatedData.mrp;
 
-  // Base MRP = Unit Price * Quantity
-  const mrp = unitSellingPrice * qty;
-  // Final SP = Base MRP - Discount
+  // The client expects MRP to be the STRIP MRP, not the Total Base Price.
+  // The 'validatedData.mrp' from the backend is the Strip MRP.
+  const stripMrp = validatedData.mrp;
+  
+  // The client also expects SP to be the STRIP SP (Strip MRP - Discount) 
+  // rather than the Total SP for the selected quantity.
   const discountMultiplier = 1 - ((discount || 0) / 100);
-  const sp = mrp * discountMultiplier;
+  const stripSp = stripMrp * discountMultiplier;
 
   return {
     id: Date.now().toString(),
@@ -169,8 +172,8 @@ export const createCartItem = (
     batch: batch || `BATCH-${Date.now()}`,
     avlQty: qty.toString(),
     unit_selling_price: unitSellingPrice,
-    mrp: mrp,
-    sp: sp,
+    mrp: stripMrp,
+    sp: stripSp,
     expiry: defaultExpiry,
     quantity: qty,
     type: finalProductType,
@@ -182,6 +185,7 @@ export const createCartItem = (
     cgstPercent: validatedData?.cgst_percent?.toString() || '2.5',
     sgstPercent: validatedData?.sgst_percent?.toString() || '2.5',
     igstPercent: validatedData?.igst_percent?.toString() || '0',
+    pack_qty: validatedData?.pack_qty || 1,
   };
 };
 

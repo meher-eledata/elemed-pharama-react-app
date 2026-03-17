@@ -164,6 +164,12 @@ const SalesReceipt: React.FC = () => {
   const editModeData = (location.state as any) || null;
   const isEditMode = editModeData?.isEditMode || false;
   const isReturnDetailsMode = editModeData?.isReturnDetailsMode || false;
+  
+  // CRITICAL: Resolve database invoice ID from navigation state
+  const rawInvoiceId = editModeData?.invoiceId || editModeData?.invoice_id || editModeData?.id;
+  const resolvedInvoiceId = (rawInvoiceId && !isNaN(Number(rawInvoiceId))) 
+    ? Number(rawInvoiceId) 
+    : 0;
 
   // Store original invoice data for comparison
   const [originalInvoiceData, setOriginalInvoiceData] = useState<{
@@ -197,74 +203,91 @@ const SalesReceipt: React.FC = () => {
 
   useEffect(() => {
     if ((isEditMode || isReturnDetailsMode) && editModeData) {
-      let invoiceId: number | null = null;
-      let invoiceNumber: string | null = null;
+      let fetchInvoiceNumber: string | null = null;
 
       // CRITICAL: Always use invoice_number if available - it's the source of truth
       if (editModeData.invoiceNumber) {
-        // Strip "INV" prefix if present - backend expects only numeric part
+        // Strip "INV" or "RB" prefix if present - backend expects only numeric part
         let fullInvoiceNumber = editModeData.invoiceNumber.toString().trim();
-        invoiceNumber = fullInvoiceNumber.toUpperCase().startsWith('INV')
-          ? fullInvoiceNumber.replace(/^INV/i, '').trim()
-          : fullInvoiceNumber;
-        console.log('📝 Prepared invoice number for API fetch. Original:', fullInvoiceNumber, '→ Sending:', invoiceNumber);
+        fetchInvoiceNumber = fullInvoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim() || fullInvoiceNumber;
+        console.log('📝 Prepared invoice number for API fetch. Original:', fullInvoiceNumber, '→ Sending:', fetchInvoiceNumber);
       }
 
-      // Also get invoiceId if available (for fallback only if invoice_number fails)
-      const rawStateId = editModeData.invoiceId || editModeData.invoice_id;
-      if (rawStateId) {
-        const parsedId = Number(rawStateId);
-        if (!isNaN(parsedId) && parsedId > 0) {
-          invoiceId = parsedId;
-        }
-      }
+      console.log('📋 Diagnostic: Edit mode data resolved:', { resolvedInvoiceId, fetchInvoiceNumber, rawInvoiceId });
 
-      console.log('📋 Diagnostic: Edit mode data resolved:', { invoiceId, invoiceNumber, rawStateId });
-
-      // MUST have at least invoice_number to proceed
-      if (!invoiceNumber && !invoiceId) {
+      // MUST have at least invoice_number or ID to proceed
+      if (!fetchInvoiceNumber && !resolvedInvoiceId) {
         console.error('❌ No invoice_number or invoice_id available');
         alert('Cannot load invoice: No invoice number or ID provided');
         navigate('/sales');
         return;
       }
 
-      if (invoiceNumber || invoiceId) {
-        const fetchInvoiceDetails = async () => {
-          try {
-            // STRATEGY:
-            // 1. Try fetching by unique 'invoice_id' (Database primary key) first.
-            //    This is the only way to avoid mismatches when duplicate invoice numbers exist.
-            // 2. If 'invoice_id' fails with 404, fallback to 'invoice_number' (Legacy support).
-            let result;
-            let firstAttemptError: any = null;
+      if (fetchInvoiceNumber || resolvedInvoiceId > 0) {
+      const fetchInvoiceDetails = async () => {
+        try {
+          console.log('📡 Starting fetchInvoiceDetails process...', { 
+            resolvedInvoiceId, 
+            fetchInvoiceNumber,
+            rawStateId: editModeData.invoiceId || editModeData.invoice_id 
+          });
 
-            if (invoiceId && invoiceId > 0) {
-              console.log(`🔍 Attempting to fetch details for Invoice ID: ${invoiceId}`);
-              try {
-                result = await getInvoiceDetails({ invoice_id: Number(invoiceId) }).unwrap();
-                console.log('✅ Found invoice by unique ID');
-              } catch (err: any) {
-                firstAttemptError = err;
-                if (err.status === 404 && invoiceNumber) {
-                  console.warn('⚠️ Invoice ID not found, trying fallback to Invoice Number...');
-                } else {
-                  throw err; // Rethrow if not a 404 or no numeric fallback available
-                }
-              }
-            }
+          let result;
+          let firstAttemptError: any = null;
 
-            // Fallback to invoice_number if first attempt failed or was skipped
-            if (!result && invoiceNumber) {
-              console.log(`📡 Attempting fallback: Fetching details for Invoice Number: ${invoiceNumber}`);
-              result = await getInvoiceDetails({ invoice_number: invoiceNumber }).unwrap();
-              console.log('✅ Found invoice by number (Fallback)');
+          // Attempt 1: Fetch by database invoice ID (primary key)
+          if (resolvedInvoiceId > 0) {
+            console.log('🔍 Attempt 1: Fetching by invoice_id (ID):', resolvedInvoiceId);
+            try {
+              result = await getInvoiceDetails({ invoice_id: resolvedInvoiceId }).unwrap();
+              console.log('✅ Invoice found by invoice_id');
+            } catch (err: any) {
+              firstAttemptError = err;
+              console.log('❌ Invoice not found by invoice_id (ID):', resolvedInvoiceId, 'Error:', err);
+              console.log('🔄 Proceeding to Attempt 2...');
             }
+          }
 
-            if (!result) {
-              console.error('❌ Data Retrieval Failed: No result returned from API');
-              throw firstAttemptError || new Error('No unique invoice_id or invoice_number available');
+          // Attempt 2: Fetch by numeric invoice number (e.g. "8")
+          if (!result && fetchInvoiceNumber) {
+            console.log('🔍 Attempt 2: Fetching by numeric invoice_number:', fetchInvoiceNumber);
+            try {
+              result = await getInvoiceDetails({ invoice_number: fetchInvoiceNumber }).unwrap();
+              console.log('✅ Invoice found by numeric invoice_number');
+            } catch (err: any) {
+              console.log('❌ Numeric invoice_number failed');
+              firstAttemptError = firstAttemptError || err;
             }
+          }
+
+          // Attempt 3: Fetch by full display invoice number (e.g. "INV8")
+          if (!result && editModeData.invoiceNumber) {
+            console.log('🔍 Attempt 3: Fetching by display invoiceNumber:', editModeData.invoiceNumber);
+            try {
+              result = await getInvoiceDetails({ invoice_number: editModeData.invoiceNumber }).unwrap();
+              console.log('✅ Invoice found by display invoice_number');
+            } catch (err: any) {
+              console.log('❌ Display invoice_number failed');
+              firstAttemptError = firstAttemptError || err;
+            }
+          }
+
+          // Attempt 4: Final attempt with RAW invoice number from server (unmodified)
+          if (!result && editModeData.rawInvoiceNumber) {
+            console.log('🔍 Attempt 4: ULTIMATE FALLBACK - Fetching by rawInvoiceNumber:', editModeData.rawInvoiceNumber);
+            try {
+              result = await getInvoiceDetails({ invoice_number: editModeData.rawInvoiceNumber }).unwrap();
+              console.log('✅ Invoice found by raw invoice_number');
+            } catch (err: any) {
+              console.log('❌ All 4 fetch attempts failed');
+              throw firstAttemptError || err;
+            }
+          }
+
+          if (!result) {
+            console.error('❌ Data Retrieval Failed: No result returned from API');
+            throw firstAttemptError || new Error('No unique invoice_id or invoice_number available');
+          }
 
             if (result) {
               const invoice = result.invoice || {};
@@ -405,12 +428,17 @@ const SalesReceipt: React.FC = () => {
               };
 
               // Pre-populate form fields from API data
-              if (invoiceData.customerName) setCustomerName(invoiceData.customerName);
+              // CRITICAL: Prioritize names passed from the navigation state (Table View) 
+              // to prevent mismatches caused by backend data inconsistency.
+              const finalCustomerName = editModeData.customerName || result.customer_name || result.invoice?.customer_name || '';
+              const finalDoctorName = editModeData.doctorName || result.doctor_name || result.invoice?.doctor_name || '';
+
+              if (finalCustomerName) setCustomerName(finalCustomerName);
               if (invoiceData.customerMobile) setCustomerMobile(invoiceData.customerMobile);
               if (invoiceData.customerCity) setCustomerCity(invoiceData.customerCity);
-              if (invoiceData.doctorName) {
-                setDoctorName(invoiceData.doctorName);
-                setSelectedDoctor(invoiceData.doctorName);
+              if (finalDoctorName) {
+                setDoctorName(finalDoctorName);
+                setSelectedDoctor(finalDoctorName);
                 shouldFetchDoctorInfoRef.current = true;
               }
               setDoctorMobile(invoiceData.doctorMobile ?? '');
@@ -491,8 +519,8 @@ const SalesReceipt: React.FC = () => {
           } catch (error) {
             console.error('Error fetching invoice details from API:', error);
             console.error('Error details:', {
-              invoiceId,
-              invoiceNumber: editModeData.invoiceNumber,
+              resolvedInvoiceId,
+              fetchInvoiceNumber,
               errorStatus: (error as any)?.status,
               errorData: (error as any)?.data,
             });
@@ -502,12 +530,19 @@ const SalesReceipt: React.FC = () => {
             const errMessage = errData?.error || (error as any)?.message || 'Unknown error';
 
             if (errStatus === 404) {
+              const idsTried = [
+                resolvedInvoiceId ? `Database ID: ${resolvedInvoiceId}` : null,
+                fetchInvoiceNumber ? `Numeric Number: ${fetchInvoiceNumber}` : null,
+                editModeData.invoiceNumber ? `Display Number: ${editModeData.invoiceNumber}` : null,
+                editModeData.rawInvoiceNumber ? `Raw Number: ${editModeData.rawInvoiceNumber}` : null
+              ].filter(Boolean).join(', ');
+
               alert(
                 `Invoice Not Found on Server (404)\n\n` +
-                `The invoice "${editModeData.invoiceNumber}" exists in your local history, but the server couldn't find it.\n\n` +
-                `Common Reason: If you recently restarted your backend server, it might have cleared its temporary database, ` +
-                `but your browser still remembers the old record.\n\n` +
-                `Solution: Create the sale again or ensure your backend database is permanent.`
+                `Attempted to find invoice using: ${idsTried}\n\n` +
+                `The record exists in your local history, but the server couldn't find it.\n\n` +
+                `Common Reason: If you recently restarted your backend server, it might have cleared its temporary database.\n\n` +
+                `Solution: Create the sale again.`
               );
             } else {
               alert(`Failed to load invoice details from server: ${errMessage}`);
@@ -521,7 +556,7 @@ const SalesReceipt: React.FC = () => {
         fetchInvoiceDetails();
       }
     }
-  }, [location.state, getInvoiceDetails, navigate]);
+  }, [isEditMode, isReturnDetailsMode, editModeData, getInvoiceDetails, navigate, resolvedInvoiceId]);
 
   // Load cart items (only if not in edit mode)
   useCartLoader({
@@ -824,8 +859,16 @@ const SalesReceipt: React.FC = () => {
     const cartItemsWithGst = transformCartItemsForEdit(salesItems);
     dispatch(setCartItems(cartItemsWithGst));
     // Navigate to sales/new page to edit/add products to cart
-    navigate('/sales/new');
-  }, [salesItems, dispatch, navigate]);
+    // Pass edit mode state so we can return to edit mode correctly
+    navigate('/sales/new', {
+      state: {
+        isEditMode,
+        invoiceId: resolvedInvoiceId,
+        invoiceNumber,
+        originalInvoiceData
+      }
+    });
+  }, [salesItems, dispatch, navigate, isEditMode, resolvedInvoiceId, invoiceNumber, originalInvoiceData]);
 
   /**
    * Handle Print Button Click
@@ -1171,7 +1214,7 @@ const SalesReceipt: React.FC = () => {
       resetForm,
       clearCart: () => dispatch(clearCart()),
       navigate,
-      invoiceId: isEditMode && editModeData?.invoiceId ? editModeData.invoiceId : undefined,
+      invoiceId: isEditMode ? resolvedInvoiceId : undefined,
       isEditMode,
       editModeData,
       originalSalesItems: originalInvoiceData?.salesItems,

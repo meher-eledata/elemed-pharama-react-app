@@ -23,6 +23,7 @@ import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/Sale
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
+import bgWhiteIcon from '../../assets/BG_White.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
@@ -163,8 +164,6 @@ export default function SaleHistory() {
         patientType = invoice.patient_type === 0 ? 'In Patient' : 'Out Patient';
       }
       
-      const dbInvoiceId = invoice.id || parseInt(invoice.invoice_number) || index + 1000;
-      
       // Handle invoice_number formatting - use invoice_number if available, otherwise use invoice.id
       let formattedInvoiceNumber: string;
       
@@ -178,6 +177,13 @@ export default function SaleHistory() {
         ? invoiceNumStr.replace(/^INV/i, '').trim()
         : invoiceNumStr;
       
+      // CRITICAL: Identify the actual database primary key from ALL possible field names
+      const databaseId = Number(invoice.id || invoice.invoice_id || invoice.InvoiceID || invoice.invoiceId || 0);
+
+      // For the table's internal "id" (used for row selection and keys), 
+      // we need something unique. If no database ID exists, we'll generate one.
+      const tableRowId = databaseId || (invoice.invoice_number ? (parseInt(numericPart) || (index + 500000)) : (index + 500000));
+
       const numValue = Number(numericPart);
       const hasValidInvoiceNumber = invoiceNum !== null 
         && invoiceNum !== undefined 
@@ -187,28 +193,18 @@ export default function SaleHistory() {
         && numValue > 0; // Must be a positive number
       
       if (hasValidInvoiceNumber) {
-      
         formattedInvoiceNumber = hasInvPrefix ? invoiceNumStr : `INV${numericPart}`;
       } else if (invoice.id) {
-        // invoice_number is null/undefined/invalid, use invoice.id as fallback
-        // This handles old invoices where invoice_number wasn't set
         formattedInvoiceNumber = `INV${invoice.id}`;
-        // Debug: Log when we use fallback
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Invoice number is null/undefined, using invoice.id as fallback:', {
-            invoice_id: invoice.id,
-            invoice_number: invoice.invoice_number,
-            formatted: formattedInvoiceNumber
-          });
-        }
       } else {
-        // Fallback if neither exists (shouldn't happen, but handle gracefully)
         formattedInvoiceNumber = `INV${index + 1000}`;
       }
       
       return {
-        id: dbInvoiceId, // Use database invoice ID for proper matching
-        invoiceNumber: formattedInvoiceNumber, // Use "INV" format, not "RB"
+        id: tableRowId, // Internal frontend ID (must be unique)
+        databaseInvoiceId: databaseId, // Actual database primary key
+        rawInvoiceNumber: invoiceNumStr, // Original record number if any
+        invoiceNumber: formattedInvoiceNumber, // Use "INV" format for display
         invoiceDate: invoiceDate,
         customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
         customerMobile: invoice.customer_mobile || 'N/A',
@@ -456,27 +452,27 @@ export default function SaleHistory() {
     if (currentSearchTerm) {
       const searchLower = currentSearchTerm.toLowerCase();
       filtered = filtered.filter(item => 
-        item.invoiceNumber.toLowerCase().includes(searchLower) ||
-        item.customerName.toLowerCase().includes(searchLower) ||
-        item.customerMobile.includes(searchLower)
+        (item.invoiceNumber || '').toLowerCase().includes(searchLower) ||
+        (item.customerName || '').toLowerCase().includes(searchLower) ||
+        (item.customerMobile || '').toLowerCase().includes(searchLower)
       );
     }
 
     if (selectedDoctor) {
       filtered = filtered.filter(item => 
-        item.doctorName.toLowerCase().includes(selectedDoctor.toLowerCase())
+        (item.doctorName || '').toLowerCase().includes(selectedDoctor.toLowerCase())
       );
     }
 
     if (selectedCustomer) {
       filtered = filtered.filter(item => 
-        item.customerName.toLowerCase().includes(selectedCustomer.toLowerCase())
+        (item.customerName || '').toLowerCase().includes(selectedCustomer.toLowerCase())
       );
     }
 
     if (selectedUsername) {
       filtered = filtered.filter(item => 
-        item.username.toLowerCase().includes(selectedUsername.toLowerCase())
+        (item.username || '').toLowerCase().includes(selectedUsername.toLowerCase())
       );
     }
 
@@ -509,21 +505,21 @@ export default function SaleHistory() {
     });
 
     return filtered;
-  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedUsername, dateRange]);
+  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedCustomer, selectedUsername, dateRange]);
 
   const getUniqueDoctors = useMemo(() => {
-    const doctors = [...new Set(salesHistoryData.map(item => item.doctorName))];
-    return doctors.sort();
+    const doctors = [...new Set(salesHistoryData.map(item => item.doctorName || ''))].filter(Boolean);
+    return doctors.sort((a, b) => a.localeCompare(b));
   }, [salesHistoryData]);
 
   const getUniqueCustomers = useMemo(() => {
-    const customers = [...new Set(salesHistoryData.map(item => item.customerName))];
-    return customers.sort();
+    const customers = [...new Set(salesHistoryData.map(item => item.customerName || ''))].filter(Boolean);
+    return customers.sort((a, b) => a.localeCompare(b));
   }, [salesHistoryData]);
 
   const getUniqueUsernames = useMemo(() => {
-    const usernames = [...new Set(salesHistoryData.map(item => item.username))];
-    return usernames.sort();
+    const usernames = [...new Set(salesHistoryData.map(item => item.username || ''))].filter(Boolean);
+    return usernames.sort((a, b) => a.localeCompare(b));
   }, [salesHistoryData]);
 
   const clearAllFilters = () => {
@@ -910,6 +906,7 @@ export default function SaleHistory() {
         taxAmount: invoiceDetails.taxAmount || '0',
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
         labels: SALES_RECEIPT_LABELS,
+        brandIcon: bgWhiteIcon,
       });
 
       printWindow.document.write(htmlContent);
@@ -977,29 +974,27 @@ export default function SaleHistory() {
       const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
       
       // Determine the database invoice ID to use for fetching
-      let databaseInvoiceId: number = 0;
+      let finalDatabaseId: number = (invoice as any).databaseInvoiceId || 0;
       
-      // Priority 1: Use the ID from saved item (this is the database invoice ID we stored)
-      if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
-        databaseInvoiceId = savedItem.id;
-        console.log('✅ Using database invoice ID from saved item:', databaseInvoiceId);
-      } 
-      // Priority 2: Parse from invoice number (e.g., "INV8" -> 8)
-      else if (invoice.invoiceNumber) {
-        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
-        const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
-          databaseInvoiceId = parsed;
-          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
+      // If we don't have it explicitly, try to derive it carefully
+      if (finalDatabaseId === 0) {
+        // Priority 1: Use the ID from saved item (this is the database invoice ID we stored)
+        if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
+          finalDatabaseId = savedItem.id;
+          console.log('✅ Using database invoice ID from saved item:', finalDatabaseId);
+        } 
+        // Priority 2: Parse from invoice number (e.g., "INV8" -> 8)
+        else if (invoice.invoiceNumber) {
+          const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
+          const parsed = parseInt(cleanedNumber, 10);
+          if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
+            finalDatabaseId = parsed;
+            console.log('📋 Parsed database invoice ID from invoice number fallback:', finalDatabaseId);
+          }
         }
       }
-      // Priority 3: Use frontend ID if it's reasonable (not a timestamp)
-      else if (invoiceId && invoiceId < 1000000) {
-        databaseInvoiceId = invoiceId;
-        console.log('⚠️ Using frontend invoice ID as fallback:', databaseInvoiceId);
-      }
       
-      console.log('🔍 Final database invoice ID to use:', databaseInvoiceId);
+      console.log('🔍 Final database invoice ID resolved for edit:', finalDatabaseId);
       
       if (savedItem) {
         // Use saved invoice details
@@ -1024,9 +1019,10 @@ export default function SaleHistory() {
         navigate('/sales/receipt', { 
           state: { 
             isEditMode: true,
-            invoiceId: databaseInvoiceId || invoice.id, // Use parsed database ID, fallback to frontend ID
-            invoice_id: databaseInvoiceId || invoice.id, // Also include as invoice_id for API compatibility
-            ...invoiceData
+            invoiceId: finalDatabaseId,
+            ...invoiceData,
+            invoiceNumber: invoice.invoiceNumber,
+            rawInvoiceNumber: (invoice as any).rawInvoiceNumber,
           } 
         });
       } else {
@@ -1052,9 +1048,10 @@ export default function SaleHistory() {
         navigate('/sales/receipt', { 
           state: { 
             isEditMode: true,
-            invoiceId: databaseInvoiceId || invoice.id, // Use parsed database ID, fallback to frontend ID
-            invoice_id: databaseInvoiceId || invoice.id, // Also include as invoice_id for API compatibility
-            ...invoiceData
+            invoiceId: finalDatabaseId,
+            ...invoiceData,
+            invoiceNumber: invoice.invoiceNumber,
+            rawInvoiceNumber: (invoice as any).rawInvoiceNumber,
           } 
         });
       }
@@ -1507,12 +1504,21 @@ export default function SaleHistory() {
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
               onCancel={handleCancelPrint}
-              onPrint={handlePrintClick}
-              onSaveClick={handleSaveClick}
+              onPrint={handlePrintToPDF}
+              brandIcon={bgWhiteIcon}
               hideActionButtons={true}
             />
           }
           onClose={handleCloseInvoiceModal}
+          actionButtons={
+            <StandardButton
+              onClick={handlePrintToPDF}
+              variant="primary"
+              size="medium"
+            >
+              {SALES_RECEIPT_LABELS.PRINT_ONLY_BUTTON}
+            </StandardButton>
+          }
         />
       )}
 

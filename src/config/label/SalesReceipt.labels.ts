@@ -63,6 +63,7 @@ export const SALES_RECEIPT_LABELS = {
   SAVE_BUTTON: "Save",
   CANCEL_BUTTON: "Cancel",
   PRINT_BUTTON: "Save and Print",
+  PRINT_ONLY_BUTTON: "Print",
 
   // Print Preview
   PRINT_PREVIEW_TITLE: "Print Preview - Sales Receipt",

@@ -133,6 +133,7 @@ const products: Product[] = [
     avlQty: "28 Capsule",
     mrp: 50,
     sp: 50,
+    unit_selling_price: 50,
     expiry: "21 May, 2025",
     quantity: 10,
     type: "Capsule",
@@ -145,6 +146,7 @@ const products: Product[] = [
     avlQty: "3 Capsule",
     mrp: 5,
     sp: 5,
+    unit_selling_price: 5,
     expiry: "2 Jun, 2025",
     quantity: 10,
     type: "Capsule",
@@ -715,9 +717,11 @@ export default function SalePage() {
     }
 
     const totalAmount = cartTotal; // Use Redux selector
+    const editState = (location as any).state || {};
 
     navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
       state: {
+        ...editState,
         cartItems: cartItems,
         totalAmount: totalAmount
       }

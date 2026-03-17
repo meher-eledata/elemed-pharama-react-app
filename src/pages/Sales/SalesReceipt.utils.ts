@@ -116,6 +116,7 @@ export const generatePrintHTML = (data: {
     labels,
     patientType,
     pageSize = 'A4',
+    brandIcon,
   } = data;
 
   const isA5 = pageSize === 'A5';
@@ -127,22 +128,20 @@ export const generatePrintHTML = (data: {
         <style>
           @media print {
             @page { 
-              margin: ${isA5 ? '0.3in' : '0.5in'};
+              margin: 0;
               size: ${pageSize} ${isA5 ? 'portrait' : 'landscape'};
+            }
+            html, body {
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+              overflow: visible;
             }
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
               color-adjust: exact !important;
-            }
-            html, body {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-              width: 100%;
-              height: 100%;
-              margin: 0;
-              padding: 0;
             }
           }
           * {
@@ -153,8 +152,8 @@ export const generatePrintHTML = (data: {
           }
           body { 
             font-family: 'Lexend', sans-serif; 
-            margin: ${isA5 ? '10px' : '20px'};
-            padding: ${isA5 ? '10px' : '20px'};
+            margin: 0;
+            padding: ${isA5 ? '10mm' : '15mm'};
             color: #1A212B;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -356,8 +355,22 @@ export const generatePrintHTML = (data: {
         </style>
       </head>
       <body>
-        <div class="receipt-header">
-          <div class="receipt-title">${labels.CUSTOMER_RECEIPT_TITLE}</div>
+        <div class="receipt-header" style="display: flex; align-items: center; justify-content: ${isA5 ? 'center' : 'space-between'}; border-bottom: 2px solid #1A212B; padding-bottom: 10px; margin-bottom: 20px; gap: ${isA5 ? '20px' : '0'};">
+          <div style="flex: ${isA5 ? 'none' : '1'}; display: flex; justify-content: flex-start;">
+            ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${isA5 ? '70px' : '90px'}; height: auto;" />` : ''}
+          </div>
+          <div style="flex: ${isA5 ? 'none' : '3'}; text-align: ${isA5 ? 'left' : 'center'};">
+            <div style="font-size: ${isA5 ? '16px' : '20px'}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
+            <div style="font-size: ${isA5 ? '8px' : '9px'}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
+            <div style="font-size: ${isA5 ? '7px' : '8px'}; margin: 4px 0; line-height: 1.2; color: #4B5563;">
+              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
+              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
+              GSTIN No: 37AAQCS3213C2ZH<br />
+              (M): 0891-2554040, 8096655050
+            </div>
+            <!-- <div style="font-size: ${isA5 ? '8px' : '10px'}; font-weight: 600; color: #666; margin-top: 2px;">${labels.CUSTOMER_RECEIPT_TITLE}</div> -->
+          </div>
+          ${!isA5 ? '<div style="flex: 1;"></div>' : ''}
         </div>
         
         <div class="receipt-details">
@@ -434,10 +447,6 @@ export const generatePrintHTML = (data: {
         
         <div class="summary">
           <div class="summary-left">
-            <div class="summary-item">
-              <div class="summary-label">${labels.TOTAL_VALUE_LABEL}</div>
-              <div class="summary-value">${totalValue}</div>
-            </div>
             <div class="summary-item">
               <div class="summary-label">${labels.TOTAL_DISCOUNT_LABEL}</div>
               <div class="summary-value">${totalDiscount}</div>

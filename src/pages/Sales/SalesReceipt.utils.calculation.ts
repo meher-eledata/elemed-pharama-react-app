@@ -33,13 +33,28 @@ export const recalculateSalesItemAmount = (item: SalesReceiptItem): SalesReceipt
   // Calculate discount amount
   const discountAmount = (unitPrice * discountPercent / 100 * quantity).toFixed(2);
 
-  // Calculate taxes based on base amount (pre-discount) as per user requirement
-  const cgstAmount = baseAmount * cgstPercent / 100;
-  const sgstAmount = baseAmount * sgstPercent / 100;
-  const igstAmount = baseAmount * igstPercent / 100;
+  // The total tax percentage
+  const totalTaxPercent = cgstPercent + sgstPercent + igstPercent;
 
-  // Final amount = discounted amount + CGST + SGST + IGST
-  const finalAmount = discountedAmount + cgstAmount + sgstAmount + igstAmount;
+  // The client pays the discounted amount, as the tax is ALREADY inclusive in the MRP.
+  // Final amount represents the total payable amount, not getting larger because of tax.
+  const finalAmount = discountedAmount;
+
+  let cgstAmount = 0;
+  let sgstAmount = 0;
+  let igstAmount = 0;
+
+  // Backward tax calculation (finding out how much OF the final amount was actually tax)
+  if (totalTaxPercent > 0) {
+    // Formula for extracting inclusive tax: Tax Amount = Total Price - (Total Price / (1 + (Total Tax Rate / 100)))
+    const taxableValue = finalAmount / (1 + (totalTaxPercent / 100));
+
+    // Distribute the tax logically based on the individual percentages 
+    // Example: If CGST is 9% and SGST is 9%, each gets half of the extracted tax
+    cgstAmount = taxableValue * (cgstPercent / 100);
+    sgstAmount = taxableValue * (sgstPercent / 100);
+    igstAmount = taxableValue * (igstPercent / 100);
+  }
 
   return {
     ...item,
