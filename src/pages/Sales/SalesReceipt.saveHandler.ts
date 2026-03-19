@@ -161,7 +161,7 @@ export const executeSave = async ({
 
     const totalQuantity = salesItems.reduce((sum, item) => sum + parseFloat(item.quantity || '0'), 0);
     const totalDiscountPercent = salesItems.length > 0
-      ? (salesItems.reduce((sum, item) => sum + parseFloat(item.discountPercent || '0'), 0) / salesItems.length) / 100
+      ? (salesItems.reduce((sum, item) => sum + parseFloat(item.discountPercent || '0'), 0) / salesItems.length)
       : 0;
 
     const lines = salesItems.map((item, index) => {
@@ -203,12 +203,17 @@ export const executeSave = async ({
         batch_number: batchNumber, // Required by backend
         mrp: parseFloat(item.mrp || '0'),
         sp: parseFloat(item.unitPrice || '0'),
-        discount: parseFloat(item.discountPercent || '0') / 100,
+        discount: parseFloat(item.discountPercent || '0'),
         discount_authority: item.discountAuthorizedBy || undefined, // Send name instead of ID
-        cgst: cgstPercent, // Tax percentage (e.g., 1 for 1%)
-        sgst: sgstPercent, // Tax percentage (e.g., 1 for 1%)
-        igst: igstPercent, // Tax percentage (e.g., 2 for 2%)
+        cgst: cgstPercent, // Keep tax as is (might be 2.5) but fix precision below
+        sgst: sgstPercent,
+        igst: igstPercent,
       };
+      // Clean up tax precision (e.g., 2.5 instead of 2.50000001)
+      lineItem.cgst = parseFloat(lineItem.cgst.toFixed(2));
+      lineItem.sgst = parseFloat(lineItem.sgst.toFixed(2));
+      lineItem.igst = parseFloat(lineItem.igst.toFixed(2));
+
 
       return lineItem;
     });
@@ -304,10 +309,10 @@ export const executeSave = async ({
           batch_number: curr.batch,
           mrp: parseFloat(curr.mrp || '0'),
           sp: parseFloat(curr.unitPrice || '0'),
-          discount: parseFloat(curr.discountPercent || '0') / 100, // Send as fraction (e.g. 0.05) to backend
-          cgst: parseFloat(curr.cgstPercent || '0'),
-          sgst: parseFloat(curr.sgstPercent || '0'),
-          igst: parseFloat(curr.igstPercent || '0'),
+          discount: parseFloat(curr.discountPercent || '0'),
+          cgst: parseFloat(parseFloat(curr.cgstPercent || '0').toFixed(2)),
+          sgst: parseFloat(parseFloat(curr.sgstPercent || '0').toFixed(2)),
+          igst: parseFloat(parseFloat(curr.igstPercent || '0').toFixed(2)),
           discount_authority: curr.discountAuthorizedBy,
         };
 
@@ -328,7 +333,7 @@ export const executeSave = async ({
         invoice_id: Number(invoiceId),
         invoice_number: invoiceNumber,
         quantity: salesItems.length,
-        disc: parseFloat(totalDiscount || '0') / parseFloat(totalValue || '1'), // Overall discount ratio
+        disc: parseFloat(totalDiscountPercent.toFixed(2)), // Overall discount
         payment_method: backendPaymentMethod,
         payment_mode: backendPaymentMethod,
         payment_amount: parseFloat(totalPayableAmount || '0'),

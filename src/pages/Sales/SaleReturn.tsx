@@ -29,6 +29,7 @@ interface ReturnItem extends SalesReceiptItem {
   invoice_line_id?: number;
   refundable_quantity?: number;
   product_id?: number; // Store product_id for product name lookup
+  restock_action: string;
 }
 
 export default function SaleReturn() {
@@ -379,6 +380,7 @@ export default function SaleReturn() {
                   refundable_quantity: refundableQty, // Use calculated refundable quantity from API
                   product_id: productId, // Store product_id for later lookup if needed
                   discountAuthorizedBy: line.discount_authority || undefined, // Map discount_authority if present
+                  restock_action: 'RESTOCK', // Default action
                 };
 
                 // Recalculate amount based on the return quantity (which starts as refundable quantity)
@@ -532,13 +534,16 @@ export default function SaleReturn() {
       direction = 'desc';
     } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
       setSortConfig({ key: '', direction: 'asc' });
+      setCurrentPage(1);
       return;
     }
     setSortConfig({ key, direction });
+    setCurrentPage(1);
   };
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setCurrentSearchTerm(event.target.value);
+    setCurrentPage(1);
   };
 
   const handleFilterSelect = (key: string, value: string | null) => {
@@ -546,7 +551,47 @@ export default function SaleReturn() {
       ...prev,
       [key]: value
     }));
+    setCurrentPage(1);
   };
+
+  const filteredData = useMemo(() => {
+    const dataToFilter = returnItems.filter(item => {
+      // Filter to show only items with refundable quantity > 0
+      const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
+        ? item.refundable_quantity
+        : parseInt(item.originalQuantity) || 0;
+      return refundableQty > 0;
+    });
+
+    if (!currentSearchTerm.trim()) return dataToFilter;
+
+    const searchTerm = currentSearchTerm.toLowerCase();
+    return dataToFilter.filter(item =>
+      item.productName.toLowerCase().includes(searchTerm) ||
+      (item.batch && item.batch.toLowerCase().includes(searchTerm))
+    );
+  }, [returnItems, currentSearchTerm]);
+
+  const sortedData = useMemo(() => {
+    if (!sortConfig.key) return filteredData;
+
+    return [...filteredData].sort((a, b) => {
+      const aValue = (a as any)[sortConfig.key];
+      const bValue = (b as any)[sortConfig.key];
+
+      if (aValue === bValue) return 0;
+      
+      // Numeric sort for amount, unitPrice, discount
+      if (['amount', 'unitPrice', 'discount'].includes(sortConfig.key)) {
+        const aNum = parseFloat(String(aValue)) || 0;
+        const bNum = parseFloat(String(bValue)) || 0;
+        return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+      }
+
+      const comparison = String(aValue).localeCompare(String(bValue), undefined, { numeric: true });
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredData, sortConfig]);
 
   const handleCancel = () => {
     navigate('/sales');
@@ -591,6 +636,7 @@ export default function SaleReturn() {
         invoice_line_id: item.invoice_line_id,
         id: item.id,
         returnQuantity: item.returnQuantity,
+        restock_action: item.restock_action,
         type_invoice_line_id: typeof item.invoice_line_id,
         hasInvoiceLineId: !!item.invoice_line_id,
       });
@@ -640,7 +686,7 @@ export default function SaleReturn() {
             invoice_line_id: Number(item.invoice_line_id),
             batch_number: item.batch || '',
             quantity: parseInt(item.returnQuantity) || 0,
-            restock_action: 'RESTOCK',
+            restock_action: (item.restock_action || 'RESTOCK').toUpperCase(),
           };
           console.log('✅ Created line:', line);
           return line;
@@ -669,43 +715,37 @@ export default function SaleReturn() {
       // For new invoices only - invoice_number should exist in the database
       let invoiceNumber: string | number = '';
 
-      // Priority 1: Use invoice_number from API response (this is what's stored in the database)
-      // For new invoices, this should always be available
+      // If invoiceNumberFromApi is set, it came directly from the backend (getInvoiceDetails)
+      // This is the MOST reliable format to send back to the backend.
       if (invoiceNumberFromApi !== null && invoiceNumberFromApi !== undefined) {
-        // Use the invoice_number exactly as stored in the database
         invoiceNumber = invoiceNumberFromApi;
-        console.log('✅ Using invoice_number from API response (PRIORITY 1):', invoiceNumber);
-      }
-      // Priority 2: Parse from invoiceData.invoiceNumber (from location state)
+        console.log('✅ Using database invoice_number from API response (PRIORITY 1):', invoiceNumber);
+      } 
+      // Priority 2: Use original invoiceNumber from location state (it might already be correct)
       else if (invoiceData.invoiceNumber) {
-        // Remove common prefixes (RB, INV-, etc.) and extract numeric part
-        // Handles formats like: "RB1", "INV-1234", "1234", etc.
-        let cleanedNumber = invoiceData.invoiceNumber
-          .replace(/^(RB|INV-?)/i, '') // Remove RB or INV- prefix
-          .replace(/[^0-9]/g, '') // Remove all non-numeric characters
-          .trim();
-
-        // If there's still a number after cleaning, use it
-        if (cleanedNumber) {
-          invoiceNumber = cleanedNumber; // Keep as string to match backend format
-          console.log('📝 Using parsed invoiceNumber from location state (PRIORITY 2):', invoiceNumber);
-        }
+        // If it starts with INV or RB, it might be the full required string
+        invoiceNumber = invoiceData.invoiceNumber;
+        console.log('📝 Using original invoiceNumber from state (PRIORITY 2):', invoiceNumber);
       }
 
-      console.log('📄 Invoice number resolved:', invoiceNumber, {
+      console.log('📄 Final Invoice number resolved:', invoiceNumber, {
         fromApi: invoiceNumberFromApi,
-        fromInvoiceNumber: invoiceData.invoiceNumber,
-        fromInvoiceId: invoiceData.invoiceId,
+        fromState: invoiceData.invoiceNumber,
       });
 
-      // RESOLUTION (FRONTEND ONLY FIX):
-      // The backend 'submitReturn' strictly lookups by the textual 'invoice_number' column
-      // and does not recognize DB primary keys. We must send the original text number (e.g. "6").
-      const finalSubmissionInvoiceNumber = String(invoiceNumber);
       const createdBy = user?.username || invoiceData.username || 'system';
 
+      // Use the invoice ID from the API if we have it, otherwise fallback to navigation state
+      const submissionInvoiceId = invoiceIdFromApi || (typeof invoiceData.invoiceId === 'number' ? invoiceData.invoiceId : null);
+
+      if (!submissionInvoiceId) {
+        console.error('❌ Cannot submit return: No invoice_id (database primary key) found.');
+        alert('Cannot submit return because the backend ID for this invoice is missing. Please refresh the page and try again.');
+        return;
+      }
+
       const payload = {
-        invoice_number: finalSubmissionInvoiceNumber, // Must match the string in DB column (e.g. "6")
+        invoice_id: submissionInvoiceId,   // Database primary key is now the ONLY identifier
         created_by: createdBy,
         return_date: returnDate ? returnDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
         reason: reason.trim(),
@@ -714,8 +754,8 @@ export default function SaleReturn() {
       };
 
       console.log('🚀 SUBMITTING RETURN TO BACKEND');
-      console.log('Using strict invoice_number string:', finalSubmissionInvoiceNumber);
-      console.log('Payload for strict lookup:', payload);
+      console.log('Final resolved invoice ID:', submissionInvoiceId);
+      console.log('Prepared payload for submission:', payload);
       console.log('🌐 Endpoint: POST /sales/submit-sales-return/');
 
       const result = await submitSalesReturn(payload).unwrap();
@@ -739,8 +779,8 @@ export default function SaleReturn() {
   };
 
   const selectedItems = useMemo(() =>
-    selectedRows.map(index => returnItems[index]).filter(Boolean),
-    [selectedRows, returnItems]
+    selectedRows.map(index => sortedData[index]).filter(Boolean),
+    [selectedRows, sortedData]
   );
 
   const totalProducts = useMemo(() =>
@@ -939,13 +979,7 @@ export default function SaleReturn() {
           )}
 
         <ReusableTable
-          data={returnItems.filter(item => {
-            // Filter to show only items with refundable quantity > 0
-            const refundableQty = item.refundable_quantity !== undefined && item.refundable_quantity !== null
-              ? item.refundable_quantity
-              : parseInt(item.originalQuantity) || 0;
-            return refundableQty > 0;
-          })}
+          data={sortedData}
           columns={[
             {
               key: 'checkbox',
@@ -1048,10 +1082,51 @@ export default function SaleReturn() {
                 </Typography>
               ),
             },
+            {
+              key: 'restock_action',
+              header: 'Restock Action',
+              sortable: false,
+              render: (item: ReturnItem) => {
+                const index = returnItems.findIndex(i => i.id === item.id);
+                return (
+                  <Autocomplete
+                    options={['RESTOCK', 'SCRAP', 'QUARANTINE']}
+                    value={item.restock_action}
+                    onChange={(_, newValue) => {
+                      if (newValue) {
+                        setReturnItems(prev => {
+                          const updated = [...prev];
+                          const targetIndex = updated.findIndex(i => i.id === item.id);
+                          if (targetIndex !== -1) {
+                            updated[targetIndex] = { ...updated[targetIndex], restock_action: newValue };
+                          }
+                          return updated;
+                        });
+                      }
+                    }}
+                    disableClearable
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        sx={{
+                          width: '120px',
+                          '& .MuiOutlinedInput-root': {
+                            height: '32px',
+                            fontSize: '12px',
+                            borderRadius: '8px',
+                          }
+                        }}
+                      />
+                    )}
+                  />
+                );
+              }
+            },
           ]}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
-          totalRows={returnItems.length}
+          totalRows={sortedData.length}
           rowsPerPage={10}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
@@ -1067,6 +1142,36 @@ export default function SaleReturn() {
           currentFilter={currentFilter}
           emptyMessage="No products to return"
         />
+      </Box>
+
+      <Box sx={{ display: 'flex', gap: 2, mb: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+        <Typography variant="body2" sx={{ color: '#728197', fontWeight: 500 }}>
+          Set all restock actions to:
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {['RESTOCK', 'SCRAP', 'QUARANTINE'].map(action => (
+            <StandardButton
+              key={action}
+              onClick={() => {
+                setReturnItems(prev => prev.map(item => ({ ...item, restock_action: action })));
+              }}
+              variant="secondary"
+              size="small"
+              sx={{ 
+                height: '28px', 
+                fontSize: '11px', 
+                padding: '0 12px',
+                borderRadius: '6px',
+                backgroundColor: '#F3F4F6',
+                '&:hover': {
+                  backgroundColor: '#E5E7EB'
+                }
+              }}
+            >
+              {action}
+            </StandardButton>
+          ))}
+        </Box>
       </Box>
 
       {/* Summary Section */}

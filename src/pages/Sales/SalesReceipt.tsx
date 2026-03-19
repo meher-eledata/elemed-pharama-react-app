@@ -24,6 +24,8 @@ import {
   useDeleteSalesMutation,
   useUpsertInvoicePaymentsMutation,
   useSearchCustomersMutation,
+  useLazyGetNextInvoiceNumberQuery,
+  useLazyGetInvoicesQuery,
   Customer,
   DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
@@ -85,6 +87,8 @@ const SalesReceipt: React.FC = () => {
   const [addCustomer] = useAddCustomerMutation();
   const [searchCustomers] = useSearchCustomersMutation();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
+  const [fetchNextInvoiceNumber] = useLazyGetNextInvoiceNumberQuery();
+  const [fetchInvoicesList] = useLazyGetInvoicesQuery();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
 
   // Extract names from doctor objects array to string array for compatibility
@@ -317,9 +321,7 @@ const SalesReceipt: React.FC = () => {
 
                 // Detection: if it looks like a fraction (e.g. 0.05 or 0.5), convert to percentage (5 or 50)
                 // Otherwise use as is (already 0-100)
-                discountPercentValue = (discValue > 0 && discValue <= 1)
-                  ? (discValue * 100).toString()
-                  : discValue.toString();
+                discountPercentValue = discValue.toString();
 
                 // ROBUST TAX PERCENTAGE DERIVATION:
                 // Trust the stored value if it looks like a percentage (0-30)
@@ -327,9 +329,8 @@ const SalesReceipt: React.FC = () => {
                 const deriveTaxPercent = (storedVal: any, base: number, defaultVal: string) => {
                   const val = parseFloat(storedVal || '0');
 
-                  // Priority 1: If value is already a reasonable percentage (0.1% to 30%), USE IT DIRECTLY
-                  // This ensures rates like 7%, 10%, 15% etc. are preserved and not snapped to 5 or 9
-                  if (val > 0.1 && val <= 30) return val.toString();
+                  // Priority 1: If value is already a reasonable percentage (>30%), or looks like a fraction (0-1), 
+                  if (val > 0) return val.toString();
 
                   // Priority 2: If value is 0, check if we should use the mandatory default
                   if (val === 0) return defaultVal;
@@ -722,12 +723,52 @@ const SalesReceipt: React.FC = () => {
   }, [isEditMode, paymentMode]);
 
   // Generate invoice number on mount (if not in edit mode and not already set)
-  // This generates and reserves the invoice number immediately so it's visible to the user
+  // PRIORITY ORDER:
+  //   1. Backend endpoint: sales/get-next-invoice-number  (most reliable - DB source of truth)
+  //   2. Compute from getInvoices list (fallback if dedicated endpoint not available)
+  //   3. localStorage counter (last resort fallback)
   useEffect(() => {
     if (!isEditMode && !invoiceNumber) {
-      const nextInvoiceNumber = generateNextInvoiceNumber();
-      setInvoiceNumber(nextInvoiceNumber);
-      console.log('📝 Generated and reserved invoice number on mount:', nextInvoiceNumber);
+      (async () => {
+        // Priority 1: Dedicated backend endpoint
+        try {
+          const result = await fetchNextInvoiceNumber().unwrap();
+          const nextNum = result?.next_invoice_number;
+          if (nextNum !== undefined && nextNum !== null) {
+            const nextInvoiceNumber = `INV${nextNum}`;
+            setInvoiceNumber(nextInvoiceNumber);
+            console.log('📝 Invoice number fetched from backend (DB source of truth):', nextInvoiceNumber);
+            return;
+          }
+        } catch (err) {
+          console.warn('⚠️ Backend get-next-invoice-number endpoint not available, trying getInvoices fallback...', err);
+        }
+
+        // Priority 2: Derive from the existing invoices list (max invoice_number + 1)
+        try {
+          const invoices = await fetchInvoicesList().unwrap();
+          if (invoices && invoices.length > 0) {
+            const maxInvoiceNum = invoices.reduce((max: number, inv: any) => {
+              const raw = String(inv.invoice_number ?? inv.invoiceNumber ?? '0').replace(/[^0-9]/g, '');
+              const num = parseInt(raw, 10);
+              return (!isNaN(num) && num > max) ? num : max;
+            }, 0);
+            if (maxInvoiceNum > 0) {
+              const nextInvoiceNumber = `INV${maxInvoiceNum + 1}`;
+              setInvoiceNumber(nextInvoiceNumber);
+              console.log('📝 Invoice number derived from invoices list (max + 1):', nextInvoiceNumber);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ Could not fetch invoices list, falling back to localStorage counter...', err);
+        }
+
+        // Priority 3: localStorage counter (last resort — only reliable on single-device)
+        const nextInvoiceNumber = generateNextInvoiceNumber();
+        setInvoiceNumber(nextInvoiceNumber);
+        console.log('📝 Invoice number generated from localStorage (fallback):', nextInvoiceNumber);
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount

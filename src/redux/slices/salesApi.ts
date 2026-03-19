@@ -552,7 +552,7 @@ export const salesApi = createApi({
     // invoice_number is required - backend accepts string or number
     // Backend will look up by invoice_number, and if not found, will fallback to id
     submitSalesReturn: builder.mutation<any, {
-      invoice_number: number | string; // Textual number (column lookup)
+      invoice_number?: number | string; // Textual number (column lookup) - OPTIONAL NOW
       invoice_id?: number;            // Unique database ID (primary key)
       created_by: string;
       return_date?: string; // Return date in YYYY-MM-DD format
@@ -598,6 +598,13 @@ export const salesApi = createApi({
       }),
       invalidatesTags: ["Sales"],
     }),
+
+    // Get the next invoice number from the backend
+    // Backend should return the last invoice_number + 1 based on DB records
+    getNextInvoiceNumber: builder.query<{ next_invoice_number: number | string }, void>({
+      query: () => "sales/get-next-invoice-number",
+      providesTags: ["Sales"],
+    }),
   }),
 });
 
@@ -633,4 +640,6 @@ export const {
   useSubmitSalesReturnMutation,
   useEditSaleMutation,
   useUpsertInvoicePaymentsMutation,
+  useGetNextInvoiceNumberQuery,
+  useLazyGetNextInvoiceNumberQuery,
 } = salesApi;

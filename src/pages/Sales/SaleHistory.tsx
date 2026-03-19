@@ -723,12 +723,20 @@ export default function SaleHistory() {
     {
       key: 'totalAmount',
       header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
-        sortable: true,
-      render: (item) => (
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          {item.totalAmount.toLocaleString()}
-        </Typography>
-      ),
+      sortable: true,
+      render: (item) => {
+        const netAmount = item.totalAmount - (item.totalReturnedAmount || 0);
+        return (
+          <Tooltip 
+            title={item.totalReturnedAmount > 0 ? `Original: ${item.totalAmount.toLocaleString()} | Returned: ${item.totalReturnedAmount.toLocaleString()}` : ""} 
+            arrow
+          >
+            <Typography variant="body2" sx={{ fontWeight: 500, color: item.totalReturnedAmount > 0 ? '#DC2626' : 'inherit' }}>
+              {netAmount.toLocaleString()}
+            </Typography>
+          </Tooltip>
+        );
+      },
     },
     {
       key: 'returnStatus',
