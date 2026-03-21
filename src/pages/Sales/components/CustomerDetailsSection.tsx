@@ -118,7 +118,8 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
               // Clear mobile to ensure auto-fill works when selecting from dropdown
               // The hook will fetch phones and auto-fill if there's exactly one phone
               onCustomerMobileChange('');
-              // Update the name - this will trigger useCustomerPhones hook to fetch phone from /sales/get-customer-phones/
+              // Update the name - this will trigger handleCustomerNameChange in SalesReceipt.tsx
+              // which re-fetches the ID if needed.
               onCustomerNameChange(nameValue);
             } else {
               // User cleared the field

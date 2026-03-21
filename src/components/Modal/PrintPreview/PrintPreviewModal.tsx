@@ -69,6 +69,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   hideActionButtons = false,
   pageSize = 'a4',
   brandIcon,
+  splitPayments = [],
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
   const isA5 = pageSize === 'a5';
@@ -260,9 +261,25 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: isA5 ? '8px' : '12px' }}>
                 {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
               </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
-                {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
-              </Typography>
+              
+              {splitPayments && splitPayments.length > 0 ? (
+                <Box>
+                  {splitPayments.map((p: any, idx: number) => {
+                    const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
+                    const amount = p.payment_amount || p.amount || '0';
+                    return (
+                      <Typography key={idx} sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                        {method.toUpperCase()}: {amount}
+                      </Typography>
+                    );
+                  })}
+                </Box>
+              ) : (
+                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                  {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
+                </Typography>
+              )}
+
               {paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
                 <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.4 }}>
                   {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}

@@ -43,15 +43,15 @@ const PaymentSplitModal: React.FC<PaymentSplitModalProps> = ({
                 setPayments(existingPayments);
             } else {
                 // Initial state: One empty row
-                setPayments([{ id: Date.now().toString(), paymentMethod: "Cash", amount: "", details: "" }]);
+                setPayments([{ id: `${Date.now()}-0`, paymentMethod: "Cash", amount: "", details: "" }]);
             }
         }
     }, [open, existingPayments]);
 
     const handleAddRow = () => {
-        setPayments([
-            ...payments,
-            { id: Date.now().toString(), paymentMethod: "Cash", amount: "", details: "" }
+        setPayments(prevPayments => [
+            ...prevPayments,
+            { id: `payment-${Date.now()}-${Math.floor(Math.random() * 10000)}`, paymentMethod: "Cash", amount: "", details: "" }
         ]);
     };
 

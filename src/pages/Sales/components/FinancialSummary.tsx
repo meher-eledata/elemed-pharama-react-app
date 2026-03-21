@@ -44,6 +44,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({
             <SummaryInput 
               value={totalValue} 
               onChange={(e) => onTotalValueChange(e.target.value)}
+              readOnly
               style={{ 
                 width: '100px',
                 minWidth: '100px',
@@ -59,6 +60,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({
             <SummaryInput 
               value={totalDiscount} 
               onChange={(e) => onTotalDiscountChange(e.target.value)}
+              readOnly
             />
           </SummaryField>
           <SummaryField>
@@ -68,6 +70,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({
             <SummaryInput 
               value={taxAmount} 
               onChange={(e) => onTaxAmountChange(e.target.value)}
+              readOnly
             />
           </SummaryField>
         </SummaryFieldsGroup>
@@ -78,6 +81,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           <SummaryInputLarge 
             value={totalPayableAmount} 
             onChange={(e) => onTotalPayableAmountChange(e.target.value)}
+            readOnly
             style={{ fontWeight: 700, fontSize: '18px' }} 
           />
         </SummaryFieldRight>

@@ -300,9 +300,11 @@ const SalesReceipt: React.FC = () => {
 
               // Map payments from API to splitPayments state
               if (Array.isArray(payments) && payments.length > 0) {
-                const mappedPayments = payments.map((p: any) => ({
-                  mode: p.payment_method || 'Cash',
-                  amount: parseFloat(p.payment_amount || '0').toString()
+                const mappedPayments = payments.map((p: any, idx: number) => ({
+                  id: p.id?.toString() || `existing-payment-${idx}-${Date.now()}`,
+                  paymentMethod: p.payment_method || 'Cash',
+                  amount: parseFloat(p.payment_amount || '0').toString(),
+                  details: p.transaction_number || p.details || ''
                 }));
                 // Filter out return payments (OUT direction) if necessary, 
                 // but usually we want to see what was paid.

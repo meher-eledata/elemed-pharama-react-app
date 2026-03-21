@@ -268,7 +268,7 @@ export const executeSave = async ({
       ...(invoiceDate && invoiceDate.trim() ? { invoice_date: invoiceDate.trim() } : {}),
       lines: lines,
       payments: splitPayments && splitPayments.length > 0 ? splitPayments.map(p => ({
-        payment_method: getBackendPaymentMethod(p.paymentMethod),
+        payment_method: getBackendPaymentMethod(p.paymentMethod || p.payment_method || 'CASH'),
         amount: p.amount,
         details: p.details
       })) : undefined
@@ -365,7 +365,7 @@ export const executeSave = async ({
             invoice_id: Number(invoiceId),
             created_by: user?.username || 'Guest',
             payments: splitPayments.map(p => ({
-              payment_method: getBackendPaymentMethod(p.paymentMethod),
+              payment_method: getBackendPaymentMethod(p.paymentMethod || p.payment_method || 'CASH'),
               payment_amount: Number(p.amount),
               payment_id: 0
             }))
