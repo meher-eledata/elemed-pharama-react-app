@@ -135,8 +135,8 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           display: 'flex',
           justifyContent: isA5 ? 'center' : 'space-between',
           alignItems: 'center',
-          marginBottom: isA5 ? '16px' : '20px',
-          paddingBottom: '10px',
+          marginBottom: isA5 ? '8px' : '12px',
+          paddingBottom: '6px',
           borderBottom: '2px solid #1A212B',
           gap: isA5 ? '20px' : 0
         }}>
@@ -175,90 +175,64 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           {!isA5 && <Box sx={{ flex: 1, textAlign: 'right' }}></Box>}
         </Box>
 
-        {/* Four Section Layout - 2x2 Grid */}
+        {/* Four Section Layout - 1 Row */}
         <Box sx={{
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row',
           gap: sectionGap,
-          marginBottom: isA5 ? '16px' : '24px'
+          marginBottom: isA5 ? '8px' : '12px',
+          width: '100%'
         }}>
-          {/* First Row: Customer Details and Doctor Details */}
-          <Box sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: sectionGap,
-            width: '100%'
-          }}>
             {/* Customer Details */}
             <Box sx={{
               flex: 1,
-              minWidth: isA5 ? '140px' : '180px',
               backgroundColor: '#F9FAFB',
-              padding: isA5 ? '8px 6px' : '12px 8px',
+              padding: isA5 ? '6px' : '8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
-              boxSizing: 'border-box',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              boxSizing: 'border-box'
             }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: isA5 ? '8px' : '12px' }}>
+              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
                 {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
               </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
                 {SALES_RECEIPT_LABELS.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}
               </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
                 {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}
-              </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.4 }}>
-                {SALES_RECEIPT_LABELS.CITY_PRINT.replace('{city}', (customerCity || '').trim())}
               </Typography>
             </Box>
 
             {/* Doctor Details */}
             <Box sx={{
               flex: 1,
-              minWidth: isA5 ? '140px' : '180px',
               backgroundColor: '#F9FAFB',
-              padding: isA5 ? '8px 6px' : '12px 8px',
+              padding: isA5 ? '6px' : '8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
-              boxSizing: 'border-box',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              boxSizing: 'border-box'
             }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: isA5 ? '8px' : '12px' }}>
+              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
                 {SALES_RECEIPT_LABELS.DOCTOR_DETAILS_TITLE}
               </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
                 {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
               </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
                 {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
               </Typography>
-              <Typography sx={{ fontSize: isA5 ? '9px' : '10px', color: '#374151', lineHeight: 1.4 }}>
-                {SALES_RECEIPT_LABELS.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}
-              </Typography>
             </Box>
-          </Box>
 
-          {/* Second Row: Payment Details and Invoice Details */}
-          <Box sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: sectionGap,
-            width: '100%'
-          }}>
             {/* Payment Details */}
             <Box sx={{
               flex: 1,
-              minWidth: isA5 ? '140px' : '180px',
               backgroundColor: '#F9FAFB',
-              padding: isA5 ? '8px 6px' : '12px 8px',
+              padding: isA5 ? '6px' : '8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
-              boxSizing: 'border-box',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              boxSizing: 'border-box'
             }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: isA5 ? '8px' : '12px' }}>
+              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
                 {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
               </Typography>
               
@@ -268,24 +242,24 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                     const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
                     const amount = p.payment_amount || p.amount || '0';
                     return (
-                      <Typography key={idx} sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                      <Typography key={idx} sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
                         {method.toUpperCase()}: {amount}
                       </Typography>
                     );
                   })}
                 </Box>
               ) : (
-                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
                   {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
                 </Typography>
               )}
 
               {paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
-                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.4 }}>
+                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
                   {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}
                 </Typography>
               ) : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
-                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.4 }}>
+                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
                   {SALES_RECEIPT_LABELS.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}
                 </Typography>
               ) : null}
@@ -294,39 +268,36 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             {/* Invoice Details */}
             <Box sx={{
               flex: 1,
-              minWidth: isA5 ? '140px' : '180px',
               backgroundColor: '#F9FAFB',
-              padding: isA5 ? '8px 6px' : '12px 8px',
+              padding: isA5 ? '6px' : '8px',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
-              boxSizing: 'border-box',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              boxSizing: 'border-box'
             }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: isA5 ? '8px' : '12px' }}>
+              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
                 {SALES_RECEIPT_LABELS.INVOICE_DETAILS_TITLE}
               </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '4px', lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
                 {SALES_RECEIPT_LABELS.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}
               </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
                 {SALES_RECEIPT_LABELS.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}
               </Typography>
             </Box>
-          </Box>
         </Box>
 
         {/* Items Table with Scroll */}
-        <Box sx={{ marginBottom: isA5 ? '16px' : '24px' }}>
-          <Typography sx={{ fontSize: isA5 ? '14px' : '16px', fontWeight: 600, color: '#1A212B', marginBottom: isA5 ? '12px' : '16px' }}>
+        <Box sx={{ marginBottom: 0 }}>
+          <Typography sx={{ fontSize: isA5 ? '12px' : '14px', fontWeight: 600, color: '#1A212B', marginBottom: isA5 ? '4px' : '8px' }}>
             {SALES_RECEIPT_LABELS.ITEMS_SECTION_TITLE}
           </Typography>
           <Box sx={{
             border: '1px solid #E5E7EB',
-            borderRadius: '8px',
+            borderBottom: 'none',
+            borderRadius: '8px 8px 0 0',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
           }}>
             {/* Fixed Header */}
             <Box sx={{
@@ -334,13 +305,13 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               gridTemplateColumns: '2fr 0.7fr 0.7fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr',
               columnGap: '8px',
               backgroundColor: '#F9FAFB',
-              padding: isA5 ? '8px 12px' : '12px 16px',
+              padding: isA5 ? '4px 8px' : '6px 12px',
               fontSize: tableHeaderSize,
               fontWeight: 600,
               color: '#1A212B',
               flexShrink: 0,
               borderBottom: '2px solid #E5E7EB',
-              minHeight: isA5 ? '36px' : '44px',
+              minHeight: isA5 ? '24px' : '30px',
               alignItems: 'center'
             }}>
               <Box>Product</Box>
@@ -378,12 +349,12 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                     display: 'grid',
                     gridTemplateColumns: '2fr 0.7fr 0.7fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr',
                     columnGap: '8px',
-                    padding: isA5 ? '8px 12px' : '12px 16px',
+                    padding: isA5 ? '4px 8px' : '6px 12px',
                     fontSize: tableRowSize,
                     color: '#374151',
                     backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
-                    borderTop: '1px solid #E5E7EB',
-                    minHeight: isA5 ? '36px' : '44px',
+                    borderTop: index === 0 ? 'none' : '1px solid #E5E7EB',
+                    minHeight: isA5 ? '24px' : '30px',
                     alignItems: 'center',
                     wordBreak: 'break-word'
                   }}>
@@ -416,13 +387,12 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         {/* Summary */}
         <Box sx={{
           backgroundColor: '#F9FAFB',
-          padding: isA5 ? '16px 20px' : '20px 24px',
-          borderRadius: '8px',
+          padding: isA5 ? '8px 16px' : '12px 20px',
+          borderRadius: '0 0 8px 8px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           border: '1px solid #E5E7EB',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
         }}>
           <Box sx={{ display: 'flex', gap: isA5 ? '40px' : '60px', fontSize: '13px', color: '#1A212B' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

@@ -247,7 +247,7 @@ export const executeSave = async ({
     const backendPaymentMethod = getBackendPaymentMethod(paymentMode);
 
     const submitSalePayload = {
-      disc: totalDiscountPercent,
+      disc: 0, // Backend expects a flat Rupee deduction here, but frontend only uses per-item discounts
       payment_method: backendPaymentMethod,
       payment_mode: backendPaymentMethod, // Dual naming sync
       payment_amount: parseFloat(totalPayableAmount || '0'),
@@ -333,11 +333,11 @@ export const executeSave = async ({
         invoice_id: Number(invoiceId),
         invoice_number: invoiceNumber,
         quantity: salesItems.length,
-        disc: parseFloat(totalDiscountPercent.toFixed(2)), // Overall discount
+        disc: 0, // Overall discount in Rupees (set to 0 since we use per-item discount percentages)
         payment_method: backendPaymentMethod,
         payment_mode: backendPaymentMethod,
         payment_amount: parseFloat(totalPayableAmount || '0'),
-        customer_id: selectedCustomer?.id || editModeData?.customer_id || 4, // Default to a valid ID if missing
+        customer_id: selectedCustomer?.id ?? editModeData?.customer_id ?? 0, // Properly fallback without overriding 0 to 4
         customer_name: customerName,
         customer_mobile: customerMobile,
         customer_city: customerCity,

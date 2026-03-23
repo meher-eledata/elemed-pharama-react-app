@@ -34,6 +34,7 @@ export interface SalesHistoryItem {
   id: number;
   invoiceNumber: string;
   invoiceDate: string;
+  customerId: number;
   customerName: string;
   customerMobile: string;
   customerCity: string;
@@ -127,10 +128,30 @@ export default function SaleHistory() {
   const savedHistory = useMemo(() => getSalesHistoryFromStorage(), [refreshKey]);
 
   const salesHistoryData: SalesHistoryItem[] = useMemo(() => {
+    const formatToDDMMYYYY = (dateStr: string) => {
+      if (!dateStr) return '';
+      // Quick check if already roughly DD/MM/YYYY format
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+      
+      const stdTime = Date.parse(dateStr);
+      if (!isNaN(stdTime)) {
+        const d = new Date(stdTime);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}/${d.getFullYear()}`;
+      }
+      
+      const d = dayjs(dateStr);
+      if (d.isValid()) return d.format('DD/MM/YYYY');
+      
+      return dateStr;
+    };
+
     const savedItems: SalesHistoryItem[] = savedHistory.map((item: any, index: number) => ({
       id: item.id || `saved_${index}`,
       invoiceNumber: item.invoiceNumber || '',
-      invoiceDate: item.invoiceDate || '',
+      invoiceDate: formatToDDMMYYYY(item.invoiceDate || ''),
+      customerId: Number(item.customerId) || 0,
       customerName: item.customerName || '',
       customerMobile: item.customerMobile || '',
       customerCity: item.customerCity || '',
@@ -211,6 +232,7 @@ export default function SaleHistory() {
         rawInvoiceNumber: invoiceNumStr, // Original record number if any
         invoiceNumber: formattedInvoiceNumber, // Use "INV" format for display
         invoiceDate: invoiceDate,
+        customerId: Number(invoice.customer_id) || 0,
         customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
         customerMobile: invoice.customer_mobile || 'N/A',
         customerCity: invoice.customer_city || 'N/A',
@@ -248,6 +270,7 @@ export default function SaleHistory() {
 
           resultMap.set(item.invoiceNumber, {
             ...item,
+            invoiceDate: item.invoiceDate || savedItem.invoiceDate || '',
             // If API has null names/mobile or fallback placeholders, use the ones from local storage
             customerName: isFallbackValue(item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
             customerMobile: (item.customerMobile === 'N/A' || !item.customerMobile) ? (savedItem.customerMobile || item.customerMobile) : item.customerMobile,
@@ -447,6 +470,52 @@ export default function SaleHistory() {
           
           console.log('✅ Full details received from API:', result);
           
+          let calculatedTotalValue = 0;
+          let calculatedTotalTax = 0;
+          let calculatedTotalDiscount = 0;
+
+          const mappedItems = lines.map((line: any) => {
+              const qty = Number(line.quantity) || 0;
+              const sp = Number(line.selling_price ?? line.rate) || 0;
+              const disc = Number(line.discount) || 0;
+              const cgst = Number(line.cgst) || 0;
+              const sgst = Number(line.sgst) || 0;
+              const igst = Number(line.igst) || 0;
+              
+              calculatedTotalValue += (qty * sp);
+              
+              // Backend mathematically treats SP as Tax-Inclusive:
+              const gross = qty * sp;
+              const discountAmt = gross * (disc / 100);
+              const finalAmount = gross - discountAmt; // The total is strictly Gross - Discount (Since SP relies on implicit tax!)
+              
+              calculatedTotalDiscount += discountAmt;
+              
+              // Extract the embedded tax backwards for the summary:
+              const taxPct = (cgst + sgst + igst) / 100;
+              const effectiveTaxableDenominator = 1 + taxPct;
+              const taxableAmt = effectiveTaxableDenominator > 0 ? (finalAmount / effectiveTaxableDenominator) : finalAmount;
+              const taxAmountForLine = taxableAmt * taxPct;
+              
+              calculatedTotalTax += taxAmountForLine;
+              
+              return {
+                id: line.invoice_line_id,
+                productName: line.name || '',
+                quantity: line.quantity?.toString() || '0',
+                unitPrice: sp.toString(),
+                mrp: line.mrp?.toString() || '0',
+                amount: finalAmount.toFixed(2), // Safely calculated to match the backend exactly
+                batch: line.batch_number || '',
+                type: line.product_type || 'N/A',
+                brand_name: line.brand_name || '',
+                cgstPercent: cgst.toString(),
+                sgstPercent: sgst.toString(),
+                igstPercent: igst.toString(),
+                discountPercent: disc.toString(),
+              };
+          });
+
           const apiDetails = {
             customerName: cust?.name || initialDetails.customerName,
             customerMobile: cust?.mobile_number || initialDetails.customerMobile,
@@ -458,26 +527,12 @@ export default function SaleHistory() {
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
             invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
             invoiceDate: inv.created_at ? dayjs(inv.created_at).format('DD/MM/YYYY') : initialDetails.invoiceDate,
-            totalValue: (inv.total_amount || 0).toString(),
-            totalDiscount: (inv.discount || 0).toString(),
-            taxAmount: (inv.tax_amount || 0).toString(),
+            totalValue: calculatedTotalValue.toFixed(2),
+            totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
+            taxAmount: calculatedTotalTax.toFixed(2),
             totalPayableAmount: (inv.total_amount || 0).toString(),
             splitPayments: payments,
-            items: lines.map((line: any) => ({
-                id: line.invoice_line_id,
-                productName: line.name || '',
-                quantity: line.quantity?.toString() || '0',
-                unitPrice: line.unit_price?.toString() || '0',
-                mrp: line.mrp?.toString() || '0',
-                amount: line.amount?.toString() || '0',
-                batch: line.batch_number || '',
-                type: line.product_type || 'N/A',
-                brand_name: line.brand_name || '',
-                cgstPercent: line.cgst_percent?.toString() || '0',
-                sgstPercent: line.sgst_percent?.toString() || '0',
-                igstPercent: line.igst_percent?.toString() || '0',
-                discountPercent: line.discount_percent?.toString() || '0',
-            }))
+            items: mappedItems
           };
           
           setInvoiceDetails(apiDetails);
@@ -584,18 +639,48 @@ export default function SaleHistory() {
       let bValue = b[activeSortKey as keyof SalesHistoryItem];
 
       // CRITICAL: Special handling for date sorting
-      // String comparison on DD/MM/YYYY format fails (e.g. "20/03/2026" vs "01/04/2026")
+      // Handle string comparison on various date formats (e.g. "20/03/2026", "2026-03-20", "20 Mar 2026")
       if (activeSortKey === 'invoiceDate') {
-        const aDate = dayjs(aValue as string, 'DD/MM/YYYY').valueOf();
-        const bDate = dayjs(bValue as string, 'DD/MM/YYYY').valueOf();
+        const parseDate = (val: any) => {
+          if (!val) return 0;
+          const strVal = String(val).trim();
+          
+          // Try standard Date parse (works for YYYY-MM-DD or DD MMM YYYY)
+          const stdTime = Date.parse(strVal);
+          if (!isNaN(stdTime)) return stdTime;
+          
+          // Try DD/MM/YYYY or DD-MM-YYYY
+          const parts = strVal.split(/[\/\-]/);
+          if (parts.length === 3) {
+            let p0 = parseInt(parts[0], 10);
+            let p1 = parseInt(parts[1], 10);
+            let p2 = parseInt(parts[2], 10);
+            
+            if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+              // If format is YYYY-MM-DD
+              if (p0 > 1000) {
+                return new Date(p0, p1 - 1, p2).getTime();
+              }
+              // Else assume DD/MM/YYYY
+              return new Date(p2, p1 - 1, p0).getTime();
+            }
+          }
+          
+          // Fallback to dayjs
+          const d = dayjs(strVal);
+          return d.isValid() ? d.valueOf() : 0;
+        };
 
-        if (aDate !== bDate) {
+        const aDate = parseDate(aValue);
+        const bDate = parseDate(bValue);
+
+        if (!isNaN(aDate) && !isNaN(bDate) && aDate !== bDate) {
           return activeSortDirection === 'asc' ? aDate - bDate : bDate - aDate;
         }
 
-        // Tie-breaker: use ID if dates are the same day
-        const aId = Number(a.id);
-        const bId = Number(b.id);
+        // Tie-breaker: use ID if dates are the same day (or both invalid)
+        const aId = Number(a.id) || 0;
+        const bId = Number(b.id) || 0;
         return activeSortDirection === 'asc' ? aId - bId : bId - aId;
       }
 
@@ -1068,6 +1153,7 @@ export default function SaleHistory() {
       if (savedItem) {
         // Use saved invoice details
         const invoiceData = {
+          customer_id: savedItem.customerId || invoice.customerId || 0,
           customerName: savedItem.customerName || invoice.customerName,
           customerMobile: savedItem.customerMobile || invoice.customerMobile,
           customerCity: savedItem.customerCity || '',
@@ -1097,6 +1183,7 @@ export default function SaleHistory() {
       } else {
         // Construct from basic invoice data
         const invoiceData = {
+          customer_id: invoice.customerId || 0,
           customerName: invoice.customerName,
           customerMobile: invoice.customerMobile,
           customerCity: '',

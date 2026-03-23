@@ -117,6 +117,7 @@ export const generatePrintHTML = (data: {
     patientType,
     pageSize = 'A4',
     brandIcon,
+    splitPayments,
   } = data;
 
   const isA5 = pageSize === 'A5';
@@ -172,43 +173,26 @@ export const generatePrintHTML = (data: {
           }
           .receipt-details { 
             display: flex; 
-            flex-direction: column;
+            flex-direction: row;
             gap: 0px; 
-            margin-bottom: ${isA5 ? '20px' : '40px'}; 
+            margin-bottom: ${isA5 ? '10px' : '15px'}; 
             border: 1px solid #E5E7EB; 
             border-radius: 8px; 
             overflow: hidden;
             page-break-inside: avoid;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           }
-          .receipt-details-row {
-            display: flex;
-            flex-direction: row;
-            gap: 0px;
-            width: 100%;
-          }  
           .detail-section { 
             flex: 1; 
-            min-width: ${isA5 ? '120px' : '180px'};
             background-color: #F9FAFB !important; 
-            padding: ${isA5 ? '8px 6px' : '12px 8px'}; 
+            padding: ${isA5 ? '6px' : '10px'}; 
             border-right: 2px solid #9CA3AF; 
-            border-bottom: 2px solid #9CA3AF;
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          .receipt-details-row:first-child .detail-section:last-child {
-            border-bottom: 2px solid #9CA3AF;
+          .detail-section:last-child {
             border-right: none;
-          }
-          .receipt-details-row:last-child .detail-section:last-child {
-            border-bottom: none;
-            border-right: none;
-          }
-          .receipt-details-row:last-child .detail-section:first-child {
-            border-bottom: none;
           }
           .detail-title { 
             font-weight: bold; 
@@ -226,12 +210,12 @@ export const generatePrintHTML = (data: {
             font-size: ${isA5 ? '8px' : '10px'};
           }
           .items-section { 
-            margin-bottom: ${isA5 ? '20px' : '40px'};
+            margin-bottom: 0px;
             page-break-inside: avoid;
           }
           .items-title { 
             font-weight: bold; 
-            margin-bottom: ${isA5 ? '8px' : '16px'}; 
+            margin-bottom: ${isA5 ? '4px' : '8px'}; 
             font-size: ${isA5 ? '12px' : '14px'};
             color: #1A212B;
           }
@@ -240,7 +224,8 @@ export const generatePrintHTML = (data: {
             border-collapse: separate;
             border-spacing: 0;
             border: 2px solid #A5B4FC !important; 
-            border-radius: 8px; 
+            border-bottom: none !important;
+            border-radius: 8px 8px 0 0; 
             overflow: hidden;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -248,7 +233,7 @@ export const generatePrintHTML = (data: {
           }
           .items-table th { 
             background-color: #C7D2FE !important; 
-            padding: ${isA5 ? '8px 4px' : '18px 12px'}; 
+            padding: ${isA5 ? '4px 4px' : '8px 8px'}; 
             font-weight: bold; 
             font-size: ${isA5 ? '9px' : '11px'}; 
             text-align: left;
@@ -268,12 +253,12 @@ export const generatePrintHTML = (data: {
             }
           }
           .items-table td { 
-            padding: ${isA5 ? '8px 4px' : '18px 12px'}; 
+            padding: ${isA5 ? '4px 4px' : '8px 8px'}; 
             font-size: ${isA5 ? '9px' : '11px'}; 
             background-color: #FFFFFF !important; 
             color: #374151 !important;
             border-top: 1px solid #E5E7EB;
-            line-height: 1.6;
+            line-height: 1.4;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
@@ -287,13 +272,15 @@ export const generatePrintHTML = (data: {
           }
           .summary { 
             background-color: #C7D2FE !important; 
-            padding: ${isA5 ? '10px 12px' : '20px 24px'}; 
-            border-radius: 8px; 
+            padding: ${isA5 ? '8px 12px' : '12px 20px'}; 
+            border: 2px solid #A5B4FC !important;
+            border-top: none !important;
+            border-radius: 0 0 8px 8px; 
             display: flex; 
             justify-content: space-between; 
             align-items: flex-start;
             page-break-inside: avoid;
-            margin-top: ${isA5 ? '15px' : '30px'};
+            margin-top: 0px;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
@@ -355,7 +342,7 @@ export const generatePrintHTML = (data: {
         </style>
       </head>
       <body>
-        <div class="receipt-header" style="display: flex; align-items: center; justify-content: ${isA5 ? 'center' : 'space-between'}; border-bottom: 2px solid #1A212B; padding-bottom: 10px; margin-bottom: 20px; gap: ${isA5 ? '20px' : '0'};">
+        <div class="receipt-header" style="display: flex; align-items: center; justify-content: ${isA5 ? 'center' : 'space-between'}; border-bottom: 2px solid #1A212B; padding-bottom: 6px; margin-bottom: 12px; gap: ${isA5 ? '20px' : '0'};">
           <div style="flex: ${isA5 ? 'none' : '1'}; display: flex; justify-content: flex-start;">
             ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${isA5 ? '70px' : '90px'}; height: auto;" />` : ''}
           </div>
@@ -368,44 +355,43 @@ export const generatePrintHTML = (data: {
               GSTIN No: 37AAQCS3213C2ZH<br />
               (M): 0891-2554040, 8096655050
             </div>
-            <!-- <div style="font-size: ${isA5 ? '8px' : '10px'}; font-weight: 600; color: #666; margin-top: 2px;">${labels.CUSTOMER_RECEIPT_TITLE}</div> -->
           </div>
           ${!isA5 ? '<div style="flex: 1;"></div>' : ''}
         </div>
         
         <div class="receipt-details">
-          <!-- First Row: Customer Details and Doctor Details -->
-          <div class="receipt-details-row">
-            <div class="detail-section">
-              <div class="detail-title">${labels.CUSTOMER_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}</div>
-              <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}</div>
-              <div class="detail-item">${labels.CITY_PRINT.replace('{city}', (customerCity || '').trim())}</div>
-            </div>
-            <div class="detail-section">
-              <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
-              <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}</div>
-              <div class="detail-item email-item">${labels.EMAIL_PRINT.replace('{email}', (doctorEmail || '').trim())}</div>
-            </div>
+          <!-- 1 Row Layout -->
+          <div class="detail-section">
+            <div class="detail-title">${labels.CUSTOMER_DETAILS_TITLE}</div>
+            <div class="detail-item">${labels.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}</div>
+            <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}</div>
           </div>
-          <!-- Second Row: Payment Details and Invoice Details -->
-          <div class="receipt-details-row">
-            <div class="detail-section">
-              <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>
-              ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
-      ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
-      : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim()
-        ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
-        : ''
-    }
-            </div>
-            <div class="detail-section">
-              <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
-              <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
-              <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}</div>
-            </div>
+          <div class="detail-section">
+            <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
+            <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
+            <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}</div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
+            ${splitPayments && splitPayments.length > 0 
+              ? splitPayments.map((p: any) => {
+                  const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
+                  const amount = p.payment_amount || p.amount || '0';
+                  return `<div class="detail-item">${method.toUpperCase()}: ${amount}</div>`;
+                }).join('')
+              : `<div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>`
+            }
+            ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
+                ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
+                : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim()
+                  ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
+                  : ''
+              }
+          </div>
+          <div class="detail-section">
+            <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
+            <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
+            <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}</div>
           </div>
         </div>
         
@@ -447,6 +433,10 @@ export const generatePrintHTML = (data: {
         
         <div class="summary">
           <div class="summary-left">
+            <div class="summary-item">
+              <div class="summary-label">${labels.TOTAL_VALUE_LABEL}</div>
+              <div class="summary-value">${totalValue}</div>
+            </div>
             <div class="summary-item">
               <div class="summary-label">${labels.TOTAL_DISCOUNT_LABEL}</div>
               <div class="summary-value">${totalDiscount}</div>
