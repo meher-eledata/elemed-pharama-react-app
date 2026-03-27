@@ -475,17 +475,19 @@ export default function SaleHistory() {
           let calculatedTotalDiscount = 0;
 
           const mappedItems = lines.map((line: any) => {
-            const qty = Number(line.quantity) || 0;
+            const originalQty = Number(line.quantity) || 0;
+            const returnedQty = Number(line.returned_quantity) || 0;
+            const netQty = originalQty - returnedQty;
             const sp = Number(line.selling_price ?? line.rate) || 0;
             const disc = Number(line.discount) || 0;
             const cgst = Number(line.cgst) || 0;
             const sgst = Number(line.sgst) || 0;
             const igst = Number(line.igst) || 0;
 
-            calculatedTotalValue += (qty * sp);
+            calculatedTotalValue += (netQty * sp);
 
             // Backend mathematically treats SP as Tax-Inclusive:
-            const gross = qty * sp;
+            const gross = netQty * sp;
             const discountAmt = gross * (disc / 100);
             const finalAmount = gross - discountAmt; // The total is strictly Gross - Discount (Since SP relies on implicit tax!)
 
@@ -502,7 +504,7 @@ export default function SaleHistory() {
             return {
               id: line.invoice_line_id,
               productName: line.name || '',
-              quantity: line.quantity?.toString() || '0',
+              quantity: netQty.toString(),
               unitPrice: sp.toString(),
               mrp: line.mrp?.toString() || '0',
               amount: finalAmount.toFixed(2), // Safely calculated to match the backend exactly
@@ -513,8 +515,14 @@ export default function SaleHistory() {
               sgstPercent: sgst.toString(),
               igstPercent: igst.toString(),
               discountPercent: disc.toString(),
+              hsn: line.hsn || 'N/A',
+              pack: line.pack_info || 'N/A',
+              expiryDate: line.expiry_date || '',
             };
           });
+
+          const totalReturned = parseFloat(inv.total_returned_amount || result.total_refunded || 0);
+          const finalPayable = Math.max(0, (parseFloat(inv.total_amount) || 0) - totalReturned);
 
           const apiDetails = {
             customerName: cust?.name || initialDetails.customerName,
@@ -530,8 +538,16 @@ export default function SaleHistory() {
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
-            totalPayableAmount: (inv.total_amount || 0).toString(),
-            splitPayments: payments,
+            totalPayableAmount: Math.round(finalPayable).toFixed(2),
+            splitPayments: payments.map((p: any) => {
+              // If the payment amount matches totalReturned, or it looks like a refund, mark it
+              const isRefund = p.payment_amount == totalReturned && totalReturned > 0;
+              return {
+                ...p,
+                payment_amount: isRefund ? -Math.abs(p.payment_amount) : p.payment_amount,
+                is_refund: isRefund
+              };
+            }),
             items: mappedItems
           };
 

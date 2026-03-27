@@ -305,14 +305,19 @@ const SalesReceipt: React.FC = () => {
               // one payment record, but we should rely on paymentMode (set below from invoice.payment_mode)
               // rather than putting it into splitPayments — otherwise the print preview will always
               // show the old backend payment instead of the user's newly selected mode.
-              if (Array.isArray(payments) && payments.length > 1) {
-                const mappedPayments = payments.map((p: any, idx: number) => ({
-                  id: p.id?.toString() || `existing-payment-${idx}-${Date.now()}`,
-                  paymentMethod: p.payment_method || 'Cash',
-                  amount: parseFloat(p.payment_amount || '0').toString(),
-                  details: p.transaction_number || p.details || ''
-                }));
-                setSplitPayments(mappedPayments.filter((p: any) => parseFloat(p.amount) > 0));
+               if (Array.isArray(payments) && payments.length > 1) {
+                const totalReturned = parseFloat(invoice.total_returned_amount || result.total_refunded || 0);
+                const mappedPayments = payments.map((p: any, idx: number) => {
+                  const isRefund = p.payment_amount == totalReturned && totalReturned > 0;
+                  return {
+                    id: p.id?.toString() || `existing-payment-${idx}-${Date.now()}`,
+                    paymentMethod: isRefund ? `REFUND (${p.payment_method || 'Cash'})` : (p.payment_method || 'Cash'),
+                    amount: isRefund ? (-Math.abs(parseFloat(p.payment_amount || '0'))).toString() : parseFloat(p.payment_amount || '0').toString(),
+                    details: p.transaction_number || p.details || '',
+                    is_refund: isRefund
+                  };
+                });
+                setSplitPayments(mappedPayments.filter((p: any) => Math.abs(parseFloat(p.amount)) > 0));
               } else {
                 // Single payment or no payment — don't populate splitPayments
                 setSplitPayments([]);
@@ -371,6 +376,7 @@ const SalesReceipt: React.FC = () => {
 
                 const originalQty = parseFloat(line.quantity || '0');
                 const returnedQty = parseFloat(line.returned_quantity || '0');
+                const netQty = originalQty - returnedQty;
 
                 return {
                   id: line.invoice_line_id?.toString() || line.id?.toString() || '',
@@ -380,7 +386,7 @@ const SalesReceipt: React.FC = () => {
                   batch: line.batch_number || line.batch || '',
                   expiryDate: line.expiry_date || line.expiryDate || '',
                   pack: line.pack_info || line.pack || '',
-                  quantity: (line.quantity || line.qty || '1').toString(),
+                  quantity: netQty.toString(),
                   unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(2) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price
                   mrp: line.mrp ? Number(parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toFixed(2).replace(/\.00$/, '') : '0', // Calculate aggregate MRP for historic invoices
                   discount: line.discount?.toString() || '0',
@@ -435,7 +441,7 @@ const SalesReceipt: React.FC = () => {
                   : (result.tax_amount?.toString() || result.taxAmount?.toString() || '0'),
                 totalPayableAmount: (editModeData.salesItems && editModeData.salesItems.length > 0)
                   ? (editModeData.totalPayableAmount || editModeData.totalAmount?.toString() || '0')
-                  : (invoice.total_amount?.toString() || result.total_payable_amount?.toString() || result.totalPayableAmount?.toString() || '0'),
+                  : (Math.max(0, (parseFloat(invoice.total_amount) || 0) - (parseFloat(invoice.total_returned_amount || result.total_refunded || 0))).toString() || result.total_payable_amount?.toString() || result.totalPayableAmount?.toString() || '0'),
               };
 
               // Pre-populate form fields from API data
