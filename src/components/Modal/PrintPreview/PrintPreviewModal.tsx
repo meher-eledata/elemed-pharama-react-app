@@ -7,10 +7,15 @@ import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels'
 interface SalesReceiptItem {
   id: string;
   productName: string;
+  manufacturer?: string;
   batch: string;
   quantity: string;
   type: string;
   unitPrice: string;
+  mrp?: string;
+  hsn?: string;
+  pack?: string;
+  expiryDate?: string;
   discountPercent: string;
   cgstPercent: string;
   sgstPercent: string;
@@ -302,7 +307,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             {/* Fixed Header */}
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: '2fr 0.7fr 0.7fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr',
+              gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
               columnGap: '8px',
               backgroundColor: '#F9FAFB',
               padding: isA5 ? '4px 8px' : '6px 12px',
@@ -314,16 +319,17 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               minHeight: isA5 ? '24px' : '30px',
               alignItems: 'center'
             }}>
-              <Box>Product</Box>
-              <Box>Qty</Box>
-              <Box>Type</Box>
+              <Box>S.No</Box>
+              <Box>Product Name</Box>
+              <Box>MFC</Box>
+              <Box>HSN</Box>
               <Box>Batch</Box>
-              <Box>Price</Box>
-              <Box>Disc</Box>
-              <Box>CGST</Box>
-              <Box>SGST</Box>
-              <Box>IGST</Box>
-              <Box>Amt</Box>
+              <Box>Pack</Box>
+              <Box>Exp</Box>
+              <Box>Qty</Box>
+              <Box>MRP</Box>
+              <Box>GST</Box>
+              <Box>Amount</Box>
             </Box>
             {/* Scrollable Products List */}
             <Box sx={{
@@ -344,32 +350,50 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               },
             }}>
               {salesItems && salesItems.length > 0 ? (
-                salesItems.map((item, index) => (
-                  <Box key={item.id} sx={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 0.7fr 0.7fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr',
-                    columnGap: '8px',
-                    padding: isA5 ? '4px 8px' : '6px 12px',
-                    fontSize: tableRowSize,
-                    color: '#374151',
-                    backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
-                    borderTop: index === 0 ? 'none' : '1px solid #E5E7EB',
-                    minHeight: isA5 ? '24px' : '30px',
-                    alignItems: 'center',
-                    wordBreak: 'break-word'
-                  }}>
-                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</Box>
-                    <Box>{item.quantity}</Box>
-                    <Box>{item.type}</Box>
-                    <Box>{item.batch}</Box>
-                    <Box>{item.unitPrice}</Box>
-                    <Box>{item.discountPercent}%</Box>
-                    <Box>{item.cgstPercent}%</Box>
-                    <Box>{item.sgstPercent}%</Box>
-                    <Box>{item.igstPercent}%</Box>
-                    <Box sx={{ fontWeight: 600 }}>{item.amount}</Box>
-                  </Box>
-                ))
+                salesItems.map((item, index) => {
+                  const mfc = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+                  const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
+                  
+                  // Format expiry from YYYY-MM-DD to MM/YYYY
+                  let formattedExp = 'N/A';
+                  if (item.expiryDate) {
+                    const dateParts = item.expiryDate.split('-');
+                    if (dateParts.length >= 2) {
+                      // Handle both YYYY-MM-DD and YYYY-MM
+                      formattedExp = `${dateParts[1]}/${dateParts[0]}`;
+                    } else {
+                      formattedExp = item.expiryDate;
+                    }
+                  }
+
+                  return (
+                    <Box key={item.id} sx={{
+                      display: 'grid',
+                      gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
+                      columnGap: '8px',
+                      padding: isA5 ? '4px 8px' : '6px 12px',
+                      fontSize: tableRowSize,
+                      color: '#374151',
+                      backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
+                      borderTop: index === 0 ? 'none' : '1px solid #E5E7EB',
+                      minHeight: isA5 ? '24px' : '30px',
+                      alignItems: 'center',
+                      wordBreak: 'break-word'
+                    }}>
+                      <Box>{index + 1}</Box>
+                      <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</Box>
+                      <Box>{mfc}</Box>
+                      <Box>{item.hsn || 'N/A'}</Box>
+                      <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.batch}</Box>
+                      <Box>{item.pack || 'N/A'}</Box>
+                      <Box>{formattedExp}</Box>
+                      <Box>{item.quantity}</Box>
+                      <Box>{item.mrp || 'N/A'}</Box>
+                      <Box>{gstTotal}</Box>
+                      <Box sx={{ fontWeight: 600 }}>{item.amount}</Box>
+                    </Box>
+                  );
+                })
               ) : (
                 <Box sx={{
                   padding: '24px 16px',

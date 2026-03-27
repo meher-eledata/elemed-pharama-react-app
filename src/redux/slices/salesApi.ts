@@ -395,14 +395,7 @@ export const salesApi = createApi({
       },
     }),
 
-    // Search customers by name or mobile number
-    searchCustomers: builder.mutation<Customer[], SearchCustomerRequest>({
-      query: (body) => ({
-        url: "sales/search-customers",
-        method: "POST",
-        body,
-      }),
-    }),
+
 
     // Get all doctors
     getDoctors: builder.query<Doctor[], void>({
@@ -599,12 +592,7 @@ export const salesApi = createApi({
       invalidatesTags: ["Sales"],
     }),
 
-    // Get the next invoice number from the backend
-    // Backend should return the last invoice_number + 1 based on DB records
-    getNextInvoiceNumber: builder.query<{ next_invoice_number: number | string }, void>({
-      query: () => "sales/get-next-invoice-number",
-      providesTags: ["Sales"],
-    }),
+
   }),
 });
 
@@ -618,7 +606,7 @@ export const {
   useGetSalesByIdQuery,
   useUpdateSalesMutation,
   useDeleteSalesMutation,
-  useSearchCustomersMutation,
+
   useGetDoctorsQuery,
   useLazyGetDoctorsQuery,
   useGetDoctorNamesQuery,
@@ -640,6 +628,5 @@ export const {
   useSubmitSalesReturnMutation,
   useEditSaleMutation,
   useUpsertInvoicePaymentsMutation,
-  useGetNextInvoiceNumberQuery,
-  useLazyGetNextInvoiceNumberQuery,
+
 } = salesApi;

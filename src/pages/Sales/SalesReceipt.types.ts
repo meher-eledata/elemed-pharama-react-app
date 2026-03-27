@@ -11,6 +11,8 @@ export interface SalesReceiptItem {
   type: string;
   unitPrice: string;
   mrp?: string;
+  hsn?: string;
+  pack?: string;
   discount: string;
   discountPercent: string;
   discountAuthorizedBy?: string; // Doctor name who authorized the discount

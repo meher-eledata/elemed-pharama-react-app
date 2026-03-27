@@ -23,8 +23,8 @@ import {
   useEditSaleMutation,
   useDeleteSalesMutation,
   useUpsertInvoicePaymentsMutation,
-  useSearchCustomersMutation,
-  useLazyGetNextInvoiceNumberQuery,
+
+
   useLazyGetInvoicesQuery,
   Customer,
   DoctorPhoneEmailInfo
@@ -85,9 +85,10 @@ const SalesReceipt: React.FC = () => {
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [deleteSales] = useDeleteSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
-  const [searchCustomers] = useSearchCustomersMutation();
+
+
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
-  const [fetchNextInvoiceNumber] = useLazyGetNextInvoiceNumberQuery();
+
   const [fetchInvoicesList] = useLazyGetInvoicesQuery();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
 
@@ -168,11 +169,11 @@ const SalesReceipt: React.FC = () => {
   const editModeData = (location.state as any) || null;
   const isEditMode = editModeData?.isEditMode || false;
   const isReturnDetailsMode = editModeData?.isReturnDetailsMode || false;
-  
+
   // CRITICAL: Resolve database invoice ID from navigation state
   const rawInvoiceId = editModeData?.invoiceId || editModeData?.invoice_id || editModeData?.id;
-  const resolvedInvoiceId = (rawInvoiceId && !isNaN(Number(rawInvoiceId))) 
-    ? Number(rawInvoiceId) 
+  const resolvedInvoiceId = (rawInvoiceId && !isNaN(Number(rawInvoiceId)))
+    ? Number(rawInvoiceId)
     : 0;
 
   // Store original invoice data for comparison
@@ -228,87 +229,93 @@ const SalesReceipt: React.FC = () => {
       }
 
       if (fetchInvoiceNumber || resolvedInvoiceId > 0) {
-      const fetchInvoiceDetails = async () => {
-        try {
-          console.log('📡 Starting fetchInvoiceDetails process...', { 
-            resolvedInvoiceId, 
-            fetchInvoiceNumber,
-            rawStateId: editModeData.invoiceId || editModeData.invoice_id 
-          });
+        const fetchInvoiceDetails = async () => {
+          try {
+            console.log('📡 Starting fetchInvoiceDetails process...', {
+              resolvedInvoiceId,
+              fetchInvoiceNumber,
+              rawStateId: editModeData.invoiceId || editModeData.invoice_id
+            });
 
-          let result;
-          let firstAttemptError: any = null;
+            let result;
+            let firstAttemptError: any = null;
 
-          // Attempt 1: Fetch by database invoice ID (primary key)
-          if (resolvedInvoiceId > 0) {
-            console.log('🔍 Attempt 1: Fetching by invoice_id (ID):', resolvedInvoiceId);
-            try {
-              result = await getInvoiceDetails({ invoice_id: resolvedInvoiceId }).unwrap();
-              console.log('✅ Invoice found by invoice_id');
-            } catch (err: any) {
-              firstAttemptError = err;
-              console.log('❌ Invoice not found by invoice_id (ID):', resolvedInvoiceId, 'Error:', err);
-              console.log('🔄 Proceeding to Attempt 2...');
+            // Attempt 1: Fetch by database invoice ID (primary key)
+            if (resolvedInvoiceId > 0) {
+              console.log('🔍 Attempt 1: Fetching by invoice_id (ID):', resolvedInvoiceId);
+              try {
+                result = await getInvoiceDetails({ invoice_id: resolvedInvoiceId }).unwrap();
+                console.log('✅ Invoice found by invoice_id');
+              } catch (err: any) {
+                firstAttemptError = err;
+                console.log('❌ Invoice not found by invoice_id (ID):', resolvedInvoiceId, 'Error:', err);
+                console.log('🔄 Proceeding to Attempt 2...');
+              }
             }
-          }
 
-          // Attempt 2: Fetch by numeric invoice number (e.g. "8")
-          if (!result && fetchInvoiceNumber) {
-            console.log('🔍 Attempt 2: Fetching by numeric invoice_number:', fetchInvoiceNumber);
-            try {
-              result = await getInvoiceDetails({ invoice_number: fetchInvoiceNumber }).unwrap();
-              console.log('✅ Invoice found by numeric invoice_number');
-            } catch (err: any) {
-              console.log('❌ Numeric invoice_number failed');
-              firstAttemptError = firstAttemptError || err;
+            // Attempt 2: Fetch by numeric invoice number (e.g. "8")
+            if (!result && fetchInvoiceNumber) {
+              console.log('🔍 Attempt 2: Fetching by numeric invoice_number:', fetchInvoiceNumber);
+              try {
+                result = await getInvoiceDetails({ invoice_number: fetchInvoiceNumber }).unwrap();
+                console.log('✅ Invoice found by numeric invoice_number');
+              } catch (err: any) {
+                console.log('❌ Numeric invoice_number failed');
+                firstAttemptError = firstAttemptError || err;
+              }
             }
-          }
 
-          // Attempt 3: Fetch by full display invoice number (e.g. "INV8")
-          if (!result && editModeData.invoiceNumber) {
-            console.log('🔍 Attempt 3: Fetching by display invoiceNumber:', editModeData.invoiceNumber);
-            try {
-              result = await getInvoiceDetails({ invoice_number: editModeData.invoiceNumber }).unwrap();
-              console.log('✅ Invoice found by display invoice_number');
-            } catch (err: any) {
-              console.log('❌ Display invoice_number failed');
-              firstAttemptError = firstAttemptError || err;
+            // Attempt 3: Fetch by full display invoice number (e.g. "INV8")
+            if (!result && editModeData.invoiceNumber) {
+              console.log('🔍 Attempt 3: Fetching by display invoiceNumber:', editModeData.invoiceNumber);
+              try {
+                result = await getInvoiceDetails({ invoice_number: editModeData.invoiceNumber }).unwrap();
+                console.log('✅ Invoice found by display invoice_number');
+              } catch (err: any) {
+                console.log('❌ Display invoice_number failed');
+                firstAttemptError = firstAttemptError || err;
+              }
             }
-          }
 
-          // Attempt 4: Final attempt with RAW invoice number from server (unmodified)
-          if (!result && editModeData.rawInvoiceNumber) {
-            console.log('🔍 Attempt 4: ULTIMATE FALLBACK - Fetching by rawInvoiceNumber:', editModeData.rawInvoiceNumber);
-            try {
-              result = await getInvoiceDetails({ invoice_number: editModeData.rawInvoiceNumber }).unwrap();
-              console.log('✅ Invoice found by raw invoice_number');
-            } catch (err: any) {
-              console.log('❌ All 4 fetch attempts failed');
-              throw firstAttemptError || err;
+            // Attempt 4: Final attempt with RAW invoice number from server (unmodified)
+            if (!result && editModeData.rawInvoiceNumber) {
+              console.log('🔍 Attempt 4: ULTIMATE FALLBACK - Fetching by rawInvoiceNumber:', editModeData.rawInvoiceNumber);
+              try {
+                result = await getInvoiceDetails({ invoice_number: editModeData.rawInvoiceNumber }).unwrap();
+                console.log('✅ Invoice found by raw invoice_number');
+              } catch (err: any) {
+                console.log('❌ All 4 fetch attempts failed');
+                throw firstAttemptError || err;
+              }
             }
-          }
 
-          if (!result) {
-            console.error('❌ Data Retrieval Failed: No result returned from API');
-            throw firstAttemptError || new Error('No unique invoice_id or invoice_number available');
-          }
+            if (!result) {
+              console.error('❌ Data Retrieval Failed: No result returned from API');
+              throw firstAttemptError || new Error('No unique invoice_id or invoice_number available');
+            }
 
             if (result) {
               const invoice = result.invoice || {};
               const lines = result.lines || [];
               const payments = result.payments || [];
 
-              // Map payments from API to splitPayments state
-              if (Array.isArray(payments) && payments.length > 0) {
+              // Map payments from API to splitPayments state.
+              // IMPORTANT: Only populate splitPayments for GENUINE multiple-payment invoices
+              // (i.e., 2+ payment records). For single-payment invoices, the backend still stores
+              // one payment record, but we should rely on paymentMode (set below from invoice.payment_mode)
+              // rather than putting it into splitPayments — otherwise the print preview will always
+              // show the old backend payment instead of the user's newly selected mode.
+              if (Array.isArray(payments) && payments.length > 1) {
                 const mappedPayments = payments.map((p: any, idx: number) => ({
                   id: p.id?.toString() || `existing-payment-${idx}-${Date.now()}`,
                   paymentMethod: p.payment_method || 'Cash',
                   amount: parseFloat(p.payment_amount || '0').toString(),
                   details: p.transaction_number || p.details || ''
                 }));
-                // Filter out return payments (OUT direction) if necessary, 
-                // but usually we want to see what was paid.
                 setSplitPayments(mappedPayments.filter((p: any) => parseFloat(p.amount) > 0));
+              } else {
+                // Single payment or no payment — don't populate splitPayments
+                setSplitPayments([]);
               }
 
               const mappedSalesItems = lines.length > 0 ? lines.map((line: any) => {
@@ -372,9 +379,10 @@ const SalesReceipt: React.FC = () => {
                   manufacturer: line.brand_name || line.manufacturer || '', // API returns 'brand_name' field
                   batch: line.batch_number || line.batch || '',
                   expiryDate: line.expiry_date || line.expiryDate || '',
+                  pack: line.pack_info || line.pack || '',
                   quantity: (line.quantity || line.qty || '1').toString(),
                   unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(2) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price
-                  mrp: line.mrp ? (parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toString() : '0', // Calculate aggregate MRP for historic invoices
+                  mrp: line.mrp ? Number(parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toFixed(2).replace(/\.00$/, '') : '0', // Calculate aggregate MRP for historic invoices
                   discount: line.discount?.toString() || '0',
                   discountPercent: discountPercentValue,
                   cgst: line.cgst?.toString() || '0',
@@ -625,23 +633,11 @@ const SalesReceipt: React.FC = () => {
 
     if (isExactMatch && newName.trim()) {
       shouldFetchImmediatelyRef.current = true;
-
-      // Fetch customer details to get the ID
-      try {
-        const results = await searchCustomers({ searchTerm: newName.trim() }).unwrap();
-        // Find exact match
-        const match = results.find(c => c.name.toLowerCase() === normalizedNewName);
-        if (match) {
-          console.log('✅ Found customer ID:', match.id);
-          setSelectedCustomer(match);
-        }
-      } catch (err) {
-        console.warn('Failed to resolve customer ID', err);
-      }
     } else {
       // FIX: Only clear if the name actually changed from what we have and we don't have a valid ID for current name
       setSelectedCustomer(prev => (prev && prev.id > 0 && prev.name.toLowerCase() === normalizedNewName) ? prev : null);
     }
+
 
     setCustomerName(newName);
   };
@@ -726,27 +722,12 @@ const SalesReceipt: React.FC = () => {
 
   // Generate invoice number on mount (if not in edit mode and not already set)
   // PRIORITY ORDER:
-  //   1. Backend endpoint: sales/get-next-invoice-number  (most reliable - DB source of truth)
-  //   2. Compute from getInvoices list (fallback if dedicated endpoint not available)
-  //   3. localStorage counter (last resort fallback)
+  //   1. Derive from the existing invoices list (max invoice_number + 1)
+  //   2. localStorage counter (fallback if list fetch fails)
   useEffect(() => {
     if (!isEditMode && !invoiceNumber) {
       (async () => {
-        // Priority 1: Dedicated backend endpoint
-        try {
-          const result = await fetchNextInvoiceNumber().unwrap();
-          const nextNum = result?.next_invoice_number;
-          if (nextNum !== undefined && nextNum !== null) {
-            const nextInvoiceNumber = `INV${nextNum}`;
-            setInvoiceNumber(nextInvoiceNumber);
-            console.log('📝 Invoice number fetched from backend (DB source of truth):', nextInvoiceNumber);
-            return;
-          }
-        } catch (err) {
-          console.warn('⚠️ Backend get-next-invoice-number endpoint not available, trying getInvoices fallback...', err);
-        }
-
-        // Priority 2: Derive from the existing invoices list (max invoice_number + 1)
+        // Priority 1: Derive from the existing invoices list (max invoice_number + 1)
         try {
           const invoices = await fetchInvoicesList().unwrap();
           if (invoices && invoices.length > 0) {
@@ -766,7 +747,7 @@ const SalesReceipt: React.FC = () => {
           console.warn('⚠️ Could not fetch invoices list, falling back to localStorage counter...', err);
         }
 
-        // Priority 3: localStorage counter (last resort — only reliable on single-device)
+        // Priority 2: localStorage counter (last resort — only reliable on single-device)
         const nextInvoiceNumber = generateNextInvoiceNumber();
         setInvoiceNumber(nextInvoiceNumber);
         console.log('📝 Invoice number generated from localStorage (fallback):', nextInvoiceNumber);
@@ -1223,8 +1204,9 @@ const SalesReceipt: React.FC = () => {
     );
     const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
 
-    // We no longer rely on customersData matching since we handle it in real-time
-    // during selection/search or via auto-creation in executeSave
+    // If user selected a single payment mode, discard any leftover split payments
+    // from a previous multiple-payment session to prevent stale data being saved.
+    const effectiveSplitPayments = paymentMode && paymentMode.trim() ? [] : splitPayments;
 
     await executeSave({
       customerName,
@@ -1263,8 +1245,8 @@ const SalesReceipt: React.FC = () => {
       originalSalesItems: originalInvoiceData?.salesItems,
       skipNavigation,
       onSuccess,
-      splitPayments, // Pass split payments to save handler
-      upsertInvoicePayments, // Pass the mutation function
+      splitPayments: effectiveSplitPayments,
+      upsertInvoicePayments,
     });
   }, [customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments]);
 
@@ -1373,7 +1355,7 @@ const SalesReceipt: React.FC = () => {
             insuranceCompany={insuranceCompany}
             invoiceNumber={invoiceNumber}
             invoiceDate={invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-GB') : ''}
-            onPaymentModeChange={setPaymentMode}
+            onPaymentModeChange={(mode: string) => { setPaymentMode(mode); setSplitPayments([]); }}
             onInsuranceCompanyChange={setInsuranceCompany}
             onInvoiceNumberChange={setInvoiceNumber}
             onInvoiceDateChange={setInvoiceDate}
@@ -1568,7 +1550,7 @@ const SalesReceipt: React.FC = () => {
         <PaymentSplitModal
           open={isPaymentSplitModalOpen}
           onClose={() => setIsPaymentSplitModalOpen(false)}
-          onSave={(payments) => setSplitPayments(payments)}
+          onSave={(payments) => { setSplitPayments(payments); setPaymentMode(''); }}
           totalAmount={parseFloat(totalPayableAmount) || 0}
           existingPayments={splitPayments}
         />

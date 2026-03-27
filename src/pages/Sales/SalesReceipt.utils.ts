@@ -27,7 +27,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       quantity: item.quantity.toString(),
       type: item.type || 'N/A',
       unitPrice: item.unit_selling_price ? item.unit_selling_price.toFixed(2) : (item.sp / item.quantity).toFixed(2), // Unit price is the base selling price
-      mrp: item.mrp.toString(),
+      mrp: Number(parseFloat(item.mrp.toString())).toFixed(2).replace(/\.00$/, ''),
       // Calculate original total without discount for receipt display
       discount: (item.mrp - item.sp).toFixed(2),
       discountPercent: item.discount.toString(),
@@ -57,7 +57,9 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
     sum + parseFloat(item.cgst || '0') + parseFloat(item.sgst || '0') + parseFloat(item.igst || '0'), 0
   );
   // Total payable amount is the sum of all item amounts (which already includes discount and taxes)
-  const totalPayableAmount = salesItems.reduce((sum, item) => sum + parseFloat(item.amount || '0'), 0);
+  const exactTotalPayableAmount = salesItems.reduce((sum, item) => sum + parseFloat(item.amount || '0'), 0);
+  // Apply standard rounding (e.g. 456.50 -> 457)
+  const totalPayableAmount = Math.round(exactTotalPayableAmount);
 
   return {
     totalValue: totalValue.toFixed(2),
@@ -400,33 +402,50 @@ export const generatePrintHTML = (data: {
           <table class="items-table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Qty</th>
-                <th>Type</th>
+                <th style="width:30px">S.No</th>
+                <th>Product Name</th>
+                <th>MFC</th>
+                <th>HSN</th>
                 <th>Batch</th>
-                <th>Price</th>
-                <th>Disc</th>
-                <th>CGST</th>
-                <th>SGST</th>
-                <th>IGST</th>
-                <th>Amt</th>
+                <th>Pack</th>
+                <th>Exp</th>
+                <th>Qty</th>
+                <th>MRP</th>
+                <th>GST</th>
+                <th>Amount</th>
               </tr>
             </thead>
             <tbody>
-              ${salesItems.map(item => `
-                <tr>
-                  <td>${item.productName}</td>
-                  <td>${item.quantity}</td>
-                  <td>${item.type}</td>
-                  <td>${item.batch}</td>
-                  <td>${item.unitPrice}</td>
-                  <td>${item.discountPercent}%</td>
-                  <td>${item.cgstPercent}%</td>
-                  <td>${item.sgstPercent}%</td>
-                  <td>${item.igstPercent}%</td>
-                  <td>${item.amount}</td>
-                </tr>
-              `).join('')}
+              ${salesItems.map((item, index) => {
+                const mfc = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+                const hsn = (item as any).hsn || 'N/A';
+                const pack = (item as any).pack || 'N/A';
+                const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
+                let formattedExp = 'N/A';
+                if (item.expiryDate) {
+                  const dateParts = item.expiryDate.split('-');
+                  if (dateParts.length >= 2) {
+                    formattedExp = `${dateParts[1]}/${dateParts[0]}`;
+                  } else {
+                    formattedExp = item.expiryDate;
+                  }
+                }
+                return `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.productName}</td>
+                    <td>${mfc}</td>
+                    <td>${hsn}</td>
+                    <td>${item.batch}</td>
+                    <td>${pack}</td>
+                    <td>${formattedExp}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.mrp || 'N/A'}</td>
+                    <td>${gstTotal}</td>
+                    <td><strong>${item.amount}</strong></td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>

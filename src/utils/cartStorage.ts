@@ -299,15 +299,6 @@ export const generateNextInvoiceNumber = (): string => {
   }
 };
 
-/**
- * Gets the next invoice number without incrementing the counter
- * Useful for previewing what the next invoice number will be
- * @returns The formatted invoice number string
- */
-export const getNextInvoiceNumber = (): string => {
-  const currentNumber = getCurrentInvoiceNumber();
-  return `INV${currentNumber}`;
-};
 
 /**
  * Saves an invoice number to ensure the counter is at least that number

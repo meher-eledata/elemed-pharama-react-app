@@ -132,7 +132,7 @@ export default function SaleHistory() {
       if (!dateStr) return '';
       // Quick check if already roughly DD/MM/YYYY format
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
-      
+
       const stdTime = Date.parse(dateStr);
       if (!isNaN(stdTime)) {
         const d = new Date(stdTime);
@@ -140,10 +140,10 @@ export default function SaleHistory() {
         const month = String(d.getMonth() + 1).padStart(2, '0');
         return `${day}/${month}/${d.getFullYear()}`;
       }
-      
+
       const d = dayjs(dateStr);
       if (d.isValid()) return d.format('DD/MM/YYYY');
-      
+
       return dateStr;
     };
 
@@ -460,60 +460,60 @@ export default function SaleHistory() {
       try {
         console.log('🔍 Fetching full invoice details for preview:', selectedInvoiceId);
         const result = await getInvoiceDetails({ invoice_id: selectedInvoiceId }).unwrap();
-        
+
         if (result && (result.invoice || result.data?.invoice)) {
           const inv = result.invoice || result.data?.invoice;
           const cust = result.customer || result.data?.customer;
           const doc = result.doctor || result.data?.doctor;
           const lines = result.lines || result.data?.lines || [];
           const payments = result.payments || result.data?.payments || [];
-          
+
           console.log('✅ Full details received from API:', result);
-          
+
           let calculatedTotalValue = 0;
           let calculatedTotalTax = 0;
           let calculatedTotalDiscount = 0;
 
           const mappedItems = lines.map((line: any) => {
-              const qty = Number(line.quantity) || 0;
-              const sp = Number(line.selling_price ?? line.rate) || 0;
-              const disc = Number(line.discount) || 0;
-              const cgst = Number(line.cgst) || 0;
-              const sgst = Number(line.sgst) || 0;
-              const igst = Number(line.igst) || 0;
-              
-              calculatedTotalValue += (qty * sp);
-              
-              // Backend mathematically treats SP as Tax-Inclusive:
-              const gross = qty * sp;
-              const discountAmt = gross * (disc / 100);
-              const finalAmount = gross - discountAmt; // The total is strictly Gross - Discount (Since SP relies on implicit tax!)
-              
-              calculatedTotalDiscount += discountAmt;
-              
-              // Extract the embedded tax backwards for the summary:
-              const taxPct = (cgst + sgst + igst) / 100;
-              const effectiveTaxableDenominator = 1 + taxPct;
-              const taxableAmt = effectiveTaxableDenominator > 0 ? (finalAmount / effectiveTaxableDenominator) : finalAmount;
-              const taxAmountForLine = taxableAmt * taxPct;
-              
-              calculatedTotalTax += taxAmountForLine;
-              
-              return {
-                id: line.invoice_line_id,
-                productName: line.name || '',
-                quantity: line.quantity?.toString() || '0',
-                unitPrice: sp.toString(),
-                mrp: line.mrp?.toString() || '0',
-                amount: finalAmount.toFixed(2), // Safely calculated to match the backend exactly
-                batch: line.batch_number || '',
-                type: line.product_type || 'N/A',
-                brand_name: line.brand_name || '',
-                cgstPercent: cgst.toString(),
-                sgstPercent: sgst.toString(),
-                igstPercent: igst.toString(),
-                discountPercent: disc.toString(),
-              };
+            const qty = Number(line.quantity) || 0;
+            const sp = Number(line.selling_price ?? line.rate) || 0;
+            const disc = Number(line.discount) || 0;
+            const cgst = Number(line.cgst) || 0;
+            const sgst = Number(line.sgst) || 0;
+            const igst = Number(line.igst) || 0;
+
+            calculatedTotalValue += (qty * sp);
+
+            // Backend mathematically treats SP as Tax-Inclusive:
+            const gross = qty * sp;
+            const discountAmt = gross * (disc / 100);
+            const finalAmount = gross - discountAmt; // The total is strictly Gross - Discount (Since SP relies on implicit tax!)
+
+            calculatedTotalDiscount += discountAmt;
+
+            // Extract the embedded tax backwards for the summary:
+            const taxPct = (cgst + sgst + igst) / 100;
+            const effectiveTaxableDenominator = 1 + taxPct;
+            const taxableAmt = effectiveTaxableDenominator > 0 ? (finalAmount / effectiveTaxableDenominator) : finalAmount;
+            const taxAmountForLine = taxableAmt * taxPct;
+
+            calculatedTotalTax += taxAmountForLine;
+
+            return {
+              id: line.invoice_line_id,
+              productName: line.name || '',
+              quantity: line.quantity?.toString() || '0',
+              unitPrice: sp.toString(),
+              mrp: line.mrp?.toString() || '0',
+              amount: finalAmount.toFixed(2), // Safely calculated to match the backend exactly
+              batch: line.batch_number || '',
+              type: line.product_type || 'N/A',
+              brand_name: line.brand_name || '',
+              cgstPercent: cgst.toString(),
+              sgstPercent: sgst.toString(),
+              igstPercent: igst.toString(),
+              discountPercent: disc.toString(),
+            };
           });
 
           const apiDetails = {
@@ -534,7 +534,7 @@ export default function SaleHistory() {
             splitPayments: payments,
             items: mappedItems
           };
-          
+
           setInvoiceDetails(apiDetails);
         }
       } catch (error) {
@@ -644,18 +644,18 @@ export default function SaleHistory() {
         const parseDate = (val: any) => {
           if (!val) return 0;
           const strVal = String(val).trim();
-          
+
           // Try standard Date parse (works for YYYY-MM-DD or DD MMM YYYY)
           const stdTime = Date.parse(strVal);
           if (!isNaN(stdTime)) return stdTime;
-          
+
           // Try DD/MM/YYYY or DD-MM-YYYY
           const parts = strVal.split(/[\/\-]/);
           if (parts.length === 3) {
             let p0 = parseInt(parts[0], 10);
             let p1 = parseInt(parts[1], 10);
             let p2 = parseInt(parts[2], 10);
-            
+
             if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
               // If format is YYYY-MM-DD
               if (p0 > 1000) {
@@ -665,7 +665,7 @@ export default function SaleHistory() {
               return new Date(p2, p1 - 1, p0).getTime();
             }
           }
-          
+
           // Fallback to dayjs
           const d = dayjs(strVal);
           return d.isValid() ? d.valueOf() : 0;
