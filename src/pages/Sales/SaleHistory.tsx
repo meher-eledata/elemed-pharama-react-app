@@ -226,6 +226,9 @@ export default function SaleHistory() {
         formattedInvoiceNumber = `INV${index + 1000}`;
       }
 
+      const rawReturnStatus = invoice.return_status || invoice.last_return_status || 'No Return';
+      const hasReturn = invoice.has_return !== undefined ? invoice.has_return : (rawReturnStatus.toLowerCase() !== 'no return' && rawReturnStatus.toLowerCase() !== 'none');
+
       return {
         id: tableRowId, // Internal frontend ID (must be unique)
         databaseInvoiceId: databaseId, // Actual database primary key
@@ -243,8 +246,8 @@ export default function SaleHistory() {
         patientType: patientType,
         totalAmount: parseFloat(invoice.total_amount) || 0,
         totalReturnedAmount: parseFloat(invoice.total_returned_amount) || 0,
-        hasReturn: invoice.has_return || false,
-        lastReturnStatus: invoice.last_return_status || null,
+        hasReturn: hasReturn,
+        lastReturnStatus: rawReturnStatus,
         paymentMode: invoice.payment_mode || 'Cash',
         splitPayments: invoice.split_payments || [],
       };
@@ -477,7 +480,7 @@ export default function SaleHistory() {
           const mappedItems = lines.map((line: any) => {
             const originalQty = Number(line.quantity) || 0;
             const returnedQty = Number(line.returned_quantity) || 0;
-            const netQty = originalQty - returnedQty;
+            const netQty = Math.max(0, originalQty - returnedQty);
             const sp = Number(line.selling_price ?? line.rate) || 0;
             const disc = Number(line.discount) || 0;
             const cgst = Number(line.cgst) || 0;
@@ -539,9 +542,11 @@ export default function SaleHistory() {
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
             totalPayableAmount: Math.round(finalPayable).toFixed(2),
-            splitPayments: payments.map((p: any) => {
+            splitPayments: Array.from(new Map(payments.map((p: any) => [
+              `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
+            ])).values()).map((p: any) => {
               // If the payment amount matches totalReturned, or it looks like a refund, mark it
-              const isRefund = p.payment_amount == totalReturned && totalReturned > 0;
+              const isRefund = (p.payment_amount == totalReturned || Math.abs(p.payment_amount) == totalReturned) && totalReturned > 0;
               return {
                 ...p,
                 payment_amount: isRefund ? -Math.abs(p.payment_amount) : p.payment_amount,
@@ -887,7 +892,7 @@ export default function SaleHistory() {
       header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
       sortable: true,
       render: (item) => {
-        const netAmount = item.totalAmount - (item.totalReturnedAmount || 0);
+        const netAmount = Math.max(0, item.totalAmount - (item.totalReturnedAmount || 0));
         return (
           <Tooltip
             title={item.totalReturnedAmount > 0 ? `Original: ${item.totalAmount.toLocaleString()} | Returned: ${item.totalReturnedAmount.toLocaleString()}` : ""}
@@ -950,7 +955,11 @@ export default function SaleHistory() {
       key: 'actions',
       header: '',
       sortable: false,
-      render: (item) => (
+      render: (item) => {
+        const returnStatus = getReturnStatus(item);
+        const isFullyReturned = returnStatus.status === 'full';
+        
+        return (
         <Box sx={{
           display: 'flex',
           flexDirection: 'row',
@@ -973,60 +982,54 @@ export default function SaleHistory() {
               onClick={() => handleEditInvoice(item.id)}
             />
           </Tooltip>
-          <Tooltip title="Return" arrow placement="top">
-            <UndoIcon
-              sx={{
-                fontSize: '1.5rem', // 24px = 1.5rem 
-                color: '#000000',
-                cursor: 'pointer',
-                padding: '0.25rem', // 4px = 0.25rem
-                borderRadius: '0.25rem', // 4px = 0.25rem
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                  color: '#000000'
-                }
-              }}
-              onClick={() => handleReturnInvoice(item.id)}
-            />
-          </Tooltip>
-          {(() => {
-            const returnStatus = getReturnStatus(item);
-            if (returnStatus.status === 'none') {
-              return null;
-            }
+          {!isFullyReturned && (
+            <Tooltip title="Return" arrow placement="top">
+              <UndoIcon
+                sx={{
+                  fontSize: '1.5rem', // 24px = 1.5rem 
+                  color: '#000000',
+                  cursor: 'pointer',
+                  padding: '0.25rem', // 4px = 0.25rem
+                  borderRadius: '0.25rem', // 4px = 0.25rem
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                    color: '#000000'
+                  }
+                }}
+                onClick={() => handleReturnInvoice(item.id)}
+              />
+            </Tooltip>
+          )}
+          {returnStatus.status === 'full' && (() => {
             const tooltipContent = getReturnTooltipContent(item);
             return (
-              <Tooltip
-                title={tooltipContent}
-                arrow
-                placement="top"
-              >
+              <Tooltip title={tooltipContent} arrow placement="top">
                 <Badge
-                  badgeContent={returnStatus.status === 'partial' && returnStatus.total > 0 ? `${returnStatus.returned}/${returnStatus.total}` : '!'}
-                  color={returnStatus.status === 'full' ? 'error' : 'warning'}
+                  badgeContent="!"
+                  color="error"
                   sx={{
+                    marginRight: '0.5rem',
                     '& .MuiBadge-badge': {
-                      fontSize: '0.625rem', // 10px = 0.625rem
-                      minWidth: '1.25rem', // 20px = 1.25rem
-                      height: '1.25rem', // 20px = 1.25rem
-                      padding: '0 0.25rem', // 4px = 0.25rem
+                      fontSize: '0.625rem',
+                      minWidth: '1rem',
+                      height: '1rem',
+                      padding: '0 0.125rem',
                     }
                   }}
                 >
                   <WarningIcon
                     sx={{
-                      fontSize: '1.5rem', // 24px = 1.5rem 
-                      color: returnStatus.status === 'full' ? '#DC2626' : '#D97706',
+                      fontSize: '1.25rem',
+                      color: '#DC2626',
                       cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '4px',
+                      padding: '0.125rem',
+                      borderRadius: '0.25rem',
                       '&:hover': {
-                        backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
-                        color: returnStatus.status === 'full' ? '#DC2626' : '#D97706'
+                        backgroundColor: '#FEE2E2',
+                        color: '#DC2626'
                       }
                     }}
                     onClick={() => {
-                      // TODO: Add alert/warning handler logic - maybe open a modal with return details
                       console.log('Alert clicked for invoice:', item.id, 'Return info:', item.returnInfo);
                     }}
                   />
@@ -1035,7 +1038,8 @@ export default function SaleHistory() {
             );
           })()}
         </Box>
-      ),
+      );
+      },
     },
   ];
 

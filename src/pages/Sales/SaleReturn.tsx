@@ -606,6 +606,7 @@ export default function SaleReturn() {
   };
 
   const handleConfirmReturn = async () => {
+    if (isSubmittingReturn) return;
     console.log(' handleConfirmReturn called');
 
     if (!invoiceData) {
@@ -1244,7 +1245,7 @@ export default function SaleReturn() {
         <Box
           component="button"
           onClick={handleReturn}
-          disabled={selectedItems.length === 0}
+          disabled={selectedItems.length === 0 || totalQuantityReturned === 0}
           sx={{
             minWidth: '120px',
             height: '48px',
@@ -1257,13 +1258,13 @@ export default function SaleReturn() {
             fontFamily: "'Lexend', sans-serif",
             textTransform: 'none',
             border: 'none',
-            cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer',
+            cursor: (selectedItems.length === 0 || totalQuantityReturned === 0) ? 'not-allowed' : 'pointer',
             boxShadow: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             '&:hover': {
-              backgroundColor: selectedItems.length === 0 ? '#9CA3AF' : '#4C14C7',
+              backgroundColor: (selectedItems.length === 0 || totalQuantityReturned === 0) ? '#9CA3AF' : '#4C14C7',
             },
             '&:focus': {
               backgroundColor: '#5C17E5',

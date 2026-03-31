@@ -15,6 +15,7 @@ export interface DailySalesTableRequest {
 
 export interface DailySalesTableItem {
   transaction_date: string;
+  transaction_type?: string;
   invoice_number: string;
   customer_name: string | null;
   payment_type: string;
@@ -50,6 +51,9 @@ export interface DailySalesReportResponse {
   total_sales: number | string | null;
   inpatient_sales: number | string | null;
   outpatient_sales: number | string | null;
+  total_returns?: number | string | null;
+  inpatient_returns?: number | string | null;
+  outpatient_returns?: number | string | null;
   total_discount: number | string | null;
   inpatient_discount: number | string | null;
   outpatient_discount: number | string | null;

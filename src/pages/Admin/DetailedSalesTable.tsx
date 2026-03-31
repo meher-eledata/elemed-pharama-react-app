@@ -16,13 +16,14 @@ import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 interface SalesData {
   id: number;
   transactionDate: string;
+  transactionType: string;
   invoiceNumber: string;
   customerName: string;
   paymentType: string;
   saleAmount: number;
   discount: number;
   cgst: number;
-  gst: number;
+  sgst: number;
   igst: number;
   totalAmount: number;
   patientType: string;
@@ -47,6 +48,7 @@ const DetailedSalesTable: React.FC = () => {
     return apiData.map((item, index) => ({
       id: index + 1,
       transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
+      transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
       invoiceNumber: item.invoice_number,
       customerName: item.customer_name || 'N/A',
       paymentType: (() => {
@@ -62,7 +64,7 @@ const DetailedSalesTable: React.FC = () => {
       saleAmount: parseFloat(item.sales_amount) || 0,
       discount: parseFloat(item.discount_amount) || 0,
       cgst: parseFloat(item.cgst) || 0,
-      gst: parseFloat(item.sgst) || 0, // Mapping SGST to gst column as per plan
+      sgst: parseFloat(item.sgst) || 0, // SGST column mapping
       igst: parseFloat(item.igst) || 0,
       totalAmount: parseFloat(item.total_amount) || 0,
       patientType: (() => {
@@ -112,7 +114,8 @@ const DetailedSalesTable: React.FC = () => {
         item.customerName.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
         item.invoiceNumber.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
         item.paymentType.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-        item.patientType.toLowerCase().includes(currentSearchTerm.toLowerCase())
+        item.patientType.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+        item.transactionType.toLowerCase().includes(currentSearchTerm.toLowerCase())
       );
     }
 
@@ -154,6 +157,23 @@ const DetailedSalesTable: React.FC = () => {
     });
   }, [filteredData, sortConfig]);
 
+  const grandTotals = useMemo(() => {
+    return filteredData.reduce((acc, curr) => {
+      acc.saleAmount += curr.saleAmount || 0;
+      acc.cgst += curr.cgst || 0;
+      acc.sgst += curr.sgst || 0;
+      acc.igst += curr.igst || 0;
+      acc.totalAmount += curr.totalAmount || 0;
+      return acc;
+    }, {
+      saleAmount: 0,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+      totalAmount: 0
+    });
+  }, [filteredData]);
+
   const columns: TableColumn<SalesData>[] = [
     {
       key: 'transactionDate',
@@ -166,6 +186,21 @@ const DetailedSalesTable: React.FC = () => {
           color: '#1A212B',
         }}>
           {formatDate(item.transactionDate)}
+        </Typography>
+      ),
+    },
+    {
+      key: 'transactionType',
+      header: DETAILED_SALES_TABLE_LABELS.TABLE.TRANSACTION_TYPE,
+      sortable: true,
+      render: (item) => (
+        <Typography sx={{
+          fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+          fontSize: '14px',
+          color: item.transactionType.toLowerCase() === 'return' || item.transactionType.toLowerCase() === 'refund' ? '#DC2626' : '#10B981',
+          fontWeight: 500,
+        }}>
+          {item.transactionType}
         </Typography>
       ),
     },
@@ -254,8 +289,8 @@ const DetailedSalesTable: React.FC = () => {
       ),
     },
     {
-      key: 'gst',
-      header: DETAILED_SALES_TABLE_LABELS.TABLE.GST,
+      key: 'sgst',
+      header: DETAILED_SALES_TABLE_LABELS.TABLE.SGST,
       sortable: true,
       render: (item) => (
         <Typography sx={{
@@ -263,7 +298,7 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatNumber(item.gst)}
+          {formatNumber(item.sgst)}
         </Typography>
       ),
     },
@@ -335,13 +370,14 @@ const DetailedSalesTable: React.FC = () => {
   const csvData = useMemo(() => {
     return sortedData.map(item => ({
       'Transaction Date': formatDate(item.transactionDate),
+      'Transaction Type': item.transactionType,
       'Invoice Number': item.invoiceNumber,
       'Customer Name': item.customerName,
       'Payment Type': item.paymentType,
       'Sale Amount (₹)': item.saleAmount.toFixed(2),
       'Discount (₹)': item.discount.toFixed(2),
       'CGST (₹)': item.cgst.toFixed(2),
-      'GST (₹)': item.gst.toFixed(2),
+      'SGST (₹)': item.sgst.toFixed(2),
       'IGST (₹)': item.igst.toFixed(2),
       'Total Amount (₹)': item.totalAmount.toFixed(2),
       'Patient Type': item.patientType,
@@ -373,7 +409,7 @@ const DetailedSalesTable: React.FC = () => {
       {/* Header with Back Button */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
         <Box
-          onClick={() => navigate('/admin/reports')}
+          onClick={() => navigate('/admin/reports', { state: { activeTab: 'detailed', selectedReport: 'daily-sales' } })}
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -617,6 +653,48 @@ const DetailedSalesTable: React.FC = () => {
           sortConfig={sortConfig}
         />
       </Box>
+
+      {/* Grand Totals Summary Bar */}
+      {filteredData.length > 0 && (
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: 4,
+          mt: 2,
+          p: 2,
+          backgroundColor: '#F9FAFB',
+          border: '1px solid #E5E7EB',
+          borderRadius: '12px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}>
+          <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontSize: '14px', color: '#4B5563', fontWeight: 600 }}>
+            Day's Total Summary:
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 3 }}>
+            <Box>
+              <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>Amount</Typography>
+              <Typography sx={{ fontSize: '14px', color: '#1A212B', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.saleAmount)}</Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>CGST</Typography>
+              <Typography sx={{ fontSize: '14px', color: '#1A212B', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.cgst)}</Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>SGST</Typography>
+              <Typography sx={{ fontSize: '14px', color: '#1A212B', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.sgst)}</Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>IGST</Typography>
+              <Typography sx={{ fontSize: '14px', color: '#1A212B', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.igst)}</Typography>
+            </Box>
+            <Box sx={{ borderLeft: '2px solid #E5E7EB', pl: 3 }}>
+              <Typography sx={{ fontSize: '12px', color: '#5C17E5', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>Grand Total</Typography>
+              <Typography sx={{ fontSize: '18px', color: '#1A212B', fontWeight: 700, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.totalAmount)}</Typography>
+            </Box>
+          </Box>
+        </Box>
+      )}
 
       {/* Hidden CSV Link */}
       <CSVLink

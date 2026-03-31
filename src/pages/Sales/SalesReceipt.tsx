@@ -307,8 +307,13 @@ const SalesReceipt: React.FC = () => {
               // show the old backend payment instead of the user's newly selected mode.
                if (Array.isArray(payments) && payments.length > 1) {
                 const totalReturned = parseFloat(invoice.total_returned_amount || result.total_refunded || 0);
-                const mappedPayments = payments.map((p: any, idx: number) => {
-                  const isRefund = p.payment_amount == totalReturned && totalReturned > 0;
+                // Deduplicate refund payments to prevent showing the same refund multiple times
+                const uniquePayments = Array.from(new Map(payments.map(p => [
+                  `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
+                ])).values());
+                
+                const mappedPayments = uniquePayments.map((p: any, idx: number) => {
+                  const isRefund = (p.payment_amount == totalReturned || Math.abs(p.payment_amount) == totalReturned) && totalReturned > 0;
                   return {
                     id: p.id?.toString() || `existing-payment-${idx}-${Date.now()}`,
                     paymentMethod: isRefund ? `REFUND (${p.payment_method || 'Cash'})` : (p.payment_method || 'Cash'),
@@ -376,7 +381,7 @@ const SalesReceipt: React.FC = () => {
 
                 const originalQty = parseFloat(line.quantity || '0');
                 const returnedQty = parseFloat(line.returned_quantity || '0');
-                const netQty = originalQty - returnedQty;
+                const netQty = Math.max(0, originalQty - returnedQty); // Prevent negative quantity if backend returned multiple times
 
                 return {
                   id: line.invoice_line_id?.toString() || line.id?.toString() || '',
@@ -441,7 +446,7 @@ const SalesReceipt: React.FC = () => {
                   : (result.tax_amount?.toString() || result.taxAmount?.toString() || '0'),
                 totalPayableAmount: (editModeData.salesItems && editModeData.salesItems.length > 0)
                   ? (editModeData.totalPayableAmount || editModeData.totalAmount?.toString() || '0')
-                  : (Math.max(0, (parseFloat(invoice.total_amount) || 0) - (parseFloat(invoice.total_returned_amount || result.total_refunded || 0))).toString() || result.total_payable_amount?.toString() || result.totalPayableAmount?.toString() || '0'),
+                  : (Math.max(0, (parseFloat(invoice.total_amount) || 0) - (parseFloat(invoice.total_returned_amount || result.total_refunded || 0)))).toString(),
               };
 
               // Pre-populate form fields from API data
