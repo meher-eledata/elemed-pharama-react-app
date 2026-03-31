@@ -45,40 +45,45 @@ const DetailedSalesTable: React.FC = () => {
   const tableData = useMemo(() => {
     if (!apiData) return [];
 
-    return apiData.map((item, index) => ({
-      id: index + 1,
-      transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
-      transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
-      invoiceNumber: item.invoice_number,
-      customerName: item.customer_name || 'N/A',
-      paymentType: (() => {
-        const raw = (item.payment_type || '').trim().toUpperCase();
-        if (!raw || raw === 'UNKNOWN' || raw === 'NULL') {
-          return 'Cash'; // Graceful fallback
-        }
-        // Normalize to Title Case (e.g., "CREDIT CARD" -> "Credit Card")
-        return raw.split(' ').map(word =>
-          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        ).join(' ');
-      })(),
-      saleAmount: parseFloat(item.sales_amount) || 0,
-      discount: parseFloat(item.discount_amount) || 0,
-      cgst: parseFloat(item.cgst) || 0,
-      sgst: parseFloat(item.sgst) || 0, // SGST column mapping
-      igst: parseFloat(item.igst) || 0,
-      totalAmount: parseFloat(item.total_amount) || 0,
-      patientType: (() => {
-        const raw = item.patient_type !== undefined ? item.patient_type : (item as any).patientType;
-        if (raw === null || raw === undefined) return 'Out Patient';
-        const str = String(raw).toUpperCase().trim();
-        if (raw === 1 || str === '1' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
-          return 'In Patient';
-        }
-        return 'Out Patient';
-      })(),
-      rawPatientType: item.patient_type || 'N/A',
-      rawPaymentType: item.payment_type || 'N/A', // Keep raw for debugging
-    }));
+    return apiData.map((item, index) => {
+      const isReturn = item.transaction_type?.toLowerCase() === 'return' || item.transaction_type?.toLowerCase() === 'refund';
+      const multiplier = isReturn ? -1 : 1;
+
+      return {
+        id: index + 1,
+        transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
+        transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
+        invoiceNumber: item.invoice_number,
+        customerName: item.customer_name || 'N/A',
+        paymentType: (() => {
+          const raw = (item.payment_type || '').trim().toUpperCase();
+          if (!raw || raw === 'UNKNOWN' || raw === 'NULL') {
+            return 'Cash'; // Graceful fallback
+          }
+          // Normalize to Title Case (e.g., "CREDIT CARD" -> "Credit Card")
+          return raw.split(' ').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(' ');
+        })(),
+        saleAmount: (parseFloat(item.sales_amount) || 0) * multiplier,
+        discount: isReturn ? 0 : (parseFloat(item.discount_amount) || 0),
+        cgst: (parseFloat(item.cgst) || 0) * multiplier,
+        sgst: (parseFloat(item.sgst) || 0) * multiplier, // SGST column mapping
+        igst: (parseFloat(item.igst) || 0) * multiplier,
+        totalAmount: (parseFloat(item.total_amount) || 0) * multiplier,
+        patientType: (() => {
+          const raw = item.patient_type !== undefined ? item.patient_type : (item as any).patientType;
+          if (raw === null || raw === undefined) return 'Out Patient';
+          const str = String(raw).toUpperCase().trim();
+          if (raw === 1 || str === '1' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
+            return 'In Patient';
+          }
+          return 'Out Patient';
+        })(),
+        rawPatientType: item.patient_type || 'N/A',
+        rawPaymentType: item.payment_type || 'N/A', // Keep raw for debugging
+      };
+    });
   }, [apiData]);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
@@ -160,6 +165,7 @@ const DetailedSalesTable: React.FC = () => {
   const grandTotals = useMemo(() => {
     return filteredData.reduce((acc, curr) => {
       acc.saleAmount += curr.saleAmount || 0;
+      acc.discount += curr.discount || 0;
       acc.cgst += curr.cgst || 0;
       acc.sgst += curr.sgst || 0;
       acc.igst += curr.igst || 0;
@@ -167,6 +173,7 @@ const DetailedSalesTable: React.FC = () => {
       return acc;
     }, {
       saleAmount: 0,
+      discount: 0,
       cgst: 0,
       sgst: 0,
       igst: 0,
@@ -675,6 +682,10 @@ const DetailedSalesTable: React.FC = () => {
             <Box>
               <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>Amount</Typography>
               <Typography sx={{ fontSize: '14px', color: '#1A212B', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.saleAmount)}</Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>Discount</Typography>
+              <Typography sx={{ fontSize: '14px', color: '#6B7280', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.discount)}</Typography>
             </Box>
             <Box>
               <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>CGST</Typography>
