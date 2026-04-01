@@ -41,6 +41,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
       <TableCell sx={{ padding: '12px 16px' }} />
       <TableCell sx={{ padding: '12px 16px' }} />
       <TableCell sx={{ padding: '12px 16px' }} />
+      <TableCell sx={{ padding: '12px 16px' }} />
 
       <TableCell
         sx={{
@@ -98,7 +99,6 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
         ₹{Math.round(totalCreditAvailable).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </TableCell>
 
-      <TableCell sx={{ padding: '12px 16px' }} />
       <TableCell sx={{ padding: '12px 16px' }} />
     </TableRow>
   );

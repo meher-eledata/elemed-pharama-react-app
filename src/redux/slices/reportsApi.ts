@@ -91,10 +91,10 @@ export const reportsApi = createApi({
       providesTags: ["Reports"],
     }),
     getDailySalesTable: builder.query<DailySalesTableItem[], DailySalesTableRequest>({
-      query: (params) => ({
+      query: (body) => ({
         url: "reports/dailySalesReport/get-daily-sales-table",
-        method: "GET",
-        params,
+        method: "POST",
+        body,
       }),
       providesTags: ["Reports"],
     }),
