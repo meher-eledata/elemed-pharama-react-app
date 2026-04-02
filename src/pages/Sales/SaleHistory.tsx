@@ -514,12 +514,13 @@ export default function SaleHistory() {
               batch: line.batch_number || '',
               type: line.product_type || 'N/A',
               brand_name: line.brand_name || '',
+              manufacturer: line.brand_name || 'N/A',
               cgstPercent: cgst.toString(),
               sgstPercent: sgst.toString(),
               igstPercent: igst.toString(),
               discountPercent: disc.toString(),
-              hsn: line.hsn || 'N/A',
-              pack: line.pack_info || 'N/A',
+              hsn: line.hsn_id?.toString() || 'N/A',
+              pack: line.pack_qty?.toString() || 'N/A',
               expiryDate: line.expiry_date || '',
             };
           });
@@ -666,11 +667,7 @@ export default function SaleHistory() {
           if (!val) return 0;
           const strVal = String(val).trim();
 
-          // Try standard Date parse (works for YYYY-MM-DD or DD MMM YYYY)
-          const stdTime = Date.parse(strVal);
-          if (!isNaN(stdTime)) return stdTime;
-
-          // Try DD/MM/YYYY or DD-MM-YYYY
+          // 1. Try explicit DD/MM/YYYY or YYYY-MM-DD FIRST to prevent US date format mixups
           const parts = strVal.split(/[\/\-]/);
           if (parts.length === 3) {
             let p0 = parseInt(parts[0], 10);
@@ -687,7 +684,11 @@ export default function SaleHistory() {
             }
           }
 
-          // Fallback to dayjs
+          // 2. Try standard Date parse (works for format like "20 Mar 2026")
+          const stdTime = Date.parse(strVal);
+          if (!isNaN(stdTime)) return stdTime;
+
+          // 3. Fallback to dayjs
           const d = dayjs(strVal);
           return d.isValid() ? d.valueOf() : 0;
         };

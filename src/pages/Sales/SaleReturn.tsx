@@ -1091,7 +1091,7 @@ export default function SaleReturn() {
                 const index = returnItems.findIndex(i => i.id === item.id);
                 return (
                   <Autocomplete
-                    options={['RESTOCK', 'SCRAP', 'QUARANTINE']}
+                    options={['RESTOCK', 'SCRAP']}
                     value={item.restock_action}
                     onChange={(_, newValue) => {
                       if (newValue) {
@@ -1145,35 +1145,7 @@ export default function SaleReturn() {
         />
       </Box>
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-        <Typography variant="body2" sx={{ color: '#728197', fontWeight: 500 }}>
-          Set all restock actions to:
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {['RESTOCK', 'SCRAP', 'QUARANTINE'].map(action => (
-            <StandardButton
-              key={action}
-              onClick={() => {
-                setReturnItems(prev => prev.map(item => ({ ...item, restock_action: action })));
-              }}
-              variant="secondary"
-              size="small"
-              sx={{ 
-                height: '28px', 
-                fontSize: '11px', 
-                padding: '0 12px',
-                borderRadius: '6px',
-                backgroundColor: '#F3F4F6',
-                '&:hover': {
-                  backgroundColor: '#E5E7EB'
-                }
-              }}
-            >
-              {action}
-            </StandardButton>
-          ))}
-        </Box>
-      </Box>
+
 
       {/* Summary Section */}
       <Box sx={{
