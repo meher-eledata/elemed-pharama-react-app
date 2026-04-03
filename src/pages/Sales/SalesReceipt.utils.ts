@@ -404,7 +404,7 @@ export const generatePrintHTML = (data: {
               <tr>
                 <th style="width:30px">S.No</th>
                 <th>Product Name</th>
-                <th>MFC</th>
+                <th>MFG</th>
                 <th>HSN</th>
                 <th>Batch</th>
                 <th>Pack</th>
@@ -417,7 +417,7 @@ export const generatePrintHTML = (data: {
             </thead>
             <tbody>
               ${salesItems.map((item, index) => {
-                const mfc = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+                const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
                 const hsn = (item as any).hsn || 'N/A';
                 const pack = (item as any).pack || 'N/A';
                 const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
@@ -434,7 +434,7 @@ export const generatePrintHTML = (data: {
                   <tr>
                     <td>${index + 1}</td>
                     <td>${item.productName}</td>
-                    <td>${mfc}</td>
+                    <td>${mfg}</td>
                     <td>${hsn}</td>
                     <td>${item.batch}</td>
                     <td>${pack}</td>

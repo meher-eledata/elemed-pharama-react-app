@@ -105,7 +105,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     const isExistingSupplier = selectedSupplierData && selectedSupplierData.supplier_id > 0;
 
     const lines = pharmaTableData.map((row) => {
-      const productId = getProductIdFromName(row.productId);
+      const productId = row.product_id || getProductIdFromName(row.productId) || 0;
       let expiryDateFormatted: string;
       if (row.expiryDate) {
         if (dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()) {

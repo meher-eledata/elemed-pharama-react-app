@@ -321,7 +321,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             }}>
               <Box>S.No</Box>
               <Box>Product Name</Box>
-              <Box>MFC</Box>
+              <Box>MFG</Box>
               <Box>HSN</Box>
               <Box>Batch</Box>
               <Box>Pack</Box>
@@ -351,7 +351,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             }}>
               {salesItems && salesItems.length > 0 ? (
                 salesItems.map((item, index) => {
-                  const mfc = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+                  const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
                   const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
                   
                   // Format expiry from YYYY-MM-DD to MM/YYYY
@@ -382,7 +382,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                     }}>
                       <Box>{index + 1}</Box>
                       <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</Box>
-                      <Box>{mfc}</Box>
+                      <Box>{mfg}</Box>
                       <Box>{item.hsn || 'N/A'}</Box>
                       <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.batch}</Box>
                       <Box>{item.pack || 'N/A'}</Box>
