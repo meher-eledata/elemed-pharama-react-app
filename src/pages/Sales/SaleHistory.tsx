@@ -452,6 +452,8 @@ export default function SaleHistory() {
             type: item.type || 'N/A',
             manufacturer: item.manufacturer || 'N/A',
             expiryDate: item.expiryDate || '',
+            hsn: item.hsn || '',
+            pack: item.pack || '',
           };
         }) : []
       };
@@ -519,7 +521,7 @@ export default function SaleHistory() {
               sgstPercent: sgst.toString(),
               igstPercent: igst.toString(),
               discountPercent: disc.toString(),
-              hsn: line.hsn_id?.toString() || 'N/A',
+              hsn: line.hsn_code || (line.hsn_id && line.hsn_id !== 0 && line.hsn_id !== '0' ? line.hsn_id.toString() : '') || 'N/A',
               pack: line.pack_qty?.toString() || 'N/A',
               expiryDate: line.expiry_date || '',
             };
@@ -546,8 +548,10 @@ export default function SaleHistory() {
             splitPayments: Array.from(new Map(payments.map((p: any) => [
               `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
             ])).values()).map((p: any) => {
-              // If the payment amount matches totalReturned, or it looks like a refund, mark it
-              const isRefund = (p.payment_amount == totalReturned || Math.abs(p.payment_amount) == totalReturned) && totalReturned > 0;
+              // Use direction='OUT' or payment_type includes 'RETURN' to reliably detect refunds
+              // The old approach (matching amount to totalReturned) breaks for multiple partial returns
+              const isRefund = p.direction === 'OUT' || 
+                (p.payment_type && p.payment_type.toUpperCase().includes('RETURN'));
               return {
                 ...p,
                 payment_amount: isRefund ? -Math.abs(p.payment_amount) : p.payment_amount,
@@ -893,7 +897,10 @@ export default function SaleHistory() {
       header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
       sortable: true,
       render: (item) => {
-        const netAmount = Math.max(0, item.totalAmount - (item.totalReturnedAmount || 0));
+        // Round to 2 decimal places to avoid floating point ghost paise values
+        // e.g. 11.06 - 11.06 can give 0.0000000001 instead of 0 in JavaScript
+        const rawNet = item.totalAmount - (item.totalReturnedAmount || 0);
+        const netAmount = Math.max(0, Math.round(rawNet * 100) / 100);
         return (
           <Tooltip
             title={item.totalReturnedAmount > 0 ? `Original: ${item.totalAmount.toLocaleString()} | Returned: ${item.totalReturnedAmount.toLocaleString()}` : ""}
@@ -1082,6 +1089,7 @@ export default function SaleHistory() {
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
+        splitPayments: invoiceDetails.splitPayments || [], // ← FIXED: was missing, caused payment section to show wrong data
       });
 
       printWindow.document.write(htmlContent);
@@ -1663,6 +1671,7 @@ export default function SaleHistory() {
         <CommonModal
           open={isInvoiceModalOpen}
           title={SALES_HISTORY_LABELS.MODAL_TITLE}
+          maxWidth="900px"
           content={
             <PrintPreviewModal
               salesItems={invoiceDetails.items || []}

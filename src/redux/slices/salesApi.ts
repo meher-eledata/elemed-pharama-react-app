@@ -551,6 +551,7 @@ export const salesApi = createApi({
       return_date?: string; // Return date in YYYY-MM-DD format
       reason: string;
       notes: string;
+      payment_method?: string; // FIXED: was missing — backend was receiving nothing and defaulting to Cash
       lines: Array<{
         invoice_line_id: number;
         batch_number: string;

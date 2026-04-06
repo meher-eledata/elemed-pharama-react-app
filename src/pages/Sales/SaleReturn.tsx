@@ -752,6 +752,7 @@ export default function SaleReturn() {
         reason: reason.trim(),
         notes: notes.trim(),
         lines: lines,
+        payment_method: returnPaymentType, // FIXED: was missing — backend was always defaulting to Cash
       };
 
       console.log('🚀 SUBMITTING RETURN TO BACKEND');

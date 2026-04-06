@@ -161,7 +161,7 @@ export const generatePrintHTML = (data: {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
-            font-size: ${isA5 ? '10px' : '12px'};
+            font-size: ${isA5 ? '10px' : '13px'};
           }
           .receipt-header { 
             text-align: left; 
@@ -199,17 +199,17 @@ export const generatePrintHTML = (data: {
           .detail-title { 
             font-weight: bold; 
             margin-bottom: ${isA5 ? '6px' : '12px'}; 
-            font-size: ${isA5 ? '11px' : '14px'};
+            font-size: ${isA5 ? '11px' : '16px'};
             color: #1A212B;
           }
           .detail-item { 
-            font-size: ${isA5 ? '9px' : '11px'}; 
+            font-size: ${isA5 ? '9px' : '13px'}; 
             margin-bottom: ${isA5 ? '3px' : '6px'};
             color: #374151;
             line-height: 1.4;
           }
           .detail-item.email-item {
-            font-size: ${isA5 ? '8px' : '10px'};
+            font-size: ${isA5 ? '8px' : '11px'};
           }
           .items-section { 
             margin-bottom: 0px;
@@ -235,9 +235,9 @@ export const generatePrintHTML = (data: {
           }
           .items-table th { 
             background-color: #C7D2FE !important; 
-            padding: ${isA5 ? '4px 4px' : '8px 8px'}; 
+            padding: ${isA5 ? '4px 4px' : '10px 8px'}; 
             font-weight: bold; 
-            font-size: ${isA5 ? '9px' : '11px'}; 
+            font-size: ${isA5 ? '9px' : '13px'}; 
             text-align: left;
             color: #1A212B !important;
             border-bottom: 2px solid #A5B4FC !important;
@@ -255,8 +255,8 @@ export const generatePrintHTML = (data: {
             }
           }
           .items-table td { 
-            padding: ${isA5 ? '4px 4px' : '8px 8px'}; 
-            font-size: ${isA5 ? '9px' : '11px'}; 
+            padding: ${isA5 ? '4px 4px' : '10px 8px'}; 
+            font-size: ${isA5 ? '9px' : '13px'}; 
             background-color: #FFFFFF !important; 
             color: #374151 !important;
             border-top: 1px solid #E5E7EB;
@@ -307,7 +307,7 @@ export const generatePrintHTML = (data: {
           .summary-left { 
             display: flex; 
             gap: ${isA5 ? '30px' : '60px'}; 
-            font-size: ${isA5 ? '10px' : '12px'};
+            font-size: ${isA5 ? '10px' : '14px'};
             color: #1A212B;
           }
           .summary-item {
@@ -332,12 +332,12 @@ export const generatePrintHTML = (data: {
             text-align: right;
           }
           .summary-right-label {
-            font-size: ${isA5 ? '12px' : '14px'};
+            font-size: ${isA5 ? '12px' : '16px'};
             font-weight: 500;
             color: #1A212B;
           }
           .summary-right-value {
-            font-size: ${isA5 ? '16px' : '20px'};
+            font-size: ${isA5 ? '16px' : '22px'};
             font-weight: 700;
             color: #1A212B;
           }

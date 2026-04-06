@@ -81,16 +81,16 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
   // Adaptive styles based on page size
   const containerMaxWidth = isA5 ? '481px' : '794px'; // A5 vs A4 width (approx at 96dpi)
-  const containerPadding = isA5 ? '16px' : '24px';
+  const containerPadding = isA5 ? '16px' : '28px';
   const headerFontSize = isA5 ? '20px' : '24px';
-  const sectionGap = isA5 ? '8px' : '12px';
-  const sectionTitleSize = isA5 ? '12px' : '14px';
-  const sectionTextSize = isA5 ? '10px' : '11px';
-  const tableHeaderSize = isA5 ? '10px' : '12px';
-  const tableRowSize = isA5 ? '10px' : '12px';
-  const summaryLabelSize = isA5 ? '11px' : '12px';
-  const summaryValueSize = isA5 ? '12px' : '14px';
-  const summaryBigValueSize = isA5 ? '16px' : '20px';
+  const sectionGap = isA5 ? '8px' : '14px';
+  const sectionTitleSize = isA5 ? '12px' : '16px';
+  const sectionTextSize = isA5 ? '10px' : '13px';
+  const tableHeaderSize = isA5 ? '10px' : '14px';
+  const tableRowSize = isA5 ? '10px' : '13px';
+  const summaryLabelSize = isA5 ? '11px' : '13px';
+  const summaryValueSize = isA5 ? '12px' : '16px';
+  const summaryBigValueSize = isA5 ? '16px' : '22px';
 
   const handleSaveAsPDF = async () => {
     if (!printContentRef.current) return;
@@ -310,13 +310,13 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
               columnGap: '8px',
               backgroundColor: '#F9FAFB',
-              padding: isA5 ? '4px 8px' : '6px 12px',
+              padding: isA5 ? '4px 8px' : '10px 12px',
               fontSize: tableHeaderSize,
               fontWeight: 600,
               color: '#1A212B',
               flexShrink: 0,
               borderBottom: '2px solid #E5E7EB',
-              minHeight: isA5 ? '24px' : '30px',
+              minHeight: isA5 ? '24px' : '38px',
               alignItems: 'center'
             }}>
               <Box>S.No</Box>
@@ -334,7 +334,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             {/* Scrollable Products List */}
             <Box sx={{
               overflowY: 'auto',
-              maxHeight: salesItems && salesItems.length > 0 ? '300px' : 'auto',
+              maxHeight: salesItems && salesItems.length > 0 ? '420px' : 'auto',
               '&::-webkit-scrollbar': {
                 width: '8px',
               },
@@ -371,12 +371,12 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                       display: 'grid',
                       gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
                       columnGap: '8px',
-                      padding: isA5 ? '4px 8px' : '6px 12px',
+                      padding: isA5 ? '4px 8px' : '10px 12px',
                       fontSize: tableRowSize,
                       color: '#374151',
                       backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
                       borderTop: index === 0 ? 'none' : '1px solid #E5E7EB',
-                      minHeight: isA5 ? '24px' : '30px',
+                      minHeight: isA5 ? '24px' : '38px',
                       alignItems: 'center',
                       wordBreak: 'break-word'
                     }}>
