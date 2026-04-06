@@ -521,7 +521,8 @@ export default function SaleHistory() {
               sgstPercent: sgst.toString(),
               igstPercent: igst.toString(),
               discountPercent: disc.toString(),
-              hsn: line.hsn_code || (line.hsn_id && line.hsn_id !== 0 && line.hsn_id !== '0' ? line.hsn_id.toString() : '') || 'N/A',
+              // Use exactly what backend sends, without treating '0' or '0000' as invalid
+              hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
               pack: line.pack_qty?.toString() || 'N/A',
               expiryDate: line.expiry_date || '',
             };

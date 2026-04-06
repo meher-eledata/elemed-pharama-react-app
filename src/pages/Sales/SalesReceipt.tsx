@@ -394,9 +394,8 @@ const SalesReceipt: React.FC = () => {
                   batch: line.batch_number || line.batch || '',
                   expiryDate: line.expiry_date || line.expiryDate || '',
                   pack: line.pack_info || line.pack || '',
-                  // HSN: prefer hsn_code (actual code string from backend join), fall back to hsn_id
-                  // Guard: treat hsn_id=0 as invalid (DB default for unknown HSN)
-                  hsn: line.hsn_code || (line.hsn_id && line.hsn_id !== 0 && line.hsn_id !== '0' ? line.hsn_id.toString() : '') || '',
+                  // Use exactly what backend sends, without treating '0' or '0000' as invalid
+                  hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
                   quantity: netQty.toString(),
                   unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(2) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price
                   mrp: line.mrp ? Number(parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toFixed(2).replace(/\.00$/, '') : '0', // Calculate aggregate MRP for historic invoices

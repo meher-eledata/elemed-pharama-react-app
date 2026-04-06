@@ -418,7 +418,7 @@ export const generatePrintHTML = (data: {
             <tbody>
               ${salesItems.map((item, index) => {
                 const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
-                const hsn = (item as any).hsn || 'N/A';
+                const hsn = (item as any).hsn || '';
                 const pack = (item as any).pack || 'N/A';
                 const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
                 let formattedExp = 'N/A';
