@@ -159,6 +159,17 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   ? productOptions.filter(option => option && typeof option === 'string')
                   : []
             }
+            renderOption={(props, option) => (
+              <li {...props} key={option}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <Typography sx={{ fontSize: '14px' }}>{option}</Typography>
+                  {/* TODO: Update this to use product.available_total_qty once backend adds it */}
+                  <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400 }}>
+                    0
+                  </Typography>
+                </Box>
+              </li>
+            )}
             value={findProduct || ''}
             noOptionsText={isProductsLoading ? "Loading products..." : "No products found"}
             loading={isProductsLoading}
@@ -523,6 +534,10 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 onChange={(e) => onBatchChange(e.target.value)}
                 displayEmpty
                 disabled={isBatchesLoading}
+                renderValue={(selected) => {
+                  if (!selected) return <em>Select Batch</em>;
+                  return selected as string;
+                }}
                 sx={{
                   borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
                   height: '40px',
@@ -564,12 +579,15 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                       key={batchNumber}
                       value={batchNumber}
                       sx={{
-                        whiteSpace: 'nowrap',
-                        overflow: 'visible',
-                        textOverflow: 'clip',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        width: '100%',
                       }}
                     >
-                      {batchNumber}
+                      <Typography sx={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip' }}>{batchNumber}</Typography>
+                      {/* TODO: Update with real batch qty from backend once available */}
+                      <Typography sx={{ fontSize: '14px', color: '#9CA3AF', ml: 2, fontWeight: 400 }}>0</Typography>
                     </MenuItem>
                   ))
                 )}
