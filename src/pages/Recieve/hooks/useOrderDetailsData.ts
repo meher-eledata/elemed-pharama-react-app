@@ -1,16 +1,19 @@
 import { useState, useMemo, startTransition } from "react";
+import { useSelector } from 'react-redux';
+import { RootState } from "../../../redux/store";
 import { SupplierOption, ProductOption } from "../types";
 import { useGetReceiptsQuery } from "../../../redux/slices/receiveApi";
 import { orderLabels } from "../../../config/label/OrderDetail.labels";
 
 export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | null) => {
+  const token = useSelector((state: RootState) => state.auth.token);
   // Supplier state
   const [supplierOptions, setSupplierOptions] = useState<SupplierOption[]>([]);
   const [isSuppliersLoading, setIsSuppliersLoading] = useState<boolean>(false);
   const [suppliersError, setSuppliersError] = useState<string | null>(null);
 
   // Product state
-  const [productOptions, setProductOptions] = useState<string[]>([]);
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
   const [productOptionsWithIds, setProductOptionsWithIds] = useState<ProductOption[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(false);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -28,10 +31,11 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
       setIsSuppliersLoading(true);
       setSuppliersError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/unique-supplier-names`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/unique-supplier-names/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
       });
 
@@ -61,10 +65,11 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
       setIsProductsLoading(true);
       setProductsError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-products`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-products/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
       });
 
@@ -77,18 +82,19 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
       const productData = products
         .map((product: any) => {
           if (Array.isArray(product) && product.length >= 2) {
-            return { name: product[0], id: product[1] };
+            return { name: product[0], id: product[1], currentQuantity: product[2] ? Number(product[2]) : 0 };
           } else if (product && typeof product === 'object') {
             return { 
               name: product.name || product.product_name || product.productName || '', 
-              id: product.id || product.product_id || product.productId 
+              id: product.id || product.product_id || product.productId,
+              currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0
             };
           }
           return null;
         })
         .filter((product: any) => product && product.name && product.name.trim() !== '' && product.id);
 
-      setProductOptions(productData.map((p: ProductOption) => p.name) as string[]);
+      setProductOptions(productData);
       setProductOptionsWithIds(productData);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
@@ -109,27 +115,25 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
 
   const autocompleteProductOptions = useMemo(() => {
     if (isProductsLoading) {
-      return ["Loading products..."];
+      return ["Loading products..." as any];
     }
-    const validOptions = productOptions.filter(option => option && typeof option === 'string');
-    return [...validOptions, orderLabels.addProducts];
+    const addProductOption = { name: orderLabels.addProducts, id: -1, currentQuantity: 0 } as ProductOption;
+    return [...productOptions, addProductOption];
   }, [productOptions, isProductsLoading]);
 
   const filterProductOptions = useMemo(() => {
-    return (options: string[], state: any) => {
+    return (options: any[], state: any) => {
       const inputValue = state.inputValue.toLowerCase().trim();
       if (!inputValue) {
-        const uniqueOptions = Array.from(new Set(options));
-        return uniqueOptions;
+        return options;
       }
 
-      const filtered = options.filter(option => {
-        const optionStr = String(option).toLowerCase();
-        return optionStr.includes(inputValue) || option === orderLabels.addProducts || option === "Loading products...";
+      return options.filter(option => {
+        const optionStr = (typeof option === 'string' ? option : option.name).toLowerCase();
+        return optionStr.includes(inputValue) || 
+               optionStr === orderLabels.addProducts.toLowerCase() || 
+               optionStr === "loading products...";
       });
-
-      const uniqueFiltered = Array.from(new Set(filtered));
-      return uniqueFiltered;
     };
   }, []);
 

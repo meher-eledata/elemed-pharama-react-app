@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import dayjs from "dayjs";
 import {
   receiveApi,
@@ -44,6 +44,7 @@ interface SubmitHookParams {
 export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const token = useSelector((state: any) => state.auth.token);
   const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
   const [uploadReceiptFile] = useUploadReceiptFileMutation();
@@ -368,9 +369,12 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           // Only attempt manual fetch if we didn't already get a result
           if (!finalReceiptId) {
             const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-            const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+            const response = await fetch(`${apiBaseUrl}receive/submit-receipt/`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              },
               body: JSON.stringify(submitPayload)
             });
 
@@ -462,9 +466,12 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         // Only attempt manual fetch if we didn't already get a result
         if (!newReceiptId) {
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-          const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+          const response = await fetch(`${apiBaseUrl}receive/submit-receipt/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            },
             body: JSON.stringify(submitPayload)
           });
 
@@ -577,9 +584,12 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         // Fallback to manual fetch
         if (!newReceiptId) {
           const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-          const response = await fetch(`${apiBaseUrl}receive/submit-receipt`, {
+          const response = await fetch(`${apiBaseUrl}receive/submit-receipt/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            },
             body: JSON.stringify(submitPayload)
           });
 
@@ -640,10 +650,13 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       setDeleteSuccess(false);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/delete-receipt/${receiptId}`,
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/delete-receipt/${receiptId}/`,
         {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          },
         }
       );
 

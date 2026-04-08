@@ -88,6 +88,7 @@ export interface SupplierOption {
 export interface ProductOption {
   name: string;
   id: number;
+  currentQuantity?: number;
 }
 
 export interface SupplierTotals {

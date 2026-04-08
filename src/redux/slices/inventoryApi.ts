@@ -167,7 +167,7 @@ export const inventoryApi = createApi({
   tagTypes: ["Inventory"],
   endpoints: (builder) => ({
     getLowStock: builder.query<InventoryItem[], void>({
-      query: () => "inventory/min-quantity",
+      query: () => "inventory/min-quantity/",
       providesTags: ["Inventory"],
       transformResponse: (response: any[]): InventoryItem[] => {
         if (!Array.isArray(response)) return [];
@@ -182,7 +182,7 @@ export const inventoryApi = createApi({
       },
     }),
     getExcessStock: builder.query<InventoryItem[], void>({
-      query: () => "inventory/max-quantity",
+      query: () => "inventory/max-quantity/",
       providesTags: ["Inventory"],
       transformResponse: (response: any[]): InventoryItem[] => {
         if (!Array.isArray(response)) return [];
@@ -197,7 +197,7 @@ export const inventoryApi = createApi({
       },
     }),
     getExpiredStock: builder.query<InventoryItem[], void>({
-      query: () => "inventory/expiry",
+      query: () => "inventory/expiry/",
       providesTags: ["Inventory"],
       transformResponse: (response: any[]): InventoryItem[] => {
         if (!Array.isArray(response)) return [];
@@ -214,7 +214,7 @@ export const inventoryApi = createApi({
       },
     }),
     getNearExpiryStock: builder.query<InventoryItem[], { months: number }>({
-      query: () => `inventory/near-expiry`,
+      query: () => `inventory/near-expiry/`,
       providesTags: ["Inventory"],
       transformResponse: (response: any, meta, arg): InventoryItem[] => {
         if (!response || typeof response !== 'object') return [];
@@ -240,12 +240,12 @@ export const inventoryApi = createApi({
       },
     }),
     getInventorySummary: builder.query<InventorySummary, void>({
-      query: () => "inventory/get-alert-counts",
+      query: () => "inventory/get-alert-counts/",
       providesTags: ["Inventory"],
     }),
     addProduct: builder.mutation<AddProductResponse, AddProductRequest>({
       query: (body) => ({
-        url: "inventory/add-product",
+        url: "inventory/add-product/",
         method: "POST",
         body,
       }),
@@ -253,47 +253,47 @@ export const inventoryApi = createApi({
     }),
     getBatchesForProduct: builder.mutation<GetBatchesForProductResponse, GetBatchesForProductRequest>({
       query: (body) => ({
-        url: "inventory/get-batches-for-product",
+        url: "inventory/get-batches-for-product/",
         method: "POST",
         body,
       }),
       invalidatesTags: ["Inventory"],
     }),
     getAllBrands: builder.query<Brand[], void>({
-      query: () => "inventory/get-all-brands",
+      query: () => "inventory/get-all-brands/",
       providesTags: ["Inventory"],
     }),
     getProductsForBrand: builder.mutation<ProductForBrand[], GetProductsForBrandRequest>({
       query: (body) => ({
-        url: "inventory/get-products-for-brand",
+        url: "inventory/get-products-for-brand/",
         method: "POST",
         body,
       }),
     }),
     getBrandsFromProductId: builder.mutation<GetBrandsFromProductIdResponse, GetBrandsFromProductIdRequest>({
       query: (body) => ({
-        url: "inventory/get-brands-from-product-id",
+        url: "inventory/get-brands-from-product-id/",
         method: "POST",
         body,
       }),
     }),
     getBrandsFromProductName: builder.mutation<GetBrandsFromProductNameResponse[], GetBrandsFromProductNameRequest>({
       query: (body) => ({
-        url: "inventory/get-brands-from-product-name",
+        url: "inventory/get-brands-from-product-name/",
         method: "POST",
         body,
       }),
     }),
     getTypesForBrandAndProduct: builder.mutation<TypeForBrandAndProduct[], GetTypesForBrandAndProductRequest>({
       query: (body) => ({
-        url: "inventory/get-types-for-brand-and-product",
+        url: "inventory/get-types-for-brand-and-product/",
         method: "POST",
         body,
       }),
     }),
     adjustInventoryBatches: builder.mutation<AdjustInventoryBatchesResponse, AdjustInventoryBatchesRequest>({
       query: (body) => ({
-        url: "inventory/adjust-inventory-batches",
+        url: "inventory/adjust-inventory-batches/",
         method: "POST",
         body,
       }),

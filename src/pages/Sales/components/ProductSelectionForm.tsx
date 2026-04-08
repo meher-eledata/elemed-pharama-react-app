@@ -416,7 +416,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         {showBrandDropdown && (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>Brand</Typography>
-            <FormControl size="small" sx={{ minWidth: '220px', width: '220px', height: '40px' }}>
+            <FormControl size="small" sx={{ minWidth: '140px', width: '140px', height: '40px' }}>
               <Select
                 value={brandId || ""}
                 onChange={(e) => {
@@ -430,16 +430,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 renderValue={(selected) => {
                   if (!selected) return <em>Select Brand</em>;
                   const selectedBrand = availableBrands.find(b => b.id === selected);
-                  return (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                      <Typography sx={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {selectedBrand ? selectedBrand.brand_name : ''}
-                      </Typography>
-                      <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 1, fontWeight: 400 }}>
-                        {selectedBrand ? (selectedBrand.currentQuantity || 0) : ''}
-                      </Typography>
-                    </Box>
-                  );
+                  return selectedBrand ? selectedBrand.brand_name : '';
                 }}
                 sx={{
                   borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,
@@ -489,7 +480,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
         {showTypeDropdown && (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>{SALES_PAGE_LABELS.TYPE_LABEL}</Typography>
-            <FormControl size="small" sx={{ minWidth: '200px', width: '200px', height: '40px' }}>
+            <FormControl size="small" sx={{ minWidth: '140px', width: '140px', height: '40px' }}>
               <Select
                 value={productType || ""}
                 onChange={(e) => {
@@ -503,16 +494,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 renderValue={(selected) => {
                   if (!selected) return <em>{SALES_PAGE_LABELS.TYPE_PLACEHOLDER}</em>;
                   const selectedType = availableTypes.find(t => t.type === selected);
-                  return (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                      <Typography sx={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {selectedType ? selectedType.type : ''}
-                      </Typography>
-                      <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 1, fontWeight: 400 }}>
-                        {selectedType ? (selectedType.currentQuantity || 0) : ''}
-                      </Typography>
-                    </Box>
-                  );
+                  return selectedType ? selectedType.type : '';
                 }}
                 sx={{
                   borderRadius: SALES_PAGE_CONSTANTS.BORDER_RADIUS,

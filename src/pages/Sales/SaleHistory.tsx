@@ -184,10 +184,10 @@ export default function SaleHistory() {
         ? dayjs(invoice.created_at).format('DD/MM/YYYY')
         : '';
 
-      // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
+      // Convert patient_type from number to string (1 = "In Patient", 0 = "Out Patient")
       let patientType = 'Out Patient'; // Default
       if (invoice.patient_type !== undefined && invoice.patient_type !== null) {
-        patientType = invoice.patient_type === 0 ? 'In Patient' : 'Out Patient';
+        patientType = (Number(invoice.patient_type) === 1) ? 'In Patient' : 'Out Patient';
       }
 
       // Handle invoice_number formatting - use invoice_number if available, otherwise use invoice.id

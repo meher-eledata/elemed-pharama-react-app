@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
 import {
   Box,
   Typography,
@@ -41,6 +43,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigate = useNavigate();
   const [addSupplier] = useAddSupplierMutation();
   const [getBatchesForProduct] = useGetBatchesForProductMutation();
+  const token = useSelector((state: RootState) => state.auth.token);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -110,10 +113,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-receipt-lines`,
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-receipt-lines/`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          },
           body: JSON.stringify({ receipt_id: form.receiptId })
         }
       );

@@ -17,8 +17,8 @@ import { orderDetailsStyles } from "../styles";
 interface ProductSearchSectionProps {
   findProductTerm: string;
   setFindProductTerm: (val: string) => void;
-  autocompleteProductOptions: string[];
-  filterProductOptions: (options: string[], state: any) => string[];
+  autocompleteProductOptions: import("../types").ProductOption[];
+  filterProductOptions: (options: any[], state: any) => any[];
   isProductsLoading: boolean;
   onProductSelect: (productName: string) => void;
   onAddNewProduct: () => void;
@@ -61,21 +61,23 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
           </Typography>
           <Box sx={{ display: 'inline-block', width: '320px' }} data-product-search>
             <Autocomplete
-              options={isProductsLoading ? ["Loading products..."] : autocompleteProductOptions}
+              options={isProductsLoading ? ["Loading products..." as any] : autocompleteProductOptions}
               value={findProductTerm || null}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
               onChange={(_, newValue, reason) => {
                 if (reason === 'clear') {
                   setFindProductTerm("");
                   return;
                 }
-                if (newValue === orderLabels.addProducts) {
+                const nameValue = typeof newValue === 'string' ? newValue : (newValue as any)?.name || "";
+                if (nameValue === orderLabels.addProducts) {
                   onAddNewProduct();
                   setFindProductTerm("");
-                } else if (newValue && newValue !== "Loading products...") {
-                  onProductSelect(newValue);
+                } else if (nameValue && nameValue !== "Loading products...") {
+                  onProductSelect(nameValue);
                   // Don't clear immediately - let the field show the selected value
                   // The hook will clear it after adding to table
-                } else if (newValue === null) {
+                } else if (nameValue === null || nameValue === "") {
                   setFindProductTerm("");
                 }
               }}
@@ -139,6 +141,7 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
                       margin: "2px 8px !important",
                       fontSize: "14px",
                       fontFamily: "'Lexend', sans-serif",
+                      width: "100%",
                       ...(isAddProduct ? {
                         backgroundColor: '#5C17E5 !important',
                         color: '#ffffff !important',
@@ -162,7 +165,17 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
                     }}
                   >
                     {isLoading && <CircularProgress size={16} sx={{ mr: 1 }} color="primary" />}
-                    {option}
+                    
+                    {typeof option === 'string' ? option : (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                        <Typography sx={{ fontSize: '14px', fontFamily: "'Lexend', sans-serif" }}>
+                          {option.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: '12px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400, fontFamily: "'Lexend', sans-serif" }}>
+                          {option.currentQuantity || 0}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                 );
               }}

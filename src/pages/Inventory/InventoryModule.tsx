@@ -158,6 +158,9 @@ const InventoryModule: React.FC = () => {
       case 'expired':
         return expiredStockItems as InventoryItem[];
       case 'nearExpiry':
+        if (nearExpiryMonths === 3) {
+          return (nearExpiryStockItems as InventoryItem[]).filter(item => (item.daysToExpiry ?? 0) > 30);
+        }
         return nearExpiryStockItems as InventoryItem[];
       default:
         return [];
@@ -541,7 +544,7 @@ const InventoryModule: React.FC = () => {
           { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
-          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate?.split('T')[0] || '-' },
           { key: 'daysPastExpiry', header: INVENTORY_LABELS.daysPastExpiryHeader, render: (item) => (item as InventoryItem).daysPastExpiry },
         ];
         break;
@@ -553,7 +556,7 @@ const InventoryModule: React.FC = () => {
           { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
-          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate?.split('T')[0] || '-' },
           { key: 'daysToExpiry', header: INVENTORY_LABELS.daysToExpiryHeader, render: (item) => (item as InventoryItem).daysToExpiry },
         ];
         break;

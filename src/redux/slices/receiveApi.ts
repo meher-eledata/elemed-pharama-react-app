@@ -232,11 +232,11 @@ export const receiveApi = createApi({
   tagTypes: ["Receive", "ReceiptLines", "Inventory", "Dashboard"] as const,
   endpoints: (builder) => ({
     getCurrentPurchaseOrders: builder.query<PurchaseOrder[], void>({
-      query: () => "receive/current-purchase-orders",
+      query: () => "receive/current-purchase-orders/",
       providesTags: ["Receive"],
     }),
     getUniqueSupplierNames: builder.query<{ supplier_name: string, supplier_id: number }[], void>({
-      query: () => "receive/unique-supplier-names",
+      query: () => "receive/unique-supplier-names/",
       providesTags: ["Receive"],
     }),
     getReceiptsForSupplier: builder.mutation<
@@ -244,7 +244,7 @@ export const receiveApi = createApi({
       { supplierID: string | number }
     >({
       query: (body) => ({
-        url: "receive/receipts-for-supplier",
+        url: "receive/receipts-for-supplier/",
         method: "POST",
         body,
       }),
@@ -256,7 +256,7 @@ export const receiveApi = createApi({
       { poNumber: string; changes: Partial<Pick<PurchaseOrder, "ordered_date" | "status" | "total_amount" | "created_by">> & { notes?: string } }
     >({
       query: ({ poNumber, changes }) => ({
-        url: `receive/purchase-orders/${encodeURIComponent(poNumber)}`,
+        url: `receive/purchase-orders/${encodeURIComponent(poNumber)}/`,
         method: "PATCH",
         body: changes,
       }),
@@ -265,7 +265,7 @@ export const receiveApi = createApi({
 
     deletePurchaseOrder: builder.mutation<void, { poNumber: string }>({
       query: ({ poNumber }) => ({
-        url: `receive/purchase-orders/${encodeURIComponent(poNumber)}`,
+        url: `receive/purchase-orders/${encodeURIComponent(poNumber)}/`,
         method: "DELETE",
       }),
       invalidatesTags: ["Receive"],
@@ -273,13 +273,13 @@ export const receiveApi = createApi({
 
     // New endpoints for Receipt management
     getReceipts: builder.query<Receipt[], void>({
-      query: () => "receive/get-receipts",
+      query: () => "receive/get-receipts/",
       providesTags: ["Receive"],
     }),
 
     editReceipt: builder.mutation<EditReceiptResponse, EditReceiptRequest>({
       query: (body) => ({
-        url: "receive/edit-receipt",
+        url: "receive/edit-receipt/",
         method: "POST",
         body,
       }),
@@ -296,7 +296,7 @@ export const receiveApi = createApi({
 
     deleteReceipt: builder.mutation<DeleteReceiptResponse, DeleteReceiptRequest>({
       query: (body) => ({
-        url: "receive/delete-receipts",
+        url: "receive/delete-receipts/",
         method: "POST",
         body,
       }),
@@ -314,7 +314,7 @@ export const receiveApi = createApi({
     // Receipt line endpoints
     getReceiptLines: builder.query<ReceiptLine[], GetReceiptLinesRequest>({
       query: (body) => ({
-        url: "receive/get-receipt-lines",
+        url: "receive/get-receipt-lines/",
         method: "POST",
         body,
       }),
@@ -326,7 +326,7 @@ export const receiveApi = createApi({
       EditReceiptLineQuantityRequest
     >({
       query: (body) => ({
-        url: "receive/edit-receipt-line-quantity",
+        url: "receive/edit-receipt-line-quantity/",
         method: "POST",
         body,
       }),
@@ -338,7 +338,7 @@ export const receiveApi = createApi({
       DeleteReceiptLineRequest
     >({
       query: (body) => ({
-        url: "receive/delete-receipt-line",
+        url: "receive/delete-receipt-line/",
         method: "POST",
         body,
       }),
@@ -385,7 +385,7 @@ export const receiveApi = createApi({
       }
     >({
       query: (body) => ({
-        url: "receive/submit-receipt",
+        url: "receive/submit-receipt/",
         method: "POST",
         body,
       }),
@@ -403,7 +403,7 @@ export const receiveApi = createApi({
     // Get all products endpoint (shared across modules)
     getProducts: builder.query<{ name: string, id: number, currentQuantity?: number }[], void>({
       query: () => {
-        return "receive/get-products";
+        return "receive/get-products/";
       },
       providesTags: ["Receive"],
       transformResponse: (response: any, meta) => {
@@ -427,7 +427,7 @@ export const receiveApi = createApi({
           })
           .map((product: any) => {
             if (Array.isArray(product)) {
-              return { name: product[0], id: product[1], currentQuantity: 0 };
+              return { name: product[0], id: product[1], currentQuantity: product[2] ? Number(product[2]) : 0 };
             }
             return {
               name: product.name,
@@ -464,7 +464,7 @@ export const receiveApi = createApi({
         formData.append('file', file);
 
         return {
-          url: `receive/${receiptId}/upload-file`,
+          url: `receive/${receiptId}/upload-file/`,
           method: 'POST',
           body: formData,
           // RTK Query will automatically set Content-Type with boundary for FormData
@@ -476,7 +476,7 @@ export const receiveApi = createApi({
     // Get receipt file URL (returns the URL to fetch the file)
     getReceiptFile: builder.query<Blob, number>({
       query: (receiptId) => ({
-        url: `receive/${receiptId}/file`,
+        url: `receive/${receiptId}/file/`,
         responseHandler: async (response) => {
           if (!response.ok) {
             throw new Error('Failed to fetch file');
@@ -503,7 +503,7 @@ export const receiveApi = createApi({
       }
     >({
       query: (body) => ({
-        url: "receive/upsert-receipt-payments",
+        url: "receive/upsert-receipt-payments/",
         method: "POST",
         body,
       }),
@@ -522,7 +522,7 @@ export const receiveApi = createApi({
       GetPurchaseOrderPaymentsRequest
     >({
       query: (body) => ({
-        url: "receive/get-purchase-order-payments",
+        url: "receive/get-purchase-order-payments/",
         method: "POST",
         body,
       }),
@@ -540,7 +540,7 @@ export const receiveApi = createApi({
       GetSupplierCreditBalanceRequest
     >({
       query: (body) => ({
-        url: "receive/get-supplier-credit-balance",
+        url: "receive/get-supplier-credit-balance/",
         method: "POST",
         body,
       }),
@@ -560,7 +560,7 @@ export const receiveApi = createApi({
       }
     >({
       query: (body) => ({
-        url: "receive/adjust-supplier-credit",
+        url: "receive/adjust-supplier-credit/",
         method: "POST",
         body,
       }),
