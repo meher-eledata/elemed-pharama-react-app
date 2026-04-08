@@ -401,7 +401,7 @@ export const receiveApi = createApi({
     }),
 
     // Get all products endpoint (shared across modules)
-    getProducts: builder.query<{ name: string, id: number }[], void>({
+    getProducts: builder.query<{ name: string, id: number, currentQuantity?: number }[], void>({
       query: () => {
         return "receive/get-products";
       },
@@ -421,13 +421,20 @@ export const receiveApi = createApi({
 
         const products = response
           .filter((product: any) => {
-            const isValid = product && Array.isArray(product) && product.length >= 2;
-            return isValid;
+            const isArrayFormat = product && Array.isArray(product) && product.length >= 2;
+            const isObjectFormat = product && typeof product === 'object' && !Array.isArray(product) && product.name;
+            return isArrayFormat || isObjectFormat;
           })
-          .map((product: any) => ({
-            name: product[0],
-            id: product[1]
-          }))
+          .map((product: any) => {
+            if (Array.isArray(product)) {
+              return { name: product[0], id: product[1], currentQuantity: 0 };
+            }
+            return {
+              name: product.name,
+              id: product.product_id || product.id,
+              currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0
+            };
+          })
           .filter((product: any) => {
             const isValid = product.name && product.name.trim() !== '' && product.id;
             return isValid;

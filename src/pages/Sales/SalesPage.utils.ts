@@ -4,13 +4,13 @@ import { Product, ApiProduct } from './SalesPage.types';
  * Process product options from API response
  * Handles both array format [name, id] and object format {name, id}
  */
-export const processProductOptions = (apiProducts: any[]): string[] => {
+export const processProductOptions = (apiProducts: any[]): { name: string, currentQuantity: number }[] => {
   if (!apiProducts || apiProducts.length === 0) {
     return [];
   }
 
   const firstProduct = apiProducts[0];
-  let options: string[] = [];
+  let options: { name: string, currentQuantity: number }[] = [];
 
   // Handle array format [name, id]
   if (Array.isArray(firstProduct)) {
@@ -18,32 +18,40 @@ export const processProductOptions = (apiProducts: any[]): string[] => {
       .filter((product: any) => {
         return product && Array.isArray(product) && product.length >= 2;
       })
-      .map((product: any) => product[0]) // First element is the product name
-      .filter((name: string) => {
-        return name && name.trim() !== '';
+      .map((product: any) => ({
+        name: product[0], // First element is the product name
+        currentQuantity: product[2] ?? product.currentQuantity ?? 0
+      }))
+      .filter((item) => {
+        return item.name && item.name.trim() !== '';
       });
   }
-  // Handle object format {name: string, id: number}
+  // Handle object format {name, currentQuantity}
   else if (typeof firstProduct === 'object' && firstProduct !== null) {
     options = apiProducts
       .filter((product: any) => {
         return product && product.name;
       })
-      .map((product: any) => product.name)
-      .filter((name: string) => {
-        return name && name.trim() !== '';
+      .map((product: any) => ({
+        name: product.name,
+        currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0
+      }))
+      .filter((item) => {
+        return item.name && item.name.trim() !== '';
       });
-  } else {
-  }
-
-  if (options.length === 0 && apiProducts.length > 0) {
   }
 
   // Remove duplicates to prevent React key warnings
-  // Use Set to get unique product names, then convert back to array
-  const uniqueOptions = Array.from(new Set(options));
+  // Use Map to get unique product names, maintaining the first encountered quantity
+  const uniqueOptionsMap = new Map<string, { name: string, currentQuantity: number }>();
+  
+  options.forEach(option => {
+    if (!uniqueOptionsMap.has(option.name)) {
+      uniqueOptionsMap.set(option.name, option);
+    }
+  });
 
-  return uniqueOptions;
+  return Array.from(uniqueOptionsMap.values());
 };
 
 /**

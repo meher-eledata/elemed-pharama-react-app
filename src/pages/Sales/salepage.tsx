@@ -12,7 +12,7 @@ import {
   useGetBatchNumbersByProductIdMutation
 } from "../../redux/slices/salesApi";
 import {
-  useGetBrandsFromProductIdMutation,
+  useGetBrandsFromProductNameMutation,
   useGetTypesForBrandAndProductMutation,
   useGetBatchesForProductMutation
 } from "../../redux/slices/inventoryApi";
@@ -216,7 +216,7 @@ export default function SalePage() {
   } = useGetProductsQuery();
   const [getProductType, { isLoading: isProductTypeLoading }] = useLazyGetProductTypeQuery();
   const [validateSale, { isLoading: isValidating }] = useValidateSaleMutation();
-  const [getBrandsFromProductId, { isLoading: isBrandsLoading }] = useGetBrandsFromProductIdMutation();
+  const [getBrandsFromProductName, { isLoading: isBrandsLoading }] = useGetBrandsFromProductNameMutation();
   const [getTypesForBrandAndProduct, { isLoading: isTypesLoading }] = useGetTypesForBrandAndProductMutation();
   const [getBatchNumbersByProductId, { isLoading: isBatchesLoading }] = useGetBatchNumbersByProductIdMutation();
 
@@ -418,37 +418,29 @@ export default function SalePage() {
       setValidationError("");
       setValidatedData(null);
 
-      const productID = extractProductId(apiProducts, value);
+      try {
+        // Fetch brands for the selected product name
+        // API returns an array of brands for a given product name
+        const brandsResult = await getBrandsFromProductName({ product_name: value }).unwrap();
 
-      if (productID) {
-        setProductId(productID);
+        if (brandsResult && brandsResult.length > 0) {
+          setAvailableBrands(brandsResult);
+          setShowBrandDropdown(true);
 
-        const numericId = parseInt(productID);
-        if (numericId > 0) {
-          try {
-            // Fetch brands for the selected product
-            // Note: API returns a single brand object, not an array
-            const brandsResult = await getBrandsFromProductId({ product_id: numericId }).unwrap();
+          // Auto-select the brand if there is exactly 1
+          if (brandsResult.length === 1) {
+            setBrandId(brandsResult[0].id);
+            setBrand(brandsResult[0].brand_name);
 
-            if (brandsResult && brandsResult.id && brandsResult.brand_name) {
-              // Convert single brand object to array format for consistency
-              setAvailableBrands([{ id: brandsResult.id, brand_name: brandsResult.brand_name }]);
-              setShowBrandDropdown(true);
-
-              // Auto-select the brand (since API returns single brand)
-              setBrandId(brandsResult.id);
-              setBrand(brandsResult.brand_name);
-
-              // Automatically fetch types for the brand
-              await handleBrandChange(brandsResult.id, brandsResult.brand_name, value);
-            } else {
-              setShowBrandDropdown(false);
-            }
-          } catch (error) {
-            console.error('Error fetching brands:', error);
-            setShowBrandDropdown(false);
+            // Automatically fetch types for the brand
+            await handleBrandChange(brandsResult[0].id, brandsResult[0].brand_name, value);
           }
+        } else {
+          setShowBrandDropdown(false);
         }
+      } catch (error) {
+        console.error('Error fetching brands:', error);
+        setShowBrandDropdown(false);
       }
     } else {
       handleClearProduct();

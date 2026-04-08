@@ -453,18 +453,21 @@ export const salesApi = createApi({
     }),
 
     // Get all products for sales - alternative endpoint
-    getSalesProducts: builder.query<{ name: string, id: number }[], void>({
+    getSalesProducts: builder.query<{ name: string, id: number, currentQuantity?: number }[], void>({
       query: () => "sales/get-products",
       transformResponse: (response: any[]) => {
         // Handle different response formats
         if (Array.isArray(response) && response.length > 0) {
-          if (Array.isArray(response[0])) {
-            // Format: [[name, id], [name, id], ...]
-            return response.map(item => ({ name: item[0], id: item[1] }));
-          } else if (typeof response[0] === 'object') {
-            // Format: [{name, id}, {name, id}, ...]
-            return response;
-          }
+          return response.map((item: any) => {
+            if (Array.isArray(item)) {
+              return { name: item[0], id: item[1], currentQuantity: 0 };
+            }
+            return {
+              name: item.name,
+              id: item.product_id || item.id,
+              currentQuantity: item.currentQuantity ? Number(item.currentQuantity) : 0
+            };
+          });
         }
         return [];
       },

@@ -111,6 +111,7 @@ export interface GetProductsForBrandRequest {
 export interface TypeForBrandAndProduct {
   type: string;
   product_id: number;
+  currentQuantity?: number;
 }
 
 export interface GetTypesForBrandAndProductRequest {
@@ -125,6 +126,17 @@ export interface GetBrandsFromProductIdRequest {
 export interface GetBrandsFromProductIdResponse {
   id: number;
   brand_name: string;
+  currentQuantity?: number;
+}
+
+export interface GetBrandsFromProductNameRequest {
+  product_name: string;
+}
+
+export interface GetBrandsFromProductNameResponse {
+  id: number;
+  brand_name: string;
+  currentQuantity?: number;
 }
 
 export interface AdjustInventoryBatchLine {
@@ -265,6 +277,13 @@ export const inventoryApi = createApi({
         body,
       }),
     }),
+    getBrandsFromProductName: builder.mutation<GetBrandsFromProductNameResponse[], GetBrandsFromProductNameRequest>({
+      query: (body) => ({
+        url: "inventory/get-brands-from-product-name",
+        method: "POST",
+        body,
+      }),
+    }),
     getTypesForBrandAndProduct: builder.mutation<TypeForBrandAndProduct[], GetTypesForBrandAndProductRequest>({
       query: (body) => ({
         url: "inventory/get-types-for-brand-and-product",
@@ -294,6 +313,7 @@ export const {
   useGetAllBrandsQuery,
   useGetProductsForBrandMutation,
   useGetBrandsFromProductIdMutation,
+  useGetBrandsFromProductNameMutation,
   useGetTypesForBrandAndProductMutation,
   useAdjustInventoryBatchesMutation,
 } = inventoryApi;
