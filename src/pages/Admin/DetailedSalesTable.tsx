@@ -19,6 +19,7 @@ interface SalesData {
   transactionType: string;
   invoiceNumber: string;
   customerName: string;
+  doctorName: string;
   paymentType: string;
   saleAmount: number;
   discount: number;
@@ -55,6 +56,7 @@ const DetailedSalesTable: React.FC = () => {
         transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
         invoiceNumber: item.invoice_number,
         customerName: item.customer_name || 'N/A',
+        doctorName: item.doctor_name || 'N/A',
         paymentType: (() => {
           const raw = (item.payment_type || '').trim().toUpperCase();
           if (!raw || raw === 'UNKNOWN' || raw === 'NULL') {
@@ -117,6 +119,7 @@ const DetailedSalesTable: React.FC = () => {
     if (currentSearchTerm) {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+        item.doctorName.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
         item.invoiceNumber.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
         item.paymentType.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
         item.patientType.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
@@ -236,6 +239,20 @@ const DetailedSalesTable: React.FC = () => {
           color: '#1A212B',
         }}>
           {item.customerName}
+        </Typography>
+      ),
+    },
+    {
+      key: 'doctorName',
+      header: "Doctor Name",
+      sortable: true,
+      render: (item) => (
+        <Typography sx={{
+          fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+          fontSize: '14px',
+          color: '#1A212B',
+        }}>
+          {item.doctorName}
         </Typography>
       ),
     },
@@ -380,6 +397,7 @@ const DetailedSalesTable: React.FC = () => {
       'Transaction Type': item.transactionType,
       'Invoice Number': item.invoiceNumber,
       'Customer Name': item.customerName,
+      'Doctor Name': item.doctorName,
       'Payment Type': item.paymentType,
       'Sale Amount (₹)': item.saleAmount.toFixed(2),
       'Discount (₹)': item.discount.toFixed(2),

@@ -18,6 +18,7 @@ export interface DailySalesTableItem {
   transaction_type?: string;
   invoice_number: string;
   customer_name: string | null;
+  doctor_name: string | null;
   payment_type: string;
   sales_amount: string;
   discount_amount: string;

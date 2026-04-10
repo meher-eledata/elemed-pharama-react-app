@@ -184,7 +184,7 @@ export default function SalePage() {
   const [isProductSelected, setIsProductSelected] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
-  const [availableBatches, setAvailableBatches] = useState<string[]>([]);
+  const [availableBatches, setAvailableBatches] = useState<{ batch_number: string; current_qty: number }[]>([]);
   const [batch, setBatch] = useState("");
   const [selectedTypeProductId, setSelectedTypeProductId] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string>("");
@@ -206,6 +206,8 @@ export default function SalePage() {
     key: SALES_PAGE_CONSTANTS.DEFAULT_SORT_KEY,
     direction: SALES_PAGE_CONSTANTS.SORT_DIRECTION_ASC
   });
+
+  const [currentPage, setCurrentPage] = useState(SALES_PAGE_CONSTANTS.DEFAULT_CURRENT_PAGE);
 
   // RTK Query hooks
   const {
@@ -507,55 +509,52 @@ export default function SalePage() {
       console.log('🔍 Product type:', newType);
 
       // Use sales API endpoint: sales/get-batch-numbers-by-product-id
-      let batchNumbers: string[] = [];
+      let batchObjects: { batch_number: string; current_qty: number }[] = [];
 
       try {
         const batchesResult: any = await getBatchNumbersByProductId({ product_id: typeProductId }).unwrap();
         console.log('📦 Sales API batch numbers response (raw):', batchesResult);
         console.log('📦 Response type:', typeof batchesResult, 'Is array:', Array.isArray(batchesResult));
 
-        // Process the response
-        if (Array.isArray(batchesResult)) {
-          // Direct array format: ["batch1", "batch2", ...]
-          batchNumbers = batchesResult.filter((b: any) => b != null && b !== '');
-          console.log('✅ Processed as array, got', batchNumbers.length, 'batches');
-        } else if (batchesResult && typeof batchesResult === 'object') {
-          // Object format: { batches: [...], batch_numbers: [...], etc. }
-          if (Array.isArray(batchesResult.batches)) {
-            batchNumbers = batchesResult.batches
-              .map((b: any) => typeof b === 'string' ? b : (b.batch_number || b.batchNumber || String(b)))
-              .filter((b: any) => b != null && b !== '');
-            console.log('✅ Processed from batches array, got', batchNumbers.length, 'batches');
-          } else if (Array.isArray(batchesResult.batch_numbers)) {
-            batchNumbers = batchesResult.batch_numbers.filter((b: any) => b != null && b !== '');
-            console.log('✅ Processed from batch_numbers array, got', batchNumbers.length, 'batches');
-          } else if (Array.isArray(batchesResult.data)) {
-            batchNumbers = batchesResult.data
-              .map((b: any) => typeof b === 'string' ? b : (b.batch_number || b.batchNumber || String(b)))
-              .filter((b: any) => b != null && b !== '');
-            console.log('✅ Processed from data array, got', batchNumbers.length, 'batches');
-          } else {
-            console.warn('⚠️ Unexpected response format:', batchesResult);
-          }
+        // Process the response — backend now returns { product: {...}, batches: [{ batch_number, current_qty, ... }] }
+        if (batchesResult && typeof batchesResult === 'object' && Array.isArray(batchesResult.batches)) {
+          batchObjects = batchesResult.batches
+            .filter((b: any) => b != null && b.batch_number)
+            .map((b: any) => ({
+              batch_number: b.batch_number,
+              current_qty: parseFloat(b.current_qty ?? 0),
+            }));
+          console.log('✅ Processed from batches array (new format), got', batchObjects.length, 'batches');
+        } else if (Array.isArray(batchesResult)) {
+          // Fallback: plain string array from old format
+          batchObjects = batchesResult
+            .filter((b: any) => b != null && b !== '')
+            .map((b: any) => ({
+              batch_number: typeof b === 'string' ? b : (b.batch_number || String(b)),
+              current_qty: typeof b === 'object' ? parseFloat(b.current_qty ?? 0) : 0,
+            }));
+          console.log('✅ Processed as fallback array, got', batchObjects.length, 'batches');
+        } else {
+          console.warn('⚠️ Unexpected response format:', batchesResult);
         }
 
-        console.log('📦 Final processed batch numbers:', batchNumbers);
+        console.log('📦 Final processed batch objects:', batchObjects);
 
-        if (batchNumbers.length > 0) {
-          setAvailableBatches(batchNumbers);
+        if (batchObjects.length > 0) {
+          setAvailableBatches(batchObjects);
           setShowBatchDropdown(true);
-          console.log('✅ Batch dropdown shown with', batchNumbers.length, 'batches');
+          console.log('✅ Batch dropdown shown with', batchObjects.length, 'batches');
 
           // Auto-select if only one batch
-          if (batchNumbers.length === 1) {
-            setBatch(batchNumbers[0]);
-            console.log('✅ Auto-selected batch:', batchNumbers[0]);
+          if (batchObjects.length === 1) {
+            setBatch(batchObjects[0].batch_number);
+            console.log('✅ Auto-selected batch:', batchObjects[0].batch_number);
           }
         } else {
           console.warn('⚠️ No batches found in response for product_id:', typeProductId);
           console.warn('⚠️ Product name:', findProduct, 'Type:', newType);
           setShowBatchDropdown(false);
-          showToast(`No batch numbers found for product "${findProduct}" (Type: ${newType}, Product ID: ${typeProductId}). Please ensure inventory batches exist in the InventoryBatch table for this product_id.`, 'warning');
+          showToast(`No batch numbers found for product "${findProduct}" (Type: ${newType}). Please ensure inventory batches exist.`, 'warning');
         }
       } catch (salesError: any) {
         console.error('❌ Sales API error:', salesError);
@@ -850,8 +849,8 @@ export default function SalePage() {
         }}
         totalRows={sortedProducts.length}
         rowsPerPage={SALES_PAGE_CONSTANTS.DEFAULT_ROWS_PER_PAGE}
-        currentPage={SALES_PAGE_CONSTANTS.DEFAULT_CURRENT_PAGE}
-        onPageChange={() => { }}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
         onSortRequest={handleSortRequest}
         sortConfig={sortConfig}
         searchAndFilterConfig={{ filterOptions: [] }}

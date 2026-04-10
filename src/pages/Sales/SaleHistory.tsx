@@ -184,10 +184,10 @@ export default function SaleHistory() {
         ? dayjs(invoice.created_at).format('DD/MM/YYYY')
         : '';
 
-      // Convert patient_type from number to string (1 = "In Patient", 0 = "Out Patient")
+      // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
       let patientType = 'Out Patient'; // Default
       if (invoice.patient_type !== undefined && invoice.patient_type !== null) {
-        patientType = (Number(invoice.patient_type) === 1) ? 'In Patient' : 'Out Patient';
+        patientType = (Number(invoice.patient_type) === 0) ? 'In Patient' : 'Out Patient';
       }
 
       // Handle invoice_number formatting - use invoice_number if available, otherwise use invoice.id
@@ -901,10 +901,12 @@ export default function SaleHistory() {
         // Round to 2 decimal places to avoid floating point ghost paise values
         // e.g. 11.06 - 11.06 can give 0.0000000001 instead of 0 in JavaScript
         const rawNet = item.totalAmount - (item.totalReturnedAmount || 0);
-        const netAmount = Math.max(0, Math.round(rawNet * 100) / 100);
+        const netAmount = Math.max(0, Math.round(rawNet));
+        const roundedTotal = Math.round(item.totalAmount);
+        const roundedReturned = Math.round(item.totalReturnedAmount || 0);
         return (
           <Tooltip
-            title={item.totalReturnedAmount > 0 ? `Original: ${item.totalAmount.toLocaleString()} | Returned: ${item.totalReturnedAmount.toLocaleString()}` : ""}
+            title={item.totalReturnedAmount > 0 ? `Original: ${roundedTotal.toLocaleString()} | Returned: ${roundedReturned.toLocaleString()}` : ""}
             arrow
           >
             <Typography variant="body2" sx={{ fontWeight: 500, color: item.totalReturnedAmount > 0 ? '#DC2626' : 'inherit' }}>

@@ -233,7 +233,7 @@ export const executeSave = async ({
       : finalInvoiceNumber.toString().trim();
 
 
-    const patientTypeNumber = patientType === 'In Patient' ? 1 : 0;
+    const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
 
     // Helper to map UI payment modes to backend keys
     // Aligned with other modules to send UPPERCASE strings (e.g., "CASH", "CREDIT CARD")

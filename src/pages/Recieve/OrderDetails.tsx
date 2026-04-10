@@ -58,7 +58,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   // Initialize table hook
   const table = useOrderDetailsTable(
     data.productOptionsWithIds,
-    data.getProductIdFromName
+    data.getProductIdFromName,
+    (msg: string) => {
+      setSnackbarMessage(msg);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
   );
 
   // Initialize submit hook

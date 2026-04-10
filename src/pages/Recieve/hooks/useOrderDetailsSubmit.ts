@@ -327,7 +327,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
     const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
     if (incompleteProducts.length > 0) {
-      return 'Please complete all required fields for products (Product Name and Quantity Received)';
+      return 'Please complete all mandatory fields for all products (Batch, Expiry, Pack Info, Qty, Purchase Price, MRP)';
     }
     return null;
   };

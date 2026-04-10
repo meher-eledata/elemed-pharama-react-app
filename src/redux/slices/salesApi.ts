@@ -128,6 +128,7 @@ export interface GetCustomerPhonesRequest {
 export interface GetCustomerPhonesResponse {
   name: string;
   phones: string[];
+  ids?: number[];
 }
 
 // Doctor phone and email interfaces

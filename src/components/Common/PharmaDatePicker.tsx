@@ -21,6 +21,7 @@ export interface PharmaDatePickerProps {
   width?: number | string;
   height?: number | string;
   error?: boolean;
+  useEndOfMonth?: boolean;
 }
 
 const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
@@ -35,34 +36,14 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
   width = 150,
   height = 44,
   error = false,
+  useEndOfMonth = false,
 }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-
-    const handleScroll = (e: Event) => {
-      const target = e.target;
-      // Check if target is an Element and has closest method
-      if (target && typeof (target as any).closest === 'function') {
-        const element = target as Element;
-        if (element.closest('.MuiPickersPopper-root') ||
-          element.closest('.MuiPaper-root') ||
-          element.closest('[role="dialog"]')) {
-          return;
-        }
-      }
-      setOpen(false);
-    };
-
-    window.addEventListener('scroll', handleScroll, true);
-    document.addEventListener('scroll', handleScroll, true);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll, true);
-      document.removeEventListener('scroll', handleScroll, true);
-    };
+    // We removed the global scroll listener that was closing the picker prematurely 
+    // during view transitions (like Year to Month).
   }, [open]);
 
   useEffect(() => {
@@ -436,7 +417,19 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
       >
         <DatePicker
           value={value}
-          onChange={onChange}
+          onChange={(newValue) => {
+            onChange(newValue);
+          }}
+          onMonthChange={(newMonth) => {
+            if (newMonth && useEndOfMonth) {
+              onChange(newMonth.endOf('month'));
+            }
+          }}
+          onYearChange={(newYear) => {
+            if (newYear && useEndOfMonth) {
+              onChange(newYear.endOf('month'));
+            }
+          }}
           minDate={minDate}
           maxDate={maxDate}
           disabled={disabled}

@@ -4,7 +4,8 @@ import { PharmaTableRow, ProductOption } from "../types";
 
 export const useOrderDetailsTable = (
   productOptionsWithIds: ProductOption[],
-  getProductIdFromName: (name: string) => number | null
+  getProductIdFromName: (name: string) => number | null,
+  showError: (msg: string) => void
 ) => {
   // Table data state
   const [pharmaTableData, setPharmaTableData] = useState<PharmaTableRow[]>([]);
@@ -27,7 +28,23 @@ export const useOrderDetailsTable = (
   const [isProductSelected, setIsProductSelected] = useState<boolean>(false);
 
   const isProductRowComplete = (row: PharmaTableRow): boolean => {
-    return !!(row.productId && row.productId.trim() !== "" && row.qtyReceived > 0);
+    const isMissingBatchContext = !row.batchNumber || row.batchNumber.trim() === "";
+    const qR = Number(row.qtyReceived) || 0;
+    const mRP = Number(row.mrp) || 0;
+    const pPrice = Number(row.pp) || 0;
+    const packAmt = row.pack ? String(row.pack).trim() : "";
+    const expiry = row.expiryDate;
+
+    return !!(
+      row.productId && 
+      row.productId.trim() !== "" && 
+      qR > 0 && 
+      mRP > 0 && 
+      pPrice > 0 && 
+      !isMissingBatchContext && 
+      expiry && 
+      packAmt !== ""
+    );
   };
 
   const addProductToTable = async (productName: string) => {
@@ -77,6 +94,19 @@ export const useOrderDetailsTable = (
 
   const saveEditedRow = () => {
     if (!editingRowId) return;
+
+    // Validate mandatory fields (except qtyFree)
+    const isMissingBatchContext = !editingData.batchNumber || editingData.batchNumber.trim() === "";
+    const qR = Number(editingData.qtyReceived) || 0;
+    const mRP = Number(editingData.mrp) || 0;
+    const pPrice = Number(editingData.pp) || 0;
+    const packAmt = editingData.pack ? String(editingData.pack).trim() : "";
+    const expiry = editingData.expiryDate;
+
+    if (qR <= 0 || mRP <= 0 || pPrice <= 0 || isMissingBatchContext || !expiry || packAmt === "") {
+      showError("Please fill all mandatory fields (Batch, Expiry, Pack Qty, Received Qty, Purchase Price, MRP) before saving the item.");
+      return;
+    }
 
     setPharmaTableData((prev) =>
       prev.map((row) =>

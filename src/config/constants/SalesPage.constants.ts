@@ -17,7 +17,7 @@ export const SALES_PAGE_CONSTANTS = {
   BRANDS: ["Brand A", "Brand B", "Brand C"],
 
   // Table Pagination
-  DEFAULT_ROWS_PER_PAGE: 5,
+  DEFAULT_ROWS_PER_PAGE: 15,
   DEFAULT_CURRENT_PAGE: 1,
 
   // Sort Configuration

@@ -141,6 +141,7 @@ export const getProductTableColumns = ({
                 updateEditingData("expiryDate", newValue);
               }}
               minDate={dayjs().startOf('day')}
+              useEndOfMonth={true}
               placeholder="MM/DD/YYYY"
               width="100%"
               height={32}

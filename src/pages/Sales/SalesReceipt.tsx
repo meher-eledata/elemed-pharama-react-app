@@ -25,6 +25,7 @@ import {
   useUpsertInvoicePaymentsMutation,
 
 
+  useGetCustomerPhonesMutation,
   useLazyGetInvoicesQuery,
   Customer,
   DoctorPhoneEmailInfo
@@ -90,6 +91,7 @@ const SalesReceipt: React.FC = () => {
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
 
   const [fetchInvoicesList] = useLazyGetInvoicesQuery();
+  const [getCustomerPhones] = useGetCustomerPhonesMutation();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
 
   // Extract names from doctor objects array to string array for compatibility
@@ -428,8 +430,9 @@ const SalesReceipt: React.FC = () => {
                   const raw = invoice.patient_type !== undefined ? invoice.patient_type : (invoice as any).patientType;
                   if (raw === null || raw === undefined) return 'Out Patient';
                   const str = String(raw).trim().toUpperCase();
-                  // Fix: 0 is Out Patient, 1 is In Patient
-                  if (raw === 1 || str === '1' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
+                  
+                  // Standard: 0 is In Patient, 1 is Out Patient (Aligned with backend team)
+                  if (raw === 0 || str === '0' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
                     return 'In Patient';
                   }
                   return 'Out Patient';
@@ -1219,6 +1222,33 @@ const SalesReceipt: React.FC = () => {
       (typeof d === 'string' ? d : d.name) === doctorName
     );
     const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
+    
+    // RESOLVE CUSTOMER ID:
+    // If we have name/mobile but no valid ID, try one last lookup to find the ID.
+    // This handles the case where the user picked an existing name but the ID wasn't linked.
+    let resolvedCustomer = { ...selectedCustomer } as Customer;
+    if ((!resolvedCustomer || !resolvedCustomer.id || resolvedCustomer.id <= 0) && customerName && customerMobile) {
+      try {
+        console.log('🔍 Final ID Lookup: Attempting to find ID for:', customerName, customerMobile);
+        const result = await getCustomerPhones({ name: customerName.trim() }).unwrap();
+        const phones = result.phones || [];
+        const ids = result.ids || [];
+        
+        // Match the phone to an ID
+        const phoneIdx = phones.indexOf(customerMobile.trim());
+        if (phoneIdx !== -1 && ids[phoneIdx]) {
+          console.log('✅ Found matching ID:', ids[phoneIdx]);
+          resolvedCustomer = {
+            id: ids[phoneIdx],
+            name: customerName,
+            mobile: customerMobile,
+            city: customerCity
+          };
+        }
+      } catch (err) {
+        console.warn('⚠️ Final ID lookup failed', err);
+      }
+    }
 
     // If user selected a single payment mode, discard any leftover split payments
     // from a previous multiple-payment session to prevent stale data being saved.
@@ -1242,7 +1272,7 @@ const SalesReceipt: React.FC = () => {
       totalDiscount,
       taxAmount,
       totalPayableAmount,
-      selectedCustomer,
+      selectedCustomer: resolvedCustomer,
       apiProducts,
       isProductsLoading,
       isProductsError,
@@ -1264,7 +1294,7 @@ const SalesReceipt: React.FC = () => {
       splitPayments: effectiveSplitPayments,
       upsertInvoicePayments,
     });
-  }, [customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments]);
+  }, [customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {

@@ -34,14 +34,14 @@ export const useCustomerPhones = ({
           // Fetch phone numbers
           const result = await getCustomerPhones({ name: customerName.trim() }).unwrap();
           const phones = result.phones || [];
+          const ids = result.ids || [];
           onPhoneFetched(phones);
 
           // Auto-fill customer if we have a phone number
           if (phones.length === 1 && (!customerMobile || customerMobile.trim() === '')) {
-            // Auto-fill with phone number. 
-            // Note: actual ID lookup happens in the component's submission wrapper.
+            // Auto-fill with phone number and REAL database ID.
             const autoFilledCustomer: Customer = {
-              id: 0,
+              id: ids[0] || 0,
               name: customerName.trim(),
               mobile: phones[0],
               city: customerCity || '',

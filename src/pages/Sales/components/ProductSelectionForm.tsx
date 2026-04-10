@@ -51,7 +51,7 @@ interface ProductSelectionFormProps {
 
   // Batch
   showBatchDropdown: boolean;
-  availableBatches: string[];
+  availableBatches: Array<{ batch_number: string; current_qty: number }>;
   batch: string;
   onBatchChange: (value: string) => void;
   isBatchesLoading: boolean;
@@ -552,6 +552,7 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                 disabled={isBatchesLoading}
                 renderValue={(selected) => {
                   if (!selected) return <em>Select Batch</em>;
+                  // Find matching batch to show number only in the select box
                   return selected as string;
                 }}
                 sx={{
@@ -590,9 +591,12 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                     Loading batches...
                   </MenuItem>
                 ) : (
-                  availableBatches.map((batchNumber) => (
-                    <MenuItem key={batchNumber} value={batchNumber}>
-                      {batchNumber}
+                  availableBatches.map((batchItem) => (
+                    <MenuItem key={batchItem.batch_number} value={batchItem.batch_number} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <Typography sx={{ fontSize: '14px' }}>{batchItem.batch_number}</Typography>
+                      <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400 }}>
+                        {batchItem.current_qty ?? 0}
+                      </Typography>
                     </MenuItem>
                   ))
                 )}
