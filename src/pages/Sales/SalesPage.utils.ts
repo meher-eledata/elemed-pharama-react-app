@@ -182,7 +182,7 @@ export const createCartItem = (
     unit_selling_price: unitSellingPrice,
     mrp: stripMrp,
     sp: stripSp,
-    expiry: defaultExpiry,
+    expiry: validatedData?.batch?.expiry_date || defaultExpiry,
     quantity: qty,
     type: finalProductType,
     discount: discount,

@@ -710,6 +710,7 @@ const SalesReceipt: React.FC = () => {
     insuranceCompany,
     invoiceNumber,
     invoiceDate,
+    selectedCustomer,
     isEditMode, // Pass isEditMode to skip persistence in edit mode
     onFormDataLoaded: useCallback((formData) => {
       setCustomerName(formData.customerName);
@@ -1562,7 +1563,8 @@ const SalesReceipt: React.FC = () => {
               onSaveClick={handleSaveFromModal}
               hideActionButtons={true}
               brandIcon={bgWhiteIcon}
-              pageSize={pageSize.toLowerCase() as 'a4' | 'a5'}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
               splitPayments={splitPayments}
             />
           }

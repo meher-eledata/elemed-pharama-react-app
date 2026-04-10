@@ -114,6 +114,7 @@ export default function SaleHistory() {
   const [invoiceDetails, setInvoiceDetails] = useState<any>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
+  const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
 
   // Force refresh of saved history when location changes (e.g., after edit or return)
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1092,6 +1093,7 @@ export default function SaleHistory() {
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
+        pageSize: pageSize,
         splitPayments: invoiceDetails.splitPayments || [], // ← FIXED: was missing, caused payment section to show wrong data
       });
 
@@ -1694,8 +1696,11 @@ export default function SaleHistory() {
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
               onCancel={handleCancelPrint}
               onPrint={handlePrintToPDF}
+              onSaveClick={handleSaveClick}
               brandIcon={bgWhiteIcon}
               hideActionButtons={true}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
               splitPayments={invoiceDetails.splitPayments || []}
             />
           }

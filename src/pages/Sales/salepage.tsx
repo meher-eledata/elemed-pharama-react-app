@@ -184,7 +184,7 @@ export default function SalePage() {
   const [isProductSelected, setIsProductSelected] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
-  const [availableBatches, setAvailableBatches] = useState<{ batch_number: string; current_qty: number }[]>([]);
+  const [availableBatches, setAvailableBatches] = useState<any[]>([]);
   const [batch, setBatch] = useState("");
   const [selectedTypeProductId, setSelectedTypeProductId] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string>("");
@@ -516,23 +516,35 @@ export default function SalePage() {
         console.log('📦 Sales API batch numbers response (raw):', batchesResult);
         console.log('📦 Response type:', typeof batchesResult, 'Is array:', Array.isArray(batchesResult));
 
-        // Process the response — backend now returns { product: {...}, batches: [{ batch_number, current_qty, ... }] }
+        // Process the response — backend now returns { product: {...}, batches: [{ batch_number, current_qty/quantity, ... }] }
         if (batchesResult && typeof batchesResult === 'object' && Array.isArray(batchesResult.batches)) {
           batchObjects = batchesResult.batches
             .filter((b: any) => b != null && b.batch_number)
             .map((b: any) => ({
               batch_number: b.batch_number,
-              current_qty: parseFloat(b.current_qty ?? 0),
+              // Use exhaustive fallbacks for quantity field names
+              current_qty: parseFloat(b.current_qty ?? b.quantity ?? b.batch_qty ?? 0),
+              expiry_date: b.expiry_date || b.expiryDate || "",
+              mrp: b.mrp || 0,
+              pack_qty: b.pack_qty || 1
             }));
           console.log('✅ Processed from batches array (new format), got', batchObjects.length, 'batches');
         } else if (Array.isArray(batchesResult)) {
-          // Fallback: plain string array from old format
+          // Fallback: plain string array or object array from old format
           batchObjects = batchesResult
-            .filter((b: any) => b != null && b !== '')
-            .map((b: any) => ({
-              batch_number: typeof b === 'string' ? b : (b.batch_number || String(b)),
-              current_qty: typeof b === 'object' ? parseFloat(b.current_qty ?? 0) : 0,
-            }));
+            .filter((b: any) => b != null && (typeof b === 'string' ? b !== '' : b.batch_number))
+            .map((b: any) => {
+              if (typeof b === 'string') {
+                return { batch_number: b, current_qty: 0, expiry_date: "", mrp: 0, pack_qty: 1 };
+              }
+              return {
+                batch_number: b.batch_number,
+                current_qty: parseFloat(b.current_qty ?? b.quantity ?? b.batch_qty ?? 0),
+                expiry_date: b.expiry_date || b.expiryDate || "",
+                mrp: b.mrp || 0,
+                pack_qty: b.pack_qty || 1
+              };
+            });
           console.log('✅ Processed as fallback array, got', batchObjects.length, 'batches');
         } else {
           console.warn('⚠️ Unexpected response format:', batchesResult);

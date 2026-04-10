@@ -149,6 +149,28 @@ const InventoryModule: React.FC = () => {
   const { data: inventorySummary, isLoading: isSummaryLoading, error: summaryError } =
     useGetInventorySummaryQuery();
 
+  // DERIVED SUMMARY: Calculate counts and quantities from the actual lists
+  // This ensures the summary cards match the table data exactly.
+  const derivedSummary = useMemo(() => {
+    const sumQty = (items: InventoryItem[]) => 
+      items.reduce((sum, item) => sum + (Number(item.currentQuantity) || 0), 0);
+
+    // Near Expiry needs special handling based on the month filter
+    const nearExpiryFiltered = nearExpiryStockItems.filter(item => {
+      if (nearExpiryMonths === 3) {
+        return (item.daysToExpiry ?? 0) > 30;
+      }
+      return true; // 1 month view shows all
+    });
+
+    return {
+      lowStock: { count: lowStockItems.length, qty: sumQty(lowStockItems as InventoryItem[]) },
+      excessStock: { count: excessStockItems.length, qty: sumQty(excessStockItems as InventoryItem[]) },
+      nearExpiry: { count: nearExpiryFiltered.length, qty: sumQty(nearExpiryFiltered as InventoryItem[]) },
+      expired: { count: expiredStockItems.length, qty: sumQty(expiredStockItems as InventoryItem[]) }
+    };
+  }, [lowStockItems, excessStockItems, expiredStockItems, nearExpiryStockItems, nearExpiryMonths]);
+
   const currentTableData = useMemo(() => {
     switch (selectedStockType) {
       case 'low':
@@ -707,7 +729,16 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.belowMinCount ?? 0}
+                {isLowStockLoading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <>
+                    {derivedSummary.lowStock.count}
+                    <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
+                      (Qty: {inventorySummary?.belowMinTotalQuantity ?? derivedSummary.lowStock.qty})
+                    </span>
+                  </>
+                )}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="error" className="percentage">
@@ -746,7 +777,16 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.aboveMaxCount ?? 0}
+                {isExcessStockLoading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <>
+                    {derivedSummary.excessStock.count}
+                    <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
+                      (Qty: {inventorySummary?.aboveMaxTotalQuantity ?? derivedSummary.excessStock.qty})
+                    </span>
+                  </>
+                )}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendDown} alt="icon" className="icon" /> */}
               <Typography variant="caption" color="success.main" className="percentage">
@@ -785,12 +825,19 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? (
+                {isNearExpiryStockLoading ? (
                   <CircularProgress size={24} />
                 ) : (
-                  nearExpiryMonths === 3
-                    ? inventorySummary?.withinThreeMonthsCount ?? 0
-                    : inventorySummary?.withinOneMonthCount ?? 0
+                  <>
+                    {derivedSummary.nearExpiry.count}
+                    <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
+                      (Qty: {
+                        nearExpiryMonths === 3
+                          ? (inventorySummary?.withinThreeMonthsTotalQuantity ?? derivedSummary.nearExpiry.qty)
+                          : (inventorySummary?.withinOneMonthTotalQuantity ?? derivedSummary.nearExpiry.qty)
+                      })
+                    </span>
+                  </>
                 )}
               </Typography>
               <Typography variant="caption" color="success.main" className="percentage">
@@ -829,7 +876,16 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? <CircularProgress size={24} /> : inventorySummary?.pastExpiryCount ?? 0}
+                {isExpiredStockLoading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <>
+                    {derivedSummary.expired.count}
+                    <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
+                      (Qty: {inventorySummary?.pastExpiryTotalQuantity ?? derivedSummary.expired.qty})
+                    </span>
+                  </>
+                )}
               </Typography>
               {/* <img src={ASSET_PATHS.TrendUp} alt="icon" className="icon" /> */}
               <Typography

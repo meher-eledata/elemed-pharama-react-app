@@ -46,7 +46,8 @@ interface PrintPreviewModalProps {
   onAfterSave?: () => void; // Optional callback after successful save
   hideActionButtons?: boolean; // Hide the action buttons (for view-only mode)
   brandIcon?: string;
-  pageSize?: 'a4' | 'a5';
+  pageSize?: 'A4' | 'A5';
+  onPageSizeChange?: (size: 'A4' | 'A5') => void;
   splitPayments?: any[];
 }
 
@@ -72,12 +73,13 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   onSaveClick,
   onAfterSave,
   hideActionButtons = false,
-  pageSize = 'a4',
+  pageSize = 'A4',
+  onPageSizeChange,
   brandIcon,
   splitPayments = [],
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
-  const isA5 = pageSize === 'a5';
+  const isA5 = pageSize.toUpperCase() === 'A5';
 
   // Adaptive styles based on page size
   const containerMaxWidth = isA5 ? '481px' : '794px'; // A5 vs A4 width (approx at 96dpi)
@@ -126,6 +128,44 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
   return (
     <Box sx={{ padding: '0', maxHeight: '100%', overflow: 'auto' }}>
+      {/* Page Size Selector - Inside Modal */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        gap: '12px', 
+        mb: 3, 
+        mt: 1,
+        pb: 2,
+        borderBottom: '1px solid #E5E7EB'
+      }}>
+        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#616161' }}>Page Size:</Typography>
+        <Box sx={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '2px' }}>
+          {['A4', 'A5'].map((size) => (
+            <Box
+              key={size}
+              onClick={() => onPageSizeChange?.(size as 'A4' | 'A5')}
+              sx={{
+                padding: '6px 16px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: pageSize.toUpperCase() === size ? '#FFFFFF' : 'transparent',
+                color: pageSize.toUpperCase() === size ? '#5C17E5' : '#6B7280',
+                boxShadow: pageSize.toUpperCase() === size ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  backgroundColor: pageSize.toUpperCase() === size ? '#FFFFFF' : '#E5E7EB',
+                }
+              }}
+            >
+              {size}
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
       {/* Print Preview Content */}
       <Box ref={printContentRef} sx={{
         padding: containerPadding,

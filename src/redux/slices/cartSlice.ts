@@ -39,6 +39,7 @@ export interface SalesFormData {
   insuranceCompany: string;
   invoiceNumber: string;
   invoiceDate: string;
+  customerId?: number;
 }
 
 export interface CartState {

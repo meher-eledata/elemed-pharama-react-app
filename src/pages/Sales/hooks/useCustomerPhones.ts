@@ -34,14 +34,14 @@ export const useCustomerPhones = ({
           // Fetch phone numbers
           const result = await getCustomerPhones({ name: customerName.trim() }).unwrap();
           const phones = result.phones || [];
-          const ids = result.ids || [];
+          const customerId = result.id || (result.ids && result.ids[0]) || 0;
           onPhoneFetched(phones);
 
           // Auto-fill customer if we have a phone number
           if (phones.length === 1 && (!customerMobile || customerMobile.trim() === '')) {
             // Auto-fill with phone number and REAL database ID.
             const autoFilledCustomer: Customer = {
-              id: ids[0] || 0,
+              id: customerId,
               name: customerName.trim(),
               mobile: phones[0],
               city: customerCity || '',

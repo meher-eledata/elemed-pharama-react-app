@@ -55,8 +55,8 @@ const DetailedSalesTable: React.FC = () => {
         transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
         transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
         invoiceNumber: item.invoice_number,
-        customerName: item.customer_name || 'N/A',
-        doctorName: item.doctor_name || 'N/A',
+        customerName: (item.customer_name && String(item.customer_name).trim()) ? item.customer_name : 'N/A',
+        doctorName: (item.doctor_name && String(item.doctor_name).trim()) ? item.doctor_name : 'N/A',
         paymentType: (() => {
           const raw = (item.payment_type || '').trim().toUpperCase();
           if (!raw || raw === 'UNKNOWN' || raw === 'NULL') {

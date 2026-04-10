@@ -253,12 +253,9 @@ export const executeSave = async ({
       payment_amount: parseFloat(totalPayableAmount || '0'),
       created_by: user?.username || 'Guest',
       customer_id: customerId,
-      // strictly follow user request: omit redundant details if customer_id > 0
-      ...(customerId > 0 ? {} : {
-        customer_name: customerName,
-        customer_mobile: customerMobile,
-        customer_city: customerCity,
-      }),
+      customer_name: customerName,
+      customer_mobile: customerMobile,
+      customer_city: customerCity,
       doctor_id: doctorId,
       doctor_name: doctorName,
       doctor_mobile: doctorMobile,

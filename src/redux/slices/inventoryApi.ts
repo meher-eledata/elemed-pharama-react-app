@@ -18,10 +18,15 @@ export interface InventoryItem {
 
 export interface InventorySummary {
   belowMinCount: number;
+  belowMinTotalQuantity: number;
   aboveMaxCount: number;
+  aboveMaxTotalQuantity: number;
   pastExpiryCount: number;
+  pastExpiryTotalQuantity: number;
   withinThreeMonthsCount: number;
+  withinThreeMonthsTotalQuantity: number;
   withinOneMonthCount: number;
+  withinOneMonthTotalQuantity: number;
 }
 
 // Add Product interfaces

@@ -17,6 +17,7 @@ interface FormData {
   insuranceCompany: string;
   invoiceNumber: string;
   invoiceDate: string;
+  customerId?: number;
 }
 
 interface UseFormPersistenceParams {
@@ -31,6 +32,7 @@ interface UseFormPersistenceParams {
   insuranceCompany: string;
   invoiceNumber: string;
   invoiceDate: string;
+  selectedCustomer: Customer | null;
   onFormDataLoaded: (formData: FormData) => void;
   onCustomerRestored: (customer: Customer | null) => void;
   isEditMode?: boolean; // Skip persistence in edit mode
@@ -48,6 +50,7 @@ export const useFormPersistence = ({
   insuranceCompany,
   invoiceNumber,
   invoiceDate,
+  selectedCustomer,
   onFormDataLoaded,
   onCustomerRestored,
   isEditMode = false,
@@ -76,7 +79,7 @@ export const useFormPersistence = ({
 
       if (formData.customerName && formData.customerMobile) {
         const restoredCustomer: Customer = {
-          id: 0,
+          id: formData.customerId || 0,
           name: formData.customerName,
           mobile: formData.customerMobile,
           city: formData.customerCity || '',
@@ -107,11 +110,12 @@ export const useFormPersistence = ({
         insuranceCompany: debouncedInsuranceCompany,
         invoiceNumber,
         invoiceDate,
+        customerId: selectedCustomer?.id || 0,
       };
 
       dispatch(saveFormData(formDataToSave));
     }
-  }, [isDataLoaded, isEditMode, customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, debouncedInsuranceCompany, invoiceNumber, invoiceDate, dispatch]);
+  }, [isDataLoaded, isEditMode, customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, debouncedInsuranceCompany, invoiceNumber, invoiceDate, selectedCustomer, dispatch]);
 
   return { isDataLoaded };
 };

@@ -128,6 +128,7 @@ export interface GetCustomerPhonesRequest {
 export interface GetCustomerPhonesResponse {
   name: string;
   phones: string[];
+  id?: number;
   ids?: number[];
 }
 
@@ -139,6 +140,23 @@ export interface GetDoctorPhonesAndEmailsRequest {
 export interface DoctorPhoneEmailInfo {
   phone: string;
   email: string;
+}
+
+export interface BatchInfo {
+  batch_number: string;
+  quantity: number;
+  expiry_date?: string;
+  mrp?: number;
+  pack_qty?: number;
+}
+
+export interface GetBatchNumbersResponse {
+  product?: {
+    product_id: number;
+    product_name: string;
+    total_quantity: number;
+  };
+  batches: BatchInfo[];
 }
 
 export interface GetDoctorPhonesAndEmailsResponse {
@@ -527,7 +545,7 @@ export const salesApi = createApi({
     }),
 
     // Get batch numbers by product ID
-    getBatchNumbersByProductId: builder.mutation<string[], { product_id: number }>({
+    getBatchNumbersByProductId: builder.mutation<GetBatchNumbersResponse | BatchInfo[], { product_id: number }>({
       query: (body) => ({
         url: "sales/get-batch-numbers-by-product-id",
         method: "POST",
