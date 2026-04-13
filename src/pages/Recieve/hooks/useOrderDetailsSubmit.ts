@@ -650,7 +650,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       setDeleteSuccess(false);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/delete-receipt/${receiptId}/`,
+        `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/+$/, '')}/receive/delete-receipt/${receiptId}/`,
         {
           method: 'DELETE',
           headers: { 

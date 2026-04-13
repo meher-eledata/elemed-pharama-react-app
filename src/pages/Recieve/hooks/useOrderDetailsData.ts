@@ -31,7 +31,7 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
       setIsSuppliersLoading(true);
       setSuppliersError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/unique-supplier-names/`, {
+      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/+$/, '')}/receive/unique-supplier-names/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
       setIsProductsLoading(true);
       setProductsError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-products/`, {
+      const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/+$/, '')}/receive/get-products/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

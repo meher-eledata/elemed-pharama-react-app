@@ -118,7 +118,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/receive/get-receipt-lines/`,
+        `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/+$/, '')}/receive/get-receipt-lines/`,
         {
           method: 'POST',
           headers: { 
