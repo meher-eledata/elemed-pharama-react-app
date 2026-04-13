@@ -463,11 +463,8 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   </MenuItem>
                 ) : (
                   availableBrands.map((brandItem) => (
-                    <MenuItem key={brandItem.id} value={brandItem.id} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <MenuItem key={brandItem.id} value={brandItem.id}>
                       <Typography sx={{ fontSize: '14px' }}>{brandItem.brand_name}</Typography>
-                      <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400 }}>
-                        {brandItem.currentQuantity || 0}
-                      </Typography>
                     </MenuItem>
                   ))
                 )}
@@ -527,11 +524,8 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                   </MenuItem>
                 ) : (
                   availableTypes.map((typeItem) => (
-                    <MenuItem key={`${typeItem.type}-${typeItem.product_id}`} value={typeItem.type} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <MenuItem key={`${typeItem.type}-${typeItem.product_id}`} value={typeItem.type}>
                       <Typography sx={{ fontSize: '14px' }}>{typeItem.type}</Typography>
-                      <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400 }}>
-                        {typeItem.currentQuantity || 0}
-                      </Typography>
                     </MenuItem>
                   ))
                 )}
