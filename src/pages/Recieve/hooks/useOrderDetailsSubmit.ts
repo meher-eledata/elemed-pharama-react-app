@@ -148,7 +148,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     const payload = {
       supplier_name: supplierName.trim(),
       supplier_id: selectedSupplierData.supplier_id,
-      po_number: poNumber.trim(),
+      po_number: poNumber.trim() || null,
       invoice_number: invoiceNumber.trim(),
       notes: "",
       created_by: createdBy,
@@ -292,7 +292,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       po_id: parseInt(poNumber) || 1,
       supplier_name: supplierName,
       supplier_id: supplierId,
-      po_number: poNumber,
+      po_number: poNumber?.trim() || null,
       payment_method: paymentMethod,
       payment_vendor: paymentVendor,
       transaction_number: transactionNumber,

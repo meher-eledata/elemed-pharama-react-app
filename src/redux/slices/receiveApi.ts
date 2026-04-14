@@ -51,7 +51,7 @@ export interface EditReceiptRequest {
   po_id: number;
   supplier_name: string;
   supplier_id: number;
-  po_number: string;
+  po_number: string | null;
   payment_method: string;
   payment_vendor: string;
   transaction_number: string;
@@ -361,7 +361,7 @@ export const receiveApi = createApi({
       {
         supplier_name: string;
         supplier_id: number;
-        po_number: string;
+        po_number: string | null;
         invoice_number?: string;
         notes: string;
         created_by: string;
