@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import React from 'react';
 import { useGetCustomerPhonesMutation } from '../../../redux/slices/salesApi';
 import { Customer } from '../../../redux/slices/salesApi';
 
@@ -10,6 +11,7 @@ interface UseCustomerPhonesParams {
   onPhoneFetched: (phones: string[]) => void;
   onCustomerAutoFill: (customer: Customer) => void;
   onPhoneClear: () => void;
+  isAddingCustomerRef?: React.MutableRefObject<boolean>; // ← pause flag
 }
 
 export const useCustomerPhones = ({
@@ -20,11 +22,15 @@ export const useCustomerPhones = ({
   onPhoneFetched,
   onCustomerAutoFill,
   onPhoneClear,
+  isAddingCustomerRef,
 }: UseCustomerPhonesParams) => {
   const [getCustomerPhones] = useGetCustomerPhonesMutation();
   const shouldFetchImmediatelyRef = useRef(false);
 
   useEffect(() => {
+    // ⛔ Pause: A new customer is currently being added — skip to avoid overwriting its real ID
+    if (isAddingCustomerRef?.current) return;
+
     const fetchPhonesForCustomer = async () => {
       if (customerName && customerName.trim()) {
         try {

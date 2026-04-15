@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, ChangeEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { StandardButton } from '../../components/Common';
@@ -138,6 +138,8 @@ const SalesReceipt: React.FC = () => {
   const [patientType, setPatientType] = useState<string>('Out Patient'); // Default to 'Out Patient'
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [availablePhones, setAvailablePhones] = useState<string[]>([]);
+  // 🔒 Pause flag: prevents phone-lookup hook from overwriting the real ID while addCustomer is in flight
+  const isAddingCustomerRef = useRef(false);
 
   const [doctorName, setDoctorName] = useState('');
   const [doctorMobile, setDoctorMobile] = useState('');
@@ -643,7 +645,8 @@ const SalesReceipt: React.FC = () => {
     customerNames,
     onPhoneFetched: setAvailablePhones,
     onCustomerAutoFill: handleCustomerAutoFill,
-    onPhoneClear: handlePhoneClear
+    onPhoneClear: handlePhoneClear,
+    isAddingCustomerRef, // ← pause hook while new customer is being created
   });
 
   const handleCustomerNameChange = async (newName: string) => {
@@ -884,6 +887,7 @@ const SalesReceipt: React.FC = () => {
   };
 
   const handleCustomerSubmitWrapper = useCallback(async (customerData: any) => {
+    isAddingCustomerRef.current = true; // 🔒 Pause phone hook before API call
     await handleCustomerSubmit({
       customerData,
       addCustomer,
@@ -894,9 +898,13 @@ const SalesReceipt: React.FC = () => {
         setCustomerName(customer.name);
         setCustomerMobile(customer.mobile);
         setSelectedCustomer(customer);
+        // ✅ ID is now locked — safe to re-enable the phone hook
+        isAddingCustomerRef.current = false;
       },
       onClose: handleCloseCustomerModal,
     });
+    // Safety: always release the lock even if onCustomerAdded wasn't called (e.g. on error)
+    isAddingCustomerRef.current = false;
   }, [addCustomer, refetchCustomerNames, showToast]);
 
   const handleEditCart = useCallback(() => {
@@ -1401,7 +1409,7 @@ const SalesReceipt: React.FC = () => {
             paymentMode={paymentMode}
             insuranceCompany={insuranceCompany}
             invoiceNumber={invoiceNumber}
-            invoiceDate={invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-GB') : ''}
+            invoiceDate={invoiceDate}
             onPaymentModeChange={(mode: string) => { setPaymentMode(mode); setSplitPayments([]); }}
             onInsuranceCompanyChange={setInsuranceCompany}
             onInvoiceNumberChange={setInvoiceNumber}

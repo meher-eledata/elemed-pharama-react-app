@@ -156,8 +156,14 @@ export const getTableColumns = ({
     {
       key: "expiry",
       header: "Expiry",
-      render: (item) => item.expiry
+      render: (item) => {
+        if (!item.expiry) return '—';
+        const d = new Date(item.expiry);
+        if (isNaN(d.getTime())) return item.expiry;
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
     },
+
     {
       key: "type",
       header: "Type",
