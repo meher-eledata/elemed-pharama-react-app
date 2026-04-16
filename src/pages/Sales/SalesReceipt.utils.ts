@@ -26,7 +26,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       expiryDate: item.expiry,
       quantity: item.quantity.toString(),
       type: item.type || 'N/A',
-      unitPrice: item.unit_selling_price ? item.unit_selling_price.toFixed(2) : (item.sp / item.quantity).toFixed(2), // Unit price is the base selling price
+      unitPrice: item.unit_selling_price ? item.unit_selling_price.toFixed(8) : (item.sp / item.quantity).toFixed(8), // Unit price is the base selling price with high precision
       mrp: Number(parseFloat(item.mrp.toString())).toFixed(2).replace(/\.00$/, ''),
       // Calculate original total without discount for receipt display
       discount: (item.mrp - item.sp).toFixed(2),

@@ -43,8 +43,8 @@ export const getProductTableColumns = ({
     const baseAmount = unitPrice * qty;
     const discountAmount = baseAmount * (discount / 100);
     const amountAfterDiscount = baseAmount - discountAmount;
-    // Calculate taxes based on base amount (pre-discount) for consistency across the app
-    const taxAmount = baseAmount * ((cgst + sgst + igst) / 100);
+    // Calculate taxes based on discounted amount for consistency with invoice totals
+    const taxAmount = amountAfterDiscount * ((cgst + sgst + igst) / 100);
     return amountAfterDiscount + taxAmount;
   };
 
@@ -109,14 +109,13 @@ export const getProductTableColumns = ({
             value={editingData.batchNumber || ""}
             onChange={(e) => {
               const value = e.target.value;
-              const alphanumericValue = value.replace(/[^A-Za-z0-9]/g, '');
-              if (alphanumericValue.length <= 8) {
-                updateEditingData("batchNumber", alphanumericValue);
+              if (value.length <= 15) {
+                updateEditingData("batchNumber", value);
               }
             }}
             variant="outlined"
             fullWidth
-            inputProps={{ maxLength: 8, pattern: '[A-Za-z0-9]*' }}
+            inputProps={{ maxLength: 15 }}
             sx={inputFieldStyles}
           />
         ) : (

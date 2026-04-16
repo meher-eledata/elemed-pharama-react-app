@@ -401,7 +401,7 @@ const SalesReceipt: React.FC = () => {
                   // Use exactly what backend sends, without treating '0' or '0000' as invalid
                   hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
                   quantity: netQty.toString(),
-                  unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(2) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price
+                  unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(8) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price with high precision
                   mrp: line.mrp ? Number(parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toFixed(2).replace(/\.00$/, '') : '0', // Calculate aggregate MRP for historic invoices
                   discount: line.discount?.toString() || '0',
                   discountPercent: discountPercentValue,

@@ -32,10 +32,12 @@ export const processProductOptions = (apiProducts: any[]): { name: string, curre
       .filter((product: any) => {
         return product && product.name;
       })
-      .map((product: any) => ({
-        name: product.name,
-        currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0
-      }))
+      .map((product: any) => {
+        return {
+          name: product.name,
+          currentQuantity: Number(product.currentQuantity) || 0
+        };
+      })
       .filter((item) => {
         return item.name && item.name.trim() !== '';
       });
@@ -47,7 +49,10 @@ export const processProductOptions = (apiProducts: any[]): { name: string, curre
   
   options.forEach(option => {
     if (!uniqueOptionsMap.has(option.name)) {
-      uniqueOptionsMap.set(option.name, option);
+      uniqueOptionsMap.set(option.name, { ...option });
+    } else {
+      const existingOption = uniqueOptionsMap.get(option.name)!;
+      existingOption.currentQuantity += option.currentQuantity;
     }
   });
 

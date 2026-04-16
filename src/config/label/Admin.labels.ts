@@ -3,9 +3,9 @@ export const ADMIN_LABELS = {
   SUBTITLE: 'Access key administrative functions and system insights..',
   SECTIONS: {
     DASHBOARD: {
-      TITLE: 'Main Dashboard',
+      TITLE: 'Pharmacist access',
       DESC: 'Access the overall application dashboard with comprehensive insights and metrics.',
-      ACTION: 'Go to Dashboard',
+      ACTION: 'Go to Pharmacist access',
     },
     USER_MGMT: {
       TITLE: 'User Account Management',
