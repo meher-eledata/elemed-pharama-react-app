@@ -13,6 +13,7 @@ export interface SalesReceiptItem {
   mrp?: string;
   hsn?: string;
   pack?: string;
+  pack_qty?: number;
   discount: string;
   discountPercent: string;
   discountAuthorizedBy?: string; // Doctor name who authorized the discount

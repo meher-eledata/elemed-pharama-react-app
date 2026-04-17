@@ -110,15 +110,19 @@ export const getProductIdFromName = (productName: string, apiProducts: any[]): n
 export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]): CartItem[] => {
   return salesItems.map(item => ({
     id: item.id,
+    product_id: item.product_id,
     name: item.productName,
     batch: item.batch,
     avlQty: item.quantity,
     mrp: parseFloat(item.mrp || '0'),
     sp: parseFloat(item.unitPrice || '0'),
+    unit_selling_price: parseFloat(item.unitPrice || '0'),
     expiry: item.expiryDate || '',
     quantity: parseInt(item.quantity),
     type: item.type,
     discount: parseFloat(item.discountPercent || '0'),
+    discountAuthorizedBy: item.discountAuthorizedBy,
+    discountAuthorizedById: item.discountAuthorizedById,
     totalPrice: parseFloat(item.amount || '0'),
     cgst: item.cgst,
     cgstPercent: item.cgstPercent,
@@ -126,6 +130,7 @@ export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]): CartI
     sgstPercent: item.sgstPercent,
     igst: item.igst,
     igstPercent: item.igstPercent,
+    pack_qty: item.pack_qty,
     amount: item.amount,
   }));
 };

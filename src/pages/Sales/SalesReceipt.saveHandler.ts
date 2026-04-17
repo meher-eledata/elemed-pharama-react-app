@@ -208,6 +208,7 @@ export const executeSave = async ({
         cgst: cgstPercent, // Keep tax as is (might be 2.5) but fix precision below
         sgst: sgstPercent,
         igst: igstPercent,
+        pack_qty: parseFloat(item.pack_qty?.toString() || '1'),
       };
       // Clean up tax precision (e.g., 2.5 instead of 2.50000001)
       lineItem.cgst = parseFloat(lineItem.cgst.toFixed(2));
@@ -310,6 +311,7 @@ export const executeSave = async ({
           cgst: parseFloat(parseFloat(curr.cgstPercent || '0').toFixed(2)),
           sgst: parseFloat(parseFloat(curr.sgstPercent || '0').toFixed(2)),
           igst: parseFloat(parseFloat(curr.igstPercent || '0').toFixed(2)),
+          pack_qty: parseFloat(curr.pack_qty?.toString() || '1'),
           discount_authority: curr.discountAuthorizedBy,
         };
 

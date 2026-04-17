@@ -39,6 +39,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       sgstPercent: item.sgstPercent || '9',
       igst: item.igst || '0',
       igstPercent: item.igstPercent || '0',
+      pack_qty: item.pack_qty,
       amount: amount,
     };
   });
@@ -131,8 +132,8 @@ export const generatePrintHTML = (data: {
         <style>
           @media print {
             @page { 
-              margin: 0;
-              size: ${pageSize} ${isA5 ? 'portrait' : 'landscape'};
+              margin: 0 !important;
+              size: ${pageSize} landscape !important;
             }
             html, body {
               margin: 0;
@@ -344,11 +345,11 @@ export const generatePrintHTML = (data: {
         </style>
       </head>
       <body>
-        <div class="receipt-header" style="display: flex; align-items: center; justify-content: ${isA5 ? 'center' : 'space-between'}; border-bottom: 2px solid #1A212B; padding-bottom: 6px; margin-bottom: 12px; gap: ${isA5 ? '20px' : '0'};">
-          <div style="flex: ${isA5 ? 'none' : '1'}; display: flex; justify-content: flex-start;">
+        <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: 6px; margin-bottom: 12px; gap: 0;">
+          <div style="flex: 1; display: flex; justify-content: flex-start;">
             ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${isA5 ? '70px' : '90px'}; height: auto;" />` : ''}
           </div>
-          <div style="flex: ${isA5 ? 'none' : '3'}; text-align: ${isA5 ? 'left' : 'center'};">
+          <div style="flex: 3; text-align: center;">
             <div style="font-size: ${isA5 ? '16px' : '20px'}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
             <div style="font-size: ${isA5 ? '8px' : '9px'}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
             <div style="font-size: ${isA5 ? '7px' : '8px'}; margin: 4px 0; line-height: 1.2; color: #4B5563;">
@@ -358,7 +359,7 @@ export const generatePrintHTML = (data: {
               (M): 0891-2554040, 8096655050
             </div>
           </div>
-          ${!isA5 ? '<div style="flex: 1;"></div>' : ''}
+          <div style="flex: 1;"></div>
         </div>
         
         <div class="receipt-details">

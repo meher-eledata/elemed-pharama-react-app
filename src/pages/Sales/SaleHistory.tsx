@@ -238,7 +238,7 @@ export default function SaleHistory() {
         invoiceDate: invoiceDate,
         customerId: Number(invoice.customer_id) || 0,
         customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
-        customerMobile: invoice.customer_mobile || 'N/A',
+        customerMobile: invoice.customer_phone || invoice.customer_mobile || 'N/A',
         customerCity: invoice.customer_city || 'N/A',
         doctorName: invoice.doctor_name || (invoice.doctor_id ? `Doctor ${invoice.doctor_id}` : 'N/A'),
         doctorMobile: invoice.doctor_mobile || 'N/A',
@@ -534,7 +534,7 @@ export default function SaleHistory() {
 
           const apiDetails = {
             customerName: cust?.name || initialDetails.customerName,
-            customerMobile: cust?.mobile_number || initialDetails.customerMobile,
+            customerMobile: cust?.customer_phone || cust?.phone || cust?.mobile_number || initialDetails.customerMobile,
             customerCity: cust?.city || initialDetails.customerCity,
             doctorName: doc?.name || initialDetails.doctorName,
             doctorMobile: doc?.mobile_number || initialDetails.doctorMobile,

@@ -398,6 +398,7 @@ const SalesReceipt: React.FC = () => {
                   batch: line.batch_number || line.batch || '',
                   expiryDate: line.expiry_date || line.expiryDate || '',
                   pack: line.pack_info || line.pack || '',
+                  pack_qty: line.pack_qty || 1,
                   // Use exactly what backend sends, without treating '0' or '0000' as invalid
                   hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
                   quantity: netQty.toString(),
@@ -421,7 +422,7 @@ const SalesReceipt: React.FC = () => {
 
               const invoiceData = {
                 customerName: result.customer_name || result.invoice?.customer_name || editModeData.customerName || '',
-                customerMobile: result.customer_mobile || result.invoice?.customer_mobile || editModeData.customerMobile || '',
+                customerMobile: result.customer_phone || result.invoice?.customer_phone || result.customer_mobile || result.invoice?.customer_mobile || editModeData.customerMobile || '',
                 customerCity: result.customer_city || result.invoice?.customer_city || editModeData.customerCity || '',
                 doctorName: result.doctor_name || result.invoice?.doctor_name || editModeData.doctorName || '',
                 doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || editModeData.doctorMobile || '',
