@@ -162,8 +162,10 @@ import { Modal, Box, Typography, TextField, Grid, IconButton, Alert, CircularPro
 import { StandardButton } from '../../Common';
 import CloseIcon from '@mui/icons-material/Close';
 import styled from '@mui/system/styled';
+import { useSelector } from 'react-redux';
 import { useAddProductMutation } from '../../../redux/slices/inventoryApi';
 import { extractErrorMessage } from '../../../utils/errorUtils';
+import { RootState } from '../../../redux/store';
 
 // Enhanced constants for better UI
 export const NEW_PRODUCT_MODAL_CONSTANTS = {
@@ -321,6 +323,7 @@ interface NewProductModalProps {
 
 const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProductAdded }) => {
   const [addProduct, { isLoading, error, isSuccess }] = useAddProductMutation();
+  const user = useSelector((state: RootState) => state.auth.user);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -370,6 +373,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         max_quantity: Number(formData.max_quantity),
         min_quantity: Number(formData.min_quantity),
         brand_name: formData.brand_name.trim(),
+        username: user?.username || 'Guest',
       };
 
       // Validate numeric fields

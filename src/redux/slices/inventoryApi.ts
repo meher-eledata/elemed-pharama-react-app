@@ -38,6 +38,7 @@ export interface AddProductRequest {
   max_quantity: number;
   min_quantity: number;
   brand_name: string;
+  username: string; // Required for activity log tracking
 }
 
 export interface AddProductResponse {
