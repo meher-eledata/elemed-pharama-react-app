@@ -24,8 +24,8 @@ export const orderLabels = {
   // Table headers
   productName: 'Product name',
   batchNumber: 'Batch Number',
-  receivedQty: 'Received Qty',
-  freeQty: 'Free Qty',
+  receivedQty: 'Received packs',
+  freeQty: 'Free packs',
   expiryDate: 'Expiry date',
   purchasePrice: 'Purchase Price',
   cgst: 'CGST',
@@ -34,7 +34,7 @@ export const orderLabels = {
   discount: 'Discount',
   mrp: 'MRP',
   sellingPrice: 'Selling Price',
-  packageQty: 'Package Qty',
+  packageQty: 'Package info',
   actions: 'Actions',
 
   // Buttons

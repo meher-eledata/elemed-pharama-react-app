@@ -5,7 +5,7 @@ export const SALES_PAGE_LABELS = {
   // Product Selection
   FIND_PRODUCT_LABEL: "Find product",
   FIND_PRODUCT_PLACEHOLDER: "Search",
-  QUANTITY_LABEL: "Quantity",
+  QUANTITY_LABEL: "Units",
   TYPE_LABEL: "Type",
   TYPE_PLACEHOLDER: "Select Type",
   DISCOUNT_LABEL: "Discount %",
@@ -16,7 +16,7 @@ export const SALES_PAGE_LABELS = {
 
   // Table Headers
   TABLE_HEADER_PRODUCT: "Product",
-  TABLE_HEADER_QUANTITY: "Quantity",
+  TABLE_HEADER_QUANTITY: "Units",
   TABLE_HEADER_BATCH: "Batch",
   TABLE_HEADER_MRP: "MRP",
   TABLE_HEADER_SP: "SP",

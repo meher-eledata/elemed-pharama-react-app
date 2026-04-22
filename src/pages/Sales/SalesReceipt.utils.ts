@@ -376,20 +376,20 @@ export const generatePrintHTML = (data: {
           </div>
           <div class="detail-section">
             <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
-            ${splitPayments && splitPayments.length > 0 
-              ? splitPayments.map((p: any) => {
-                  const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
-                  const amount = p.payment_amount || p.amount || '0';
-                  return `<div class="detail-item">${method.toUpperCase()}: ${amount}</div>`;
-                }).join('')
-              : `<div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>`
-            }
+            ${splitPayments && splitPayments.length > 0
+      ? splitPayments.map((p: any) => {
+        const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
+        const amount = p.payment_amount || p.amount || '0';
+        return `<div class="detail-item">${method.toUpperCase()}: ${amount}</div>`;
+      }).join('')
+      : `<div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>`
+    }
             ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
-                ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
-                : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim()
-                  ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
-                  : ''
-              }
+      ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
+      : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim()
+        ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
+        : ''
+    }
           </div>
           <div class="detail-section">
             <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
@@ -418,20 +418,20 @@ export const generatePrintHTML = (data: {
             </thead>
             <tbody>
               ${salesItems.map((item, index) => {
-                const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
-                const hsn = (item as any).hsn || '';
-                const pack = (item as any).pack || 'N/A';
-                const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
-                let formattedExp = 'N/A';
-                if (item.expiryDate) {
-                  const dateParts = item.expiryDate.split('-');
-                  if (dateParts.length >= 2) {
-                    formattedExp = `${dateParts[1]}/${dateParts[0]}`;
-                  } else {
-                    formattedExp = item.expiryDate;
-                  }
-                }
-                return `
+      const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+      const hsn = (item as any).hsn || '';
+      const pack = (item as any).pack || 'N/A';
+      const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
+      let formattedExp = 'N/A';
+      if (item.expiryDate) {
+        const dateParts = item.expiryDate.split('-');
+        if (dateParts.length >= 2) {
+          formattedExp = `${dateParts[1]}/${dateParts[0]}`;
+        } else {
+          formattedExp = item.expiryDate;
+        }
+      }
+      return `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${item.productName}</td>
@@ -446,7 +446,7 @@ export const generatePrintHTML = (data: {
                     <td><strong>${item.amount}</strong></td>
                   </tr>
                 `;
-              }).join('')}
+    }).join('')}
             </tbody>
           </table>
         </div>

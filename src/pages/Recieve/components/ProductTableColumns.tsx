@@ -174,7 +174,7 @@ export const getProductTableColumns = ({
     },
     {
       key: "qtyFree",
-      header: "Free Qty",
+      header: orderLabels.freeQty,
       columnWidth: "85px",
       sortable: false,
       render: (row) => (

@@ -870,7 +870,7 @@ const InventoryModule: React.FC = () => {
                   <>
                     {derivedSummary.lowStock.count}
                     <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
-                      (Qty: {inventorySummary?.belowMinTotalQuantity ?? derivedSummary.lowStock.qty})
+                      (Units: {inventorySummary?.belowMinTotalQuantity ?? derivedSummary.lowStock.qty})
                     </span>
                   </>
                 )}
@@ -918,7 +918,7 @@ const InventoryModule: React.FC = () => {
                   <>
                     {derivedSummary.excessStock.count}
                     <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
-                      (Qty: {inventorySummary?.aboveMaxTotalQuantity ?? derivedSummary.excessStock.qty})
+                      (Units: {inventorySummary?.aboveMaxTotalQuantity ?? derivedSummary.excessStock.qty})
                     </span>
                   </>
                 )}
@@ -966,7 +966,7 @@ const InventoryModule: React.FC = () => {
                   <>
                     {derivedSummary.nearExpiry.count}
                     <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
-                      (Qty: {
+                      (Units: {
                         nearExpiryMonths === 3
                           ? (inventorySummary?.withinThreeMonthsTotalQuantity ?? derivedSummary.nearExpiry.qty)
                           : (inventorySummary?.withinOneMonthTotalQuantity ?? derivedSummary.nearExpiry.qty)
@@ -1017,7 +1017,7 @@ const InventoryModule: React.FC = () => {
                   <>
                     {derivedSummary.expired.count}
                     <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
-                      (Qty: {inventorySummary?.pastExpiryTotalQuantity ?? derivedSummary.expired.qty})
+                      (Units: {inventorySummary?.pastExpiryTotalQuantity ?? derivedSummary.expired.qty})
                     </span>
                   </>
                 )}

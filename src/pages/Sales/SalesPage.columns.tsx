@@ -94,7 +94,7 @@ export const getTableColumns = ({
     },
     {
       key: "avlQty",
-      header: "Qty",
+      header: "Units",
       render: (item) => (
         editingRowId === item.id ? (
           <TextField
@@ -127,7 +127,7 @@ export const getTableColumns = ({
     },
     {
       key: "pack_qty",
-      header: "Pack Info",
+      header: "Package info",
       render: (item) => item.pack_qty || 1
     },
     {

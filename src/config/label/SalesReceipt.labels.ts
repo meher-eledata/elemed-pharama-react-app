@@ -34,7 +34,7 @@ export const SALES_RECEIPT_LABELS = {
 
   // Table Headers
   TABLE_HEADER_PRODUCT: "Product",
-  TABLE_HEADER_QUANTITY: "Quantity",
+  TABLE_HEADER_QUANTITY: "Units",
   TABLE_HEADER_TYPE: "Unit",
   TABLE_HEADER_BATCH: "Batch",
   TABLE_HEADER_UNIT_PRICE: "Unit price",
