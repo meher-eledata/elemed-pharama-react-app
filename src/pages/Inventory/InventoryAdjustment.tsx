@@ -645,9 +645,7 @@ const InventoryAdjustment: React.FC = () => {
       }
     } catch (error) {
       console.error('Error adjusting inventory:', error);
-      setSnackbarMessage(extractErrorMessage(error, "Failed to adjust inventory"));
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+      // TODO: Show error toast/notification
       setConfirmDialogOpen(false);
     }
   };
