@@ -35,6 +35,7 @@ import {
   useGetProductsForBrandMutation,
   useGetTypesForBrandAndProductMutation,
   useAdjustInventoryBatchesMutation,
+  useGetProductIdsQuery,
   ProductInfo,
   Brand,
   ProductForBrand,
@@ -146,6 +147,13 @@ const InventoryAdjustment: React.FC = () => {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
 
+  const [searchType, setSearchType] = useState<SearchType>('product');
+
+  // New efficient endpoint for fetching all product IDs
+  const { data: productIdData, isLoading: isLoadingProductIds } = useGetProductIdsQuery(undefined, {
+    skip: searchType !== 'id'
+  });
+
   const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
   const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
@@ -154,10 +162,8 @@ const InventoryAdjustment: React.FC = () => {
     key: 'id',
     direction: 'asc'
   });
-  const [searchType, setSearchType] = useState<SearchType>('product');
   const [productIdSearch, setProductIdSearch] = useState<string>('');
   const [productIdOptions, setProductIdOptions] = useState<Array<{ id: number; name: string }>>([]);
-  const [isLoadingProductOptions, setIsLoadingProductOptions] = useState(false);
   const [selectedProductById, setSelectedProductById] = useState<{ id: number; name: string } | null>(null);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [originalValues, setOriginalValues] = useState<{ quantity: number; expiryDate: string; mrp: number; packQty: number } | null>(null);
@@ -291,60 +297,16 @@ const InventoryAdjustment: React.FC = () => {
     }
   }, [getBatchesForProduct, selectedType]);
 
-  // Fetch all product IDs for dropdown options
-  const fetchProductOptions = useCallback(async () => {
-    setIsLoadingProductOptions(true);
-    try {
-      const productIds: Array<{ id: number; name: string }> = [];
-
-      for (const brand of brands) {
-        try {
-          const products = await getProductsForBrand({ brand_id: brand.id }).unwrap();
-          for (const product of products) {
-            try {
-              const types = await getTypesForBrandAndProduct({
-                brand_id: brand.id,
-                product_name: product.name,
-              }).unwrap();
-
-              for (const type of types) {
-                try {
-                  const batchResult = await getBatchesForProduct({ product_id: type.product_id }).unwrap();
-                  const productInfo = batchResult.product;
-
-                  // Add to product ID options
-                  if (!productIds.find(p => p.id === productInfo.product_id)) {
-                    productIds.push({
-                      id: productInfo.product_id,
-                      name: `${productInfo.product_id}`
-                    });
-                  }
-                } catch (e) {
-                  // Continue
-                }
-              }
-            } catch (e) {
-              // Continue
-            }
-          }
-        } catch (e) {
-          // Continue to next brand
-        }
-      }
-
-      setProductIdOptions(productIds);
-    } catch (error) {
-      console.error('Error fetching product options:', error);
-    } finally {
-      setIsLoadingProductOptions(false);
-    }
-  }, [brands, getProductsForBrand, getTypesForBrandAndProduct, getBatchesForProduct]);
-
+  // Update product ID options when new data arrives from the single efficient endpoint
   useEffect(() => {
-    if (searchType === 'id' && brands.length > 0) {
-      fetchProductOptions();
+    if (productIdData?.product_ids) {
+      const options = productIdData.product_ids.map(id => ({
+        id: id,
+        name: String(id)
+      }));
+      setProductIdOptions(options);
     }
-  }, [searchType, brands.length, fetchProductOptions]);
+  }, [productIdData]);
 
   const sortedRows = useMemo(() => {
     const rowsCopy = [...batchRows];
@@ -683,7 +645,9 @@ const InventoryAdjustment: React.FC = () => {
       }
     } catch (error) {
       console.error('Error adjusting inventory:', error);
-      // TODO: Show error toast/notification
+      setSnackbarMessage(extractErrorMessage(error, "Failed to adjust inventory"));
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
       setConfirmDialogOpen(false);
     }
   };
@@ -1314,7 +1278,7 @@ const InventoryAdjustment: React.FC = () => {
                         setBatchRows([]);
                       }
                     }}
-                    loading={isLoadingProductOptions}
+                    loading={isLoadingProductIds}
                     filterOptions={(options, params) => {
                       const filtered = options.filter((option) => {
                         const searchValue = params.inputValue.toLowerCase();

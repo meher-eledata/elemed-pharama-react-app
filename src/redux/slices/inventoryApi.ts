@@ -166,6 +166,17 @@ export interface AdjustInventoryBatchesResponse {
   new_balance_quantity: number;
 }
 
+export interface UpdateMinQuantityRequest {
+  product_id: number;
+  min_quantity: number;
+}
+
+export interface UpdateMinQuantityResponse {
+  message: string;
+  product_id: number;
+  min_quantity: number;
+}
+
 export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
   baseQuery: baseQueryWithReauth,
@@ -304,10 +315,23 @@ export const inventoryApi = createApi({
       }),
       invalidatesTags: ["Inventory"],
     }),
+    getProductIds: builder.query<{ product_ids: number[] }, void>({
+      query: () => "inventory/get-product-ids",
+      providesTags: ["Inventory"],
+    }),
+    updateMinQuantity: builder.mutation<UpdateMinQuantityResponse, UpdateMinQuantityRequest>({
+      query: (body) => ({
+        url: "inventory/update-min-quantity",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Inventory"],
+    }),
   }),
 });
 
 export const {
+  useGetProductIdsQuery,
   useGetLowStockQuery,
   useGetExcessStockQuery,
   useGetExpiredStockQuery,
@@ -321,4 +345,5 @@ export const {
   useGetBrandsFromProductNameMutation,
   useGetTypesForBrandAndProductMutation,
   useAdjustInventoryBatchesMutation,
+  useUpdateMinQuantityMutation,
 } = inventoryApi;

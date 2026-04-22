@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Grid, Typography, Box, Skeleton } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import SummaryCard from "./SummaryCard";
 import CommonModal from "../../../components/CommonModal/CommonModal";
 import {
@@ -7,6 +8,7 @@ import {
   useGetInventoryByDateQuery,
   InventoryProduct,
 } from "../../../redux/slices/dashboardApi";
+import { useGetNearExpiryStockQuery } from "../../../redux/slices/inventoryApi";
 import { ReusableTable, TableColumn } from "../../PharmaTable/index";
 import { INVENTORY_METRICS_CONSTANTS } from "../../../config/constants/InventoryMetric.constants";
 import { INVENTORY_METRICS_LABELS } from "../../../config/label/InventoryMetric.label";
@@ -19,6 +21,7 @@ interface ModalItem {
   batchNumber?: string;
   expiryDate?: string;
   daysPastExpiry?: number;
+  daysToExpiry?: number;
 }
 interface InventoryMetricsCardProps {
   dateRange: {
@@ -29,6 +32,7 @@ interface InventoryMetricsCardProps {
 const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
   dateRange,
 }) => {
+  const navigate = useNavigate();
 
   const shouldFetchData = dateRange.startDate && dateRange.endDate;
   const {
@@ -61,30 +65,33 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
     }
   );
 
-  const transformProduct = (product: InventoryProduct): ModalItem => {
+  const {
+    data: nearExpiryItems = [],
+  } = useGetNearExpiryStockQuery({ months: 1 });
+
+  const transformProduct = (product: any): ModalItem => {
     return {
       name: product.name,
-      currentQuantity: product.currentQuantity,
-      minQuantity: product.minQty,
-      maxQuantity: product.maxQty,
-      batchNumber: product.batchNumber,
-      expiryDate: product.expiryDate,
-      daysPastExpiry: product.expiryDate
-        ? Math.floor((new Date().getTime() - new Date(product.expiryDate).getTime()) / (1000 * 60 * 60 * 24))
-        : undefined,
+      currentQuantity: product.currentQuantity ?? product.current_qty ?? 0,
+      minQuantity: product.minQty ?? product.min_qty,
+      maxQuantity: product.maxQty ?? product.max_qty,
+      batchNumber: product.batchNumber ?? product.batch_number,
+      expiryDate: product.expiryDate ?? product.expiry_date,
+      daysPastExpiry: product.daysPastExpiry ?? product.days_past_expiry,
+      daysToExpiry: product.daysToExpiry ?? product.days_to_expiry ?? product.daysUntilExpiry,
     };
   };
 
   const lowStockData = useMemo(() => {
-    return (inventoryStats?.belowMinProducts || []).map(transformProduct);
+    return (inventoryStats?.belowMinProducts || []).map((p: any) => transformProduct(p));
   }, [inventoryStats?.belowMinProducts]);
 
-  const excessStockData = useMemo(() => {
-    return (inventoryStats?.aboveMaxProducts || []).map(transformProduct);
-  }, [inventoryStats?.aboveMaxProducts]);
+  const nearExpiryStockData = useMemo(() => {
+    return nearExpiryItems.map(transformProduct);
+  }, [nearExpiryItems]);
 
   const expiredStockData = useMemo(() => {
-    return (inventoryStats?.expiredProducts || []).map(transformProduct);
+    return (inventoryStats?.expiredProducts || []).map((p: any) => transformProduct(p));
   }, [inventoryStats?.expiredProducts]);
 
   const isLoading = isInvoiceStatsLoading || isInventoryStatsLoading;
@@ -93,7 +100,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalData, setModalData] = useState<any[]>([]);
-  const [modalType, setModalType] = useState<"low" | "excess" | "expired" | null>(null);
+  const [modalType, setModalType] = useState<"low" | "nearExpiry" | "expired" | null>(null);
   const [modalPage, setModalPage] = useState(1);
 
   const [sortConfig, setSortConfig] = useState<{
@@ -101,7 +108,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
     direction: "asc" | "desc";
   }>(INVENTORY_METRICS_CONSTANTS.DEFAULT_SORT);
 
-  const handleOpenModal = (title: string, items: ModalItem[], type: "low" | "excess" | "expired") => {
+  const handleOpenModal = (title: string, items: ModalItem[], type: "low" | "nearExpiry" | "expired") => {
     const itemsArray = items || [];
 
     setModalPage(1);
@@ -145,14 +152,25 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
           { key: "minQuantity", header: INVENTORY_METRICS_LABELS.TABLE.HEADERS.MIN_QTY },
         ];
 
-      case "excess":
+      case "nearExpiry":
         return [
           { key: "name", header: INVENTORY_METRICS_LABELS.TABLE.HEADERS.NAME },
           {
             key: "currentQuantity",
             header: INVENTORY_METRICS_LABELS.TABLE.HEADERS.QUANTITY,
           },
-          { key: "maxQuantity", header: INVENTORY_METRICS_LABELS.TABLE.HEADERS.MAX_QTY },
+          {
+            key: "expiryDate",
+            header: INVENTORY_METRICS_LABELS.TABLE.HEADERS.EXPIRY,
+            render: (item) =>
+              item.expiryDate
+                ? new Date(item.expiryDate).toLocaleDateString('en-GB')
+                : INVENTORY_METRICS_LABELS.TABLE.DATE_DEFAULT,
+          },
+          {
+            key: "daysToExpiry",
+            header: "Days to Expiry",
+          },
         ];
 
       case "expired":
@@ -171,7 +189,7 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
             header: INVENTORY_METRICS_LABELS.TABLE.HEADERS.EXPIRY,
             render: (item) =>
               item.expiryDate
-                ? new Date(item.expiryDate).toLocaleDateString()
+                ? new Date(item.expiryDate).toLocaleDateString('en-GB')
                 : INVENTORY_METRICS_LABELS.TABLE.DATE_DEFAULT,
           },
           {
@@ -261,42 +279,24 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
       title: INVENTORY_METRICS_LABELS.CARDS.LOW_STOCK.TITLE,
       value: lowStockData?.length ?? 0,
       actionText: INVENTORY_METRICS_LABELS.CARDS.LOW_STOCK.ACTION_TEXT,
-      disabled: (lowStockData?.length ?? 0) === 0,
-      onActionClick: () =>
-        handleOpenModal(
-          INVENTORY_METRICS_LABELS.CARDS.LOW_STOCK.TITLE,
-          lowStockData || [],
-          "low"
-        ),
+      onActionClick: () => navigate('/inventory', { state: { tab: 'low' } }),
     },
     {
-      title: INVENTORY_METRICS_LABELS.CARDS.EXCESS_STOCK.TITLE,
-      value: excessStockData?.length ?? 0,
-      actionText: INVENTORY_METRICS_LABELS.CARDS.EXCESS_STOCK.ACTION_TEXT,
-      disabled: (excessStockData?.length ?? 0) === 0,
-      onActionClick: () =>
-        handleOpenModal(
-          INVENTORY_METRICS_LABELS.CARDS.EXCESS_STOCK.TITLE,
-          excessStockData || [],
-          "excess"
-        ),
+      title: "Near Expiry Stock",
+      value: nearExpiryStockData?.length ?? 0,
+      actionText: INVENTORY_METRICS_LABELS.CARDS.LOW_STOCK.ACTION_TEXT,
+      onActionClick: () => navigate('/inventory', { state: { tab: 'nearExpiry' } }),
     },
     {
       title: INVENTORY_METRICS_LABELS.CARDS.EXPIRED_STOCK.TITLE,
       value: expiredStockData?.length ?? 0,
       actionText: INVENTORY_METRICS_LABELS.CARDS.EXPIRED_STOCK.ACTION_TEXT,
-      disabled: (expiredStockData?.length ?? 0) === 0,
-      onActionClick: () =>
-        handleOpenModal(
-          INVENTORY_METRICS_LABELS.CARDS.EXPIRED_STOCK.TITLE,
-          expiredStockData || [],
-          "expired"
-        ),
+      onActionClick: () => navigate('/inventory', { state: { tab: 'expired' } }),
     },
     {
       title: INVENTORY_METRICS_LABELS.CARDS.LATEST_BATCH.TITLE,
       content: invoiceStats?.latestBatchReceivedOn
-        ? new Date(invoiceStats.latestBatchReceivedOn).toLocaleDateString()
+        ? new Date(invoiceStats.latestBatchReceivedOn).toLocaleDateString('en-GB')
         : INVENTORY_METRICS_LABELS.CARDS.LATEST_BATCH.DEFAULT,
     },
     {

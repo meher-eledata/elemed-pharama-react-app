@@ -410,7 +410,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       />
 
       {/* Product Table */}
-      <Box sx={{ marginTop: "16px" }}>
+      <Box sx={{ 
+        marginTop: "16px", 
+        width: '100%', 
+        overflowX: 'auto',
+        '& .MuiTableCell-head': { 
+          whiteSpace: 'normal', 
+          lineHeight: 1.2, 
+          height: 'auto',
+          verticalAlign: 'bottom',
+          padding: '8px 12px'
+        }
+      }}>
         <ReusableTable<PharmaTableRow>
           columns={productColumns}
           data={table.sortedData}
@@ -433,20 +444,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           disableFooterWrapper={true}
           footerContent={table.sortedData.length > 0 && table.currentPage === 1 ? (
             <TableRow sx={{ backgroundColor: '#F9FAFB' }}>
-              <TableCell sx={{ padding: '12px 16px', fontFamily: "'Lexend', sans-serif", fontWeight: 600, fontSize: '14px', color: '#374151' }}>
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px' }} />
+              <TableCell sx={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'Lexend', sans-serif", fontWeight: 600, fontSize: '14px', color: '#374151' }}>
                 Total:
               </TableCell>
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
               <TableCell sx={{ padding: '12px 12px', textAlign: 'left', fontFamily: "'Lexend', sans-serif", fontWeight: 600, fontSize: '16px', color: '#1A212B' }}>
                 ₹{calculateTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </TableCell>

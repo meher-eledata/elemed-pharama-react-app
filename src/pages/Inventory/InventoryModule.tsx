@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -24,6 +25,13 @@ import WarningIcon from '@mui/icons-material/Warning';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import { CSVLink } from 'react-csv';
 import DownloadIcon from '@mui/icons-material/Download';
+import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
+dayjs.extend(customParseFormat);
 
 import {
   useGetLowStockQuery,
@@ -31,6 +39,7 @@ import {
   useGetExpiredStockQuery,
   useGetNearExpiryStockQuery,
   useGetInventorySummaryQuery,
+  useUpdateMinQuantityMutation,
 } from '../../redux/slices/inventoryApi';
 import { extractErrorMessage } from '../../utils/errorUtils';
 
@@ -91,17 +100,33 @@ const InventoryModule: React.FC = () => {
   const [nearExpiryMonths, setNearExpiryMonths] = useState<number>(3);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const location = useLocation();
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: 'name',
     direction: 'asc'
   });
 
+  // Handle incoming tab state from dashboard
+  useEffect(() => {
+    const state = location.state as { tab?: StockType };
+    if (state?.tab) {
+      setSelectedStockType(state.tab);
+      // Clear the state so it doesn't persist on manual refreshes
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const [isNewProductModalOpen, setIsNewProductModalOpen] =
     useState<boolean>(false);
+
+  const [updateMinQuantity] = useUpdateMinQuantityMutation();
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  const [editingMinQtyId, setEditingMinQtyId] = useState<string | null>(null);
+  const [tempMinQty, setTempMinQty] = useState<number | string>('');
 
   const { data: lowStockItems = [], isLoading: isLowStockLoading, error: lowStockError } =
     useGetLowStockQuery();
@@ -117,11 +142,20 @@ const InventoryModule: React.FC = () => {
 
   const allSearchOptions = useMemo(() => {
     const options: { name: string; category: StockType; id?: string }[] = [];
+    const seen = new Set<string>();
 
-    lowStockItems.forEach(item => options.push({ name: item.name, category: 'low', id: item.id }));
-    excessStockItems.forEach(item => options.push({ name: item.name, category: 'excess', id: item.id }));
-    nearExpiryStockItems.forEach(item => options.push({ name: item.name, category: 'nearExpiry', id: item.id }));
-    expiredStockItems.forEach(item => options.push({ name: item.name, category: 'expired', id: item.id }));
+    const addOption = (item: any, category: StockType) => {
+      const key = `${item.name}-${category}`;
+      if (!seen.has(key)) {
+        options.push({ name: item.name, category, id: item.id });
+        seen.add(key);
+      }
+    };
+
+    lowStockItems.forEach((item) => addOption(item, 'low'));
+    excessStockItems.forEach((item) => addOption(item, 'excess'));
+    nearExpiryStockItems.forEach((item) => addOption(item, 'nearExpiry'));
+    expiredStockItems.forEach((item) => addOption(item, 'expired'));
 
     return options;
   }, [lowStockItems, excessStockItems, nearExpiryStockItems, expiredStockItems]);
@@ -152,7 +186,7 @@ const InventoryModule: React.FC = () => {
   // DERIVED SUMMARY: Calculate counts and quantities from the actual lists
   // This ensures the summary cards match the table data exactly.
   const derivedSummary = useMemo(() => {
-    const sumQty = (items: InventoryItem[]) => 
+    const sumQty = (items: InventoryItem[]) =>
       items.reduce((sum, item) => sum + (Number(item.currentQuantity) || 0), 0);
 
     // Near Expiry needs special handling based on the month filter
@@ -280,10 +314,10 @@ const InventoryModule: React.FC = () => {
               ? 'maxQuantity' in item && (item.maxQuantity ?? 0) <= parseFloat(searchQuery)
               : false;
           case 'expiryDate': {
-            const searchDate = new Date(searchQuery);
-            return isNaN(searchDate.getTime())
+            const searchDate = dayjs(searchQuery, ['DD/MM/YYYY', 'YYYY-MM-DD'], true);
+            return !searchDate.isValid()
               ? false
-              : 'expiryDate' in item && new Date(item.expiryDate as string) <= searchDate;
+              : 'expiryDate' in item && dayjs(item.expiryDate as string).isBefore(searchDate) || dayjs(item.expiryDate as string).isSame(searchDate, 'day');
           }
           case 'daysPastExpiry':
             return isNumericFilter
@@ -534,6 +568,107 @@ const InventoryModule: React.FC = () => {
     );
   };
 
+  const handleEditMinQty = (item: InventoryItem) => {
+    setEditingMinQtyId(item.id || item.name);
+    setTempMinQty(item.minQuantity ?? 0);
+  };
+
+  const handleSaveMinQty = async (item: InventoryItem) => {
+    const newQty = Number(tempMinQty);
+    if (isNaN(newQty)) {
+      setSnackbarMessage("Please enter a valid number");
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    try {
+      const productId = Number(item.id);
+      if (!productId) {
+        throw new Error("Invalid Product ID");
+      }
+
+      await updateMinQuantity({
+        product_id: productId,
+        min_quantity: newQty
+      }).unwrap();
+
+      setSnackbarMessage("Min Quantity updated successfully");
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      setEditingMinQtyId(null);
+    } catch (err) {
+      setSnackbarMessage(extractErrorMessage(err, "Failed to update min quantity"));
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  const renderMinQtyCell = (item: InventoryItem) => {
+    const isEditing = editingMinQtyId === (item.id || item.name);
+
+    if (isEditing) {
+      return (
+        <Box display="flex" alignItems="center" gap={0.5}>
+          <TextField
+            size="small"
+            type="number"
+            value={tempMinQty}
+            onChange={(e) => setTempMinQty(e.target.value)}
+            autoFocus
+            inputProps={{ style: { textAlign: 'center', padding: '4px 8px' } }}
+            sx={{
+              width: 70,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '8px',
+                height: '32px',
+                '&:hover fieldset': {
+                  borderColor: '#000000',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#000000',
+                },
+              },
+            }}
+          />
+          <IconButton
+            size="small"
+            onClick={() => handleSaveMinQty(item)}
+            sx={{ padding: '4px', color: '#000000' }}
+          >
+            <CheckIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => setEditingMinQtyId(null)}
+            sx={{ padding: '4px', color: '#000000' }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      );
+    }
+
+    return (
+      <Box display="flex" alignItems="center" gap={1}>
+        <Typography variant="body1" sx={productCellTextStyle}>
+          {item.minQuantity}
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={() => handleEditMinQty(item)}
+          sx={{
+            padding: '4px',
+            color: '#A0A0A0',
+            '&:hover': { color: '#000000', backgroundColor: 'transparent' }
+          }}
+        >
+          <EditIcon fontSize="small" style={{ fontSize: '16px' }} />
+        </IconButton>
+      </Box>
+    );
+  };
+
 
   const { columns } = useMemo(() => {
     let cols: TableColumn<any>[] = [];
@@ -545,7 +680,7 @@ const InventoryModule: React.FC = () => {
           { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
           { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: renderCurrentQtyCell },
-          { key: 'minQuantity', header: INVENTORY_LABELS.minimumQuantityHeader, render: (item) => (item as InventoryItem).minQuantity },
+          { key: 'minQuantity', header: INVENTORY_LABELS.minimumQuantityHeader, render: renderMinQtyCell },
         ];
         break;
       case 'excess':
@@ -566,7 +701,7 @@ const InventoryModule: React.FC = () => {
           { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
-          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate?.split('T')[0] || '-' },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate ? dayjs((item as InventoryItem).expiryDate).format('DD/MM/YYYY') : '-' },
           { key: 'daysPastExpiry', header: INVENTORY_LABELS.daysPastExpiryHeader, render: (item) => (item as InventoryItem).daysPastExpiry },
         ];
         break;
@@ -578,7 +713,7 @@ const InventoryModule: React.FC = () => {
           { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
-          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate?.split('T')[0] || '-' },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate ? dayjs((item as InventoryItem).expiryDate).format('DD/MM/YYYY') : '-' },
           { key: 'daysToExpiry', header: INVENTORY_LABELS.daysToExpiryHeader, render: (item) => (item as InventoryItem).daysToExpiry },
         ];
         break;
@@ -938,6 +1073,21 @@ const InventoryModule: React.FC = () => {
                 sx={{ width: '400px' }}
                 options={allSearchOptions}
                 getOptionLabel={(option) => option.name}
+                filterOptions={(options, { inputValue }) => {
+                  const query = inputValue.toLowerCase();
+                  return options
+                    .filter((option) => option.name.toLowerCase().includes(query))
+                    .sort((a, b) => {
+                      const aName = a.name.toLowerCase();
+                      const bName = b.name.toLowerCase();
+                      const aStartsWith = aName.startsWith(query);
+                      const bStartsWith = bName.startsWith(query);
+
+                      if (aStartsWith && !bStartsWith) return -1;
+                      if (!aStartsWith && bStartsWith) return 1;
+                      return aName.localeCompare(bName);
+                    });
+                }}
                 onChange={handleAutocompleteSelect}
                 disablePortal
                 slotProps={{
@@ -983,29 +1133,31 @@ const InventoryModule: React.FC = () => {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '12px',
                         backgroundColor: '#F9FAFB',
-                        height: '40px',
-                        '& fieldset': { border: '1px solid #D1D5DB' },
-                        '&:hover fieldset': { borderColor: '#5C17E5' },
-                        '&.Mui-focused fieldset': { borderColor: '#5C17E5' },
+                        '& fieldset': { borderColor: '#E5E7EB' },
+                        '&:hover fieldset': { borderColor: '#D1D5DB' },
                       }
                     }}
                   />
                 )}
                 renderOption={(props, option) => (
-                  <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <Typography variant="body2">{option.name}</Typography>
-                    <Chip
-                      label={getCategoryLabel(option.category)}
-                      size="small"
-                      sx={{
-                        ml: 1,
-                        fontSize: '0.65rem',
-                        height: '18px',
-                        backgroundColor: getCategoryColor(option.category),
-                        color: '#fff',
-                        fontWeight: 'bold'
-                      }}
-                    />
+                  <Box component="li" {...props} key={`${option.id || option.name}-${option.category}`}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {option.name}
+                      </Typography>
+                      <Chip
+                        label={getCategoryLabel(option.category)}
+                        size="small"
+                        sx={{
+                          height: '24px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          backgroundColor: getCategoryColor(option.category),
+                          color: 'white',
+                          ml: 1
+                        }}
+                      />
+                    </Box>
                   </Box>
                 )}
               />

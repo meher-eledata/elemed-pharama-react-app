@@ -52,6 +52,7 @@ export const getProductTableColumns = ({
     {
       key: "productId",
       header: orderLabels.productName,
+      columnWidth: "180px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -173,7 +174,8 @@ export const getProductTableColumns = ({
     },
     {
       key: "qtyFree",
-      header: orderLabels.freeQty,
+      header: "Free Qty",
+      columnWidth: "85px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -215,6 +217,7 @@ export const getProductTableColumns = ({
     {
       key: "pp",
       header: orderLabels.purchasePrice,
+      columnWidth: "80px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -238,6 +241,7 @@ export const getProductTableColumns = ({
     {
       key: "cgst",
       header: `${orderLabels.cgst} (%)`,
+      columnWidth: "80px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -261,6 +265,7 @@ export const getProductTableColumns = ({
     {
       key: "sgst",
       header: `${orderLabels.sgst} (%)`,
+      columnWidth: "80px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -284,6 +289,7 @@ export const getProductTableColumns = ({
     {
       key: "igst",
       header: `${orderLabels.igst} (%)`,
+      columnWidth: "80px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -307,6 +313,7 @@ export const getProductTableColumns = ({
     {
       key: "disc",
       header: `${orderLabels.discount} (%)`,
+      columnWidth: "80px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -329,7 +336,8 @@ export const getProductTableColumns = ({
     },
     {
       key: "amount",
-      header: "Amount (₹)",
+      header: "Amount",
+      columnWidth: "100px",
       sortable: false,
       render: (row) => {
         if (editingRowId === row.id) {

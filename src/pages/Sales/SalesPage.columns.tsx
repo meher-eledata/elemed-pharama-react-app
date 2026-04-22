@@ -160,7 +160,7 @@ export const getTableColumns = ({
         if (!item.expiry) return '—';
         const d = new Date(item.expiry);
         if (isNaN(d.getTime())) return item.expiry;
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        return d.toLocaleDateString('en-GB');
       }
     },
 
