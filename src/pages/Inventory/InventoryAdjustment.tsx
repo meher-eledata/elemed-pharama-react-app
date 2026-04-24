@@ -716,10 +716,10 @@ const InventoryAdjustment: React.FC = () => {
     },
     {
       key: 'quantity',
-      header: 'Current units',
+      header: 'Current Units',
       sortable: true,
       headerRender: () => (
-        <Box sx={{ textAlign: 'left', width: '100%' }}>Current units</Box>
+        <Box sx={{ textAlign: 'left', width: '100%' }}>Current Units</Box>
       ),
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
@@ -842,10 +842,10 @@ const InventoryAdjustment: React.FC = () => {
     },
     {
       key: 'packQty',
-      header: 'Package info',
+      header: 'Package Info',
       sortable: true,
       headerRender: () => (
-        <Box sx={{ textAlign: 'left', width: '100%' }}>Package info</Box>
+        <Box sx={{ textAlign: 'left', width: '100%' }}>Package Info</Box>
       ),
       render: (batch) => {
         const isEditing = editingRowId === batch.id;

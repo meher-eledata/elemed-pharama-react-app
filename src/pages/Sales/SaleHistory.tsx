@@ -50,6 +50,8 @@ export interface SalesHistoryItem {
   // Return information (populated directly from backend list)
   hasReturn: boolean;
   lastReturnStatus: string | null;
+  createdAt?: string;
+  databaseInvoiceId?: number;
   returnInfo?: {
     totalItems: number; // Total items in invoice
     returnedItems: number; // Total items returned
@@ -163,7 +165,9 @@ export default function SaleHistory() {
       patientType: item.patientType || 'Out Patient', // Default to "Out Patient" if not specified
       totalAmount: item.totalAmount || 0,
       totalReturnedAmount: 0,
-      paymentMode: item.paymentMode || 'Cash',
+      paymentMode: (item.splitPayments && item.splitPayments.length > 0) 
+        ? item.splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ') 
+        : (item.paymentMode || 'Cash'),
       splitPayments: item.splitPayments || [],
       hasReturn: false,
       lastReturnStatus: null,
@@ -181,9 +185,9 @@ export default function SaleHistory() {
     }
 
     const apiItems: SalesHistoryItem[] = invoicesData.map((invoice: any, index: number) => {
-      const invoiceDate = invoice.created_at
-        ? dayjs(invoice.created_at).format('DD/MM/YYYY')
-        : '';
+      const invoiceDate = (invoice.invoice_date)
+        ? dayjs(invoice.invoice_date).format('DD MMM YYYY')
+        : ''; // Don't fallback to created_at here; let the merge logic use local storage if available
 
       // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
       let patientType = 'Out Patient'; // Default
@@ -230,6 +234,11 @@ export default function SaleHistory() {
       const rawReturnStatus = invoice.return_status || invoice.last_return_status || 'No Return';
       const hasReturn = invoice.has_return !== undefined ? invoice.has_return : (rawReturnStatus.toLowerCase() !== 'no return' && rawReturnStatus.toLowerCase() !== 'none');
 
+      const splitPayments = invoice.split_payments || [];
+      const paymentMode = (splitPayments && splitPayments.length > 0) 
+        ? splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ') 
+        : (invoice.payment_mode || 'Cash');
+
       return {
         id: tableRowId, // Internal frontend ID (must be unique)
         databaseInvoiceId: databaseId, // Actual database primary key
@@ -249,8 +258,9 @@ export default function SaleHistory() {
         totalReturnedAmount: parseFloat(invoice.total_returned_amount) || 0,
         hasReturn: hasReturn,
         lastReturnStatus: rawReturnStatus,
-        paymentMode: invoice.payment_mode || 'Cash',
-        splitPayments: invoice.split_payments || [],
+        paymentMode: paymentMode,
+        splitPayments: splitPayments,
+        createdAt: invoice.created_at,
       };
     });
 
@@ -274,7 +284,7 @@ export default function SaleHistory() {
 
           resultMap.set(item.invoiceNumber, {
             ...item,
-            invoiceDate: item.invoiceDate || savedItem.invoiceDate || '',
+            invoiceDate: savedItem.invoiceDate || item.invoiceDate || (item.createdAt ? dayjs(item.createdAt).format('DD MMM YYYY') : ''),
             // If API has null names/mobile or fallback placeholders, use the ones from local storage
             customerName: isFallbackValue(item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
             customerMobile: (item.customerMobile === 'N/A' || !item.customerMobile) ? (savedItem.customerMobile || item.customerMobile) : item.customerMobile,
@@ -542,7 +552,7 @@ export default function SaleHistory() {
             paymentMode: inv.payment_mode || initialDetails.paymentMode,
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
             invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
-            invoiceDate: inv.created_at ? dayjs(inv.created_at).format('DD/MM/YYYY') : initialDetails.invoiceDate,
+            invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('DD/MM/YYYY') : initialDetails.invoiceDate,
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),

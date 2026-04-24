@@ -286,9 +286,10 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                   {splitPayments.map((p: any, idx: number) => {
                     const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
                     const amount = p.payment_amount || p.amount || '0';
+                    const details = p.details || p.notes || '';
                     return (
                       <Typography key={idx} sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
-                        {method.toUpperCase()}: {amount}
+                        {method.toUpperCase()}: {amount} {details ? `(Details: ${details})` : ''}
                       </Typography>
                     );
                   })}

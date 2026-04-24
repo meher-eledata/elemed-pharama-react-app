@@ -104,7 +104,7 @@ export const useOrderDetailsTable = (
     const expiry = editingData.expiryDate;
 
     if (qR <= 0 || mRP <= 0 || pPrice <= 0 || isMissingBatchContext || !expiry || packAmt === "") {
-      showError("Please fill all mandatory fields (Batch, Expiry, Package info, Received packs, Purchase Price, MRP) before saving the item.");
+      showError("Please fill all mandatory fields (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP) before saving the item.");
       return;
     }
 

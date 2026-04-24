@@ -325,7 +325,8 @@ const SalesReceipt: React.FC = () => {
                     id: p.id?.toString() || `existing-payment-${idx}-${Date.now()}`,
                     paymentMethod: isRefund ? `REFUND (${p.payment_method || 'Cash'})` : (p.payment_method || 'Cash'),
                     amount: isRefund ? (-Math.abs(parseFloat(p.payment_amount || '0'))).toString() : parseFloat(p.payment_amount || '0').toString(),
-                    details: p.transaction_number || p.details || '',
+                    details: p.details || '',
+                    transaction_number: p.transaction_number || '',
                     is_refund: isRefund
                   };
                 });
@@ -441,7 +442,38 @@ const SalesReceipt: React.FC = () => {
                   return 'Out Patient';
                 })(),
                 invoiceNumber: (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || editModeData.invoiceNumber || '',
-                invoiceDate: invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB').split('/').reverse().join('-') : (editModeData.invoiceDate || getTodayDate()),
+                invoiceDate: (() => {
+                  const raw = invoice.invoice_date;
+                  if (!raw) {
+                    const localDate = editModeData.invoiceDate;
+                    if (localDate) return localDate;
+                    return getTodayDate();
+                  }
+
+                  // Handle YYYY-MM-DD from backend without timezone shift
+                  const dateParts = raw.split(/[-/]/);
+                  let d: Date;
+                  
+                  if (dateParts.length === 3) {
+                    if (dateParts[0].length === 4) {
+                      // YYYY-MM-DD
+                      d = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                    } else {
+                      d = new Date(raw);
+                    }
+                  } else {
+                    d = new Date(raw);
+                  }
+
+                  if (isNaN(d.getTime())) return editModeData.invoiceDate || getTodayDate();
+                  
+                  // Revert to the original "DD MMM YYYY" format for consistency
+                  return d.toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  });
+                })(),
                 salesItems: mappedSalesItems,
                 finalSalesItems: (editModeData.salesItems && editModeData.salesItems.length > 0)
                   ? editModeData.salesItems
@@ -1096,6 +1128,7 @@ const SalesReceipt: React.FC = () => {
     setSelectedRows([]);
     setEditingRowId(null);
     setSplitPayments([]); // Reset split payments
+    setInvoiceDate(getTodayDate()); // Always default new sales to today's date
 
     dispatch(clearCart());
     dispatch(clearFormData());
@@ -1262,7 +1295,9 @@ const SalesReceipt: React.FC = () => {
 
     // If user selected a single payment mode, discard any leftover split payments
     // from a previous multiple-payment session to prevent stale data being saved.
-    const effectiveSplitPayments = paymentMode && paymentMode.trim() ? [] : splitPayments;
+    // Use split payments if they exist, otherwise use single payment mode
+    const effectiveSplitPayments = (splitPayments && splitPayments.length > 0) ? splitPayments : [];
+    const effectivePaymentMode = (splitPayments && splitPayments.length > 0) ? '' : paymentMode;
 
     await executeSave({
       customerName,
@@ -1273,7 +1308,7 @@ const SalesReceipt: React.FC = () => {
       doctorId,
       doctorMobile,
       doctorEmail,
-      paymentMode,
+      paymentMode: effectivePaymentMode,
       insuranceCompany,
       invoiceNumber,
       invoiceDate,
@@ -1567,6 +1602,7 @@ const SalesReceipt: React.FC = () => {
               taxAmount={taxAmount}
               totalPayableAmount={totalPayableAmount}
               patientType={patientType}
+              splitPayments={splitPayments}
               onCancel={handleCancelPrint}
               onPrint={handlePrintFromModal}
               onSaveClick={handleSaveFromModal}
@@ -1574,7 +1610,6 @@ const SalesReceipt: React.FC = () => {
               brandIcon={bgWhiteIcon}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
-              splitPayments={splitPayments}
             />
           }
           onClose={handleClosePrintModal}

@@ -25,7 +25,7 @@ import { paymentMethods, paymentVendors, themeColors } from "../../config/consta
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
 import {
-  useUpsertReceiptPaymentsMutation,
+  useUpsertPurchaseOrderPaymentsMutation,
   useGetPurchaseOrderPaymentsMutation,
   useGetSupplierCreditBalanceQuery,
   useAdjustSupplierCreditMutation
@@ -70,7 +70,7 @@ const PaymentDetails: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
-  const [upsertReceiptPayments, { isLoading: isSavingPayments }] = useUpsertReceiptPaymentsMutation();
+  const [upsertPurchaseOrderPayments, { isLoading: isSavingPayments }] = useUpsertPurchaseOrderPaymentsMutation();
   const [getPurchaseOrderPayments, { isLoading: isFetchingPayments }] = useGetPurchaseOrderPaymentsMutation();
 
   // Get data from navigation state
@@ -581,8 +581,11 @@ const PaymentDetails: React.FC = () => {
           transactionDateFormatted = dayjs().format("YYYY-MM-DD");
         }
 
+        const paymentId = row.id && row.id.length < 13 && !isNaN(parseInt(row.id)) ? parseInt(row.id) : undefined;
         return {
+          id: paymentId,
           payment_method: row.paymentMethod,
+          direction: "OUT",
           payment_vendor: row.paymentVendor && row.paymentVendor.trim() !== "" ? row.paymentVendor : null,
           transaction_number: row.transactionNumber,
           transaction_date: transactionDateFormatted,
@@ -597,7 +600,7 @@ const PaymentDetails: React.FC = () => {
         payments: payments,
       };
 
-      await upsertReceiptPayments(payload).unwrap();
+      await upsertPurchaseOrderPayments(payload).unwrap();
 
       setSuccessMessage("Payment details saved successfully!");
       setSaveSuccess(true);

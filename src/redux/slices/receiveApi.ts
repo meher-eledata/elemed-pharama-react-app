@@ -487,7 +487,7 @@ export const receiveApi = createApi({
     }),
 
     // Upsert receipt payments endpoint
-    upsertReceiptPayments: builder.mutation<
+    upsertPurchaseOrderPayments: builder.mutation<
       { message: string },
       {
         receipt_id: number;
@@ -503,7 +503,7 @@ export const receiveApi = createApi({
       }
     >({
       query: (body) => ({
-        url: "receive/upsert-receipt-payments/",
+        url: "receive/upsert-purchase-order-payments/",
         method: "POST",
         body,
       }),
@@ -586,7 +586,7 @@ export const {
   useGetProductsQuery,
   useUploadReceiptFileMutation,
   useGetReceiptFileQuery,
-  useUpsertReceiptPaymentsMutation,
+  useUpsertPurchaseOrderPaymentsMutation,
   useGetPurchaseOrderPaymentsMutation,
   useGetSupplierCreditBalanceQuery,
   useAdjustSupplierCreditMutation, // IN: Add credit, OUT: Subtract credit

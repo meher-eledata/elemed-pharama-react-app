@@ -25,7 +25,7 @@ export const NEW_PRODUCT_MODAL_LABELS = {
     'Type',
     'Brand',
     'HSN code',
-    'Package info',
+    'Package Info',
     'Unit of measure',
     'MRP',
     'Minimum quantity',

@@ -263,7 +263,19 @@ export const executeSave = async ({
       doctor_email: doctorEmail,
       patient_type: patientTypeNumber,
       invoice_number: invoiceNumberForBackend,
-      ...(invoiceDate && invoiceDate.trim() ? { invoice_date: invoiceDate.trim() } : {}),
+      invoice_date: (() => {
+        const raw = (invoiceDate && invoiceDate.trim()) ? invoiceDate.trim() : '';
+        if (!raw) return new Date().toISOString().slice(0, 10); // YYYY-MM-DD fallback to today
+        // Try parsing the date — it may come in as "24 Apr 2026" or "04/24/2026" or already "YYYY-MM-DD"
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
+        
+        // Use local date parts to prevent timezone shift (don't use toISOString)
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      })(),
       lines: lines,
       payments: splitPayments && splitPayments.length > 0 ? splitPayments.map(p => ({
         payment_method: getBackendPaymentMethod(p.paymentMethod || p.payment_method || 'CASH'),
@@ -346,6 +358,17 @@ export const executeSave = async ({
         doctor_email: doctorEmail,
         patient_type: patientTypeNumber,
         created_by: user?.username || 'meher',
+        invoice_date: (() => {
+          const raw = (invoiceDate && invoiceDate.trim()) ? invoiceDate.trim() : '';
+          if (!raw) return new Date().toISOString().slice(0, 10);
+          const d = new Date(raw);
+          if (isNaN(d.getTime())) return new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
+          
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+        })(),
         Deleted: deletedLines,
         Added: addedLines,
         Edited: editedLines,
@@ -363,11 +386,19 @@ export const executeSave = async ({
           await upsertInvoicePayments({
             invoice_id: Number(invoiceId),
             created_by: user?.username || 'Guest',
-            payments: splitPayments.map(p => ({
-              payment_method: getBackendPaymentMethod(p.paymentMethod || p.payment_method || 'CASH'),
-              payment_amount: Number(p.amount),
-              payment_id: 0
-            }))
+            payments: splitPayments.map(p => {
+              const paymentId = (p.id && !p.id.toString().startsWith('payment-') && !p.id.toString().startsWith('existing-payment-')) ? parseInt(p.id.toString(), 10) : undefined;
+              return {
+                id: paymentId,
+                payment_method: getBackendPaymentMethod(p.paymentMethod || p.payment_method || 'CASH'),
+                direction: 'IN',
+                payment_amount: Number(p.amount || p.payment_amount || 0),
+                transaction_date: p.transaction_date || p.transactionDate || new Date().toISOString(),
+                transaction_number: p.transaction_number || p.transactionNumber || '',
+                payment_vendor: p.payment_vendor || p.paymentVendor || null,
+                details: p.details || null
+              };
+            })
           }).unwrap();
           console.log('✅ Edit-mode payments synced successfully');
         } catch (paymentError) {
@@ -507,11 +538,19 @@ export const executeSave = async ({
               await upsertInvoicePayments({
                 invoice_id: dbInvoiceId,
                 created_by: user?.username || 'Guest',
-                payments: splitPayments.map(p => ({
-                  payment_method: getBackendPaymentMethod(p.paymentMethod),
-                  payment_amount: Number(p.amount),
-                  payment_id: 0
-                }))
+                payments: splitPayments.map(p => {
+                  const paymentId = (p.id && !p.id.toString().startsWith('payment-') && !p.id.toString().startsWith('existing-payment-')) ? parseInt(p.id.toString(), 10) : undefined;
+                  return {
+                    id: paymentId,
+                    payment_method: getBackendPaymentMethod(p.paymentMethod || p.payment_method || 'CASH'),
+                    direction: 'IN',
+                    payment_amount: Number(p.amount || p.payment_amount || 0),
+                    transaction_date: p.transaction_date || p.transactionDate || new Date().toISOString(),
+                    transaction_number: p.transaction_number || p.transactionNumber || '',
+                    payment_vendor: p.payment_vendor || p.paymentVendor || null,
+                    details: p.details || null
+                  };
+                })
               }).unwrap();
               console.log('✅ Payments upserted successfully');
             } catch (paymentError) {

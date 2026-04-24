@@ -127,7 +127,7 @@ export const getTableColumns = ({
     },
     {
       key: "pack_qty",
-      header: "Package info",
+      header: "Package Info",
       render: (item) => item.pack_qty || 1
     },
     {
