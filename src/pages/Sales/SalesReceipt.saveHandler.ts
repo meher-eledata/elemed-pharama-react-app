@@ -348,7 +348,9 @@ export const executeSave = async ({
         payment_method: backendPaymentMethod,
         payment_mode: backendPaymentMethod,
         payment_amount: parseFloat(totalPayableAmount || '0'),
-        customer_id: selectedCustomer?.id ?? editModeData?.customer_id ?? 0, // Properly fallback without overriding 0 to 4
+        customer_id: (selectedCustomer?.id && selectedCustomer.id > 0)
+          ? selectedCustomer.id
+          : (editModeData?.customer_id && editModeData.customer_id > 0 ? editModeData.customer_id : null), // null = keep existing backend value, never overwrite with 0
         customer_name: customerName,
         customer_mobile: customerMobile,
         customer_city: customerCity,

@@ -12,6 +12,7 @@ import { DETAILED_SALES_TABLE_CONSTANTS } from '../../config/constants/DetailedS
 import { DETAILED_SALES_TABLE_LABELS } from '../../config/label/DetailedSalesTable.labels';
 import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
+import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 
 interface SalesData {
   id: number;
@@ -43,10 +44,25 @@ const DetailedSalesTable: React.FC = () => {
     }
   );
 
+  const savedHistory = useMemo(() => getSalesHistoryFromStorage(), []);
+
   const tableData = useMemo(() => {
     if (!apiData) return [];
 
+    // Build a lookup map from invoice number to customer name from localStorage
+    const localNameMap = new Map<string, string>();
+    savedHistory.forEach((entry: any) => {
+      if (entry.invoiceNumber && entry.customerName && entry.customerName !== 'N/A') {
+        // Stored as "INV42"; API returns "42" — normalise to the numeric part
+        const num = String(entry.invoiceNumber).replace(/^INV/i, '').trim();
+        if (num) localNameMap.set(num, entry.customerName);
+      }
+    });
+
     return apiData.map((item, index) => {
+      const invoiceNum = String(item.invoice_number || '').trim();
+      const apiCustomerName = (item.customer_name && String(item.customer_name).trim()) ? item.customer_name : null;
+      const resolvedCustomerName = apiCustomerName || localNameMap.get(invoiceNum) || 'N/A';
       const isReturn = item.transaction_type?.toLowerCase() === 'return' || item.transaction_type?.toLowerCase() === 'refund';
       const multiplier = isReturn ? -1 : 1;
 
@@ -55,7 +71,7 @@ const DetailedSalesTable: React.FC = () => {
         transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
         transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
         invoiceNumber: item.invoice_number,
-        customerName: (item.customer_name && String(item.customer_name).trim()) ? item.customer_name : 'N/A',
+        customerName: resolvedCustomerName,
         doctorName: (item.doctor_name && String(item.doctor_name).trim()) ? item.doctor_name : 'N/A',
         paymentType: (() => {
           const raw = (item.payment_type || '').trim().toUpperCase();
