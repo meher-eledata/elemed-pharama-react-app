@@ -304,12 +304,15 @@ const SalesReceipt: React.FC = () => {
               const payments = result.payments || [];
 
               // Map payments from API to splitPayments state.
-              // IMPORTANT: Only populate splitPayments for GENUINE multiple-payment invoices
-              // (i.e., 2+ payment records). For single-payment invoices, the backend still stores
-              // one payment record, but we should rely on paymentMode (set below from invoice.payment_mode)
-              // rather than putting it into splitPayments — otherwise the print preview will always
-              // show the old backend payment instead of the user's newly selected mode.
-               if (Array.isArray(payments) && payments.length > 1) {
+              // For MULTIPLE-mode invoices load all available payment records (even just 1),
+              // UNLESS it is only the initial MULTIPLE placeholder (upsert-invoice-payments
+              // failed on backend) — in that case treat it as no split payments available.
+              // For single-mode invoices, only load if there are 2+ records (avoids overwriting
+              // the user's newly selected payment mode with the old backend record).
+              const isMultiplePaymentMode = (invoice.payment_mode || '').toUpperCase() === 'MULTIPLE';
+              const isMultiplePlaceholder = payments.length === 1 &&
+                (payments[0].payment_method || '').toUpperCase() === 'MULTIPLE';
+               if (Array.isArray(payments) && (payments.length > 1 || (isMultiplePaymentMode && payments.length > 0 && !isMultiplePlaceholder))) {
                 const totalReturned = parseFloat(invoice.total_returned_amount || result.total_refunded || 0);
                 // Deduplicate refund payments to prevent showing the same refund multiple times
                 const uniquePayments = Array.from(new Map(payments.map(p => [
@@ -495,8 +498,8 @@ const SalesReceipt: React.FC = () => {
               // Pre-populate form fields from API data
               // CRITICAL: Prioritize names passed from the navigation state (Table View) 
               // to prevent mismatches caused by backend data inconsistency.
-              const finalCustomerName = editModeData.customerName || result.customer_name || result.invoice?.customer_name || '';
-              const finalDoctorName = editModeData.doctorName || result.doctor_name || result.invoice?.doctor_name || '';
+              const finalCustomerName = editModeData.customerName || editModeData.originalInvoiceData?.customerName || result.customer_name || result.invoice?.customer_name || '';
+              const finalDoctorName = editModeData.doctorName || editModeData.originalInvoiceData?.doctorName || result.doctor_name || result.invoice?.doctor_name || '';
 
               if (finalCustomerName) setCustomerName(finalCustomerName);
               if (invoiceData.customerMobile) setCustomerMobile(invoiceData.customerMobile);
@@ -1293,11 +1296,39 @@ const SalesReceipt: React.FC = () => {
       }
     }
 
+    // Block save if customer ID is still 0 after lookup (new sale only)
+    // Edit mode uses null fallback in the payload to preserve existing backend data
+    if (!isEditMode && (!resolvedCustomer.id || resolvedCustomer.id <= 0)) {
+      showToast('Customer not found in system. Please select an existing customer or create a new one.', 'warning');
+      return;
+    }
+
     // If user selected a single payment mode, discard any leftover split payments
     // from a previous multiple-payment session to prevent stale data being saved.
     // Use split payments if they exist, otherwise use single payment mode
     const effectiveSplitPayments = (splitPayments && splitPayments.length > 0) ? splitPayments : [];
     const effectivePaymentMode = (splitPayments && splitPayments.length > 0) ? '' : paymentMode;
+
+    // Block save if payment mode is MULTIPLE but no split payment breakdown is configured
+    if (effectivePaymentMode && effectivePaymentMode.toUpperCase() === 'MULTIPLE' && effectiveSplitPayments.length === 0) {
+      showToast('This invoice has multiple payment methods but no payment breakdown is entered. Please open "Multiple Payment" and enter the payment details before saving.', 'warning');
+      return;
+    }
+
+    // Validate that split payment total matches the invoice total.
+    // Use a 1-rupee tolerance because totalPayableAmount is Math.round(exactTotal),
+    // which can differ from stored payment decimals by up to 0.50.
+    if (effectiveSplitPayments.length > 0) {
+      const splitTotal = effectiveSplitPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount || '0'), 0);
+      const invoiceTotal = parseFloat(totalPayableAmount || '0');
+      if (Math.abs(splitTotal - invoiceTotal) > 1) {
+        showToast(
+          `Payment amount (₹${Math.round(splitTotal)}) does not match the bill total (₹${Math.round(invoiceTotal)}). Please update the payment details before saving.`,
+          'warning'
+        );
+        return;
+      }
+    }
 
     await executeSave({
       customerName,

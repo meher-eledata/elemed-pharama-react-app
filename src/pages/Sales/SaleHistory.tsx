@@ -293,6 +293,10 @@ export default function SaleHistory() {
             doctorMobile: (item.doctorMobile === 'N/A' || !item.doctorMobile) ? (savedItem.doctorMobile || item.doctorMobile) : item.doctorMobile,
             doctorEmail: (item.doctorEmail === 'N/A' || !item.doctorEmail) ? (savedItem.doctorEmail || item.doctorEmail) : item.doctorEmail,
             username: isFallbackValue(item.username) ? (savedItem.username || item.username) : item.username,
+            // If API list doesn't return split_payments, fall back to saved payment breakdown
+            splitPayments: (item.splitPayments && item.splitPayments.length > 0)
+              ? item.splitPayments
+              : (savedItem.splitPayments && savedItem.splitPayments.length > 0 ? savedItem.splitPayments : []),
           });
         } else {
           resultMap.set(item.invoiceNumber, item);
@@ -557,19 +561,28 @@ export default function SaleHistory() {
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
             totalPayableAmount: Math.round(finalPayable).toFixed(2),
-            splitPayments: Array.from(new Map(payments.map((p: any) => [
-              `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
-            ])).values()).map((p: any) => {
-              // Use direction='OUT' or payment_type includes 'RETURN' to reliably detect refunds
-              // The old approach (matching amount to totalReturned) breaks for multiple partial returns
-              const isRefund = p.direction === 'OUT' || 
-                (p.payment_type && p.payment_type.toUpperCase().includes('RETURN'));
-              return {
-                ...p,
-                payment_amount: isRefund ? -Math.abs(p.payment_amount) : p.payment_amount,
-                is_refund: isRefund
-              };
-            }),
+            splitPayments: (() => {
+              const apiPayments = Array.from(new Map(payments.map((p: any) => [
+                `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
+              ])).values()).map((p: any) => {
+                const isRefund = p.direction === 'OUT' ||
+                  (p.payment_type && p.payment_type.toUpperCase().includes('RETURN'));
+                return {
+                  ...p,
+                  payment_amount: isRefund ? -Math.abs(p.payment_amount) : p.payment_amount,
+                  is_refund: isRefund
+                };
+              });
+              // If the API only returned a single MULTIPLE placeholder (upsert-invoice-payments
+              // failed on the backend), fall back to the localStorage breakdown so the receipt
+              // shows the real breakdown instead of "MULTIPLE: 180".
+              const isMultiplePlaceholder = apiPayments.length === 1 &&
+                (apiPayments[0].payment_method || '').toUpperCase() === 'MULTIPLE';
+              if (isMultiplePlaceholder && initialDetails.splitPayments && initialDetails.splitPayments.length > 0) {
+                return initialDetails.splitPayments;
+              }
+              return apiPayments;
+            })(),
             items: mappedItems
           };
 
