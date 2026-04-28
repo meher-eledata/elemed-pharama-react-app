@@ -129,12 +129,12 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   return (
     <Box sx={{ padding: '0', maxHeight: '100%', overflow: 'auto' }}>
       {/* Page Size Selector - Inside Modal */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        gap: '12px', 
-        mb: 3, 
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '12px',
+        mb: 3,
         mt: 1,
         pb: 2,
         borderBottom: '1px solid #E5E7EB'
@@ -228,108 +228,108 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           marginBottom: isA5 ? '8px' : '12px',
           width: '100%'
         }}>
-            {/* Customer Details */}
-            <Box sx={{
-              flex: 1,
-              backgroundColor: '#F9FAFB',
-              padding: isA5 ? '6px' : '8px',
-              border: '1px solid #E5E7EB',
-              borderRadius: '8px',
-              boxSizing: 'border-box'
-            }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
-                {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
-              </Typography>
+          {/* Customer Details */}
+          <Box sx={{
+            flex: 1,
+            backgroundColor: '#F9FAFB',
+            padding: isA5 ? '6px' : '8px',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            boxSizing: 'border-box'
+          }}>
+            <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
+              {SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_TITLE}
+            </Typography>
+            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
+              {SALES_RECEIPT_LABELS.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}
+            </Typography>
+            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
+              {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}
+            </Typography>
+          </Box>
+
+          {/* Doctor Details */}
+          <Box sx={{
+            flex: 1,
+            backgroundColor: '#F9FAFB',
+            padding: isA5 ? '6px' : '8px',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            boxSizing: 'border-box'
+          }}>
+            <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
+              {SALES_RECEIPT_LABELS.DOCTOR_DETAILS_TITLE}
+            </Typography>
+            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
+              {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
+            </Typography>
+            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
+              {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
+            </Typography>
+          </Box>
+
+          {/* Payment Details */}
+          <Box sx={{
+            flex: 1,
+            backgroundColor: '#F9FAFB',
+            padding: isA5 ? '6px' : '8px',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            boxSizing: 'border-box'
+          }}>
+            <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
+              {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
+            </Typography>
+
+            {splitPayments && splitPayments.length > 0 ? (
+              <Box>
+                {splitPayments.map((p: any, idx: number) => {
+                  const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
+                  const amount = p.payment_amount || p.amount || '0';
+                  const details = p.details || p.notes || '';
+                  return (
+                    <Typography key={idx} sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
+                      {method.toUpperCase()}: {amount} {details ? `(Details: ${details})` : ''}
+                    </Typography>
+                  );
+                })}
+              </Box>
+            ) : (
               <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
-                {SALES_RECEIPT_LABELS.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}
+                {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
               </Typography>
+            )}
+
+            {paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
               <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-                {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}
+                {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}
               </Typography>
-            </Box>
-
-            {/* Doctor Details */}
-            <Box sx={{
-              flex: 1,
-              backgroundColor: '#F9FAFB',
-              padding: isA5 ? '6px' : '8px',
-              border: '1px solid #E5E7EB',
-              borderRadius: '8px',
-              boxSizing: 'border-box'
-            }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
-                {SALES_RECEIPT_LABELS.DOCTOR_DETAILS_TITLE}
-              </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
-                {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
-              </Typography>
+            ) : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
               <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-                {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
+                {SALES_RECEIPT_LABELS.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}
               </Typography>
-            </Box>
+            ) : null}
+          </Box>
 
-            {/* Payment Details */}
-            <Box sx={{
-              flex: 1,
-              backgroundColor: '#F9FAFB',
-              padding: isA5 ? '6px' : '8px',
-              border: '1px solid #E5E7EB',
-              borderRadius: '8px',
-              boxSizing: 'border-box'
-            }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
-                {SALES_RECEIPT_LABELS.PAYMENT_DETAILS_TITLE}
-              </Typography>
-              
-              {splitPayments && splitPayments.length > 0 ? (
-                <Box>
-                  {splitPayments.map((p: any, idx: number) => {
-                    const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
-                    const amount = p.payment_amount || p.amount || '0';
-                    const details = p.details || p.notes || '';
-                    return (
-                      <Typography key={idx} sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
-                        {method.toUpperCase()}: {amount} {details ? `(Details: ${details})` : ''}
-                      </Typography>
-                    );
-                  })}
-                </Box>
-              ) : (
-                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
-                  {SALES_RECEIPT_LABELS.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}
-                </Typography>
-              )}
-
-              {paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
-                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-                  {SALES_RECEIPT_LABELS.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}
-                </Typography>
-              ) : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim() ? (
-                <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-                  {SALES_RECEIPT_LABELS.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}
-                </Typography>
-              ) : null}
-            </Box>
-
-            {/* Invoice Details */}
-            <Box sx={{
-              flex: 1,
-              backgroundColor: '#F9FAFB',
-              padding: isA5 ? '6px' : '8px',
-              border: '1px solid #E5E7EB',
-              borderRadius: '8px',
-              boxSizing: 'border-box'
-            }}>
-              <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
-                {SALES_RECEIPT_LABELS.INVOICE_DETAILS_TITLE}
-              </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
-                {SALES_RECEIPT_LABELS.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}
-              </Typography>
-              <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-                {SALES_RECEIPT_LABELS.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}
-              </Typography>
-            </Box>
+          {/* Invoice Details */}
+          <Box sx={{
+            flex: 1,
+            backgroundColor: '#F9FAFB',
+            padding: isA5 ? '6px' : '8px',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            boxSizing: 'border-box'
+          }}>
+            <Typography sx={{ fontSize: sectionTitleSize, fontWeight: 600, color: '#1A212B', marginBottom: '4px' }}>
+              {SALES_RECEIPT_LABELS.INVOICE_DETAILS_TITLE}
+            </Typography>
+            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
+              {SALES_RECEIPT_LABELS.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}
+            </Typography>
+            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
+              {SALES_RECEIPT_LABELS.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}
+            </Typography>
+          </Box>
         </Box>
 
         {/* Items Table with Scroll */}
@@ -394,7 +394,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                 salesItems.map((item, index) => {
                   const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
                   const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
-                  
+
                   // Format expiry from YYYY-MM-DD to MM/YYYY
                   let formattedExp = 'N/A';
                   if (item.expiryDate) {

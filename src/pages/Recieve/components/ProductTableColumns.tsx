@@ -102,6 +102,7 @@ export const getProductTableColumns = ({
     {
       key: "batchNumber",
       header: orderLabels.batchNumber,
+      columnWidth: "130px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -127,6 +128,7 @@ export const getProductTableColumns = ({
     {
       key: "expiryDate",
       header: orderLabels.expiryDate,
+      columnWidth: "190px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -195,7 +197,7 @@ export const getProductTableColumns = ({
     },
     {
       key: "mrp",
-      columnWidth: "80px",
+      columnWidth: "100px",
       header: orderLabels.mrp,
       sortable: false,
       render: (row) => (
@@ -217,7 +219,7 @@ export const getProductTableColumns = ({
     {
       key: "pp",
       header: orderLabels.purchasePrice,
-      columnWidth: "80px",
+      columnWidth: "100px",
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
@@ -337,7 +339,7 @@ export const getProductTableColumns = ({
     {
       key: "amount",
       header: "Amount",
-      columnWidth: "100px",
+      columnWidth: "120px",
       sortable: false,
       render: (row) => {
         if (editingRowId === row.id) {

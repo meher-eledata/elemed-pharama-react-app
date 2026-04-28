@@ -165,8 +165,8 @@ export default function SaleHistory() {
       patientType: item.patientType || 'Out Patient', // Default to "Out Patient" if not specified
       totalAmount: item.totalAmount || 0,
       totalReturnedAmount: 0,
-      paymentMode: (item.splitPayments && item.splitPayments.length > 0) 
-        ? item.splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ') 
+      paymentMode: (item.splitPayments && item.splitPayments.length > 0)
+        ? item.splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ')
         : (item.paymentMode || 'Cash'),
       splitPayments: item.splitPayments || [],
       hasReturn: false,
@@ -235,8 +235,8 @@ export default function SaleHistory() {
       const hasReturn = invoice.has_return !== undefined ? invoice.has_return : (rawReturnStatus.toLowerCase() !== 'no return' && rawReturnStatus.toLowerCase() !== 'none');
 
       const splitPayments = invoice.split_payments || [];
-      const paymentMode = (splitPayments && splitPayments.length > 0) 
-        ? splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ') 
+      const paymentMode = (splitPayments && splitPayments.length > 0)
+        ? splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ')
         : (invoice.payment_mode || 'Cash');
 
       return {
@@ -557,17 +557,13 @@ export default function SaleHistory() {
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
             totalPayableAmount: Math.round(finalPayable).toFixed(2),
-            splitPayments: Array.from(new Map(payments.map((p: any) => [
-              `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
-            ])).values()).map((p: any) => {
-              // Use direction='OUT' or payment_type includes 'RETURN' to reliably detect refunds
-              // The old approach (matching amount to totalReturned) breaks for multiple partial returns
-              const isRefund = p.direction === 'OUT' || 
+            splitPayments: (payments || []).map((p: any) => {
+              const isRefund = p.direction === 'OUT' ||
                 (p.payment_type && p.payment_type.toUpperCase().includes('RETURN'));
               return {
                 ...p,
                 payment_amount: isRefund ? -Math.abs(p.payment_amount) : p.payment_amount,
-                is_refund: isRefund
+                payment_method: isRefund ? 'RETURN' : p.payment_method
               };
             }),
             items: mappedItems
@@ -980,33 +976,16 @@ export default function SaleHistory() {
       render: (item) => {
         const returnStatus = getReturnStatus(item);
         const isFullyReturned = returnStatus.status === 'full';
-        
+
         return (
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: '0.5rem' // 8px = 0.5rem 
-        }}>
-          <Tooltip title="Edit" arrow placement="top">
-            <EditIcon
-              sx={{
-                fontSize: '1.5rem', // 24px = 1.5rem 
-                color: '#000000',
-                cursor: 'pointer',
-                padding: '0.25rem', // 4px = 0.25rem
-                borderRadius: '0.25rem', // 4px = 0.25rem
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                  color: '#000000'
-                }
-              }}
-              onClick={() => handleEditInvoice(item.id)}
-            />
-          </Tooltip>
-          {!isFullyReturned && (
-            <Tooltip title="Return" arrow placement="top">
-              <UndoIcon
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '0.5rem' // 8px = 0.5rem 
+          }}>
+            <Tooltip title="Edit" arrow placement="top">
+              <EditIcon
                 sx={{
                   fontSize: '1.5rem', // 24px = 1.5rem 
                   color: '#000000',
@@ -1018,49 +997,66 @@ export default function SaleHistory() {
                     color: '#000000'
                   }
                 }}
-                onClick={() => handleReturnInvoice(item.id)}
+                onClick={() => handleEditInvoice(item.id)}
               />
             </Tooltip>
-          )}
-          {returnStatus.status === 'full' && (() => {
-            const tooltipContent = getReturnTooltipContent(item);
-            return (
-              <Tooltip title={tooltipContent} arrow placement="top">
-                <Badge
-                  badgeContent="!"
-                  color="error"
+            {!isFullyReturned && (
+              <Tooltip title="Return" arrow placement="top">
+                <UndoIcon
                   sx={{
-                    marginRight: '0.5rem',
-                    '& .MuiBadge-badge': {
-                      fontSize: '0.625rem',
-                      minWidth: '1rem',
-                      height: '1rem',
-                      padding: '0 0.125rem',
+                    fontSize: '1.5rem', // 24px = 1.5rem 
+                    color: '#000000',
+                    cursor: 'pointer',
+                    padding: '0.25rem', // 4px = 0.25rem
+                    borderRadius: '0.25rem', // 4px = 0.25rem
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5',
+                      color: '#000000'
                     }
                   }}
-                >
-                  <WarningIcon
+                  onClick={() => handleReturnInvoice(item.id)}
+                />
+              </Tooltip>
+            )}
+            {returnStatus.status === 'full' && (() => {
+              const tooltipContent = getReturnTooltipContent(item);
+              return (
+                <Tooltip title={tooltipContent} arrow placement="top">
+                  <Badge
+                    badgeContent="!"
+                    color="error"
                     sx={{
-                      fontSize: '1.25rem',
-                      color: '#DC2626',
-                      cursor: 'pointer',
-                      padding: '0.125rem',
-                      borderRadius: '0.25rem',
-                      '&:hover': {
-                        backgroundColor: '#FEE2E2',
-                        color: '#DC2626'
+                      marginRight: '0.5rem',
+                      '& .MuiBadge-badge': {
+                        fontSize: '0.625rem',
+                        minWidth: '1rem',
+                        height: '1rem',
+                        padding: '0 0.125rem',
                       }
                     }}
-                    onClick={() => {
-                      console.log('Alert clicked for invoice:', item.id, 'Return info:', item.returnInfo);
-                    }}
-                  />
-                </Badge>
-              </Tooltip>
-            );
-          })()}
-        </Box>
-      );
+                  >
+                    <WarningIcon
+                      sx={{
+                        fontSize: '1.25rem',
+                        color: '#DC2626',
+                        cursor: 'pointer',
+                        padding: '0.125rem',
+                        borderRadius: '0.25rem',
+                        '&:hover': {
+                          backgroundColor: '#FEE2E2',
+                          color: '#DC2626'
+                        }
+                      }}
+                      onClick={() => {
+                        console.log('Alert clicked for invoice:', item.id, 'Return info:', item.returnInfo);
+                      }}
+                    />
+                  </Badge>
+                </Tooltip>
+              );
+            })()}
+          </Box>
+        );
       },
     },
   ];
@@ -1101,10 +1097,10 @@ export default function SaleHistory() {
         totalDiscount: invoiceDetails.totalDiscount || '0',
         taxAmount: invoiceDetails.taxAmount || '0',
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
+        splitPayments: invoiceDetails.splitPayments || [],
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
-        splitPayments: invoiceDetails.splitPayments || [], // ← FIXED: was missing, caused payment section to show wrong data
       });
 
       printWindow.document.write(htmlContent);

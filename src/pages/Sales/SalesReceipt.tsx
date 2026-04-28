@@ -309,13 +309,13 @@ const SalesReceipt: React.FC = () => {
               // one payment record, but we should rely on paymentMode (set below from invoice.payment_mode)
               // rather than putting it into splitPayments — otherwise the print preview will always
               // show the old backend payment instead of the user's newly selected mode.
-               if (Array.isArray(payments) && payments.length > 1) {
+              if (Array.isArray(payments) && payments.length > 1) {
                 const totalReturned = parseFloat(invoice.total_returned_amount || result.total_refunded || 0);
                 // Deduplicate refund payments to prevent showing the same refund multiple times
                 const uniquePayments = Array.from(new Map(payments.map(p => [
                   `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
                 ])).values());
-                
+
                 const mappedPayments = uniquePayments.map((p: any, idx: number) => {
                   // Use direction='OUT' or payment_type includes 'RETURN' to reliably detect refunds
                   // The old approach (matching amount to totalReturned) breaks for multiple partial returns
@@ -434,7 +434,7 @@ const SalesReceipt: React.FC = () => {
                   const raw = invoice.patient_type !== undefined ? invoice.patient_type : (invoice as any).patientType;
                   if (raw === null || raw === undefined) return 'Out Patient';
                   const str = String(raw).trim().toUpperCase();
-                  
+
                   // Standard: 0 is In Patient, 1 is Out Patient (Aligned with backend team)
                   if (raw === 0 || str === '0' || str.includes('INPATIENT') || (str.includes('IN') && !str.includes('OUT'))) {
                     return 'In Patient';
@@ -453,7 +453,7 @@ const SalesReceipt: React.FC = () => {
                   // Handle YYYY-MM-DD from backend without timezone shift
                   const dateParts = raw.split(/[-/]/);
                   let d: Date;
-                  
+
                   if (dateParts.length === 3) {
                     if (dateParts[0].length === 4) {
                       // YYYY-MM-DD
@@ -466,7 +466,7 @@ const SalesReceipt: React.FC = () => {
                   }
 
                   if (isNaN(d.getTime())) return editModeData.invoiceDate || getTodayDate();
-                  
+
                   // Revert to the original "DD MMM YYYY" format for consistency
                   return d.toLocaleDateString('en-GB', {
                     day: '2-digit',
@@ -475,21 +475,33 @@ const SalesReceipt: React.FC = () => {
                   });
                 })(),
                 salesItems: mappedSalesItems,
-                finalSalesItems: (editModeData.salesItems && editModeData.salesItems.length > 0)
+                // CRITICAL: In Edit Mode, we MUST prioritize mappedSalesItems from the API 
+                // because they contain the real database invoice_line_id. 
+                // Using editModeData (from LocalStorage) often uses synthetic IDs, 
+                // which causes the backend to treat edits as "New" items and fail stock checks.
+                finalSalesItems: isEditMode ? mappedSalesItems : (editModeData.salesItems && editModeData.salesItems.length > 0
                   ? editModeData.salesItems
-                  : mappedSalesItems,
-                totalValue: (editModeData.salesItems && editModeData.salesItems.length > 0)
-                  ? (editModeData.totalValue || editModeData.totalAmount?.toString() || '0')
-                  : (invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || '0'),
-                totalDiscount: (editModeData.salesItems && editModeData.salesItems.length > 0)
-                  ? (editModeData.totalDiscount || '0')
-                  : (invoice.discount?.toString() || result.total_discount?.toString() || result.totalDiscount?.toString() || '0'),
-                taxAmount: (editModeData.salesItems && editModeData.salesItems.length > 0)
-                  ? (editModeData.taxAmount || '0')
-                  : (result.tax_amount?.toString() || result.taxAmount?.toString() || '0'),
-                totalPayableAmount: (editModeData.salesItems && editModeData.salesItems.length > 0)
-                  ? (editModeData.totalPayableAmount || editModeData.totalAmount?.toString() || '0')
-                  : (Math.max(0, (parseFloat(invoice.total_amount) || 0) - (parseFloat(invoice.total_returned_amount || result.total_refunded || 0)))).toString(),
+                  : mappedSalesItems),
+                totalValue: (isEditMode)
+                  ? (invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || '0')
+                  : (editModeData.salesItems && editModeData.salesItems.length > 0
+                    ? (editModeData.totalValue || editModeData.totalAmount?.toString() || '0')
+                    : (invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || '0')),
+                totalDiscount: (isEditMode)
+                  ? (invoice.discount?.toString() || result.total_discount?.toString() || result.totalDiscount?.toString() || '0')
+                  : (editModeData.salesItems && editModeData.salesItems.length > 0
+                    ? (editModeData.totalDiscount || '0')
+                    : (invoice.discount?.toString() || result.total_discount?.toString() || result.totalDiscount?.toString() || '0')),
+                taxAmount: (isEditMode)
+                  ? (result.tax_amount?.toString() || result.taxAmount?.toString() || '0')
+                  : (editModeData.salesItems && editModeData.salesItems.length > 0
+                    ? (editModeData.taxAmount || '0')
+                    : (result.tax_amount?.toString() || result.taxAmount?.toString() || '0')),
+                totalPayableAmount: (isEditMode)
+                  ? (Math.max(0, (parseFloat(invoice.total_amount) || 0) - (parseFloat(invoice.total_returned_amount || result.total_refunded || 0)))).toString()
+                  : (editModeData.salesItems && editModeData.salesItems.length > 0
+                    ? (editModeData.totalPayableAmount || editModeData.totalAmount?.toString() || '0')
+                    : (Math.max(0, (parseFloat(invoice.total_amount) || 0) - (parseFloat(invoice.total_returned_amount || result.total_refunded || 0)))).toString()),
               };
 
               // Pre-populate form fields from API data
@@ -1265,7 +1277,7 @@ const SalesReceipt: React.FC = () => {
       (typeof d === 'string' ? d : d.name) === doctorName
     );
     const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
-    
+
     // RESOLVE CUSTOMER ID:
     // If we have name/mobile but no valid ID, try one last lookup to find the ID.
     // This handles the case where the user picked an existing name but the ID wasn't linked.
@@ -1276,7 +1288,7 @@ const SalesReceipt: React.FC = () => {
         const result = await getCustomerPhones({ name: customerName.trim() }).unwrap();
         const phones = result.phones || [];
         const ids = result.ids || [];
-        
+
         // Match the phone to an ID
         const phoneIdx = phones.indexOf(customerMobile.trim());
         if (phoneIdx !== -1 && ids[phoneIdx]) {
