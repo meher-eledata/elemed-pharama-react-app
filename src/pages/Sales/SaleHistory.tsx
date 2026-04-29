@@ -185,9 +185,8 @@ export default function SaleHistory() {
     }
 
     const apiItems: SalesHistoryItem[] = invoicesData.map((invoice: any, index: number) => {
-      const invoiceDate = (invoice.invoice_date)
-        ? dayjs(invoice.invoice_date).format('DD MMM YYYY')
-        : ''; // Don't fallback to created_at here; let the merge logic use local storage if available
+      const dateSource = invoice.invoice_date || invoice.created_at;
+      const invoiceDate = dateSource ? dayjs(dateSource).format('DD MMM YYYY') : '';
 
       // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
       let patientType = 'Out Patient'; // Default

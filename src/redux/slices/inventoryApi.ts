@@ -27,6 +27,9 @@ export interface InventorySummary {
   withinThreeMonthsTotalQuantity: number;
   withinOneMonthCount: number;
   withinOneMonthTotalQuantity: number;
+  // Overall stock — pending backend; field names to be confirmed with Meher.
+  totalProductCount?: number;
+  totalQuantity?: number;
 }
 
 // Add Product interfaces

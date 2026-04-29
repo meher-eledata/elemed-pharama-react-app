@@ -22,6 +22,7 @@ import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { SerializedError } from "@reduxjs/toolkit";
 import AddIcon from "@mui/icons-material/Add";
 import WarningIcon from '@mui/icons-material/Warning';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import { CSVLink } from 'react-csv';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -76,7 +77,7 @@ function isErrorWithMessage(error: unknown): error is { message: string } {
     typeof (error as any).message === "string"
   );
 }
-type StockType = 'low' | 'excess' | 'expired' | 'nearExpiry';
+type StockType = 'low' | 'excess' | 'expired' | 'nearExpiry' | 'stock';
 type InventoryItem = RTKInventoryItem;
 type FilterKey =
   | 'name'
@@ -166,6 +167,7 @@ const InventoryModule: React.FC = () => {
       case 'excess': return 'Excess Stock';
       case 'nearExpiry': return 'Near Expiry';
       case 'expired': return 'Expired';
+      case 'stock': return 'Stock';
       default: return '';
     }
   };
@@ -176,6 +178,7 @@ const InventoryModule: React.FC = () => {
       case 'excess': return '#3B82F6';
       case 'nearExpiry': return '#8B5CF6';
       case 'expired': return '#EF4444';
+      case 'stock': return '#10B981';
       default: return '#6B7280';
     }
   };
@@ -197,11 +200,21 @@ const InventoryModule: React.FC = () => {
       return true; // 1 month view shows all
     });
 
+    // Deduplicated union across all alert lists — placeholder until backend provides
+    // a dedicated total-stock endpoint. Dedupe by id+batchNumber to keep distinct rows.
+    const stockMap = new Map<string, InventoryItem>();
+    [...lowStockItems, ...excessStockItems, ...nearExpiryFiltered, ...expiredStockItems].forEach((item: any) => {
+      const key = `${item.id || item.name}-${item.batchNumber || ''}`;
+      if (!stockMap.has(key)) stockMap.set(key, item as InventoryItem);
+    });
+    const stockItems = Array.from(stockMap.values());
+
     return {
       lowStock: { count: lowStockItems.length, qty: sumQty(lowStockItems as InventoryItem[]) },
       excessStock: { count: excessStockItems.length, qty: sumQty(excessStockItems as InventoryItem[]) },
       nearExpiry: { count: nearExpiryFiltered.length, qty: sumQty(nearExpiryFiltered as InventoryItem[]) },
-      expired: { count: expiredStockItems.length, qty: sumQty(expiredStockItems as InventoryItem[]) }
+      expired: { count: expiredStockItems.length, qty: sumQty(expiredStockItems as InventoryItem[]) },
+      stock: { count: stockItems.length, qty: sumQty(stockItems) }
     };
   }, [lowStockItems, excessStockItems, expiredStockItems, nearExpiryStockItems, nearExpiryMonths]);
 
@@ -218,10 +231,21 @@ const InventoryModule: React.FC = () => {
           return (nearExpiryStockItems as InventoryItem[]).filter(item => (item.daysToExpiry ?? 0) > 30);
         }
         return nearExpiryStockItems as InventoryItem[];
+      case 'stock': {
+        const nearExpiryFiltered = nearExpiryMonths === 3
+          ? (nearExpiryStockItems as InventoryItem[]).filter(item => (item.daysToExpiry ?? 0) > 30)
+          : (nearExpiryStockItems as InventoryItem[]);
+        const map = new Map<string, InventoryItem>();
+        [...(lowStockItems as InventoryItem[]), ...(excessStockItems as InventoryItem[]), ...nearExpiryFiltered, ...(expiredStockItems as InventoryItem[])].forEach((item: any) => {
+          const key = `${item.id || item.name}-${item.batchNumber || ''}`;
+          if (!map.has(key)) map.set(key, item as InventoryItem);
+        });
+        return Array.from(map.values());
+      }
       default:
         return [];
     }
-  }, [selectedStockType, lowStockItems, excessStockItems, expiredStockItems, nearExpiryStockItems]);
+  }, [selectedStockType, lowStockItems, excessStockItems, expiredStockItems, nearExpiryStockItems, nearExpiryMonths]);
 
   const isLoading = useMemo(() => {
     switch (selectedStockType) {
@@ -233,6 +257,8 @@ const InventoryModule: React.FC = () => {
         return isExpiredStockLoading;
       case 'nearExpiry':
         return isNearExpiryStockLoading;
+      case 'stock':
+        return isLowStockLoading || isExcessStockLoading || isExpiredStockLoading || isNearExpiryStockLoading;
       default:
         return false;
     }
@@ -248,6 +274,8 @@ const InventoryModule: React.FC = () => {
         return expiredStockError;
       case 'nearExpiry':
         return nearExpiryStockError;
+      case 'stock':
+        return lowStockError || excessStockError || expiredStockError || nearExpiryStockError;
       default:
         return null;
     }
@@ -492,6 +520,16 @@ const InventoryModule: React.FC = () => {
           { label: INVENTORY_LABELS.daysToExpiryHeader, key: 'daysToExpiry' },
         ];
         break;
+      case 'stock':
+        headers = [
+          { label: INVENTORY_LABELS.productNameHeader, key: 'name' },
+          { label: INVENTORY_LABELS.brandHeader, key: 'brand' },
+          { label: INVENTORY_LABELS.typeHeader, key: 'type' },
+          { label: INVENTORY_LABELS.batchNoHeader, key: 'batchNumber' },
+          { label: INVENTORY_LABELS.currentQuantityHeader, key: 'currentQuantity' },
+          { label: INVENTORY_LABELS.expiryDateHeader, key: 'expiryDate' },
+        ];
+        break;
     }
 
     const data = filteredData.map(item => {
@@ -533,6 +571,28 @@ const InventoryModule: React.FC = () => {
     />
   );
 
+  // Lookup: returns the alert categories a given stock item belongs to.
+  // Used by the "Stock" tab to render Low / Excess / Near Expiry / Expired chips next to the product.
+  const stockTagLookup = useMemo(() => {
+    const makeKey = (item: any) => `${item.id || item.name}-${item.batchNumber || ''}`;
+    const nearExpiryFiltered = nearExpiryMonths === 3
+      ? (nearExpiryStockItems as InventoryItem[]).filter(i => (i.daysToExpiry ?? 0) > 30)
+      : (nearExpiryStockItems as InventoryItem[]);
+    const lowSet = new Set((lowStockItems as InventoryItem[]).map(makeKey));
+    const excessSet = new Set((excessStockItems as InventoryItem[]).map(makeKey));
+    const nearExpirySet = new Set(nearExpiryFiltered.map(makeKey));
+    const expiredSet = new Set((expiredStockItems as InventoryItem[]).map(makeKey));
+    return (item: InventoryItem): { low: boolean; excess: boolean; nearExpiry: boolean; expired: boolean } => {
+      const key = makeKey(item);
+      return {
+        low: lowSet.has(key),
+        excess: excessSet.has(key),
+        nearExpiry: nearExpirySet.has(key),
+        expired: expiredSet.has(key),
+      };
+    };
+  }, [lowStockItems, excessStockItems, nearExpiryStockItems, expiredStockItems, nearExpiryMonths]);
+
   const renderProductCell = (item: InventoryItem) => (
     <Box display="flex" alignItems="center" gap={'19px'}>
       <Typography variant="body1" sx={productCellTextStyle}>
@@ -540,6 +600,36 @@ const InventoryModule: React.FC = () => {
       </Typography>
     </Box>
   );
+
+  const renderStockProductCell = (item: InventoryItem) => {
+    const tags = stockTagLookup(item);
+    const chipBaseSx = {
+      height: '20px',
+      fontSize: '0.6875rem',
+      fontWeight: 600,
+      borderRadius: '0.375rem',
+      '& .MuiChip-label': { px: '0.5rem' },
+    };
+    return (
+      <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+        <Typography variant="body1" sx={productCellTextStyle}>
+          {item.name}
+        </Typography>
+        {tags.low && (
+          <Chip label="Low" size="small" sx={{ ...chipBaseSx, backgroundColor: '#FEF3C7', color: '#B45309' }} />
+        )}
+        {tags.excess && (
+          <Chip label="Excess" size="small" sx={{ ...chipBaseSx, backgroundColor: '#DBEAFE', color: '#1D4ED8' }} />
+        )}
+        {tags.nearExpiry && (
+          <Chip label="Near Expiry" size="small" sx={{ ...chipBaseSx, backgroundColor: '#EDE9FE', color: '#6D28D9' }} />
+        )}
+        {tags.expired && (
+          <Chip label="Expired" size="small" sx={{ ...chipBaseSx, backgroundColor: '#FEE2E2', color: '#B91C1C' }} />
+        )}
+      </Box>
+    );
+  };
 
   const renderCurrentQtyCell = (item: InventoryItem) => {
     let icon = null;
@@ -717,6 +807,17 @@ const InventoryModule: React.FC = () => {
           { key: 'daysToExpiry', header: INVENTORY_LABELS.daysToExpiryHeader, render: (item) => (item as InventoryItem).daysToExpiry },
         ];
         break;
+      case 'stock':
+        cols = [
+          { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
+          { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderStockProductCell },
+          { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
+          { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
+          { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber || '-' },
+          { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate ? dayjs((item as InventoryItem).expiryDate).format('DD/MM/YYYY') : '-' },
+        ];
+        break;
     }
     return { columns: cols };
   }, [selectedStockType, nearExpiryMonths, renderHeaderCheckbox]);
@@ -830,6 +931,25 @@ const InventoryModule: React.FC = () => {
             }}
           >
             {INVENTORY_LABELS.expiredStockTab}
+          </Button>
+          <Button
+            onClick={() => handleTabClick('stock')}
+            sx={{
+              backgroundColor: selectedStockType === 'stock' ? '#5C17E5' : 'transparent',
+              color: selectedStockType === 'stock' ? '#FFFFFF' : '#1A212B',
+              border: selectedStockType === 'stock' ? 'none' : '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.875rem', // 14px = 0.875rem
+              padding: '0.5rem 1rem', // 8px = 0.5rem, 16px = 1rem
+              minWidth: '7.5rem', // 120px = 7.5rem
+              '&:hover': {
+                backgroundColor: selectedStockType === 'stock' ? '#4C14C7' : 'transparent',
+              },
+            }}
+          >
+            {INVENTORY_LABELS.stockTab}
           </Button>
         </Box>
 
@@ -1032,6 +1152,52 @@ const InventoryModule: React.FC = () => {
               </Typography>
             </Box>
             <WarningIcon sx={{ position: 'absolute', bottom: 16, right: 16, fontSize: 80, color: '#EF4444', opacity: 0.2 }} />
+          </Box>
+
+          <Box
+            className="summary-card5"
+            sx={{
+              position: 'relative',
+              transition: 'all 0.3s ease-in-out',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: selectedStockType === 'stock' ? 'rgba(92, 23, 229, 0.25)' : 'transparent',
+                borderRadius: '1rem', // 16px = 1rem
+                transition: 'background-color 0.3s ease-in-out',
+                pointerEvents: 'none',
+                zIndex: 1,
+              },
+              '& > *': {
+                position: 'relative',
+                zIndex: 2,
+              }
+            }}
+          >
+            <Typography variant="subtitle2" className="text">
+              {INVENTORY_LABELS.totalStock}
+            </Typography>
+            <Box className="number">
+              <Typography variant="h3" className="big-number">
+                {isSummaryLoading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <>
+                    {inventorySummary?.totalProductCount ?? derivedSummary.stock.count}
+                    <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
+                      (Units: {inventorySummary?.totalQuantity ?? derivedSummary.stock.qty})
+                    </span>
+                  </>
+                )}
+              </Typography>
+              <Typography variant="caption" color="success.main" className="percentage">
+              </Typography>
+            </Box>
+            <Inventory2Icon sx={{ position: 'absolute', bottom: 16, right: 16, fontSize: 80, color: '#10B981', opacity: 0.2 }} />
           </Box>
         </Box>
       </Box>

@@ -227,6 +227,54 @@
       height: 141px;
     }
   }
+
+  .summary-card5 {
+    background: #eceff4;
+    padding: 16px;
+    border-radius: 16px;
+    flex: 1;
+    min-width: 192px;
+    position: relative;
+
+    .big-number {
+      font-weight: 600;
+      font-size: 32px;
+      line-height: 36px;
+      font-family: 'Lexend', sans-serif;
+      margin-top: 28px;
+      color: #000000;
+    }
+
+    .number {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: flex-start;
+    }
+
+    .percentage {
+      margin-top: 45px;
+      color: #22c55e;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 16px;
+      font-family: 'Lexend', sans-serif;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .icon {
+      margin-top: 45px;
+    }
+
+    .card-icon5 {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 141px;
+      height: 141px;
+    }
+  }
 }
 
 .search-filters {
@@ -300,23 +348,23 @@
     height: auto; // Allow height to adjust
   }
 
-  .summary-card1, .summary-card2, .summary-card3 {
+  .summary-card1, .summary-card2, .summary-card3, .summary-card4, .summary-card5 {
     padding: 12px;
-    
+
     .text {
       font-size: 14px;
     }
-    
+
     .big-number {
       font-size: 28px;
     }
-    
+
     .percentage {
       font-size: 10px;
     }
-    
+
     // Resize the chart images for smaller screens
-    .card-icon1, .card-icon2, .card-icon3, .card-icon4 {
+    .card-icon1, .card-icon2, .card-icon3, .card-icon4, .card-icon5 {
       width: 100px;
       height: 100px;
     }
