@@ -30,6 +30,36 @@ import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 
+// Invoice table has no payment_mode column — derive it from the payments array.
+// 1 active payment → that payment's method (mapped to dropdown casing).
+// 2+ active payments → 'Multiple' (multi-payment UI handles the breakdown separately).
+// 0 active payments → 'Cash' fallback.
+const PAYMENT_METHOD_MAP: Record<string, string> = {
+  'CASH': 'Cash',
+  'UPI': 'UPI',
+  'CREDIT CARD': 'Credit Card',
+  'CREDITCARD': 'Credit Card',
+  'CARD': 'Credit Card',
+  'BANK TRANSFER': 'Bank Transfer',
+  'BANK': 'Bank Transfer',
+  'CHEQUE': 'Cheque',
+  'INSURANCE': 'Insurance',
+  'GOVERNMENT SCHEMES': 'Government Schemes',
+  'GOVT': 'Government Schemes',
+  'CREDIT': 'Credit',
+  'MULTIPLE': 'Multiple',
+};
+const derivePaymentMode = (paymentsArr: any[], fallback?: string): string => {
+  const arr = Array.isArray(paymentsArr) ? paymentsArr : [];
+  if (arr.length >= 2) return 'Multiple';
+  if (arr.length === 1) {
+    const raw = String(arr[0]?.payment_method || arr[0]?.paymentMethod || arr[0]?.payment_mode || '').trim();
+    if (!raw) return fallback || 'Cash';
+    return PAYMENT_METHOD_MAP[raw.toUpperCase()] || raw;
+  }
+  return fallback || 'Cash';
+};
+
 export interface SalesHistoryItem {
   id: number;
   invoiceNumber: string;
@@ -235,9 +265,8 @@ export default function SaleHistory() {
       const hasReturn = invoice.has_return !== undefined ? invoice.has_return : (rawReturnStatus.toLowerCase() !== 'no return' && rawReturnStatus.toLowerCase() !== 'none');
 
       const splitPayments = invoice.split_payments || [];
-      const paymentMode = (splitPayments && splitPayments.length > 0)
-        ? splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ')
-        : (invoice.payment_mode || 'Cash');
+      // Derive paymentMode from the active payments themselves (Invoice has no payment_mode column).
+      const paymentMode = derivePaymentMode(splitPayments, invoice.payment_mode);
 
       return {
         id: tableRowId, // Internal frontend ID (must be unique)
@@ -560,7 +589,8 @@ export default function SaleHistory() {
             doctorName: doc?.name || initialDetails.doctorName,
             doctorMobile: doc?.mobile_number || initialDetails.doctorMobile,
             doctorEmail: doc?.email_id || initialDetails.doctorEmail,
-            paymentMode: inv.payment_mode || initialDetails.paymentMode,
+            // payments here is already filtered to active rows; derive the mode from it.
+            paymentMode: derivePaymentMode(payments, inv.payment_mode || initialDetails.paymentMode),
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
             invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
             invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('DD/MM/YYYY') : initialDetails.invoiceDate,
