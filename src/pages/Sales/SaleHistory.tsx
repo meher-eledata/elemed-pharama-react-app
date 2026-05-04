@@ -93,6 +93,7 @@ export default function SaleHistory() {
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
 
+
   const [returnInfoMap, setReturnInfoMap] = useState<Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
@@ -485,7 +486,14 @@ export default function SaleHistory() {
           const cust = result.customer || result.data?.customer;
           const doc = result.doctor || result.data?.doctor;
           const lines = result.lines || result.data?.lines || [];
-          const payments = result.payments || result.data?.payments || [];
+          // Backend currently returns voided payments alongside active ones; skip them so
+          // the receipt doesn't show duplicate / stale entries (e.g., old UPI: 13 next to new UPI: 36).
+          // Remove this filter once getInvoiceDetails returns only active payments.
+          const payments = (result.payments || result.data?.payments || []).filter((p: any) => {
+            const status = String(p?.status || '').toUpperCase();
+            const paymentStatus = String(p?.payment_status || '').toUpperCase();
+            return status !== 'VOID' && paymentStatus !== 'VOIDED';
+          });
 
           console.log('✅ Full details received from API:', result);
 
@@ -1000,7 +1008,7 @@ export default function SaleHistory() {
             <Tooltip title="Edit" arrow placement="top">
               <EditIcon
                 sx={{
-                  fontSize: '1.5rem', // 24px = 1.5rem 
+                  fontSize: '1.5rem', // 24px = 1.5rem
                   color: '#000000',
                   cursor: 'pointer',
                   padding: '0.25rem', // 4px = 0.25rem
@@ -1742,6 +1750,7 @@ export default function SaleHistory() {
         onClose={handleConfirmDialogClose}
         onConfirm={handleConfirmDialogConfirm}
       />
+
     </Box>
   );
 }

@@ -40,6 +40,7 @@ import {
   useGetExpiredStockQuery,
   useGetNearExpiryStockQuery,
   useGetInventorySummaryQuery,
+  useGetTotalStockQuery,
   useUpdateMinQuantityMutation,
 } from '../../redux/slices/inventoryApi';
 import { extractErrorMessage } from '../../utils/errorUtils';
@@ -185,6 +186,9 @@ const InventoryModule: React.FC = () => {
 
   const { data: inventorySummary, isLoading: isSummaryLoading, error: summaryError } =
     useGetInventorySummaryQuery();
+
+  const { data: totalStockData, isLoading: isTotalStockLoading, error: totalStockError } =
+    useGetTotalStockQuery();
 
   // DERIVED SUMMARY: Calculate counts and quantities from the actual lists
   // This ensures the summary cards match the table data exactly.

@@ -27,9 +27,18 @@ export interface InventorySummary {
   withinThreeMonthsTotalQuantity: number;
   withinOneMonthCount: number;
   withinOneMonthTotalQuantity: number;
-  // Overall stock — pending backend; field names to be confirmed with Meher.
-  totalProductCount?: number;
-  totalQuantity?: number;
+}
+
+export interface TotalStockProduct {
+  product_id: number;
+  name: string;
+  totalQuantity: number;
+}
+
+export interface TotalStockResponse {
+  totalProductCount: number;
+  totalQuantity: number;
+  products: TotalStockProduct[];
 }
 
 // Add Product interfaces
@@ -158,7 +167,7 @@ export interface AdjustInventoryBatchLine {
 }
 
 export interface AdjustInventoryBatchesRequest {
-  user: string;
+  username: string;
   product_id: number;
   lines: AdjustInventoryBatchLine[];
 }
@@ -263,6 +272,10 @@ export const inventoryApi = createApi({
       query: () => "inventory/get-alert-counts/",
       providesTags: ["Inventory"],
     }),
+    getTotalStock: builder.query<TotalStockResponse, void>({
+      query: () => "inventory/get-total-stock",
+      providesTags: ["Inventory"],
+    }),
     addProduct: builder.mutation<AddProductResponse, AddProductRequest>({
       query: (body) => ({
         url: "inventory/add-product/",
@@ -341,6 +354,7 @@ export const {
   useGetExpiredStockQuery,
   useGetNearExpiryStockQuery,
   useGetInventorySummaryQuery,
+  useGetTotalStockQuery,
   useAddProductMutation,
   useGetBatchesForProductMutation,
   useGetAllBrandsQuery,

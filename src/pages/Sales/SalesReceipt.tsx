@@ -1,6 +1,7 @@
 import React, { useState, ChangeEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Box } from '@mui/material';
+import { Box, Typography } from '@mui/material';
+import DeleteInvoiceDialog from '../../components/DeleteDialogue/DeleteInvoiceDialog';
 import { StandardButton } from '../../components/Common';
 import { useDispatch, useSelector } from 'react-redux';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,6 +24,7 @@ import {
   useEditSaleMutation,
   useDeleteSalesMutation,
   useUpsertInvoicePaymentsMutation,
+  useDeleteInvoiceMutation,
 
 
   useGetCustomerPhonesMutation,
@@ -52,7 +54,7 @@ import { Toast } from './components/Toast';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getTodayDate, generatePrintHTML, calculateFinancialSummary } from './SalesReceipt.utils';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
-import { transformCartItemsForEdit } from './SalesReceipt.handlers';
+import { transformCartItemsForEdit, mergeCartWithApiItems } from './SalesReceipt.handlers';
 import { getTableColumns } from './SalesReceipt.columns';
 import { useCartLoader } from './hooks/useCartLoader';
 import { useFormPersistence } from './hooks/useFormPersistence';
@@ -82,6 +84,8 @@ const SalesReceipt: React.FC = () => {
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
+  const [deleteInvoice, { isLoading: isDeletingInvoice }] = useDeleteInvoiceMutation();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [upsertInvoicePayments] = useUpsertInvoicePaymentsMutation();
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [deleteSales] = useDeleteSalesMutation();
@@ -301,7 +305,14 @@ const SalesReceipt: React.FC = () => {
             if (result) {
               const invoice = result.invoice || {};
               const lines = result.lines || [];
-              const payments = result.payments || [];
+              // Backend currently returns voided payments alongside active ones; skip them so
+              // the editor doesn't load stale rows (e.g., old UPI: 13 next to new UPI: 36).
+              // Remove this filter once getInvoiceDetails returns only active payments.
+              const payments = (result.payments || []).filter((p: any) => {
+                const status = String(p?.status || '').toUpperCase();
+                const paymentStatus = String(p?.payment_status || '').toUpperCase();
+                return status !== 'VOID' && paymentStatus !== 'VOIDED';
+              });
 
               // Map payments from API to splitPayments state.
               // For MULTIPLE-mode invoices load all available payment records (even just 1),
@@ -431,7 +442,36 @@ const SalesReceipt: React.FC = () => {
                 doctorName: result.doctor_name || result.invoice?.doctor_name || editModeData.doctorName || '',
                 doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || editModeData.doctorMobile || '',
                 doctorEmail: result.doctor_email || result.invoice?.doctor_email || editModeData.doctorEmail || '',
-                paymentMode: result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || 'Cash',
+                // Invoice table has no payment_mode column — derive it from the payments array.
+                // 1 payment → that payment's method (mapped to dropdown casing).
+                // 2+ payments → 'Multiple' (multi-payment UI handles the breakdown separately).
+                // 0 payments → fall back to 'Cash'.
+                paymentMode: (() => {
+                  // Reuse the already-filtered active payments (voided rows excluded above).
+                  const paymentsArr = payments;
+                  if (paymentsArr.length >= 2) return 'Multiple';
+                  if (paymentsArr.length === 1) {
+                    const raw = String(paymentsArr[0].payment_method || paymentsArr[0].payment_mode || '').trim();
+                    const upper = raw.toUpperCase();
+                    const map: Record<string, string> = {
+                      'CASH': 'Cash',
+                      'UPI': 'UPI',
+                      'CREDIT CARD': 'Credit Card',
+                      'CREDITCARD': 'Credit Card',
+                      'CARD': 'Credit Card',
+                      'BANK TRANSFER': 'Bank Transfer',
+                      'BANK': 'Bank Transfer',
+                      'CHEQUE': 'Cheque',
+                      'INSURANCE': 'Insurance',
+                      'GOVERNMENT SCHEMES': 'Government Schemes',
+                      'GOVT': 'Government Schemes',
+                      'CREDIT': 'Credit',
+                      'MULTIPLE': 'Multiple',
+                    };
+                    return map[upper] || raw || 'Cash';
+                  }
+                  return result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || 'Cash';
+                })(),
                 insuranceCompany: result.insurance_company || result.invoice?.insurance_company || editModeData.insuranceCompany || '',
                 patientType: (() => {
                   const raw = invoice.patient_type !== undefined ? invoice.patient_type : (invoice as any).patientType;
@@ -478,13 +518,18 @@ const SalesReceipt: React.FC = () => {
                   });
                 })(),
                 salesItems: mappedSalesItems,
-                // CRITICAL: In Edit Mode, we MUST prioritize mappedSalesItems from the API 
-                // because they contain the real database invoice_line_id. 
-                // Using editModeData (from LocalStorage) often uses synthetic IDs, 
-                // which causes the backend to treat edits as "New" items and fail stock checks.
-                finalSalesItems: isEditMode ? mappedSalesItems : (editModeData.salesItems && editModeData.salesItems.length > 0
-                  ? editModeData.salesItems
-                  : mappedSalesItems),
+                // In Edit Mode, prefer the user's current cart (which may include newly-added
+                // products from the "Add Products to Cart" round trip) but merge it with the
+                // API items so existing rows keep their real invoice_line_id. New rows stay
+                // unmatched and the save handler will correctly send them in the "Added" bucket.
+                // If the user opened the invoice fresh (no cartItems passed), fall back to API.
+                finalSalesItems: isEditMode
+                  ? (Array.isArray(editModeData.cartItems) && editModeData.cartItems.length > 0
+                      ? mergeCartWithApiItems(editModeData.cartItems, mappedSalesItems)
+                      : mappedSalesItems)
+                  : (editModeData.salesItems && editModeData.salesItems.length > 0
+                      ? editModeData.salesItems
+                      : mappedSalesItems),
                 totalValue: (isEditMode)
                   ? (invoice.total_amount?.toString() || result.total_value?.toString() || result.totalValue?.toString() || '0')
                   : (editModeData.salesItems && editModeData.salesItems.length > 0
@@ -877,6 +922,29 @@ const SalesReceipt: React.FC = () => {
   const handleCancelClick = () => {
     setEditingRowId(null);
     setApplyGstToAll(false);
+  };
+
+  // Permanently delete the invoice currently being edited.
+  // Backend restores stock and recalculates totals; cache invalidation refreshes the
+  // Sale History list, so we just navigate back after success.
+  const handleConfirmDeleteInvoice = async (reason: string) => {
+    if (!resolvedInvoiceId || resolvedInvoiceId <= 0) {
+      showToast('Invoice ID could not be resolved. Please refresh and try again.', 'error');
+      return;
+    }
+    try {
+      await deleteInvoice({
+        invoice_id: resolvedInvoiceId,
+        deleted_by: user?.username || 'Guest',
+        deletion_reason: reason,
+      }).unwrap();
+      showToast(`Invoice ${invoiceNumber || ''} deleted successfully`, 'success');
+      setIsDeleteDialogOpen(false);
+      setTimeout(() => navigate('/sales'), 800);
+    } catch (err) {
+      const errorMessage = (err as any)?.data?.error || (err as any)?.data?.message || (err as any)?.message || 'Failed to delete invoice. Please try again.';
+      showToast(String(errorMessage), 'error');
+    }
   };
 
   const handleDeleteClick = (itemId?: string) => {
@@ -1586,15 +1654,74 @@ const SalesReceipt: React.FC = () => {
         />
 
         {!isReturnDetailsMode && (
-          <ActionButtons
-            onCancel={handleCancel}
-            onSave={handleSave}
-            onPrint={handlePrint}
-            isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
-            hidePrintButton={isEditMode}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mt: '24px' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#616161' }}>Page Size:</Typography>
+                <Box sx={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '2px' }}>
+                  {(['A4', 'A5'] as const).map((size) => (
+                    <Box
+                      key={size}
+                      onClick={() => setPageSize(size)}
+                      sx={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        backgroundColor: pageSize === size ? '#FFFFFF' : 'transparent',
+                        color: pageSize === size ? '#5C17E5' : '#6B7280',
+                        boxShadow: pageSize === size ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          backgroundColor: pageSize === size ? '#FFFFFF' : '#E5E7EB',
+                        },
+                      }}
+                    >
+                      {size}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+              {isEditMode && resolvedInvoiceId > 0 && (
+                <Typography
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setIsDeleteDialogOpen(true);
+                    }
+                  }}
+                  sx={{
+                    color: '#DC2626',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    fontFamily: "'Lexend', sans-serif",
+                    userSelect: 'none',
+                    '&:hover': {
+                      color: '#B91C1C',
+                      textDecoration: 'underline',
+                    },
+                  }}
+                >
+                  Delete Invoice
+                </Typography>
+              )}
+            </Box>
+            <ActionButtons
+              onCancel={handleCancel}
+              onSave={handleSave}
+              onPrint={handlePrint}
+              isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
+              hidePrintButton={isEditMode}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              hidePageSize
+            />
+          </Box>
         )}
 
         <CustomerModal
@@ -1688,6 +1815,14 @@ const SalesReceipt: React.FC = () => {
           onSave={(payments) => { setSplitPayments(payments); setPaymentMode(''); }}
           totalAmount={parseFloat(totalPayableAmount) || 0}
           existingPayments={splitPayments}
+        />
+
+        <DeleteInvoiceDialog
+          open={isDeleteDialogOpen}
+          invoiceNumber={invoiceNumber || ''}
+          isDeleting={isDeletingInvoice}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onConfirm={handleConfirmDeleteInvoice}
         />
       </SalesReceiptContainer>
     </>

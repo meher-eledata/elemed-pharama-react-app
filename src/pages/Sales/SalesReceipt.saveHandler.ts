@@ -381,14 +381,13 @@ export const executeSave = async ({
       const result = await editSale(editSalePayload).unwrap();
       console.log('✅ Backend API Response (edit-sale):', result);
 
-      // Synchronize multiple payments in Edit Mode
-      if (invoiceId && splitPayments && splitPayments.length > 0 && upsertInvoicePayments) {
-        console.log('🔄 Syncing split payments during Edit Mode...');
-        try {
-          await upsertInvoicePayments({
-            invoice_id: Number(invoiceId),
-            created_by: user?.username || 'Guest',
-            payments: splitPayments.map(p => {
+      // Synchronize payments in Edit Mode (covers both split and single-payment cases).
+      // editSale only updates the Invoice row; the Payment table is owned by upsert-invoice-payments,
+      // so we always call it after editSale to keep payment records in sync with the new bill total.
+      if (invoiceId && upsertInvoicePayments) {
+        const hasSplit = Array.isArray(splitPayments) && splitPayments.length > 0;
+        const paymentsPayload = hasSplit
+          ? splitPayments.map(p => {
               const paymentId = (p.id && !p.id.toString().startsWith('payment-') && !p.id.toString().startsWith('existing-payment-')) ? parseInt(p.id.toString(), 10) : undefined;
               return {
                 id: paymentId,
@@ -401,6 +400,22 @@ export const executeSave = async ({
                 details: p.details || null
               };
             })
+          : [{
+              payment_method: backendPaymentMethod,
+              direction: 'IN',
+              payment_amount: parseFloat(totalPayableAmount || '0'),
+              transaction_date: new Date().toISOString(),
+              transaction_number: '',
+              payment_vendor: null,
+              details: null
+            }];
+
+        console.log(hasSplit ? '🔄 Syncing split payments during Edit Mode...' : '🔄 Syncing single payment during Edit Mode...');
+        try {
+          await upsertInvoicePayments({
+            invoice_id: Number(invoiceId),
+            created_by: user?.username || 'Guest',
+            payments: paymentsPayload
           }).unwrap();
           console.log('✅ Edit-mode payments synced successfully');
         } catch (paymentError) {

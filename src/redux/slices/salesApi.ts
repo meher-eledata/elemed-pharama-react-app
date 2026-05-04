@@ -615,6 +615,30 @@ export const salesApi = createApi({
       invalidatesTags: ["Sales"],
     }),
 
+    // Permanently delete an invoice with a reason. Backend restores stock
+    // and recalculates totals; we invalidate Sales + Inventory so the table
+    // and stock counts refresh automatically.
+    deleteInvoice: builder.mutation<{ message: string } & Record<string, any>, {
+      invoice_id: number;
+      deleted_by: string;
+      deletion_reason: string;
+    }>({
+      query: (body) => ({
+        url: "sales/delete-invoice",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Sales", "Inventory"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
+          dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
+          dispatch(reportsApi.util.invalidateTags(["Reports"]));
+        } catch (error) { }
+      },
+    }),
+
 
   }),
 });
@@ -651,5 +675,6 @@ export const {
   useSubmitSalesReturnMutation,
   useEditSaleMutation,
   useUpsertInvoicePaymentsMutation,
+  useDeleteInvoiceMutation,
 
 } = salesApi;

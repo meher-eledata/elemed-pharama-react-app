@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Typography, Snackbar, Alert } from "@mui/material";
 import { StandardButton } from "../../components/Common";
 import { useDispatch, useSelector } from "react-redux";
@@ -156,6 +156,7 @@ const products: Product[] = [
 
 export default function SalePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   // Redux selectors
@@ -720,7 +721,7 @@ export default function SalePage() {
     }
 
     const totalAmount = cartTotal; // Use Redux selector
-    const editState = (location as any).state || {};
+    const editState = (location.state as any) || {};
 
     navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
       state: {

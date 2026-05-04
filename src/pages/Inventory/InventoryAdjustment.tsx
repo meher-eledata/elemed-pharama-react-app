@@ -10,6 +10,7 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  Snackbar,
   TextField,
   Typography,
   CircularProgress,
@@ -41,6 +42,7 @@ import {
   ProductForBrand,
   TypeForBrandAndProduct,
 } from '../../redux/slices/inventoryApi';
+import { extractErrorMessage } from '../../utils/errorUtils';
 
 type BatchRow = {
   id: string;
@@ -145,6 +147,16 @@ const InventoryAdjustment: React.FC = () => {
   const [productsForBrand, setProductsForBrand] = useState<ProductForBrand[]>([]);
   const [typesForProduct, setTypesForProduct] = useState<TypeForBrandAndProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
 
   const [searchType, setSearchType] = useState<SearchType>('product');
@@ -574,6 +586,7 @@ const InventoryAdjustment: React.FC = () => {
 
     if (!productInfo || !productId || batchRows.length === 0) {
       setConfirmDialogOpen(false);
+      showSnackbar('Please select a product with at least one batch before saving.', 'error');
       return;
     }
 
@@ -591,6 +604,7 @@ const InventoryAdjustment: React.FC = () => {
 
       if (modifiedBatches.length === 0) {
         setConfirmDialogOpen(false);
+        showSnackbar('No changes to save.', 'error');
         return;
       }
 
@@ -615,7 +629,7 @@ const InventoryAdjustment: React.FC = () => {
       });
 
       await adjustInventoryBatches({
-        user: username,
+        username,
         product_id: productId,
         lines,
       }).unwrap();
@@ -637,6 +651,7 @@ const InventoryAdjustment: React.FC = () => {
       );
 
       setConfirmDialogOpen(false);
+      showSnackbar('Inventory adjustment saved successfully.', 'success');
 
       // Refresh batches to get latest data
       const productIdToRefresh = selectedType?.product_id || productInfo?.product_id;
@@ -645,8 +660,8 @@ const InventoryAdjustment: React.FC = () => {
       }
     } catch (error) {
       console.error('Error adjusting inventory:', error);
-      // TODO: Show error toast/notification
       setConfirmDialogOpen(false);
+      showSnackbar(extractErrorMessage(error, 'Failed to save inventory adjustment.'), 'error');
     }
   };
 
@@ -1457,6 +1472,21 @@ const InventoryAdjustment: React.FC = () => {
         confirmLabel="Confirm"
         cancelLabel="Cancel"
       />
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -229,7 +229,13 @@ export default function SaleReturn() {
               product_name: line.name || line.product_name,
               is_same_as_invoice_id: line.invoice_line_id === line.invoice_id,
             })));
-            const payments = result.payments || [];
+            // Backend currently returns voided payments alongside active ones; skip them.
+            // Remove once getInvoiceDetails filters voided records.
+            const payments = (result.payments || []).filter((p: any) => {
+              const status = String(p?.status || '').toUpperCase();
+              const paymentStatus = String(p?.payment_status || '').toUpperCase();
+              return status !== 'VOID' && paymentStatus !== 'VOIDED';
+            });
             const totalRefunded = result.total_refunded || 0;
             const netPaid = result.net_paid || 0;
 
