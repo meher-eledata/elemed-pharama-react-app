@@ -236,6 +236,16 @@ const InventoryModule: React.FC = () => {
         }
         return nearExpiryStockItems as InventoryItem[];
       case 'stock': {
+        // Use the dedicated total-stock endpoint when available — it returns one row per product
+        // with the aggregated quantity across batches/locations. Falls back to a deduped union of
+        // the alert lists if the endpoint hasn't responded yet.
+        if (totalStockData?.products && totalStockData.products.length > 0) {
+          return totalStockData.products.map(p => ({
+            id: p.product_id?.toString() || p.name,
+            name: p.name,
+            currentQuantity: p.totalQuantity,
+          })) as InventoryItem[];
+        }
         const nearExpiryFiltered = nearExpiryMonths === 3
           ? (nearExpiryStockItems as InventoryItem[]).filter(item => (item.daysToExpiry ?? 0) > 30)
           : (nearExpiryStockItems as InventoryItem[]);
@@ -249,7 +259,7 @@ const InventoryModule: React.FC = () => {
       default:
         return [];
     }
-  }, [selectedStockType, lowStockItems, excessStockItems, expiredStockItems, nearExpiryStockItems, nearExpiryMonths]);
+  }, [selectedStockType, lowStockItems, excessStockItems, expiredStockItems, nearExpiryStockItems, nearExpiryMonths, totalStockData]);
 
   const isLoading = useMemo(() => {
     switch (selectedStockType) {
@@ -262,11 +272,11 @@ const InventoryModule: React.FC = () => {
       case 'nearExpiry':
         return isNearExpiryStockLoading;
       case 'stock':
-        return isLowStockLoading || isExcessStockLoading || isExpiredStockLoading || isNearExpiryStockLoading;
+        return isTotalStockLoading || isLowStockLoading || isExcessStockLoading || isExpiredStockLoading || isNearExpiryStockLoading;
       default:
         return false;
     }
-  }, [selectedStockType, isLowStockLoading, isExcessStockLoading, isExpiredStockLoading, isNearExpiryStockLoading]);
+  }, [selectedStockType, isLowStockLoading, isExcessStockLoading, isExpiredStockLoading, isNearExpiryStockLoading, isTotalStockLoading]);
 
   const error = useMemo(() => {
     switch (selectedStockType) {
@@ -279,11 +289,11 @@ const InventoryModule: React.FC = () => {
       case 'nearExpiry':
         return nearExpiryStockError;
       case 'stock':
-        return lowStockError || excessStockError || expiredStockError || nearExpiryStockError;
+        return totalStockError || lowStockError || excessStockError || expiredStockError || nearExpiryStockError;
       default:
         return null;
     }
-  }, [selectedStockType, lowStockError, excessStockError, expiredStockError, nearExpiryStockError]);
+  }, [selectedStockType, lowStockError, excessStockError, expiredStockError, nearExpiryStockError, totalStockError]);
 
   useEffect(() => {
     setPage(1);
@@ -527,11 +537,7 @@ const InventoryModule: React.FC = () => {
       case 'stock':
         headers = [
           { label: INVENTORY_LABELS.productNameHeader, key: 'name' },
-          { label: INVENTORY_LABELS.brandHeader, key: 'brand' },
-          { label: INVENTORY_LABELS.typeHeader, key: 'type' },
-          { label: INVENTORY_LABELS.batchNoHeader, key: 'batchNumber' },
           { label: INVENTORY_LABELS.currentQuantityHeader, key: 'currentQuantity' },
-          { label: INVENTORY_LABELS.expiryDateHeader, key: 'expiryDate' },
         ];
         break;
     }
@@ -578,7 +584,9 @@ const InventoryModule: React.FC = () => {
   // Lookup: returns the alert categories a given stock item belongs to.
   // Used by the "Stock" tab to render Low / Excess / Near Expiry / Expired chips next to the product.
   const stockTagLookup = useMemo(() => {
-    const makeKey = (item: any) => `${item.id || item.name}-${item.batchNumber || ''}`;
+    // Match by product id only — total-stock rows from the new endpoint don't carry batch info.
+    // A product is "in" a category if ANY of its batches is in that category's alert list.
+    const makeKey = (item: any) => String(item.id || item.name || '');
     const nearExpiryFiltered = nearExpiryMonths === 3
       ? (nearExpiryStockItems as InventoryItem[]).filter(i => (i.daysToExpiry ?? 0) > 30)
       : (nearExpiryStockItems as InventoryItem[]);
@@ -812,14 +820,12 @@ const InventoryModule: React.FC = () => {
         ];
         break;
       case 'stock':
+        // The dedicated total-stock endpoint only carries product name + total quantity
+        // (aggregated across batches), so this tab shows a simplified two-column view.
         cols = [
           { key: 'checkbox', header: '', headerRender: renderHeaderCheckbox, render: renderRowCheckbox, sortable: false },
           { key: 'name', header: INVENTORY_LABELS.productNameHeader, render: renderStockProductCell },
-          { key: 'brand', header: INVENTORY_LABELS.brandHeader, render: (item) => (item as InventoryItem).brand || '-' },
-          { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
-          { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber || '-' },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
-          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate ? dayjs((item as InventoryItem).expiryDate).format('DD/MM/YYYY') : '-' },
         ];
         break;
     }
@@ -1187,13 +1193,13 @@ const InventoryModule: React.FC = () => {
             </Typography>
             <Box className="number">
               <Typography variant="h3" className="big-number">
-                {isSummaryLoading ? (
+                {(isSummaryLoading || isTotalStockLoading) ? (
                   <CircularProgress size={24} />
                 ) : (
                   <>
-                    {inventorySummary?.totalProductCount ?? derivedSummary.stock.count}
+                    {totalStockData?.totalProductCount ?? derivedSummary.stock.count}
                     <span style={{ fontSize: '1rem', marginLeft: '8px', opacity: 0.8 }}>
-                      (Units: {inventorySummary?.totalQuantity ?? derivedSummary.stock.qty})
+                      (Units: {totalStockData?.totalQuantity ?? derivedSummary.stock.qty})
                     </span>
                   </>
                 )}

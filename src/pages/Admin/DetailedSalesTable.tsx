@@ -223,7 +223,7 @@ const DetailedSalesTable: React.FC = () => {
         <Typography sx={{
           fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
           fontSize: '14px',
-          color: item.transactionType.toLowerCase() === 'return' || item.transactionType.toLowerCase() === 'refund' ? '#DC2626' : '#10B981',
+          color: ['return', 'refund', 'deletion'].includes(item.transactionType.toLowerCase()) ? '#DC2626' : '#10B981',
           fontWeight: 500,
         }}>
           {item.transactionType}

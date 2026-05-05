@@ -194,6 +194,9 @@ export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
   baseQuery: baseQueryWithReauth,
   tagTypes: ["Inventory"],
+  // Always refetch when an inventory query's component remounts so counts stay fresh
+  // after a sale/return/edit/delete elsewhere in the app — without needing a manual refresh.
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
     getLowStock: builder.query<InventoryItem[], void>({
       query: () => "inventory/min-quantity/",

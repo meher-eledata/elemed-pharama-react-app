@@ -16,6 +16,7 @@ import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import UndoIcon from '@mui/icons-material/Undo';
+import BlockIcon from '@mui/icons-material/Block';
 import WarningIcon from '@mui/icons-material/Warning';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
@@ -82,6 +83,8 @@ export interface SalesHistoryItem {
   lastReturnStatus: string | null;
   createdAt?: string;
   databaseInvoiceId?: number;
+  recordStatus?: string;
+  deletionReason?: string;
   returnInfo?: {
     totalItems: number; // Total items in invoice
     returnedItems: number; // Total items returned
@@ -140,6 +143,7 @@ export default function SaleHistory() {
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
 
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -290,6 +294,8 @@ export default function SaleHistory() {
         paymentMode: paymentMode,
         splitPayments: splitPayments,
         createdAt: invoice.created_at,
+        recordStatus: invoice.record_status || (invoice.deleted_at ? 'DELETED' : 'ACTIVE'),
+        deletionReason: invoice.deletion_reason || undefined,
       };
     });
 
@@ -515,14 +521,20 @@ export default function SaleHistory() {
           const cust = result.customer || result.data?.customer;
           const doc = result.doctor || result.data?.doctor;
           const lines = result.lines || result.data?.lines || [];
-          // Backend currently returns voided payments alongside active ones; skip them so
-          // the receipt doesn't show duplicate / stale entries (e.g., old UPI: 13 next to new UPI: 36).
-          // Remove this filter once getInvoiceDetails returns only active payments.
-          const payments = (result.payments || result.data?.payments || []).filter((p: any) => {
-            const status = String(p?.status || '').toUpperCase();
-            const paymentStatus = String(p?.payment_status || '').toUpperCase();
-            return status !== 'VOID' && paymentStatus !== 'VOIDED';
-          });
+          // Detect deleted invoices — for those we keep ALL payments (including voided)
+          // because the preview is an audit view of what was originally paid before deletion.
+          const isDeletedInvoice = String(inv?.record_status || '').toUpperCase() === 'DELETED' || !!inv?.deleted_at;
+          // For active invoices, backend currently returns voided payments alongside active ones;
+          // skip them so the receipt doesn't show duplicate / stale entries (e.g., old UPI: 13 next to
+          // new UPI: 36). Remove this filter once getInvoiceDetails returns only active payments.
+          const rawPayments = result.payments || result.data?.payments || [];
+          const payments = isDeletedInvoice
+            ? rawPayments
+            : rawPayments.filter((p: any) => {
+                const status = String(p?.status || '').toUpperCase();
+                const paymentStatus = String(p?.payment_status || '').toUpperCase();
+                return status !== 'VOID' && paymentStatus !== 'VOIDED';
+              });
 
           console.log('✅ Full details received from API:', result);
 
@@ -660,6 +672,16 @@ export default function SaleHistory() {
       );
     }
 
+    // Status filter — Return covers all return types (partial/full); Deleted covers soft-deleted invoices.
+    if (selectedStatus && selectedStatus !== 'All') {
+      const status = selectedStatus.toLowerCase();
+      if (status === 'return') {
+        filtered = filtered.filter(item => !!item.hasReturn);
+      } else if (status === 'deleted') {
+        filtered = filtered.filter(item => String(item.recordStatus || '').toUpperCase() === 'DELETED');
+      }
+    }
+
     if (dateRange[0] || dateRange[1]) {
       filtered = filtered.filter(item => {
         const itemDate = dayjs(item.invoiceDate, 'DD/MM/YYYY');
@@ -689,7 +711,7 @@ export default function SaleHistory() {
     });
 
     return filtered;
-  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedCustomer, selectedUsername, dateRange]);
+  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedCustomer, selectedUsername, selectedStatus, dateRange]);
 
   const getUniqueDoctors = useMemo(() => {
     const doctors = [...new Set(salesHistoryData.map(item => item.doctorName || ''))].filter(Boolean);
@@ -710,6 +732,7 @@ export default function SaleHistory() {
     setSelectedDoctor(null);
     setSelectedCustomer(null);
     setSelectedUsername(null);
+    setSelectedStatus('All');
     setDateRange([null, null]);
     setCurrentSearchTerm('');
     setCurrentFilter({});
@@ -879,46 +902,65 @@ export default function SaleHistory() {
       key: 'invoiceNumber',
       header: SALES_HISTORY_LABELS.TABLE.INVOICE,
       sortable: true,
-      render: (item) => (
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: '0.125rem', // 2px = 0.125rem
-          minHeight: '1.5rem', // 24px = 1.5rem
-          width: '100%',
-          position: 'relative'
-        }}>
-          <VisibilityIcon
-            sx={{
-              fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
-              color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
-              cursor: 'pointer',
-              padding: '0.125rem', // 2px = 0.125rem
-              borderRadius: '0.25rem', // 4px = 0.25rem
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-                color: '#666'
-              }
-            }}
-            onClick={() => handleViewInvoice(item.id)}
-          />
-          <span style={{
-            flex: 1,
-            marginLeft: '0.25rem', // 4px = 0.25rem
-            fontWeight: 500,
-            fontSize: '0.875rem', // 14px = 0.875rem
-            color: '#1A212B'
+      render: (item) => {
+        const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
+        return (
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '0.125rem', // 2px = 0.125rem
+            minHeight: '1.5rem', // 24px = 1.5rem
+            width: '100%',
+            position: 'relative',
+            whiteSpace: 'nowrap',
+            flexWrap: 'nowrap'
           }}>
-            {item.invoiceNumber}
-          </span>
-        </Box>
-      ),
+            <VisibilityIcon
+              sx={{
+                fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
+                color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
+                cursor: 'pointer',
+                padding: '0.125rem', // 2px = 0.125rem
+                borderRadius: '0.25rem', // 4px = 0.25rem
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5',
+                  color: '#666'
+                }
+              }}
+              onClick={() => handleViewInvoice(item.id)}
+            />
+            {isDeleted && (
+              <Tooltip title="Invoice is deleted" arrow placement="top">
+                <BlockIcon
+                  sx={{
+                    fontSize: '1rem', // 16px
+                    color: '#DC2626',
+                    flexShrink: 0,
+                    marginLeft: '0.25rem', // 4px
+                  }}
+                />
+              </Tooltip>
+            )}
+            <span style={{
+              marginLeft: '0.25rem', // 4px = 0.25rem
+              fontWeight: 500,
+              fontSize: '0.8125rem', // 13px — keeps long numbers + icon on one line
+              color: '#1A212B',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {item.invoiceNumber}
+            </span>
+          </Box>
+        );
+      },
     },
     {
       key: 'invoiceDate',
@@ -1027,45 +1069,48 @@ export default function SaleHistory() {
       render: (item) => {
         const returnStatus = getReturnStatus(item);
         const isFullyReturned = returnStatus.status === 'full';
+        const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
 
         return (
           <Box sx={{
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: '0.5rem' // 8px = 0.5rem 
+            gap: '0.5rem' // 8px = 0.5rem
           }}>
-            <Tooltip title="Edit" arrow placement="top">
+            <Tooltip title={isDeleted ? 'Invoice is deleted' : 'Edit'} arrow placement="top">
               <EditIcon
                 sx={{
                   fontSize: '1.5rem', // 24px = 1.5rem
-                  color: '#000000',
-                  cursor: 'pointer',
+                  color: isDeleted ? '#9CA3AF' : '#000000',
+                  cursor: isDeleted ? 'not-allowed' : 'pointer',
                   padding: '0.25rem', // 4px = 0.25rem
                   borderRadius: '0.25rem', // 4px = 0.25rem
-                  '&:hover': {
+                  opacity: isDeleted ? 0.5 : 1,
+                  '&:hover': isDeleted ? {} : {
                     backgroundColor: '#f5f5f5',
                     color: '#000000'
                   }
                 }}
-                onClick={() => handleEditInvoice(item.id)}
+                onClick={isDeleted ? undefined : () => handleEditInvoice(item.id)}
               />
             </Tooltip>
             {!isFullyReturned && (
-              <Tooltip title="Return" arrow placement="top">
+              <Tooltip title={isDeleted ? 'Invoice is deleted' : 'Return'} arrow placement="top">
                 <UndoIcon
                   sx={{
-                    fontSize: '1.5rem', // 24px = 1.5rem 
-                    color: '#000000',
-                    cursor: 'pointer',
+                    fontSize: '1.5rem', // 24px = 1.5rem
+                    color: isDeleted ? '#9CA3AF' : '#000000',
+                    cursor: isDeleted ? 'not-allowed' : 'pointer',
                     padding: '0.25rem', // 4px = 0.25rem
                     borderRadius: '0.25rem', // 4px = 0.25rem
-                    '&:hover': {
+                    opacity: isDeleted ? 0.5 : 1,
+                    '&:hover': isDeleted ? {} : {
                       backgroundColor: '#f5f5f5',
                       color: '#000000'
                     }
                   }}
-                  onClick={() => handleReturnInvoice(item.id)}
+                  onClick={isDeleted ? undefined : () => handleReturnInvoice(item.id)}
                 />
               </Tooltip>
             )}
@@ -1613,6 +1658,49 @@ export default function SaleHistory() {
                     size="small"
                     sx={{
                       width: 220,
+                      '& .MuiOutlinedInput-root': {
+                        height: 'auto',
+                        borderRadius: '30px',
+                        backgroundColor: '#ffffff',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontSize: '14px',
+                        color: '#1A212B',
+                        '& fieldset': { borderColor: '#D1D5DB' },
+                        '&:hover fieldset': { borderColor: '#D1D5DB' },
+                        '&.Mui-focused fieldset': { borderColor: '#D1D5DB' },
+                      }
+                    }}
+                  />
+                )}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: '300px',
+                    '& .MuiAutocomplete-option': {
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      '&:hover': { backgroundColor: '#5C17E5', color: '#ffffff' },
+                      '&[aria-selected="true"]': { backgroundColor: '#F3F4F6' }
+                    }
+                  }
+                }}
+              />
+            </Box>
+
+            {/* Status Filter (All / Return / Deleted) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography sx={{ fontSize: '12px', color: '#728197' }}>Status</Typography>
+              <Autocomplete
+                options={['All', 'Return', 'Deleted']}
+                value={selectedStatus}
+                onChange={(_, newValue) => setSelectedStatus(newValue || 'All')}
+                disableClearable
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All"
+                    size="small"
+                    sx={{
+                      width: 180,
                       '& .MuiOutlinedInput-root': {
                         height: 'auto',
                         borderRadius: '30px',

@@ -3,6 +3,7 @@ import { baseQueryWithReauth } from "../baseQuery";
 import { dashboardApi } from "./dashboardApi";
 import { inventoryApi } from "./inventoryApi";
 import { reportsApi } from "./reportsApi";
+import { receiveApi } from "./receiveApi";
 
 // Debounced validation endpoint - prevents excessive API calls
 export const createDebouncedValidateSale = () => {
@@ -340,6 +341,7 @@ export const salesApi = createApi({
           dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
           dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
           dispatch(reportsApi.util.invalidateTags(["Reports"]));
+          dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
     }),
@@ -376,6 +378,7 @@ export const salesApi = createApi({
           dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
           dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
           dispatch(reportsApi.util.invalidateTags(["Reports"]));
+          dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
     }),
@@ -393,6 +396,7 @@ export const salesApi = createApi({
           dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
           dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
           dispatch(reportsApi.util.invalidateTags(["Reports"]));
+          dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
     }),
@@ -410,6 +414,7 @@ export const salesApi = createApi({
           dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
           dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
           dispatch(reportsApi.util.invalidateTags(["Reports"]));
+          dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
     }),
@@ -505,6 +510,7 @@ export const salesApi = createApi({
           dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
           dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
           dispatch(reportsApi.util.invalidateTags(["Reports"]));
+          dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
     }),
@@ -593,6 +599,7 @@ export const salesApi = createApi({
           dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
           dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
           dispatch(reportsApi.util.invalidateTags(["Reports"]));
+          dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
     }),
@@ -635,6 +642,7 @@ export const salesApi = createApi({
           dispatch(dashboardApi.util.invalidateTags(["Dashboard"]));
           dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
           dispatch(reportsApi.util.invalidateTags(["Reports"]));
+          dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
     }),

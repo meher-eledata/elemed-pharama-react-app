@@ -167,8 +167,12 @@ export const createCartItem = (
     : [];
   const finalProductType = productType || (typesArray.length > 0 ? typesArray[0] : 'UNKNOWN');
 
-  // Always use validatedData.selling_price as the base unit price, fallback to mrp
-  let unitSellingPrice = validatedData.selling_price || validatedData.mrp;
+  // Use validatedData.selling_price (per-unit) when backend provides it.
+  // Otherwise fall back to the same formula the backend uses: mrp / pack_qty.
+  // Final fallback to mrp only if pack_qty is missing/zero (treats item as already unit-priced).
+  const packQtyForCalc = Number(validatedData?.pack_qty) || 0;
+  let unitSellingPrice = validatedData.selling_price
+    ?? (packQtyForCalc > 0 ? validatedData.mrp / packQtyForCalc : validatedData.mrp);
 
   // The client expects MRP to be the STRIP MRP, not the Total Base Price.
   // The 'validatedData.mrp' from the backend is the Strip MRP.
