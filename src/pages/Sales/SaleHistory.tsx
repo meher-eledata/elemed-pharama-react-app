@@ -531,10 +531,10 @@ export default function SaleHistory() {
           const payments = isDeletedInvoice
             ? rawPayments
             : rawPayments.filter((p: any) => {
-                const status = String(p?.status || '').toUpperCase();
-                const paymentStatus = String(p?.payment_status || '').toUpperCase();
-                return status !== 'VOID' && paymentStatus !== 'VOIDED';
-              });
+              const status = String(p?.status || '').toUpperCase();
+              const paymentStatus = String(p?.payment_status || '').toUpperCase();
+              return status !== 'VOID' && paymentStatus !== 'VOIDED';
+            });
 
           console.log('✅ Full details received from API:', result);
 
@@ -902,6 +902,8 @@ export default function SaleHistory() {
       key: 'invoiceNumber',
       header: SALES_HISTORY_LABELS.TABLE.INVOICE,
       sortable: true,
+      columnWidth: '140px',
+      headerAlign: 'center',
       render: (item) => {
         const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
         return (
@@ -997,6 +999,7 @@ export default function SaleHistory() {
       key: 'totalAmount',
       header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
       sortable: true,
+      columnWidth: '110px',
       render: (item) => {
         // Round to 2 decimal places to avoid floating point ghost paise values
         // e.g. 11.06 - 11.06 can give 0.0000000001 instead of 0 in JavaScript
@@ -1023,6 +1026,7 @@ export default function SaleHistory() {
       render: (item) => {
         const returnStatus = getReturnStatus(item);
         const statusText = returnStatus.label;
+        const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
 
         if (returnStatus.status === 'none') {
           return (
@@ -1030,13 +1034,15 @@ export default function SaleHistory() {
               variant="body2"
               sx={{
                 color: '#9CA3AF',
-                cursor: 'pointer',
-                '&:hover': {
+                cursor: isDeleted ? 'not-allowed' : 'pointer',
+                opacity: isDeleted ? 0.5 : 1,
+                pointerEvents: isDeleted ? 'none' : 'auto',
+                '&:hover': isDeleted ? {} : {
                   color: '#6B7280',
                   textDecoration: 'underline'
                 }
               }}
-              onClick={() => handleViewReturnDetails(item.id)}
+              onClick={isDeleted ? undefined : () => handleViewReturnDetails(item.id)}
             >
               {statusText}
             </Typography>
@@ -1046,7 +1052,8 @@ export default function SaleHistory() {
           <Chip
             label={statusText}
             size="small"
-            onClick={() => handleViewReturnDetails(item.id)}
+            disabled={isDeleted}
+            onClick={isDeleted ? undefined : () => handleViewReturnDetails(item.id)}
             sx={{
               backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
               color: returnStatus.status === 'full' ? '#DC2626' : '#D97706',

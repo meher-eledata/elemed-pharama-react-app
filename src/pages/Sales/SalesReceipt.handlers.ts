@@ -135,7 +135,16 @@ export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]): CartI
   }));
 };
 
-const cartToSalesItem = (c: CartItem): SalesReceiptItem => ({
+const cartToSalesItem = (c: CartItem): SalesReceiptItem => {
+  // Receipt's unitPrice is per-unit. Cart's `sp` is strip-level (stripMrp * discountMultiplier),
+  // while `unit_selling_price` is the per-unit price. Prefer the per-unit value; only fall back
+  // to deriving from `sp / quantity` (or `sp` itself for qty=1) when unit_selling_price is missing.
+  const qty = Number(c.quantity) || 1;
+  const perUnit = (c.unit_selling_price && c.unit_selling_price > 0)
+    ? c.unit_selling_price
+    : (qty > 0 ? c.sp / qty : c.sp);
+
+  return {
   id: c.id,
   product_id: c.product_id,
   productName: c.name,
@@ -143,7 +152,7 @@ const cartToSalesItem = (c: CartItem): SalesReceiptItem => ({
   expiryDate: c.expiry,
   quantity: String(c.quantity),
   type: c.type,
-  unitPrice: String(c.sp),
+  unitPrice: String(perUnit),
   mrp: String(c.mrp),
   pack_qty: c.pack_qty,
   discount: '0',
@@ -157,7 +166,8 @@ const cartToSalesItem = (c: CartItem): SalesReceiptItem => ({
   igst: c.igst || '0',
   igstPercent: c.igstPercent || '0',
   amount: c.amount || String(c.totalPrice ?? 0),
-});
+  };
+};
 
 // Merge cart items (user's intended state, including any newly-added rows) with
 // API items (original DB rows that carry the real invoice_line_id). For each

@@ -142,6 +142,9 @@ const InventoryModule: React.FC = () => {
   const { data: nearExpiryStockItems = [], isLoading: isNearExpiryStockLoading, error: nearExpiryStockError } =
     useGetNearExpiryStockQuery({ months: nearExpiryMonths });
 
+  const { data: totalStockData, isLoading: isTotalStockLoading, error: totalStockError } =
+    useGetTotalStockQuery();
+
   const allSearchOptions = useMemo(() => {
     const options: { name: string; category: StockType; id?: string }[] = [];
     const seen = new Set<string>();
@@ -158,9 +161,14 @@ const InventoryModule: React.FC = () => {
     excessStockItems.forEach((item) => addOption(item, 'excess'));
     nearExpiryStockItems.forEach((item) => addOption(item, 'nearExpiry'));
     expiredStockItems.forEach((item) => addOption(item, 'expired'));
+    // Include products from the total-stock endpoint so healthy items (not in any alert)
+    // also appear in the search dropdown when the user is on the Stock tab.
+    (totalStockData?.products || []).forEach((p) =>
+      addOption({ name: p.name, id: p.product_id?.toString() }, 'stock')
+    );
 
     return options;
-  }, [lowStockItems, excessStockItems, nearExpiryStockItems, expiredStockItems]);
+  }, [lowStockItems, excessStockItems, nearExpiryStockItems, expiredStockItems, totalStockData]);
 
   const getCategoryLabel = (category: StockType) => {
     switch (category) {
@@ -186,9 +194,6 @@ const InventoryModule: React.FC = () => {
 
   const { data: inventorySummary, isLoading: isSummaryLoading, error: summaryError } =
     useGetInventorySummaryQuery();
-
-  const { data: totalStockData, isLoading: isTotalStockLoading, error: totalStockError } =
-    useGetTotalStockQuery();
 
   // DERIVED SUMMARY: Calculate counts and quantities from the actual lists
   // This ensures the summary cards match the table data exactly.

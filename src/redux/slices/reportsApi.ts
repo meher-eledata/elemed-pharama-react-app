@@ -55,6 +55,12 @@ export interface DailySalesReportResponse {
   total_returns?: number | string | null;
   inpatient_returns?: number | string | null;
   outpatient_returns?: number | string | null;
+  total_deletions?: number | string | null;
+  inpatient_deletions?: number | string | null;
+  outpatient_deletions?: number | string | null;
+  total_deletion_amount?: number | string | null;
+  inpatient_deletion_amount?: number | string | null;
+  outpatient_deletion_amount?: number | string | null;
   total_discount: number | string | null;
   inpatient_discount: number | string | null;
   outpatient_discount: number | string | null;

@@ -232,10 +232,13 @@ const DailySalesReport: React.FC = () => {
 
     const totalSales = parseVal(apiData.total_sales);
     const totalReturns = parseVal(apiData.total_returns);
+    const totalDeletions = parseVal(apiData.total_deletion_amount);
     const totalSalesInpatient = parseVal(apiData.inpatient_sales);
     const totalSalesOutpatient = parseVal(apiData.outpatient_sales);
     const totalReturnsInpatient = parseVal(apiData.inpatient_returns);
     const totalReturnsOutpatient = parseVal(apiData.outpatient_returns);
+    const totalDeletionsInpatient = parseVal(apiData.inpatient_deletion_amount);
+    const totalDeletionsOutpatient = parseVal(apiData.outpatient_deletion_amount);
 
     return {
       totalBills: parseVal(apiData.total_bills),
@@ -263,10 +266,13 @@ const DailySalesReport: React.FC = () => {
         inpatient: totalReturnsInpatient,
         outpatient: totalReturnsOutpatient,
       },
-      netSales: totalSales - totalReturns,
+      // Net Sales = Total Sales - Returns - Deletions.
+      // Deletions reverse the original sale, so they must subtract just like returns;
+      // otherwise the report's Net Sales won't match the Detailed Sales table totals.
+      netSales: totalSales - totalReturns - totalDeletions,
       netSalesBreakdown: {
-        inpatient: totalSalesInpatient - totalReturnsInpatient,
-        outpatient: totalSalesOutpatient - totalReturnsOutpatient,
+        inpatient: totalSalesInpatient - totalReturnsInpatient - totalDeletionsInpatient,
+        outpatient: totalSalesOutpatient - totalReturnsOutpatient - totalDeletionsOutpatient,
       },
       cashSales: {
         amount: parseVal(apiData.cash_in_hand_total),
