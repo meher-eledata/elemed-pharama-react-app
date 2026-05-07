@@ -135,3 +135,71 @@ export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]): CartI
   }));
 };
 
+const cartToSalesItem = (c: CartItem): SalesReceiptItem => {
+  // Receipt's unitPrice is per-unit. Cart's `sp` is strip-level (stripMrp * discountMultiplier),
+  // while `unit_selling_price` is the per-unit price. Prefer the per-unit value; only fall back
+  // to deriving from `sp / quantity` (or `sp` itself for qty=1) when unit_selling_price is missing.
+  const qty = Number(c.quantity) || 1;
+  const perUnit = (c.unit_selling_price && c.unit_selling_price > 0)
+    ? c.unit_selling_price
+    : (qty > 0 ? c.sp / qty : c.sp);
+
+  return {
+  id: c.id,
+  product_id: c.product_id,
+  productName: c.name,
+  batch: c.batch,
+  expiryDate: c.expiry,
+  quantity: String(c.quantity),
+  type: c.type,
+  unitPrice: String(perUnit),
+  mrp: String(c.mrp),
+  pack_qty: c.pack_qty,
+  discount: '0',
+  discountPercent: String(c.discount ?? 0),
+  discountAuthorizedBy: c.discountAuthorizedBy,
+  discountAuthorizedById: c.discountAuthorizedById,
+  cgst: c.cgst || '0',
+  cgstPercent: c.cgstPercent || '0',
+  sgst: c.sgst || '0',
+  sgstPercent: c.sgstPercent || '0',
+  igst: c.igst || '0',
+  igstPercent: c.igstPercent || '0',
+  amount: c.amount || String(c.totalPrice ?? 0),
+  };
+};
+
+// Merge cart items (user's intended state, including any newly-added rows) with
+// API items (original DB rows that carry the real invoice_line_id). For each
+// cart item we look up a matching API item by product_id+batch and copy its id
+// (which is the invoice_line_id) so the save logic categorises it as "Edited"
+// rather than "Added". Cart items without a match keep their synthetic id so
+// the save logic treats them as new lines.
+export const mergeCartWithApiItems = (
+  cartItems: CartItem[],
+  apiItems: SalesReceiptItem[]
+): SalesReceiptItem[] => {
+  const apiKey = (item: { product_id?: number; batch?: string }) =>
+    `${item.product_id ?? ''}|${item.batch ?? ''}`;
+  const apiByKey = new Map<string, SalesReceiptItem>();
+  apiItems.forEach(item => apiByKey.set(apiKey(item), item));
+
+  return cartItems.map(c => {
+    const base = cartToSalesItem(c);
+    const match = apiByKey.get(apiKey({ product_id: c.product_id, batch: c.batch }));
+    if (match) {
+      // Preserve original DB invoice_line_id and any fields the cart can't carry
+      return {
+        ...base,
+        id: match.id,
+        manufacturer: match.manufacturer,
+        hsn: match.hsn,
+        pack: match.pack,
+        returned_quantity: match.returned_quantity,
+        original_quantity: match.original_quantity,
+      };
+    }
+    return base;
+  });
+};
+

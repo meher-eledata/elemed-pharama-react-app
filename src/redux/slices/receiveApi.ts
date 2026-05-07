@@ -405,7 +405,9 @@ export const receiveApi = createApi({
       query: () => {
         return "receive/get-products/";
       },
-      providesTags: ["Receive"],
+      // Tagged with "Inventory" so a sale/return/edit/delete elsewhere refreshes the
+      // Find Product dropdown counts automatically (cross-API invalidation from salesApi).
+      providesTags: ["Receive", "Inventory"],
       transformResponse: (response: any, meta) => {
         if (!response) {
           return [];

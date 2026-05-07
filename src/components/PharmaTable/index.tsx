@@ -53,6 +53,9 @@ export interface TableColumn<T> {
     render?: (item: T) => React.ReactNode;
     headerRender?: () => React.ReactNode;
     columnWidth?: string;
+    // Optional override for header text alignment.
+    // When omitted, default behavior is preserved (actions: center, everything else: left).
+    headerAlign?: 'left' | 'center' | 'right';
 }
 
 interface ReusableTableProps<T> {
@@ -503,13 +506,24 @@ export const ReusableTable = <T,>({
                                             minWidth: column?.columnWidth || 'auto',
                                             maxWidth: column?.columnWidth ? column.columnWidth : 'none',
                                             cursor: 'default',
-                                            textAlign: column.key === 'actions' ? 'center' : 'left',
+                                            textAlign: column.headerAlign || (column.key === 'actions' ? 'center' : 'left'),
                                             borderBottom: '1px solid #E5E7EB',
                                             overflow: 'visible',
                                             textOverflow: 'clip',
                                         }}
                                     >
-                                        <Box display="flex" alignItems="center" gap={0.5}>
+                                        <Box
+                                          display="flex"
+                                          alignItems="center"
+                                          gap={0.5}
+                                          sx={{
+                                            justifyContent: column.headerAlign === 'center'
+                                              ? 'center'
+                                              : column.headerAlign === 'right'
+                                              ? 'flex-end'
+                                              : 'flex-start',
+                                          }}
+                                        >
                                             {column.key === 'checkbox' && totalRows > 0 ? (
                                                 <Checkbox
                                                     indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}

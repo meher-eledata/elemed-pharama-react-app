@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect, startTransition } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useLayoutEffect, useRef, startTransition } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
 import {
@@ -10,6 +10,7 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  Snackbar,
   TextField,
   Typography,
   CircularProgress,
@@ -41,6 +42,7 @@ import {
   ProductForBrand,
   TypeForBrandAndProduct,
 } from '../../redux/slices/inventoryApi';
+import { extractErrorMessage } from '../../utils/errorUtils';
 
 type BatchRow = {
   id: string;
@@ -131,6 +133,76 @@ const inputFieldStyles = {
   },
 };
 
+// Editable numeric cell with caret preservation. MUI TextField with a controlled `value`
+// prop loses the caret position on every state-update render (cursor jumps to end).
+// We capture the caret before each onChange and restore it via useLayoutEffect.
+interface EditableNumberInputProps {
+  value: string;
+  disabled?: boolean;
+  placeholder?: string;
+  allowDecimal?: boolean;
+  width?: number;
+  sx?: any;
+  onChange: (sanitized: string) => void;
+  onBlur?: (value: string) => void;
+}
+
+const EditableNumberInput: React.FC<EditableNumberInputProps> = ({
+  value,
+  disabled = false,
+  placeholder = '0',
+  allowDecimal = false,
+  width = 120,
+  sx,
+  onChange,
+  onBlur,
+}) => {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const caretRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (caretRef.current !== null && inputRef.current && document.activeElement === inputRef.current) {
+      const pos = caretRef.current;
+      try {
+        inputRef.current.setSelectionRange(pos, pos);
+      } catch {}
+    }
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const cleanRegex = allowDecimal ? /[^0-9.]/g : /[^0-9]/g;
+    const sanitized = raw.replace(cleanRegex, '');
+    if (allowDecimal && (sanitized.match(/\./g) || []).length > 1) return;
+
+    const removedBefore = (raw.slice(0, e.target.selectionStart || 0).match(cleanRegex) || []).length;
+    caretRef.current = Math.max(0, (e.target.selectionStart || 0) - removedBefore);
+
+    onChange(sanitized);
+  };
+
+  return (
+    <TextField
+      inputRef={inputRef}
+      value={value}
+      size="small"
+      type="text"
+      onChange={handleChange}
+      onBlur={(e) => onBlur?.(e.target.value)}
+      inputProps={{
+        inputMode: allowDecimal ? 'decimal' : 'numeric',
+        pattern: allowDecimal ? '[0-9.]*' : '[0-9]*',
+      }}
+      disabled={disabled}
+      placeholder={placeholder}
+      sx={{
+        ...sx,
+        width,
+      }}
+    />
+  );
+};
+
 const InventoryAdjustment: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   const [getBatchesForProduct, { isLoading: isLoadingBatches, error: batchesError }] = useGetBatchesForProductMutation();
@@ -145,6 +217,16 @@ const InventoryAdjustment: React.FC = () => {
   const [productsForBrand, setProductsForBrand] = useState<ProductForBrand[]>([]);
   const [typesForProduct, setTypesForProduct] = useState<TypeForBrandAndProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
 
   const [searchType, setSearchType] = useState<SearchType>('product');
@@ -317,22 +399,25 @@ const InventoryAdjustment: React.FC = () => {
       let aValue: string | number = '';
       let bValue: string | number = '';
 
+      // Sort by the LAST-SAVED values (oldXxx) for editable fields, not the live ones.
+      // Otherwise every keystroke in the input re-sorts the table, the row moves position,
+      // React remounts the input, and the cursor jumps to the end.
       switch (activeSortKey) {
         case 'quantity':
-          aValue = a.quantity;
-          bValue = b.quantity;
+          aValue = a.oldQuantity;
+          bValue = b.oldQuantity;
           break;
         case 'mrp':
-          aValue = a.mrp;
-          bValue = b.mrp;
+          aValue = a.oldMrp;
+          bValue = b.oldMrp;
           break;
         case 'packQty':
-          aValue = a.packQty;
-          bValue = b.packQty;
+          aValue = a.oldPackQty;
+          bValue = b.oldPackQty;
           break;
         case 'expiryDate':
-          aValue = a.expiryDate;
-          bValue = b.expiryDate;
+          aValue = a.oldExpiryDate ?? a.expiryDate;
+          bValue = b.oldExpiryDate ?? b.expiryDate;
           break;
         case 'id':
         default:
@@ -574,6 +659,7 @@ const InventoryAdjustment: React.FC = () => {
 
     if (!productInfo || !productId || batchRows.length === 0) {
       setConfirmDialogOpen(false);
+      showSnackbar('Please select a product with at least one batch before saving.', 'error');
       return;
     }
 
@@ -591,6 +677,7 @@ const InventoryAdjustment: React.FC = () => {
 
       if (modifiedBatches.length === 0) {
         setConfirmDialogOpen(false);
+        showSnackbar('No changes to save.', 'error');
         return;
       }
 
@@ -615,7 +702,7 @@ const InventoryAdjustment: React.FC = () => {
       });
 
       await adjustInventoryBatches({
-        user: username,
+        username,
         product_id: productId,
         lines,
       }).unwrap();
@@ -637,6 +724,7 @@ const InventoryAdjustment: React.FC = () => {
       );
 
       setConfirmDialogOpen(false);
+      showSnackbar('Inventory adjustment saved successfully.', 'success');
 
       // Refresh batches to get latest data
       const productIdToRefresh = selectedType?.product_id || productInfo?.product_id;
@@ -645,8 +733,8 @@ const InventoryAdjustment: React.FC = () => {
       }
     } catch (error) {
       console.error('Error adjusting inventory:', error);
-      // TODO: Show error toast/notification
       setConfirmDialogOpen(false);
+      showSnackbar(extractErrorMessage(error, 'Failed to save inventory adjustment.'), 'error');
     }
   };
 
@@ -731,14 +819,12 @@ const InventoryAdjustment: React.FC = () => {
 
         return (
           <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <TextField
+            <EditableNumberInput
               value={displayValue}
-              size="small"
-              type="text"
-              onChange={(event) => handleQuantityChange(batch.id, event.target.value)}
-              onBlur={(event) => {
-                // On blur, ensure we have a valid number, default to 0 if empty
-                const value = event.target.value.trim();
+              disabled={!isEditing}
+              onChange={(sanitized) => handleQuantityChange(batch.id, sanitized)}
+              onBlur={(rawValue) => {
+                const value = rawValue.trim();
                 if (value === '') {
                   setBatchRows((prev) =>
                     prev.map((b) =>
@@ -748,7 +834,6 @@ const InventoryAdjustment: React.FC = () => {
                     )
                   );
                 } else {
-                  // Clear quantityInput so it uses the parsed number
                   setBatchRows((prev) =>
                     prev.map((b) =>
                       b.id === batch.id
@@ -758,15 +843,8 @@ const InventoryAdjustment: React.FC = () => {
                   );
                 }
               }}
-              inputProps={{
-                inputMode: 'numeric',
-                pattern: '[0-9]*'
-              }}
-              disabled={!isEditing}
-              placeholder="0"
               sx={{
                 ...inputFieldStyles,
-                width: 120,
                 textAlign: 'left',
                 '& .MuiInputBase-input': {
                   textAlign: 'left',
@@ -797,13 +875,15 @@ const InventoryAdjustment: React.FC = () => {
 
         return (
           <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <TextField
+            <EditableNumberInput
               value={displayValue}
-              size="small"
-              type="text"
-              onChange={(event) => handleMrpChange(batch.id, event.target.value)}
-              onBlur={(event) => {
-                const value = event.target.value.trim();
+              disabled={!isEditing}
+              placeholder="0.00"
+              allowDecimal
+              width={100}
+              onChange={(sanitized) => handleMrpChange(batch.id, sanitized)}
+              onBlur={(rawValue) => {
+                const value = rawValue.trim();
                 if (value === '') {
                   setBatchRows((prev) =>
                     prev.map((b) =>
@@ -822,11 +902,8 @@ const InventoryAdjustment: React.FC = () => {
                   );
                 }
               }}
-              disabled={!isEditing}
-              placeholder="0.00"
               sx={{
                 ...inputFieldStyles,
-                width: 100,
                 textAlign: 'left',
                 '& .MuiInputBase-input': { textAlign: 'left' },
                 '& .MuiInputBase-input.Mui-disabled': {
@@ -855,13 +932,14 @@ const InventoryAdjustment: React.FC = () => {
 
         return (
           <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <TextField
+            <EditableNumberInput
               value={displayValue}
-              size="small"
-              type="text"
-              onChange={(event) => handlePackQtyChange(batch.id, event.target.value)}
-              onBlur={(event) => {
-                const value = event.target.value.trim();
+              disabled={!isEditing}
+              placeholder="1"
+              width={80}
+              onChange={(sanitized) => handlePackQtyChange(batch.id, sanitized)}
+              onBlur={(rawValue) => {
+                const value = rawValue.trim();
                 if (value === '') {
                   setBatchRows((prev) =>
                     prev.map((b) =>
@@ -880,12 +958,8 @@ const InventoryAdjustment: React.FC = () => {
                   );
                 }
               }}
-              inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-              disabled={!isEditing}
-              placeholder="1"
               sx={{
                 ...inputFieldStyles,
-                width: 80,
                 textAlign: 'left',
                 '& .MuiInputBase-input': { textAlign: 'left' },
                 '& .MuiInputBase-input.Mui-disabled': {
@@ -1457,6 +1531,21 @@ const InventoryAdjustment: React.FC = () => {
         confirmLabel="Confirm"
         cancelLabel="Cancel"
       />
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

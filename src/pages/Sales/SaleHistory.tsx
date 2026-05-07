@@ -16,6 +16,7 @@ import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import UndoIcon from '@mui/icons-material/Undo';
+import BlockIcon from '@mui/icons-material/Block';
 import WarningIcon from '@mui/icons-material/Warning';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
@@ -29,6 +30,36 @@ import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
+
+// Invoice table has no payment_mode column — derive it from the payments array.
+// 1 active payment → that payment's method (mapped to dropdown casing).
+// 2+ active payments → 'Multiple' (multi-payment UI handles the breakdown separately).
+// 0 active payments → 'Cash' fallback.
+const PAYMENT_METHOD_MAP: Record<string, string> = {
+  'CASH': 'Cash',
+  'UPI': 'UPI',
+  'CREDIT CARD': 'Credit Card',
+  'CREDITCARD': 'Credit Card',
+  'CARD': 'Credit Card',
+  'BANK TRANSFER': 'Bank Transfer',
+  'BANK': 'Bank Transfer',
+  'CHEQUE': 'Cheque',
+  'INSURANCE': 'Insurance',
+  'GOVERNMENT SCHEMES': 'Government Schemes',
+  'GOVT': 'Government Schemes',
+  'CREDIT': 'Credit',
+  'MULTIPLE': 'Multiple',
+};
+const derivePaymentMode = (paymentsArr: any[], fallback?: string): string => {
+  const arr = Array.isArray(paymentsArr) ? paymentsArr : [];
+  if (arr.length >= 2) return 'Multiple';
+  if (arr.length === 1) {
+    const raw = String(arr[0]?.payment_method || arr[0]?.paymentMethod || arr[0]?.payment_mode || '').trim();
+    if (!raw) return fallback || 'Cash';
+    return PAYMENT_METHOD_MAP[raw.toUpperCase()] || raw;
+  }
+  return fallback || 'Cash';
+};
 
 export interface SalesHistoryItem {
   id: number;
@@ -52,6 +83,8 @@ export interface SalesHistoryItem {
   lastReturnStatus: string | null;
   createdAt?: string;
   databaseInvoiceId?: number;
+  recordStatus?: string;
+  deletionReason?: string;
   returnInfo?: {
     totalItems: number; // Total items in invoice
     returnedItems: number; // Total items returned
@@ -93,6 +126,7 @@ export default function SaleHistory() {
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
 
+
   const [returnInfoMap, setReturnInfoMap] = useState<Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
@@ -109,6 +143,7 @@ export default function SaleHistory() {
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
 
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -185,9 +220,8 @@ export default function SaleHistory() {
     }
 
     const apiItems: SalesHistoryItem[] = invoicesData.map((invoice: any, index: number) => {
-      const invoiceDate = (invoice.invoice_date)
-        ? dayjs(invoice.invoice_date).format('DD MMM YYYY')
-        : ''; // Don't fallback to created_at here; let the merge logic use local storage if available
+      const dateSource = invoice.invoice_date || invoice.created_at;
+      const invoiceDate = dateSource ? dayjs(dateSource).format('DD MMM YYYY') : '';
 
       // Convert patient_type from number to string (0 = "In Patient", 1 = "Out Patient")
       let patientType = 'Out Patient'; // Default
@@ -235,9 +269,8 @@ export default function SaleHistory() {
       const hasReturn = invoice.has_return !== undefined ? invoice.has_return : (rawReturnStatus.toLowerCase() !== 'no return' && rawReturnStatus.toLowerCase() !== 'none');
 
       const splitPayments = invoice.split_payments || [];
-      const paymentMode = (splitPayments && splitPayments.length > 0)
-        ? splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ')
-        : (invoice.payment_mode || 'Cash');
+      // Derive paymentMode from the active payments themselves (Invoice has no payment_mode column).
+      const paymentMode = derivePaymentMode(splitPayments, invoice.payment_mode);
 
       return {
         id: tableRowId, // Internal frontend ID (must be unique)
@@ -261,6 +294,8 @@ export default function SaleHistory() {
         paymentMode: paymentMode,
         splitPayments: splitPayments,
         createdAt: invoice.created_at,
+        recordStatus: invoice.record_status || (invoice.deleted_at ? 'DELETED' : 'ACTIVE'),
+        deletionReason: invoice.deletion_reason || undefined,
       };
     });
 
@@ -486,7 +521,20 @@ export default function SaleHistory() {
           const cust = result.customer || result.data?.customer;
           const doc = result.doctor || result.data?.doctor;
           const lines = result.lines || result.data?.lines || [];
-          const payments = result.payments || result.data?.payments || [];
+          // Detect deleted invoices — for those we keep ALL payments (including voided)
+          // because the preview is an audit view of what was originally paid before deletion.
+          const isDeletedInvoice = String(inv?.record_status || '').toUpperCase() === 'DELETED' || !!inv?.deleted_at;
+          // For active invoices, backend currently returns voided payments alongside active ones;
+          // skip them so the receipt doesn't show duplicate / stale entries (e.g., old UPI: 13 next to
+          // new UPI: 36). Remove this filter once getInvoiceDetails returns only active payments.
+          const rawPayments = result.payments || result.data?.payments || [];
+          const payments = isDeletedInvoice
+            ? rawPayments
+            : rawPayments.filter((p: any) => {
+              const status = String(p?.status || '').toUpperCase();
+              const paymentStatus = String(p?.payment_status || '').toUpperCase();
+              return status !== 'VOID' && paymentStatus !== 'VOIDED';
+            });
 
           console.log('✅ Full details received from API:', result);
 
@@ -553,7 +601,8 @@ export default function SaleHistory() {
             doctorName: doc?.name || initialDetails.doctorName,
             doctorMobile: doc?.mobile_number || initialDetails.doctorMobile,
             doctorEmail: doc?.email_id || initialDetails.doctorEmail,
-            paymentMode: inv.payment_mode || initialDetails.paymentMode,
+            // payments here is already filtered to active rows; derive the mode from it.
+            paymentMode: derivePaymentMode(payments, inv.payment_mode || initialDetails.paymentMode),
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
             invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
             invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('DD/MM/YYYY') : initialDetails.invoiceDate,
@@ -623,6 +672,16 @@ export default function SaleHistory() {
       );
     }
 
+    // Status filter — Return covers all return types (partial/full); Deleted covers soft-deleted invoices.
+    if (selectedStatus && selectedStatus !== 'All') {
+      const status = selectedStatus.toLowerCase();
+      if (status === 'return') {
+        filtered = filtered.filter(item => !!item.hasReturn);
+      } else if (status === 'deleted') {
+        filtered = filtered.filter(item => String(item.recordStatus || '').toUpperCase() === 'DELETED');
+      }
+    }
+
     if (dateRange[0] || dateRange[1]) {
       filtered = filtered.filter(item => {
         const itemDate = dayjs(item.invoiceDate, 'DD/MM/YYYY');
@@ -652,7 +711,7 @@ export default function SaleHistory() {
     });
 
     return filtered;
-  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedCustomer, selectedUsername, dateRange]);
+  }, [salesHistoryData, currentSearchTerm, currentFilter, selectedDoctor, selectedCustomer, selectedUsername, selectedStatus, dateRange]);
 
   const getUniqueDoctors = useMemo(() => {
     const doctors = [...new Set(salesHistoryData.map(item => item.doctorName || ''))].filter(Boolean);
@@ -673,6 +732,7 @@ export default function SaleHistory() {
     setSelectedDoctor(null);
     setSelectedCustomer(null);
     setSelectedUsername(null);
+    setSelectedStatus('All');
     setDateRange([null, null]);
     setCurrentSearchTerm('');
     setCurrentFilter({});
@@ -842,46 +902,67 @@ export default function SaleHistory() {
       key: 'invoiceNumber',
       header: SALES_HISTORY_LABELS.TABLE.INVOICE,
       sortable: true,
-      render: (item) => (
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: '0.125rem', // 2px = 0.125rem
-          minHeight: '1.5rem', // 24px = 1.5rem
-          width: '100%',
-          position: 'relative'
-        }}>
-          <VisibilityIcon
-            sx={{
-              fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
-              color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
-              cursor: 'pointer',
-              padding: '0.125rem', // 2px = 0.125rem
-              borderRadius: '0.25rem', // 4px = 0.25rem
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-                color: '#666'
-              }
-            }}
-            onClick={() => handleViewInvoice(item.id)}
-          />
-          <span style={{
-            flex: 1,
-            marginLeft: '0.25rem', // 4px = 0.25rem
-            fontWeight: 500,
-            fontSize: '0.875rem', // 14px = 0.875rem
-            color: '#1A212B'
+      columnWidth: '140px',
+      headerAlign: 'center',
+      render: (item) => {
+        const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
+        return (
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '0.125rem', // 2px = 0.125rem
+            minHeight: '1.5rem', // 24px = 1.5rem
+            width: '100%',
+            position: 'relative',
+            whiteSpace: 'nowrap',
+            flexWrap: 'nowrap'
           }}>
-            {item.invoiceNumber}
-          </span>
-        </Box>
-      ),
+            <VisibilityIcon
+              sx={{
+                fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
+                color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
+                cursor: 'pointer',
+                padding: '0.125rem', // 2px = 0.125rem
+                borderRadius: '0.25rem', // 4px = 0.25rem
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5',
+                  color: '#666'
+                }
+              }}
+              onClick={() => handleViewInvoice(item.id)}
+            />
+            {isDeleted && (
+              <Tooltip title="Invoice is deleted" arrow placement="top">
+                <BlockIcon
+                  sx={{
+                    fontSize: '1rem', // 16px
+                    color: '#DC2626',
+                    flexShrink: 0,
+                    marginLeft: '0.25rem', // 4px
+                  }}
+                />
+              </Tooltip>
+            )}
+            <span style={{
+              marginLeft: '0.25rem', // 4px = 0.25rem
+              fontWeight: 500,
+              fontSize: '0.8125rem', // 13px — keeps long numbers + icon on one line
+              color: '#1A212B',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {item.invoiceNumber}
+            </span>
+          </Box>
+        );
+      },
     },
     {
       key: 'invoiceDate',
@@ -918,6 +999,7 @@ export default function SaleHistory() {
       key: 'totalAmount',
       header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
       sortable: true,
+      columnWidth: '110px',
       render: (item) => {
         // Round to 2 decimal places to avoid floating point ghost paise values
         // e.g. 11.06 - 11.06 can give 0.0000000001 instead of 0 in JavaScript
@@ -944,6 +1026,7 @@ export default function SaleHistory() {
       render: (item) => {
         const returnStatus = getReturnStatus(item);
         const statusText = returnStatus.label;
+        const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
 
         if (returnStatus.status === 'none') {
           return (
@@ -951,13 +1034,15 @@ export default function SaleHistory() {
               variant="body2"
               sx={{
                 color: '#9CA3AF',
-                cursor: 'pointer',
-                '&:hover': {
+                cursor: isDeleted ? 'not-allowed' : 'pointer',
+                opacity: isDeleted ? 0.5 : 1,
+                pointerEvents: isDeleted ? 'none' : 'auto',
+                '&:hover': isDeleted ? {} : {
                   color: '#6B7280',
                   textDecoration: 'underline'
                 }
               }}
-              onClick={() => handleViewReturnDetails(item.id)}
+              onClick={isDeleted ? undefined : () => handleViewReturnDetails(item.id)}
             >
               {statusText}
             </Typography>
@@ -967,7 +1052,8 @@ export default function SaleHistory() {
           <Chip
             label={statusText}
             size="small"
-            onClick={() => handleViewReturnDetails(item.id)}
+            disabled={isDeleted}
+            onClick={isDeleted ? undefined : () => handleViewReturnDetails(item.id)}
             sx={{
               backgroundColor: returnStatus.status === 'full' ? '#FEE2E2' : '#FEF3C7',
               color: returnStatus.status === 'full' ? '#DC2626' : '#D97706',
@@ -990,45 +1076,48 @@ export default function SaleHistory() {
       render: (item) => {
         const returnStatus = getReturnStatus(item);
         const isFullyReturned = returnStatus.status === 'full';
+        const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
 
         return (
           <Box sx={{
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: '0.5rem' // 8px = 0.5rem 
+            gap: '0.5rem' // 8px = 0.5rem
           }}>
-            <Tooltip title="Edit" arrow placement="top">
+            <Tooltip title={isDeleted ? 'Invoice is deleted' : 'Edit'} arrow placement="top">
               <EditIcon
                 sx={{
-                  fontSize: '1.5rem', // 24px = 1.5rem 
-                  color: '#000000',
-                  cursor: 'pointer',
+                  fontSize: '1.5rem', // 24px = 1.5rem
+                  color: isDeleted ? '#9CA3AF' : '#000000',
+                  cursor: isDeleted ? 'not-allowed' : 'pointer',
                   padding: '0.25rem', // 4px = 0.25rem
                   borderRadius: '0.25rem', // 4px = 0.25rem
-                  '&:hover': {
+                  opacity: isDeleted ? 0.5 : 1,
+                  '&:hover': isDeleted ? {} : {
                     backgroundColor: '#f5f5f5',
                     color: '#000000'
                   }
                 }}
-                onClick={() => handleEditInvoice(item.id)}
+                onClick={isDeleted ? undefined : () => handleEditInvoice(item.id)}
               />
             </Tooltip>
             {!isFullyReturned && (
-              <Tooltip title="Return" arrow placement="top">
+              <Tooltip title={isDeleted ? 'Invoice is deleted' : 'Return'} arrow placement="top">
                 <UndoIcon
                   sx={{
-                    fontSize: '1.5rem', // 24px = 1.5rem 
-                    color: '#000000',
-                    cursor: 'pointer',
+                    fontSize: '1.5rem', // 24px = 1.5rem
+                    color: isDeleted ? '#9CA3AF' : '#000000',
+                    cursor: isDeleted ? 'not-allowed' : 'pointer',
                     padding: '0.25rem', // 4px = 0.25rem
                     borderRadius: '0.25rem', // 4px = 0.25rem
-                    '&:hover': {
+                    opacity: isDeleted ? 0.5 : 1,
+                    '&:hover': isDeleted ? {} : {
                       backgroundColor: '#f5f5f5',
                       color: '#000000'
                     }
                   }}
-                  onClick={() => handleReturnInvoice(item.id)}
+                  onClick={isDeleted ? undefined : () => handleReturnInvoice(item.id)}
                 />
               </Tooltip>
             )}
@@ -1604,6 +1693,49 @@ export default function SaleHistory() {
               />
             </Box>
 
+            {/* Status Filter (All / Return / Deleted) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography sx={{ fontSize: '12px', color: '#728197' }}>Status</Typography>
+              <Autocomplete
+                options={['All', 'Return', 'Deleted']}
+                value={selectedStatus}
+                onChange={(_, newValue) => setSelectedStatus(newValue || 'All')}
+                disableClearable
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All"
+                    size="small"
+                    sx={{
+                      width: 180,
+                      '& .MuiOutlinedInput-root': {
+                        height: 'auto',
+                        borderRadius: '30px',
+                        backgroundColor: '#ffffff',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontSize: '14px',
+                        color: '#1A212B',
+                        '& fieldset': { borderColor: '#D1D5DB' },
+                        '&:hover fieldset': { borderColor: '#D1D5DB' },
+                        '&.Mui-focused fieldset': { borderColor: '#D1D5DB' },
+                      }
+                    }}
+                  />
+                )}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: '300px',
+                    '& .MuiAutocomplete-option': {
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      '&:hover': { backgroundColor: '#5C17E5', color: '#ffffff' },
+                      '&[aria-selected="true"]': { backgroundColor: '#F3F4F6' }
+                    }
+                  }
+                }}
+              />
+            </Box>
+
             {/* Date Range Filter */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <DateRangeFilter
@@ -1743,6 +1875,7 @@ export default function SaleHistory() {
         onClose={handleConfirmDialogClose}
         onConfirm={handleConfirmDialogConfirm}
       />
+
     </Box>
   );
 }

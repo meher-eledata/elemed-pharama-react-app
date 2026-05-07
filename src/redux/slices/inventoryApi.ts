@@ -29,6 +29,18 @@ export interface InventorySummary {
   withinOneMonthTotalQuantity: number;
 }
 
+export interface TotalStockProduct {
+  product_id: number;
+  name: string;
+  totalQuantity: number;
+}
+
+export interface TotalStockResponse {
+  totalProductCount: number;
+  totalQuantity: number;
+  products: TotalStockProduct[];
+}
+
 // Add Product interfaces
 export interface AddProductRequest {
   product_name: string;
@@ -155,7 +167,7 @@ export interface AdjustInventoryBatchLine {
 }
 
 export interface AdjustInventoryBatchesRequest {
-  user: string;
+  username: string;
   product_id: number;
   lines: AdjustInventoryBatchLine[];
 }
@@ -182,6 +194,9 @@ export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
   baseQuery: baseQueryWithReauth,
   tagTypes: ["Inventory"],
+  // Always refetch when an inventory query's component remounts so counts stay fresh
+  // after a sale/return/edit/delete elsewhere in the app — without needing a manual refresh.
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
     getLowStock: builder.query<InventoryItem[], void>({
       query: () => "inventory/min-quantity/",
@@ -258,6 +273,10 @@ export const inventoryApi = createApi({
     }),
     getInventorySummary: builder.query<InventorySummary, void>({
       query: () => "inventory/get-alert-counts/",
+      providesTags: ["Inventory"],
+    }),
+    getTotalStock: builder.query<TotalStockResponse, void>({
+      query: () => "inventory/get-total-stock",
       providesTags: ["Inventory"],
     }),
     addProduct: builder.mutation<AddProductResponse, AddProductRequest>({
@@ -338,6 +357,7 @@ export const {
   useGetExpiredStockQuery,
   useGetNearExpiryStockQuery,
   useGetInventorySummaryQuery,
+  useGetTotalStockQuery,
   useAddProductMutation,
   useGetBatchesForProductMutation,
   useGetAllBrandsQuery,
