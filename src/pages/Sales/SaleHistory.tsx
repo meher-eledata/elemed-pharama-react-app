@@ -11,7 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,7 +28,8 @@ import bgWhiteIcon from '../../assets/BG_White.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
-import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
+import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
+import { clearCart, clearFormData } from '../../redux/slices/cartSlice';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 
 // Invoice table has no payment_mode column — derive it from the payments array.
@@ -120,6 +121,7 @@ export interface InvoiceDetails {
 export default function SaleHistory() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
 
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -995,7 +997,7 @@ export default function SaleHistory() {
       key: 'username',
       header: SALES_HISTORY_LABELS.TABLE.USERNAME,
       sortable: true,
-      columnWidth: '100px',
+      columnWidth: '115px',
     },
     {
       key: 'totalAmount',
@@ -1168,7 +1170,14 @@ export default function SaleHistory() {
 
   // Event handlers
   const handleStartNewSale = () => {
-    navigate('/sales/new');
+    // Smart Reset: Only clear the cart if the user was actively editing an old invoice
+    // If they were just building a normal new sale draft, preserve it!
+    if (getEditInvoiceId()) {
+      dispatch(clearCart());
+      dispatch(clearFormData());
+      clearEditInvoiceId();
+    }
+    navigate('/sales/new', { state: null }); // explicitly wipe location state
   };
 
   const handleViewInvoice = (invoiceId: number) => {
@@ -1210,10 +1219,14 @@ export default function SaleHistory() {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
+
+      // Delay print slightly to allow images to load
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.onafterprint = () => {
+          printWindow.close();
+        };
+      }, 500);
     }
   };
 

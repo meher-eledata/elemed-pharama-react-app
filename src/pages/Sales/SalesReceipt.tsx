@@ -42,7 +42,7 @@ import {
 import { RootState } from '../../redux/store';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
-import { clearCartFromStorage, clearFormDataFromStorage, generateNextInvoiceNumber } from '../../utils/cartStorage';
+import { clearCartFromStorage, clearFormDataFromStorage, generateNextInvoiceNumber, setEditInvoiceId } from '../../utils/cartStorage';
 
 import CustomerDetailsSection from './components/CustomerDetailsSection';
 import DoctorDetailsSection from './components/DoctorDetailsSection';
@@ -1026,6 +1026,8 @@ const SalesReceipt: React.FC = () => {
   const handleEditCart = useCallback(() => {
     const cartItemsWithGst = transformCartItemsForEdit(salesItems);
     dispatch(setCartItems(cartItemsWithGst));
+    // Mark this cart as belonging to an edit session
+    setEditInvoiceId(resolvedInvoiceId || invoiceNumber);
     // Navigate to sales/new page to edit/add products to cart
     // Pass edit mode state so we can return to edit mode correctly
     navigate('/sales/new', {

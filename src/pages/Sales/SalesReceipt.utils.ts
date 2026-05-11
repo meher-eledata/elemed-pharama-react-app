@@ -132,7 +132,7 @@ export const generatePrintHTML = (data: {
         <style>
           @media print {
             @page { 
-              margin: 0 !important;
+              margin: ${isA5 ? '10mm' : '15mm'} !important;
               size: ${pageSize} landscape !important;
             }
             html, body {
@@ -157,7 +157,7 @@ export const generatePrintHTML = (data: {
           body { 
             font-family: 'Lexend', sans-serif; 
             margin: 0;
-            padding: ${isA5 ? '10mm' : '15mm'};
+            padding: 0;
             color: #1A212B;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -214,7 +214,6 @@ export const generatePrintHTML = (data: {
           }
           .items-section { 
             margin-bottom: 0px;
-            page-break-inside: avoid;
           }
           .items-title { 
             font-weight: bold; 
@@ -227,8 +226,7 @@ export const generatePrintHTML = (data: {
             border-collapse: separate;
             border-spacing: 0;
             border: 2px solid #A5B4FC !important; 
-            border-bottom: none !important;
-            border-radius: 8px 8px 0 0; 
+            border-radius: 8px; 
             overflow: hidden;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -246,6 +244,12 @@ export const generatePrintHTML = (data: {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+          }
+          .items-table thead {
+            display: table-header-group;
+          }
+          .items-table tr {
+            page-break-inside: avoid;
           }
           @media print {
             .items-table th {
@@ -266,6 +270,11 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
+          .summary-td {
+            padding: 0 !important;
+            border: none !important;
+            background-color: transparent !important;
+          }
           .items-table tbody tr:first-child td {
             border-top: none;
           }
@@ -276,13 +285,9 @@ export const generatePrintHTML = (data: {
           .summary { 
             background-color: #C7D2FE !important; 
             padding: ${isA5 ? '8px 12px' : '12px 20px'}; 
-            border: 2px solid #A5B4FC !important;
-            border-top: none !important;
-            border-radius: 0 0 8px 8px; 
             display: flex; 
             justify-content: space-between; 
             align-items: flex-start;
-            page-break-inside: avoid;
             margin-top: 0px;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -380,7 +385,8 @@ export const generatePrintHTML = (data: {
       ? splitPayments.map((p: any) => {
         const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
         const amount = p.payment_amount || p.amount || '0';
-        return `<div class="detail-item">${method.toUpperCase()}: ${amount}</div>`;
+        const details = p.details || p.notes || '';
+        return `<div class="detail-item">${method.toUpperCase()}: ${amount} ${details ? `(Details: ${details})` : ''}</div>`;
       }).join('')
       : `<div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>`
     }
@@ -417,21 +423,21 @@ export const generatePrintHTML = (data: {
               </tr>
             </thead>
             <tbody>
-              ${salesItems.map((item, index) => {
-      const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
-      const hsn = (item as any).hsn || '';
-      const pack = (item as any).pack || 'N/A';
-      const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
-      let formattedExp = 'N/A';
-      if (item.expiryDate) {
-        const dateParts = item.expiryDate.split('-');
-        if (dateParts.length >= 2) {
-          formattedExp = `${dateParts[1]}/${dateParts[0]}`;
-        } else {
-          formattedExp = item.expiryDate;
-        }
-      }
-      return `
+              ${salesItems.length > 1 ? salesItems.slice(0, -1).map((item, index) => {
+                const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+                const hsn = (item as any).hsn || '';
+                const pack = (item as any).pack || 'N/A';
+                const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
+                let formattedExp = 'N/A';
+                if (item.expiryDate) {
+                  const dateParts = item.expiryDate.split('-');
+                  if (dateParts.length >= 2) {
+                    formattedExp = `${dateParts[1]}/${dateParts[0]}`;
+                  } else {
+                    formattedExp = item.expiryDate;
+                  }
+                }
+                return `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${item.productName}</td>
@@ -446,30 +452,67 @@ export const generatePrintHTML = (data: {
                     <td><strong>${item.amount}</strong></td>
                   </tr>
                 `;
-    }).join('')}
+              }).join('') : ''}
+            </tbody>
+            <tbody style="page-break-inside: avoid;">
+              ${salesItems.length > 0 ? (() => {
+                const item = salesItems[salesItems.length - 1];
+                const index = salesItems.length - 1;
+                const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+                const hsn = (item as any).hsn || '';
+                const pack = (item as any).pack || 'N/A';
+                const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
+                let formattedExp = 'N/A';
+                if (item.expiryDate) {
+                  const dateParts = item.expiryDate.split('-');
+                  if (dateParts.length >= 2) {
+                    formattedExp = `${dateParts[1]}/${dateParts[0]}`;
+                  } else {
+                    formattedExp = item.expiryDate;
+                  }
+                }
+                return `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.productName}</td>
+                    <td>${mfg}</td>
+                    <td>${hsn}</td>
+                    <td>${item.batch}</td>
+                    <td>${pack}</td>
+                    <td>${formattedExp}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.mrp || 'N/A'}</td>
+                    <td>${gstTotal}</td>
+                    <td><strong>${item.amount}</strong></td>
+                  </tr>
+                `;
+              })() : ''}
+              <tr>
+                <td colspan="11" class="summary-td">
+                  <div class="summary">
+                    <div class="summary-left">
+                      <div class="summary-item">
+                        <div class="summary-label">${labels.TOTAL_VALUE_LABEL}</div>
+                        <div class="summary-value">${totalValue}</div>
+                      </div>
+                      <div class="summary-item">
+                        <div class="summary-label">${labels.TOTAL_DISCOUNT_LABEL}</div>
+                        <div class="summary-value">${totalDiscount}</div>
+                      </div>
+                      <div class="summary-item">
+                        <div class="summary-label">${labels.TAX_AMOUNT_LABEL}</div>
+                        <div class="summary-value">${taxAmount}</div>
+                      </div>
+                    </div>
+                    <div class="summary-right">
+                      <div class="summary-right-label">${labels.TOTAL_PAYABLE_LABEL}</div>
+                      <div class="summary-right-value">${totalPayableAmount}</div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
-        </div>
-        
-        <div class="summary">
-          <div class="summary-left">
-            <div class="summary-item">
-              <div class="summary-label">${labels.TOTAL_VALUE_LABEL}</div>
-              <div class="summary-value">${totalValue}</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-label">${labels.TOTAL_DISCOUNT_LABEL}</div>
-              <div class="summary-value">${totalDiscount}</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-label">${labels.TAX_AMOUNT_LABEL}</div>
-              <div class="summary-value">${taxAmount}</div>
-            </div>
-          </div>
-          <div class="summary-right">
-            <div class="summary-right-label">${labels.TOTAL_PAYABLE_LABEL}</div>
-            <div class="summary-right-value">${totalPayableAmount}</div>
-          </div>
         </div>
       </body>
     </html>
