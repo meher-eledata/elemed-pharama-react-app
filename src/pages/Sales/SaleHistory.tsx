@@ -911,55 +911,55 @@ export default function SaleHistory() {
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: '0.125rem', // 2px = 0.125rem
+            justifyContent: 'center',
             minHeight: '1.5rem', // 24px = 1.5rem
             width: '100%',
             position: 'relative',
-            whiteSpace: 'nowrap',
-            flexWrap: 'nowrap'
           }}>
-            <VisibilityIcon
-              sx={{
-                fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
-                color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
-                cursor: 'pointer',
-                padding: '0.125rem', // 2px = 0.125rem
-                borderRadius: '0.25rem', // 4px = 0.25rem
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                  color: '#666'
-                }
-              }}
-              onClick={() => handleViewInvoice(item.id)}
-            />
-            {isDeleted && (
-              <Tooltip title="Invoice is deleted" arrow placement="top">
-                <BlockIcon
-                  sx={{
-                    fontSize: '1rem', // 16px
-                    color: '#DC2626',
-                    flexShrink: 0,
-                    marginLeft: '0.25rem', // 4px
-                  }}
-                />
-              </Tooltip>
-            )}
+            <Box sx={{ position: 'absolute', left: 0, display: 'flex', alignItems: 'center' }}>
+              <VisibilityIcon
+                sx={{
+                  fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
+                  color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
+                  cursor: 'pointer',
+                  padding: '0.125rem', // 2px = 0.125rem
+                  borderRadius: '0.25rem', // 4px = 0.25rem
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                    color: '#666'
+                  }
+                }}
+                onClick={() => handleViewInvoice(item.id)}
+              />
+            </Box>
+
             <span style={{
-              marginLeft: '0.25rem', // 4px = 0.25rem
               fontWeight: 500,
-              fontSize: '0.8125rem', // 13px — keeps long numbers + icon on one line
+              fontSize: '0.8125rem', // 13px
               color: '#1A212B',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              padding: '0 1.5rem' // space for left and right icons
             }}>
               {item.invoiceNumber}
             </span>
+
+            <Box sx={{ position: 'absolute', right: 0, display: 'flex', alignItems: 'center' }}>
+              {isDeleted && (
+                <Tooltip title="Invoice is deleted" arrow placement="top">
+                  <BlockIcon
+                    sx={{
+                      fontSize: '1rem', // 16px
+                      color: '#DC2626',
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Box>
           </Box>
         );
       },
@@ -973,6 +973,7 @@ export default function SaleHistory() {
       key: 'customerName',
       header: SALES_HISTORY_LABELS.TABLE.CUSTOMER_NAME,
       sortable: true,
+      columnWidth: '180px',
     },
     {
       key: 'customerMobile',
@@ -994,12 +995,13 @@ export default function SaleHistory() {
       key: 'username',
       header: SALES_HISTORY_LABELS.TABLE.USERNAME,
       sortable: true,
+      columnWidth: '100px',
     },
     {
       key: 'totalAmount',
-      header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
+      header: `${SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT}`,
       sortable: true,
-      columnWidth: '110px',
+      columnWidth: '130px',
       render: (item) => {
         // Round to 2 decimal places to avoid floating point ghost paise values
         // e.g. 11.06 - 11.06 can give 0.0000000001 instead of 0 in JavaScript
