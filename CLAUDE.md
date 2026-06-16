@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> Repo-local conventions only. Cross-repo and API-contract rules live in
+> `/Users/meherivatury/Desktop/Eledata/hs/agentic-control/CLAUDE.md`. Only `frontend-builder` writes
+> code here; build API calls against the recorded contract at
+> `/Users/meherivatury/Desktop/Eledata/hs/agentic-control/.claude/memory/api-contract.md`.
+
 ## Commands
 
 - `npm run dev` — start Vite dev server (locked to `localhost:5173`, `strictPort: true`)
@@ -10,6 +15,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm test` — run Jest test suite
 - `npx jest path/to/file.test.ts` — run a single test file
 - `npx jest -t "test name"` — run a single test by name
+- `npx tsc --noEmit` — typecheck (no `typecheck` script today)
+- `npm run lint` — lint <!-- ASSUMPTION: lint script added during bootstrap; not present today — verify; see agentic-control/REVIEW.md -->
+
+Never edit `.env*`; never `git push`, deploy, or `rm -rf`. Stay within
+`/Users/meherivatury/Desktop/Eledata/hs/elemed-pharama-react-app`.
 
 The app is containerized via the multi-stage `Dockerfile` (Node 20 build → nginx). `VITE_API_BASE_URL` is set as a build ARG and baked into the bundle.
 
