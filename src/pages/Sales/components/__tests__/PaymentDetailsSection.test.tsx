@@ -21,6 +21,8 @@ describe('PaymentDetailsSection', () => {
     invoiceDate: '01/01/2024',
     onPaymentModeChange: jest.fn(),
     onInsuranceCompanyChange: jest.fn(),
+    onInvoiceNumberChange: jest.fn(),
+    onInvoiceDateChange: jest.fn(),
   };
 
   beforeEach(() => {
@@ -40,8 +42,11 @@ describe('PaymentDetailsSection', () => {
     renderComponent();
     
     expect(screen.getByText(/payment details/i)).toBeInTheDocument();
-    expect(screen.getByText(/invoice number/i)).toBeInTheDocument();
-    expect(screen.getByText(/invoice date/i)).toBeInTheDocument();
+    // "Invoice number" appears as both the field label and its placeholder,
+    // so query the labelled input directly to avoid an ambiguous text match.
+    expect(screen.getByLabelText(/invoice number/i)).toBeInTheDocument();
+    // The MUI date picker exposes the date input as a labelled group.
+    expect(screen.getByRole('group', { name: /invoice date/i })).toBeInTheDocument();
   });
 
   it('displays payment mode when provided', () => {
@@ -53,22 +58,28 @@ describe('PaymentDetailsSection', () => {
   });
 
   it('displays insurance company when provided', () => {
-    renderComponent({ insuranceCompany: 'ABC Insurance' });
-    
+    // The "Insurance company" labelled field is only shown when paymentMode is "Insurance";
+    // otherwise the same field is labelled "Details".
+    renderComponent({ paymentMode: 'Insurance', insuranceCompany: 'ABC Insurance' });
+
     const insuranceInput = screen.getByLabelText(/insurance company/i);
     expect(insuranceInput).toHaveValue('ABC Insurance');
   });
 
   it('displays invoice number when provided', () => {
     renderComponent({ invoiceNumber: 'INV123' });
-    
-    expect(screen.getByText('INV123')).toBeInTheDocument();
+
+    // Invoice number is rendered as a TextField value, not free text.
+    expect(screen.getByDisplayValue('INV123')).toBeInTheDocument();
   });
 
-  it('displays invoice date when provided', () => {
+  it('displays invoice date field when provided', () => {
+    // Invoice date is rendered by a MUI date picker that splits the value into
+    // separate editable segments (MM, DD, YYYY) and reformats it, so there is no
+    // single "15/05/2024" text node. Assert the labelled date field is present.
     renderComponent({ invoiceDate: '15/05/2024' });
-    
-    expect(screen.getByText('15/05/2024')).toBeInTheDocument();
+
+    expect(screen.getByRole('group', { name: /invoice date/i })).toBeInTheDocument();
   });
 
   it('calls onPaymentModeChange when payment mode changes', () => {
@@ -83,11 +94,11 @@ describe('PaymentDetailsSection', () => {
   });
 
   it('calls onInsuranceCompanyChange when insurance company changes', () => {
-    renderComponent();
-    
+    renderComponent({ paymentMode: 'Insurance' });
+
     const insuranceInput = screen.getByLabelText(/insurance company/i);
     fireEvent.change(insuranceInput, { target: { value: 'XYZ Insurance' } });
-    
+
     expect(mockProps.onInsuranceCompanyChange).toHaveBeenCalledWith('XYZ Insurance');
   });
 

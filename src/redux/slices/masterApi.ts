@@ -62,6 +62,7 @@ export interface Doctor {
   updated_at: string;
   id: string;
   name: string;
+  branch?: string | null;
   address: string;
   city: string;
   state: string;
@@ -72,11 +73,118 @@ export interface Doctor {
   gstin: string | null;
   pancard_num: string | null;
   drug_license: string | null;
-  gender: string | null;
+  // Backend model defines gender as INTEGER (0 = Male, 1 = Female, 2 = Other).
+  // Reconciled drift: previously typed `string`. Send/render as an integer code.
+  gender: number | null;
 }
 
 export interface AddDoctorResponse {
   doctor: Doctor;
+}
+
+// Customer master row (GET /api/master/get-customers).
+export interface Customer {
+  created_at: string;
+  updated_at: string;
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  // gender is an INTEGER code in the backend model (0 = Male, 1 = Female, 2 = Other).
+  gender: number | null;
+  billing_address: string | null;
+  shipping_address: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  gstin: string | null;
+  pancard_num: string | null;
+  drug_license: string | null;
+}
+
+// Product master row (GET /api/master/get-products).
+export interface Product {
+  created_at: string;
+  updated_at: string;
+  product_id: number;
+  product_code: string | null;
+  name: string;
+  brand_name: string | null;
+  brand_id: number | null;
+  hsn_id: number | null;
+  type: string | null;
+  description: string | null;
+  package_info: string | null;
+  unit_of_measure: string | null;
+  dosage: string | null;
+  min_qty: number | null;
+  max_qty: number | null;
+  current_qty: number | null;
+  mrp: number | string | null;
+  selling_price: number | string | null;
+  discount: number | string | null;
+  expiry: string | null;
+}
+
+// ---- Update (edit) request interfaces: PK + whitelisted editable fields only ----
+
+export interface UpdateCustomerRequest {
+  id: number;
+  billing_address?: string | null;
+  shipping_address?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  gender?: number | null;
+}
+
+export interface UpdateSupplierRequest {
+  id: number;
+  contact_name?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pin?: string | null;
+  country?: string | null;
+  phone_number?: string | null;
+  email_id?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateProductRequest {
+  product_id: number;
+  description?: string | null;
+  package_info?: string | null;
+  unit_of_measure?: string | null;
+  dosage?: string | null;
+  min_qty?: number | null;
+  max_qty?: number | null;
+  mrp?: number | string | null;
+  selling_price?: number | string | null;
+  discount?: number | string | null;
+}
+
+export interface UpdateDoctorRequest {
+  id: string;
+  branch?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pin?: string | null;
+  country?: string | null;
+  gender?: number | null;
+}
+
+export interface UpdateMasterResponse {
+  message: string;
+  id?: number | string;
+  product_id?: number | string;
 }
 
 export interface MasterCountsResponse {
@@ -126,6 +234,70 @@ export const masterApi = createApi({
       }),
       providesTags: ['Master'],
     }),
+
+    // ---- VIEW (list) queries: each returns a raw JSON array of full rows ----
+    getCustomers: builder.query<Customer[], void>({
+      query: () => ({
+        url: 'master/get-customers',
+        method: 'GET',
+      }),
+      providesTags: ['Master'],
+    }),
+    getSuppliers: builder.query<Supplier[], void>({
+      query: () => ({
+        url: 'master/get-suppliers',
+        method: 'GET',
+      }),
+      providesTags: ['Master'],
+    }),
+    getProducts: builder.query<Product[], void>({
+      query: () => ({
+        url: 'master/get-products',
+        method: 'GET',
+      }),
+      providesTags: ['Master'],
+    }),
+    getDoctors: builder.query<Doctor[], void>({
+      query: () => ({
+        url: 'master/get-doctors',
+        method: 'GET',
+      }),
+      providesTags: ['Master'],
+    }),
+
+    // ---- EDIT (update) mutations: body is PK + whitelisted editable fields only ----
+    updateCustomer: builder.mutation<UpdateMasterResponse, UpdateCustomerRequest>({
+      query: (body) => ({
+        url: 'master/update-customer',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Master'],
+    }),
+    updateSupplier: builder.mutation<UpdateMasterResponse, UpdateSupplierRequest>({
+      query: (body) => ({
+        url: 'master/update-supplier',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Master'],
+    }),
+    updateProduct: builder.mutation<UpdateMasterResponse, UpdateProductRequest>({
+      query: (body) => ({
+        url: 'master/update-product',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Master'],
+    }),
+    updateDoctor: builder.mutation<UpdateMasterResponse, UpdateDoctorRequest>({
+      query: (body) => ({
+        url: 'master/update-doctor',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Master'],
+    }),
   }),
 });
 
@@ -133,5 +305,13 @@ export const {
   useAddSupplierMutation,
   useAddDoctorMutation,
   useGetMasterCountsQuery,
+  useGetCustomersQuery,
+  useGetSuppliersQuery,
+  useGetProductsQuery,
+  useGetDoctorsQuery,
+  useUpdateCustomerMutation,
+  useUpdateSupplierMutation,
+  useUpdateProductMutation,
+  useUpdateDoctorMutation,
 } = masterApi;
 

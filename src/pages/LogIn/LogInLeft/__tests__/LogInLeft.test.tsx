@@ -101,7 +101,7 @@ describe('LogInLeft (LoginForm)', () => {
     it('renders login form with all elements', () => {
       renderWithProviders(<LogInLeft />);
 
-      expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
+      expect(screen.getByText(/Elite\s+Pharmacy/)).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Enter your username')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
       expect(screen.getByText('Forgot Password?')).toBeInTheDocument();
@@ -423,7 +423,7 @@ describe('LogInLeft (LoginForm)', () => {
       renderWithProviders(<LogInLeft />);
 
       const forgotPasswordLink = screen.getByText('Forgot Password?');
-      expect(forgotPasswordLink.closest('a')).toHaveAttribute('href', '/Forgot-Password');
+      expect(forgotPasswordLink.closest('a')).toHaveAttribute('href', '/forgot-password');
     });
   });
 

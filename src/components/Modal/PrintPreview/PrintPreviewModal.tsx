@@ -40,11 +40,7 @@ interface PrintPreviewModalProps {
   taxAmount: string;
   totalPayableAmount: string;
   patientType?: string;
-  onCancel: () => void;
-  onPrint: () => void;
-  onSaveClick?: () => void; // Handler for Save button click
   onAfterSave?: () => void; // Optional callback after successful save
-  hideActionButtons?: boolean; // Hide the action buttons (for view-only mode)
   brandIcon?: string;
   pageSize?: 'A4' | 'A5';
   onPageSizeChange?: (size: 'A4' | 'A5') => void;
@@ -68,11 +64,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   taxAmount,
   totalPayableAmount,
   patientType,
-  onCancel,
-  onPrint,
-  onSaveClick,
   onAfterSave,
-  hideActionButtons = false,
   pageSize = 'A4',
   onPageSizeChange,
   brandIcon,

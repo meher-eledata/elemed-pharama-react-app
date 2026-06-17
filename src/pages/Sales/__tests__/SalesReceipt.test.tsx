@@ -2,15 +2,32 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SalesReceipt from '../SalesReceipt';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
 
+const theme = createTheme();
+
+// Helpers for the various mutation/query hook shapes used by the component
+const makeMutation = (resolved: any = { data: {} }) =>
+  jest.fn(() => [
+    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
+    { isLoading: false },
+  ]);
+
+const makeLazyQuery = (resolved: any = { data: [] }) =>
+  jest.fn(() => [
+    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
+    { data: undefined, isLoading: false },
+  ]);
+
 // Mock dependencies
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/sales/receipt', state: null }),
 }));
 
 jest.mock('../../../redux/slices/salesApi');
@@ -20,6 +37,8 @@ jest.mock('../../../utils/cartStorage', () => ({
   clearFormDataFromStorage: jest.fn(),
   getCartFromStorage: jest.fn(() => ({ items: [], total: 0 })),
   getFormDataFromStorage: jest.fn(() => null),
+  generateNextInvoiceNumber: jest.fn(() => 'INV001'),
+  setEditInvoiceId: jest.fn(),
 }));
 
 const createMockStore = (initialState = {}) => {
@@ -102,14 +121,25 @@ describe('SalesReceipt', () => {
       isError: false,
       error: null,
     }));
+
+    // Additional mutations/queries consumed by SalesReceipt
+    (salesApi.useUpdateSalesMutation as jest.Mock) = makeMutation({ data: { success: true } });
+    (salesApi.useEditSaleMutation as jest.Mock) = makeMutation({ data: { success: true } });
+    (salesApi.useDeleteSalesMutation as jest.Mock) = makeMutation({ data: { success: true } });
+    (salesApi.useUpsertInvoicePaymentsMutation as jest.Mock) = makeMutation({ data: { success: true } });
+    (salesApi.useDeleteInvoiceMutation as jest.Mock) = makeMutation({ data: { success: true } });
+    (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation({ data: {} });
+    (salesApi.useLazyGetInvoicesQuery as jest.Mock) = makeLazyQuery({ data: [] });
   });
 
   const renderComponent = (store = createMockStore()) => {
     return render(
       <Provider store={store}>
-        <BrowserRouter>
-          <SalesReceipt />
-        </BrowserRouter>
+        <ThemeProvider theme={theme}>
+          <BrowserRouter>
+            <SalesReceipt />
+          </BrowserRouter>
+        </ThemeProvider>
       </Provider>
     );
   };
@@ -151,8 +181,9 @@ describe('SalesReceipt', () => {
     renderComponent();
     
     expect(screen.getByText(/cancel/i)).toBeInTheDocument();
-    expect(screen.getByText(/save/i)).toBeInTheDocument();
-    expect(screen.getByText(/print/i)).toBeInTheDocument();
+    // "Save" appears in both the Save button and the "Save and Print" button
+    expect(screen.getAllByText(/save/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/print/i).length).toBeGreaterThan(0);
   });
 
   it('opens customer modal when Add New Customer is clicked', async () => {
@@ -208,20 +239,21 @@ describe('SalesReceipt', () => {
 
   it('shows validation error when trying to save without customer details', () => {
     renderComponent();
-    
-    const saveButton = screen.getByText(/save/i);
+
+    // "Save" matches multiple buttons; target the exact "Save" button
+    const saveButton = screen.getByText('Save', { exact: true });
     fireEvent.click(saveButton);
-    
+
     // Should show warning toast
     expect(saveButton).toBeInTheDocument();
   });
 
   it('shows validation error when trying to save without items', () => {
     renderComponent();
-    
-    const saveButton = screen.getByText(/save/i);
+
+    const saveButton = screen.getByText('Save', { exact: true });
     fireEvent.click(saveButton);
-    
+
     // Should show warning toast
     expect(saveButton).toBeInTheDocument();
   });

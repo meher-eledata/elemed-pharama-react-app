@@ -58,7 +58,7 @@ describe('loginHandlers', () => {
       expect(mockSetSnackbarOpen).toHaveBeenCalledWith(true);
     });
 
-    it('does not navigate on success (navigation is handled in component)', () => {
+    it('navigates to dashboard on success for a non-admin user', () => {
       const mockData = {
         token: 'test-token',
         user: {
@@ -82,8 +82,37 @@ describe('loginHandlers', () => {
         setSnackbarOpen: mockSetSnackbarOpen,
       });
 
-      // Navigation is commented out in the handler, so it should not be called
-      expect(mockNavigate).not.toHaveBeenCalled();
+      // The handler now navigates on success; non-admin users go to /dashboard
+      expect(mockNavigate).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+    });
+
+    it('navigates to admin on success for an admin user', () => {
+      const mockData = {
+        token: 'test-token',
+        user: {
+          id: 1,
+          username: 'adminuser',
+          email: 'admin@test.com',
+          first_name: 'Admin',
+          last_name: 'User',
+          role: 0,
+        },
+      };
+
+      handleLoginEffect({
+        isSuccess: true,
+        isError: false,
+        data: mockData,
+        error: null,
+        dispatch: mockDispatch,
+        navigate: mockNavigate,
+        setSnackbarMessage: mockSetSnackbarMessage,
+        setSnackbarSeverity: mockSetSnackbarSeverity,
+        setSnackbarOpen: mockSetSnackbarOpen,
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/admin');
     });
 
     it('handles success with minimal data', () => {

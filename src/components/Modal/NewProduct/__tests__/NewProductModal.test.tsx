@@ -2,11 +2,22 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import NewProductModal from '../NewProductModal';
 import { useAddProductMutation } from '../../../../redux/slices/inventoryApi';
 
 const theme = createTheme();
+
+// The component reads state.auth.user via useSelector, so a Provider with an
+// auth reducer is required even though the RTK Query hook itself is mocked.
+const createMockStore = () =>
+  configureStore({
+    reducer: {
+      auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+    },
+  });
 
 // Mock the Redux API hook
 jest.mock('../../../../redux/slices/inventoryApi');
@@ -34,7 +45,11 @@ jest.mock('../../../../components/Common', () => ({
 }));
 
 const renderWithTheme = (component: React.ReactElement) => {
-  return render(<ThemeProvider theme={theme}>{component}</ThemeProvider>);
+  return render(
+    <Provider store={createMockStore()}>
+      <ThemeProvider theme={theme}>{component}</ThemeProvider>
+    </Provider>
+  );
 };
 
 describe('NewProductModal', () => {
@@ -390,12 +405,14 @@ describe('NewProductModal', () => {
 
       // Reopen modal
       rerender(
-        <ThemeProvider theme={theme}>
-          <NewProductModal
-            open={true}
-            onClose={mockOnClose}
-          />
-        </ThemeProvider>
+        <Provider store={createMockStore()}>
+          <ThemeProvider theme={theme}>
+            <NewProductModal
+              open={true}
+              onClose={mockOnClose}
+            />
+          </ThemeProvider>
+        </Provider>
       );
 
       // Form should be reset (empty)
@@ -409,7 +426,11 @@ describe('NewProductModal', () => {
   });
 
   describe('Date Picker', () => {
-    it('renders date picker for expiry field', () => {
+    // The current NewProductModal collects master-product fields
+    // (product name, type, brand, HSN, unit of measure, min/max quantity)
+    // and does NOT render an expiry date picker. These tests assert that
+    // current behavior rather than a stale expectation.
+    it('does not render a date picker (no expiry field on this modal)', () => {
       renderWithTheme(
         <NewProductModal
           open={true}
@@ -417,11 +438,10 @@ describe('NewProductModal', () => {
         />
       );
 
-      const datePicker = screen.getByTestId('date-picker');
-      expect(datePicker).toBeInTheDocument();
+      expect(screen.queryByTestId('date-picker')).not.toBeInTheDocument();
     });
 
-    it('updates expiry date when date is selected', () => {
+    it('renders numeric quantity fields instead of a date picker', () => {
       renderWithTheme(
         <NewProductModal
           open={true}
@@ -429,10 +449,9 @@ describe('NewProductModal', () => {
         />
       );
 
-      const datePicker = screen.getByTestId('date-picker');
-      fireEvent.change(datePicker, { target: { value: '2025-12-31' } });
-
-      expect(datePicker).toHaveValue('2025-12-31');
+      // Minimum/Maximum quantity render as number inputs (spinbuttons).
+      const numberInputs = screen.getAllByRole('spinbutton');
+      expect(numberInputs.length).toBeGreaterThan(0);
     });
   });
 });

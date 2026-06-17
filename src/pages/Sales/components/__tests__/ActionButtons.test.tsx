@@ -15,16 +15,16 @@ describe('ActionButtons', () => {
 
   it('renders all action buttons', () => {
     render(<ActionButtons {...mockProps} />);
-    
-    expect(screen.getByText(/cancel/i)).toBeInTheDocument();
-    expect(screen.getByText(/save/i)).toBeInTheDocument();
-    expect(screen.getByText(/print/i)).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save and print/i })).toBeInTheDocument();
   });
 
   it('calls onCancel when Cancel button is clicked', () => {
     render(<ActionButtons {...mockProps} />);
     
-    const cancelButton = screen.getByText(/cancel/i);
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
     fireEvent.click(cancelButton);
     
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1);
@@ -33,7 +33,7 @@ describe('ActionButtons', () => {
   it('calls onSave when Save button is clicked', () => {
     render(<ActionButtons {...mockProps} />);
     
-    const saveButton = screen.getByText(/save/i);
+    const saveButton = screen.getByRole('button', { name: /^save$/i });
     fireEvent.click(saveButton);
     
     expect(mockProps.onSave).toHaveBeenCalledTimes(1);

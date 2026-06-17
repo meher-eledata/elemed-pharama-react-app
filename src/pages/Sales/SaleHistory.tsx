@@ -1861,11 +1861,7 @@ export default function SaleHistory() {
               totalDiscount={invoiceDetails.totalDiscount || '0'}
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
-              onCancel={handleCancelPrint}
-              onPrint={handlePrintToPDF}
-              onSaveClick={handleSaveClick}
               brandIcon={bgWhiteIcon}
-              hideActionButtons={true}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
               splitPayments={invoiceDetails.splitPayments || []}

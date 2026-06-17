@@ -20,6 +20,7 @@ describe('CustomerDetailsSection', () => {
     customerName: '',
     customerMobile: '',
     customerCity: '',
+    patientType: 'Out Patient',
     selectedCustomer: null,
     customerNames: ['John Doe', 'Jane Smith', 'Bob Johnson'],
     availablePhones: ['1234567890', '9876543210'],
@@ -27,6 +28,7 @@ describe('CustomerDetailsSection', () => {
     onCustomerSelect: jest.fn(),
     onCustomerMobileChange: jest.fn(),
     onCustomerCityChange: jest.fn(),
+    onPatientTypeChange: jest.fn(),
     onAddNewCustomer: jest.fn(),
   };
 

@@ -21,6 +21,8 @@ import Reports from "./Admin/Reports";
 import AdminSettings from "./Admin/Settings";
 import AuditLog from "./Admin/AuditLog";
 import DetailedSalesTable from "./Admin/DetailedSalesTable";
+import SupplierReports from "./Admin/SupplierReports";
+import SupplierReportDetail from "./Admin/SupplierReportDetail";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
@@ -73,6 +75,8 @@ export const Pages = () => {
             <Route path="users" element={<Users />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
+            <Route path="reports/suppliers" element={<SupplierReports />} />
+            <Route path="reports/suppliers/:supplierId" element={<SupplierReportDetail />} />
             <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="audit" element={<AuditLog />} />

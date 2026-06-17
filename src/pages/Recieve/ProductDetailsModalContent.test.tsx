@@ -1,10 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import ProductDetailsModalContent from './ProductDetailsModalContent';
-import { OrderReceiveRow, ProductItem } from './OrderReceive';
+import { OrderReceiveRow, ProductItem } from './types';
 
 // Create a theme for testing
 const theme = createTheme();
@@ -21,6 +20,8 @@ const mockProductData: OrderReceiveRow = {
   receiptId: 1,
   reNo: 'RA001',
   poNo: 'PO001',
+  po_id: 101,
+  supplierId: 1,
   supplier: 'Supplier A',
   received: 'Jan 15, 2024 10:00 AM',
   status: 'received',
@@ -113,7 +114,8 @@ describe('ProductDetailsModalContent', () => {
       expect(screen.getByText(/Type/i)).toBeInTheDocument();
       expect(screen.getByText(/Quantity/i)).toBeInTheDocument();
       expect(screen.getByText(/HSN Code/i)).toBeInTheDocument();
-      expect(screen.getByText(/Amount/i)).toBeInTheDocument();
+      // Component labels the amount column "Unit Price" (PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.AMOUNT)
+      expect(screen.getByText(/Unit Price/i)).toBeInTheDocument();
     });
 
     it('should render product data in table', () => {
@@ -171,8 +173,9 @@ describe('ProductDetailsModalContent', () => {
         />
       );
 
-      // Should show pagination controls (6 products, 5 per page = 2 pages)
-      expect(screen.getByText(/1 of 2 pages/i)).toBeInTheDocument();
+      // Pagination renders the current page in a Select and the total separately
+      // as "of N pages" (6 products, 5 per page = 2 pages).
+      expect(screen.getByText(/of 2 pages/i)).toBeInTheDocument();
     });
 
     it('should not display pagination when products fit in one page', () => {
@@ -189,12 +192,12 @@ describe('ProductDetailsModalContent', () => {
         />
       );
 
-      // Should not show pagination for 3 products (less than 5 per page)
-      expect(screen.queryByText(/pages/i)).not.toBeInTheDocument();
+      // The table always renders the pagination footer when there are rows;
+      // with 3 products (< 5 per page) there is a single page: "of 1 pages".
+      expect(screen.getByText(/of 1 pages/i)).toBeInTheDocument();
     });
 
     it('should navigate to next page', async () => {
-      const user = userEvent.setup();
       renderWithProviders(
         <ProductDetailsModalContent
           productData={mockProductData}
@@ -203,22 +206,23 @@ describe('ProductDetailsModalContent', () => {
         />
       );
 
-      // Find next page button (chevron right icon) - use fireEvent instead of userEvent for disabled buttons
-      const nextButtons = screen.getAllByRole('button');
-      const nextButton = nextButtons.find(button => {
-        const svg = button.querySelector('svg');
-        const isNextButton = svg && !svg.style.transform.includes('rotate');
-        const isDisabled = button.hasAttribute('disabled') || (button as HTMLButtonElement).disabled;
-        return isNextButton && !isDisabled;
-      }) as HTMLButtonElement | undefined;
+      // Page 1 shows the first five products; Product 6 lives on page 2.
+      expect(screen.getByText('Product 1')).toBeInTheDocument();
+      expect(screen.queryByText('Product 6')).not.toBeInTheDocument();
 
-      if (nextButton && !nextButton.disabled) {
-        fireEvent.click(nextButton);
-        
-        await waitFor(() => {
-          expect(screen.getByText(/2 of 2 pages/i)).toBeInTheDocument();
-        });
-      }
+      // The next-page control is the IconButton containing KeyboardArrowRightIcon.
+      const nextButton = screen
+        .getByTestId('KeyboardArrowRightIcon')
+        .closest('button') as HTMLButtonElement;
+      expect(nextButton).not.toBeDisabled();
+
+      fireEvent.click(nextButton);
+
+      await waitFor(() => {
+        // Page 2 now shows Product 6 and no longer shows Product 1.
+        expect(screen.getByText('Product 6')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Product 1')).not.toBeInTheDocument();
     });
 
     it('should navigate to previous page', async () => {
@@ -230,39 +234,32 @@ describe('ProductDetailsModalContent', () => {
         />
       );
 
-      // First go to page 2
-      const nextButtons = screen.getAllByRole('button');
-      const nextButton = nextButtons.find(button => {
-        const svg = button.querySelector('svg');
-        const isNextButton = svg && !svg.style.transform.includes('rotate');
-        const isDisabled = button.hasAttribute('disabled') || (button as HTMLButtonElement).disabled;
-        return isNextButton && !isDisabled;
-      }) as HTMLButtonElement | undefined;
+      // First go to page 2 via the next-page IconButton (KeyboardArrowRightIcon).
+      const nextButton = screen
+        .getByTestId('KeyboardArrowRightIcon')
+        .closest('button') as HTMLButtonElement;
+      expect(nextButton).not.toBeDisabled();
 
-      if (nextButton && !nextButton.disabled) {
-        fireEvent.click(nextButton);
-        
-        await waitFor(() => {
-          expect(screen.getByText(/2 of 2 pages/i)).toBeInTheDocument();
-        });
+      fireEvent.click(nextButton);
 
-        // Then go back to page 1
-        const prevButtons = screen.getAllByRole('button');
-        const prevButton = prevButtons.find(button => {
-          const svg = button.querySelector('svg');
-          const isPrevButton = svg && svg.style.transform.includes('rotate');
-          const isDisabled = button.hasAttribute('disabled') || (button as HTMLButtonElement).disabled;
-          return isPrevButton && !isDisabled;
-        }) as HTMLButtonElement | undefined;
+      await waitFor(() => {
+        // Product 6 is only on page 2.
+        expect(screen.getByText('Product 6')).toBeInTheDocument();
+      });
 
-        if (prevButton && !prevButton.disabled) {
-          fireEvent.click(prevButton);
-          
-          await waitFor(() => {
-            expect(screen.getByText(/1 of 2 pages/i)).toBeInTheDocument();
-          });
-        }
-      }
+      // Then go back to page 1 via the previous-page IconButton (KeyboardArrowLeftIcon).
+      const prevButton = screen
+        .getByTestId('KeyboardArrowLeftIcon')
+        .closest('button') as HTMLButtonElement;
+      expect(prevButton).not.toBeDisabled();
+
+      fireEvent.click(prevButton);
+
+      await waitFor(() => {
+        // Back on page 1: Product 1 visible, Product 6 gone.
+        expect(screen.getByText('Product 1')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Product 6')).not.toBeInTheDocument();
     });
 
     it('should disable previous button on first page', () => {
@@ -274,15 +271,11 @@ describe('ProductDetailsModalContent', () => {
         />
       );
 
-      const buttons = screen.getAllByRole('button');
-      const prevButton = buttons.find(button => {
-        const svg = button.querySelector('svg');
-        return svg && svg.style.transform.includes('rotate');
-      });
-
-      if (prevButton) {
-        expect(prevButton).toBeDisabled();
-      }
+      // On page 1 the previous-page IconButton (KeyboardArrowLeftIcon) is disabled.
+      const prevButton = screen
+        .getByTestId('KeyboardArrowLeftIcon')
+        .closest('button') as HTMLButtonElement;
+      expect(prevButton).toBeDisabled();
     });
 
     it('should disable next button on last page', async () => {
@@ -294,50 +287,29 @@ describe('ProductDetailsModalContent', () => {
         />
       );
 
-      // Find all IconButtons - there should be 2 (prev and next)
-      const buttons = screen.getAllByRole('button').filter(button => {
-        // Filter for IconButtons that contain SVG icons
-        const svg = button.querySelector('svg');
-        return svg !== null;
+      // The next-page IconButton (KeyboardArrowRightIcon) is enabled on page 1.
+      const nextButton = screen
+        .getByTestId('KeyboardArrowRightIcon')
+        .closest('button') as HTMLButtonElement;
+      expect(nextButton).not.toBeDisabled();
+
+      // We're on page 1 of 2 (current page lives in the Select; total in "of 2 pages").
+      expect(screen.getByText(/of 2 pages/i)).toBeInTheDocument();
+      expect(screen.getByText('Product 1')).toBeInTheDocument();
+
+      // Click to go to page 2 (last page).
+      fireEvent.click(nextButton);
+
+      await waitFor(() => {
+        // Product 6 (only on page 2) confirms we're on the last page.
+        expect(screen.getByText('Product 6')).toBeInTheDocument();
       });
 
-      expect(buttons.length).toBeGreaterThanOrEqual(2);
-      
-      // The next button is the second IconButton (first is prev with rotation)
-      // We can identify it by checking if it's not disabled initially
-      const nextButton = buttons.find(button => {
-        const htmlButton = button as HTMLButtonElement;
-        return !htmlButton.disabled && !htmlButton.hasAttribute('disabled');
-      }) as HTMLButtonElement | undefined;
-
-      expect(nextButton).toBeDefined();
-      
-      if (!nextButton) {
-        throw new Error('Next button not found');
-      }
-      
-      // Verify we're on page 1 (should show "1 of 2 pages")
-      expect(screen.getByText(/1.*of.*2.*pages/i)).toBeInTheDocument();
-
-      // Click to go to page 2 (last page)
-      fireEvent.click(nextButton);
-      
-      // Wait for the button to be disabled and page to update
-      await waitFor(() => {
-        // Verify we're on page 2
-        expect(screen.getByText(/2.*of.*2.*pages/i)).toBeInTheDocument();
-        
-        // Find the next button again - it should now be disabled
-        const buttonsAfter = screen.getAllByRole('button').filter(button => {
-          const svg = button.querySelector('svg');
-          return svg !== null;
-        });
-        
-        // The next button (second one) should be disabled
-        const nextButtonAfter = buttonsAfter[1] as HTMLButtonElement;
-        expect(nextButtonAfter).toBeDefined();
-        expect(nextButtonAfter).toBeDisabled();
-      }, { timeout: 3000 });
+      // On the last page the next-page button is disabled (currentPage === totalPages).
+      const nextButtonAfter = screen
+        .getByTestId('KeyboardArrowRightIcon')
+        .closest('button') as HTMLButtonElement;
+      expect(nextButtonAfter).toBeDisabled();
     });
 
     it('should display correct products on each page', () => {
@@ -374,7 +346,8 @@ describe('ProductDetailsModalContent', () => {
       expect(screen.getAllByText(firstProduct.type)[0]).toBeInTheDocument();
       expect(screen.getByText(firstProduct.quantity.toString())).toBeInTheDocument();
       expect(screen.getByText(firstProduct.hsnCode)).toBeInTheDocument();
-      expect(screen.getByText(firstProduct.amount.toString())).toBeInTheDocument();
+      // The amount column renders as Indian-locale currency: ₹1,000.00 (amount=1000)
+      expect(screen.getByText('₹1,000.00')).toBeInTheDocument();
     });
 
     it('should handle products with different data types', () => {
@@ -402,7 +375,8 @@ describe('ProductDetailsModalContent', () => {
 
       expect(screen.getByText('Product A')).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument();
-      expect(screen.getByText('5000.5')).toBeInTheDocument();
+      // amount=5000.50 renders as Indian-locale currency with 2 fraction digits.
+      expect(screen.getByText('₹5,000.50')).toBeInTheDocument();
     });
   });
 

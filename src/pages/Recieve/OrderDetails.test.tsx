@@ -6,9 +6,16 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import OrderDetails, { PharmaTableRow } from './OrderDetails';
+import OrderDetails from './OrderDetails';
+import { PharmaTableRow } from './types';
 import { orderLabels } from '../../config/label/OrderDetail.labels';
-import { receiveApi, useSubmitReceiptMutation, useEditReceiptMutation } from '../../redux/slices/receiveApi';
+import {
+  receiveApi,
+  useSubmitReceiptMutation,
+  useEditReceiptMutation,
+  useUploadReceiptFileMutation,
+  useGetReceiptsQuery,
+} from '../../redux/slices/receiveApi';
 
 // Create a theme for testing
 const theme = createTheme();
@@ -37,6 +44,20 @@ jest.mock('react-router-dom', () => ({
 
 // Mock the Redux API hooks
 jest.mock('../../redux/slices/receiveApi');
+jest.mock('../../redux/slices/masterApi', () => ({
+  ...jest.requireActual('../../redux/slices/masterApi'),
+  useAddSupplierMutation: () => [
+    jest.fn().mockReturnValue({ unwrap: () => Promise.resolve({}) }),
+    { isLoading: false, isError: false, isSuccess: false, error: null, data: null, reset: jest.fn() },
+  ],
+}));
+jest.mock('../../redux/slices/inventoryApi', () => ({
+  ...jest.requireActual('../../redux/slices/inventoryApi'),
+  useGetBatchesForProductMutation: () => [
+    jest.fn().mockReturnValue({ unwrap: () => Promise.resolve({}) }),
+    { isLoading: false, isError: false, isSuccess: false, error: null, data: null, reset: jest.fn() },
+  ],
+}));
 jest.mock('../../components/Modal/NewProduct/NewProductModal', () => ({
   __esModule: true,
   default: ({ open, onClose, onProductAdded }: any) => (
@@ -97,9 +118,17 @@ const mockReceiveApiReducer = (state: any = {
   return state;
 };
 
+const mockAuthReducer = (
+  state: any = {
+    token: 'mock-token',
+    user: { first_name: 'John', last_name: 'Doe', username: 'johndoe' },
+  }
+) => state;
+
 const mockStore = configureStore({
   reducer: {
     [receiveApi.reducerPath]: mockReceiveApiReducer,
+    auth: mockAuthReducer,
   },
   middleware: (getDefaultMiddleware: any) =>
     getDefaultMiddleware({
@@ -140,6 +169,8 @@ const renderWithProviders = (
 describe('OrderDetails', () => {
   const mockUseSubmitReceiptMutation = useSubmitReceiptMutation as jest.MockedFunction<typeof useSubmitReceiptMutation>;
   const mockUseEditReceiptMutation = useEditReceiptMutation as jest.MockedFunction<typeof useEditReceiptMutation>;
+  const mockUseUploadReceiptFileMutation = useUploadReceiptFileMutation as jest.MockedFunction<typeof useUploadReceiptFileMutation>;
+  const mockUseGetReceiptsQuery = useGetReceiptsQuery as jest.MockedFunction<typeof useGetReceiptsQuery>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -177,6 +208,17 @@ describe('OrderDetails', () => {
     
     mockUseSubmitReceiptMutation.mockReturnValue(createMockMutation());
     mockUseEditReceiptMutation.mockReturnValue(createMockMutation());
+    mockUseUploadReceiptFileMutation.mockReturnValue(createMockMutation());
+    mockUseGetReceiptsQuery.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+      isFetching: false,
+      isSuccess: true,
+      isError: false,
+      isUninitialized: false,
+    } as any);
   });
 
   describe('Component Rendering', () => {
@@ -188,12 +230,11 @@ describe('OrderDetails', () => {
     it('should render all form fields', () => {
       renderWithProviders(<OrderDetails labels={orderLabels} />);
       
+      // Payment method / vendor / transaction fields moved to the separate
+      // PaymentDetails flow; OrderDetails now only renders supplier/PO/invoice.
       expect(screen.getByText(orderLabels.supplierName)).toBeInTheDocument();
       expect(screen.getByText(orderLabels.poNumber)).toBeInTheDocument();
       expect(screen.getByText(orderLabels.invoiceDate)).toBeInTheDocument();
-      expect(screen.getByText(orderLabels.paymentMethod)).toBeInTheDocument();
-      expect(screen.getByText(orderLabels.paymentVendor)).toBeInTheDocument();
-      expect(screen.getByText(orderLabels.transactionNumber)).toBeInTheDocument();
     });
 
     it('should render find product field', () => {
@@ -203,8 +244,10 @@ describe('OrderDetails', () => {
 
     it('should render action buttons', () => {
       renderWithProviders(<OrderDetails labels={orderLabels} />);
+      // In create (non-edit) mode the primary action is "Proceed to Payment";
+      // "Save" only appears in edit mode.
       expect(screen.getByText(orderLabels.cancelButton)).toBeInTheDocument();
-      expect(screen.getByText(orderLabels.saveButton)).toBeInTheDocument();
+      expect(screen.getByText(/Proceed to Payment/i)).toBeInTheDocument();
     });
   });
 
@@ -256,21 +299,13 @@ describe('OrderDetails', () => {
     it('should update PO number on input change', async () => {
       const user = userEvent.setup();
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for component to fully render and suppliers to load
-      await waitFor(() => {
-        expect(screen.getByText(orderLabels.poNumber)).toBeInTheDocument();
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-      }, { timeout: 10000 });
-      
-      const poInput = await waitFor(() => {
-        return screen.getByPlaceholderText(orderLabels.enterPoNumber);
-      }, { timeout: 5000 });
-      
+
+      // PO number is a plain text field rendered in SupplierSection.
+      const poInput = await screen.findByPlaceholderText(orderLabels.enterPoNumber);
+
       await user.clear(poInput);
       await user.type(poInput, 'PO123');
-      
+
       expect(poInput).toHaveValue('PO123');
     }, 15000);
 
@@ -292,38 +327,22 @@ describe('OrderDetails', () => {
 
   describe('Product Management', () => {
     it('should add product to table when selected', async () => {
-      const user = userEvent.setup();
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for suppliers to load first
-      await waitFor(() => {
-        expect(screen.getByText(orderLabels.findProduct)).toBeInTheDocument();
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-      }, { timeout: 3000 });
 
-      // Wait for products to load
-      await waitFor(() => {
-        const findProductInput = screen.queryByPlaceholderText(orderLabels.search);
-        expect(findProductInput).toBeInTheDocument();
-      }, { timeout: 3000 });
+      // Find-product field placeholder is searchByProductName in ProductSearchSection.
+      expect(await screen.findByText(orderLabels.findProduct)).toBeInTheDocument();
+      expect(
+        await screen.findByPlaceholderText(orderLabels.searchByProductName)
+      ).toBeInTheDocument();
     });
 
     it('should open new product modal when Add Products option is selected', async () => {
-      const user = userEvent.setup();
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for suppliers to load first
-      await waitFor(() => {
-        expect(screen.getByText(orderLabels.findProduct)).toBeInTheDocument();
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-      }, { timeout: 3000 });
 
-      await waitFor(() => {
-        const findProductInput = screen.queryByPlaceholderText(orderLabels.search);
-        expect(findProductInput).toBeInTheDocument();
-      }, { timeout: 3000 });
+      expect(await screen.findByText(orderLabels.findProduct)).toBeInTheDocument();
+      expect(
+        await screen.findByPlaceholderText(orderLabels.searchByProductName)
+      ).toBeInTheDocument();
     });
   });
 
@@ -343,40 +362,20 @@ describe('OrderDetails', () => {
 
     it('should handle table sorting', async () => {
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for suppliers to load first
-      await waitFor(() => {
-        expect(screen.getByText(orderLabels.findProduct)).toBeInTheDocument();
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-      }, { timeout: 3000 });
-      
-      await waitFor(() => {
-        const table = screen.queryByTestId('reusable-table');
-        expect(table).toBeInTheDocument();
-      }, { timeout: 3000 });
+
+      expect(await screen.findByTestId('reusable-table')).toBeInTheDocument();
 
       const sortButton = screen.getByText('Sort');
       fireEvent.click(sortButton);
-      
+
       // Sort should be triggered
       expect(sortButton).toBeInTheDocument();
     });
 
     it('should handle pagination', async () => {
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for suppliers to load first
-      await waitFor(() => {
-        expect(screen.getByText(orderLabels.findProduct)).toBeInTheDocument();
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-      }, { timeout: 3000 });
-      
-      await waitFor(() => {
-        const table = screen.queryByTestId('reusable-table');
-        expect(table).toBeInTheDocument();
-      }, { timeout: 3000 });
+
+      expect(await screen.findByTestId('reusable-table')).toBeInTheDocument();
 
       const nextPageButton = screen.getByText('Next Page');
       fireEvent.click(nextPageButton);
@@ -390,109 +389,72 @@ describe('OrderDetails', () => {
   describe('Form Validation', () => {
     it('should disable save button when required fields are empty', () => {
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      const saveButton = screen.getByText(orderLabels.saveButton);
-      expect(saveButton).toBeDisabled();
+      // Create-mode primary action is "Proceed to Payment"; disabled until valid.
+      const proceedButton = screen.getByText(/Proceed to Payment/i).closest('button');
+      expect(proceedButton).toBeDisabled();
     });
 
     it('should enable save button when required fields are filled', async () => {
       const user = userEvent.setup();
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for suppliers to load
-      await waitFor(() => {
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-        expect(supplierInput).not.toBeDisabled();
-      }, { timeout: 10000 });
-      
-      // Fill required fields
-      const supplierInput = await waitFor(() => {
-        const input = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        if (!input || input.hasAttribute('disabled')) {
-          throw new Error('Supplier input not ready');
-        }
-        return input;
-      }, { timeout: 5000 });
-      
+
+      // Supplier field is the first Autocomplete combobox; its placeholder shows
+      // "Loading suppliers..." until the (transition-deferred) fetch resolves, so
+      // query it by role rather than the final placeholder text.
+      await waitFor(() => expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0));
+      const supplierInput = screen.getAllByRole('combobox')[0];
       await user.type(supplierInput, 'Supplier Name');
-      
-      const poInput = await waitFor(() => {
-        return screen.getByPlaceholderText(orderLabels.enterPoNumber);
-      }, { timeout: 5000 });
-      
+
+      const poInput = await screen.findByPlaceholderText(orderLabels.enterPoNumber);
       await user.clear(poInput);
       await user.type(poInput, 'PO123');
-      
-      // Save button should still be disabled if no products
-      const saveButton = screen.getByText(orderLabels.saveButton);
-      // Button state depends on validation logic
-      expect(saveButton).toBeInTheDocument();
+
+      // Create-mode primary action is "Proceed to Payment"; still disabled with no products.
+      const proceedButton = screen.getByText(/Proceed to Payment/i).closest('button');
+      expect(proceedButton).toBeInTheDocument();
     }, 20000);
   });
 
   describe('Save Functionality', () => {
     it('should show error when supplier name is missing', async () => {
-      const user = userEvent.setup();
       const mockSubmit = jest.fn().mockRejectedValue({ message: 'Supplier name required' });
       mockUseSubmitReceiptMutation.mockReturnValue(createMockMutation(mockSubmit));
-      
+
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      const saveButton = screen.getByText(orderLabels.saveButton);
-      // Button should be disabled if validation fails
-      expect(saveButton).toBeDisabled();
+
+      // Primary action disabled while supplier is missing.
+      const proceedButton = screen.getByText(/Proceed to Payment/i).closest('button');
+      expect(proceedButton).toBeDisabled();
     });
 
     it('should show error when PO number is missing', async () => {
       const user = userEvent.setup();
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for suppliers to load
-      await waitFor(() => {
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-        expect(supplierInput).not.toBeDisabled();
-      }, { timeout: 10000 });
-      
-      const supplierInput = await waitFor(() => {
-        return screen.getByPlaceholderText(orderLabels.enterSupplierName);
-      }, { timeout: 5000 });
-      
+
+      await waitFor(() => expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0));
+      const supplierInput = screen.getAllByRole('combobox')[0];
       await user.type(supplierInput, 'Supplier');
-      
-      const saveButton = screen.getByText(orderLabels.saveButton);
-      // Should still be disabled without PO number
-      expect(saveButton).toBeDisabled();
+
+      // Still disabled without products (PO number is optional here).
+      const proceedButton = screen.getByText(/Proceed to Payment/i).closest('button');
+      expect(proceedButton).toBeDisabled();
     }, 15000);
 
     it('should show error when no products are added', async () => {
       const user = userEvent.setup();
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
-      // Wait for suppliers to load
-      await waitFor(() => {
-        const supplierInput = screen.queryByPlaceholderText(orderLabels.enterSupplierName);
-        expect(supplierInput).toBeInTheDocument();
-        expect(supplierInput).not.toBeDisabled();
-      }, { timeout: 10000 });
-      
-      const supplierInput = await waitFor(() => {
-        return screen.getByPlaceholderText(orderLabels.enterSupplierName);
-      }, { timeout: 5000 });
-      
+
+      await waitFor(() => expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0));
+      const supplierInput = screen.getAllByRole('combobox')[0];
       await user.type(supplierInput, 'Supplier');
-      
-      const poInput = await waitFor(() => {
-        return screen.getByPlaceholderText(orderLabels.enterPoNumber);
-      }, { timeout: 5000 });
-      
+
+      const poInput = await screen.findByPlaceholderText(orderLabels.enterPoNumber);
       await user.clear(poInput);
       await user.type(poInput, 'PO123');
-      
-      // Save button should be disabled without products
-      const saveButton = screen.getByText(orderLabels.saveButton);
-      expect(saveButton).toBeDisabled();
+
+      // Primary action remains disabled without products.
+      const proceedButton = screen.getByText(/Proceed to Payment/i).closest('button');
+      expect(proceedButton).toBeDisabled();
     }, 15000);
   });
 
@@ -595,7 +557,7 @@ describe('OrderDetails', () => {
   });
 
   describe('Delete Functionality', () => {
-    it('should open delete confirmation dialog', async () => {
+    it('should trigger receipt deletion when the delete button is clicked', async () => {
       const user = userEvent.setup();
       mockLocation.state = {
         isEditMode: true,
@@ -603,12 +565,17 @@ describe('OrderDetails', () => {
       };
 
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
+
       const deleteButton = screen.getByText(/Delete the full receipt/i);
       await user.click(deleteButton);
-      
+
+      // The edit-mode delete button calls deleteReceipt() directly, which issues a
+      // DELETE request to the delete-receipt endpoint (no confirmation dialog).
       await waitFor(() => {
-        expect(screen.getByTestId('confirmation-dialog')).toBeInTheDocument();
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('delete-receipt'),
+          expect.objectContaining({ method: 'DELETE' })
+        );
       });
     });
   });

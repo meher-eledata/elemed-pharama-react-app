@@ -11,13 +11,24 @@ import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModa
 import NewDoctorModal from "../../components/Modal/NewDoctor/NewDoctorModal";
 import { MASTER_DATA_CONSTANTS } from "../../config/constants/MasterData.constants";
 import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
+import { MASTER_VIEW_LABELS } from "../../config/label/MasterView.labels";
+import type { MasterCategory } from "../../config/constants/MasterView.constants";
+import MasterViewModal from "./components/MasterViewModal";
 import {
   useAddCustomerMutation
 } from "../../redux/slices/salesApi";
 import {
   useGetMasterCountsQuery,
   useAddSupplierMutation,
-  useAddDoctorMutation
+  useAddDoctorMutation,
+  useGetCustomersQuery,
+  useGetSuppliersQuery,
+  useGetProductsQuery,
+  useGetDoctorsQuery,
+  useUpdateCustomerMutation,
+  useUpdateSupplierMutation,
+  useUpdateProductMutation,
+  useUpdateDoctorMutation,
 } from "../../redux/slices/masterApi";
 
 interface CardProps {
@@ -26,12 +37,13 @@ interface CardProps {
   desc: string;
   action: string;
   onAction: () => void;
+  onView: () => void;
   iconBgColor: string;
   count: number;
   badgeLabel: string;
 }
 
-const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBgColor, count, badgeLabel }) => (
+const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, onView, iconBgColor, count, badgeLabel }) => (
   <Box
     sx={{
       borderRadius: MASTER_DATA_CONSTANTS.CARDS.RADIUS,
@@ -107,7 +119,7 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
       {desc}
     </Typography>
 
-    <Box sx={{ mt: 'auto', pt: 1 }}>
+    <Box sx={{ mt: 'auto', pt: 1, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
       <StandardButton
         onClick={onAction}
         variant="primary"
@@ -125,6 +137,20 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
       >
         {action}
       </StandardButton>
+      <StandardButton
+        onClick={onView}
+        variant="secondary"
+        size="medium"
+        sx={{
+          height: MASTER_DATA_CONSTANTS.ACTION_BUTTON.HEIGHT,
+          minWidth: MASTER_DATA_CONSTANTS.ACTION_BUTTON.MIN_WIDTH,
+          borderRadius: MASTER_DATA_CONSTANTS.ACTION_BUTTON.RADIUS,
+          fontWeight: MASTER_DATA_CONSTANTS.ACTION_BUTTON.FONT_WEIGHT,
+          fontSize: MASTER_DATA_CONSTANTS.ACTION_BUTTON.FONT_SIZE,
+        }}
+      >
+        {MASTER_VIEW_LABELS.VIEW_ACTION}
+      </StandardButton>
     </Box>
   </Box>
 );
@@ -139,10 +165,25 @@ const Masterpage: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
 
+  // Which category's view/edit table is open (null = none).
+  const [viewCategory, setViewCategory] = useState<MasterCategory | null>(null);
+
   const { data: masterCounts, isLoading: loadingCounts } = useGetMasterCountsQuery();
   const [addCustomer] = useAddCustomerMutation();
   const [addSupplier] = useAddSupplierMutation();
   const [addDoctor] = useAddDoctorMutation();
+
+  // List queries — only fetch when that category's view modal is open.
+  const customersQuery = useGetCustomersQuery(undefined, { skip: viewCategory !== 'customer' });
+  const suppliersQuery = useGetSuppliersQuery(undefined, { skip: viewCategory !== 'supplier' });
+  const productsQuery = useGetProductsQuery(undefined, { skip: viewCategory !== 'product' });
+  const doctorsQuery = useGetDoctorsQuery(undefined, { skip: viewCategory !== 'doctor' });
+
+  // Update mutations.
+  const [updateCustomer] = useUpdateCustomerMutation();
+  const [updateSupplier] = useUpdateSupplierMutation();
+  const [updateProduct] = useUpdateProductMutation();
+  const [updateDoctor] = useUpdateDoctorMutation();
 
   const productCount = masterCounts?.products ?? 0;
   const customerCount = masterCounts?.customers ?? 0;
@@ -297,6 +338,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.PRODUCT.DESC}
           action={MASTER_DATA_LABELS.CARDS.PRODUCT.ACTION}
           onAction={() => setProductModalOpen(true)}
+          onView={() => setViewCategory('product')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.PRODUCT}
           count={loadingCounts ? 0 : productCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.PRODUCT.BADGE_LABEL}
@@ -308,6 +350,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.CUSTOMER.DESC}
           action={MASTER_DATA_LABELS.CARDS.CUSTOMER.ACTION}
           onAction={() => setCustomerModalOpen(true)}
+          onView={() => setViewCategory('customer')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.CUSTOMER}
           count={loadingCounts ? 0 : customerCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.CUSTOMER.BADGE_LABEL}
@@ -319,6 +362,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.SUPPLIER.DESC}
           action={MASTER_DATA_LABELS.CARDS.SUPPLIER.ACTION}
           onAction={() => setSupplierModalOpen(true)}
+          onView={() => setViewCategory('supplier')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.SUPPLIER}
           count={loadingCounts ? 0 : supplierCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.SUPPLIER.BADGE_LABEL}
@@ -330,6 +374,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.DOCTOR.DESC}
           action={MASTER_DATA_LABELS.CARDS.DOCTOR.ACTION}
           onAction={() => setDoctorModalOpen(true)}
+          onView={() => setViewCategory('doctor')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.DOCTOR}
           count={loadingCounts ? 0 : doctorCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.DOCTOR.BADGE_LABEL}
@@ -363,6 +408,46 @@ const Masterpage: React.FC = () => {
         isOpen={doctorModalOpen}
         onClose={() => setDoctorModalOpen(false)}
         onSubmit={handleDoctorSubmit}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'customer'}
+        category="customer"
+        rows={(customersQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={customersQuery.isLoading || customersQuery.isFetching}
+        isError={customersQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateCustomer(body as any).unwrap()}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'supplier'}
+        category="supplier"
+        rows={(suppliersQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={suppliersQuery.isLoading || suppliersQuery.isFetching}
+        isError={suppliersQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateSupplier(body as any).unwrap()}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'product'}
+        category="product"
+        rows={(productsQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={productsQuery.isLoading || productsQuery.isFetching}
+        isError={productsQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateProduct(body as any).unwrap()}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'doctor'}
+        category="doctor"
+        rows={(doctorsQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={doctorsQuery.isLoading || doctorsQuery.isFetching}
+        isError={doctorsQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateDoctor(body as any).unwrap()}
       />
 
       <Snackbar
