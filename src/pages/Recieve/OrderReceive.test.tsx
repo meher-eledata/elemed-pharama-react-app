@@ -15,6 +15,7 @@ import {
   useGetCurrentPurchaseOrdersQuery,
   useGetReceiptLinesQuery,
   useLazyGetReceiptLinesQuery,
+  useLazyGetReceiptFileLinkQuery,
   Receipt,
   PurchaseOrder,
 } from '../../redux/slices/receiveApi';
@@ -196,6 +197,7 @@ describe('OrderReceive', () => {
   const mockUseDeleteReceiptMutation = useDeleteReceiptMutation as jest.MockedFunction<typeof useDeleteReceiptMutation>;
   const mockUseGetReceiptLinesQuery = useGetReceiptLinesQuery as jest.MockedFunction<typeof useGetReceiptLinesQuery>;
   const mockUseLazyGetReceiptLinesQuery = useLazyGetReceiptLinesQuery as jest.MockedFunction<typeof useLazyGetReceiptLinesQuery>;
+  const mockUseLazyGetReceiptFileLinkQuery = useLazyGetReceiptFileLinkQuery as jest.MockedFunction<typeof useLazyGetReceiptFileLinkQuery>;
   const mockUseGetBatchesForProductMutation = useGetBatchesForProductMutation as jest.MockedFunction<typeof useGetBatchesForProductMutation>;
 
   beforeEach(() => {
@@ -209,6 +211,18 @@ describe('OrderReceive', () => {
     // Lazy query returns a tuple: [trigger, result, lastPromiseInfo]
     const lazyTrigger = jest.fn().mockReturnValue({ unwrap: () => Promise.resolve(mockReceiptLines) });
     mockUseLazyGetReceiptLinesQuery.mockReturnValue([lazyTrigger, createMockQueryResult(undefined), {} as any] as any);
+    // Lazy query returns a tuple: [trigger, result, lastPromiseInfo]
+    const lazyFileLinkTrigger = jest.fn().mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          receipt_id: 0,
+          url: null,
+          file_name: null,
+          file_type: null,
+          expires_in: null,
+        }),
+    });
+    mockUseLazyGetReceiptFileLinkQuery.mockReturnValue([lazyFileLinkTrigger, createMockQueryResult(undefined), {} as any] as any);
     mockUseGetBatchesForProductMutation.mockReturnValue([createMockMutation().mutateAsync, createMockMutation()] as any);
   });
 

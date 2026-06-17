@@ -549,6 +549,20 @@ export const receiveApi = createApi({
       providesTags: ["Receive"],
     }),
 
+    // Authenticated file-link resolver: returns a presigned S3 url (dev) or null (local disk).
+    getReceiptFileLink: builder.query<
+      {
+        receipt_id: number;
+        url: string | null;
+        file_name: string | null;
+        file_type: string | null;
+        expires_in: number | null;
+      },
+      number
+    >({
+      query: (receiptId) => `receive/${receiptId}/file-link`,
+    }),
+
     // Adjust supplier credit
     adjustSupplierCredit: builder.mutation<
       any,
@@ -592,6 +606,7 @@ export const {
   useGetPurchaseOrderPaymentsMutation,
   useGetSupplierCreditBalanceQuery,
   useAdjustSupplierCreditMutation, // IN: Add credit, OUT: Subtract credit
+  useLazyGetReceiptFileLinkQuery,
 } = receiveApi;
 
 export const getReceiptFileUrl = (receiptId: number): string => {
