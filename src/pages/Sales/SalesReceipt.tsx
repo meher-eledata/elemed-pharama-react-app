@@ -1775,10 +1775,6 @@ const SalesReceipt: React.FC = () => {
               totalPayableAmount={totalPayableAmount}
               patientType={patientType}
               splitPayments={splitPayments}
-              onCancel={handleCancelPrint}
-              onPrint={handlePrintFromModal}
-              onSaveClick={handleSaveFromModal}
-              hideActionButtons={true}
               brandIcon={bgWhiteIcon}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}

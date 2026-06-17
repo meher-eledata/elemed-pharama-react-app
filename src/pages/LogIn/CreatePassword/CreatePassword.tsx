@@ -120,24 +120,15 @@ const CreatePassword: React.FC = () => {
     // Call appropriate API based on the flow
     try {
       if (isResetPassword) {
-        console.log('Resetting password');
-        console.log('Token (first 30 chars):', token ? `${token.substring(0, 30)}...` : 'missing');
-        console.log('Password length:', newPassword.length);
-        console.log('Request payload:', { token: token?.substring(0, 30) + '...', password: '***' });
-        
-        const response = await resetPassword({
+        await resetPassword({
           token: token || '',
           password: newPassword,
         }).unwrap();
-        
-        console.log('Password reset successful:', response);
       } else if (isCreatePassword) {
-        console.log('Creating password with token:', token?.substring(0, 20) + '...');
-        const response = await createPassword({
+        await createPassword({
           token: token || '',
           password: newPassword,
         }).unwrap();
-        console.log('Password created successful:', response);
       } else {
         throw new Error('Invalid route');
       }

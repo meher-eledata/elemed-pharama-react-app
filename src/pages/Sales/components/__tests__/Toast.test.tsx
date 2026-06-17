@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Toast } from '../Toast';
 
 describe('Toast', () => {
@@ -59,18 +59,20 @@ describe('Toast', () => {
     expect(mockProps.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('auto-closes after 4 seconds', async () => {
+  it('auto-closes after autoHideDuration elapses', () => {
     jest.useFakeTimers();
     render(<Toast {...mockProps} />);
-    
+
     expect(screen.getByText('Test message')).toBeInTheDocument();
-    
-    jest.advanceTimersByTime(4000);
-    
-    await waitFor(() => {
-      expect(mockProps.onClose).toHaveBeenCalled();
+
+    // The Snackbar uses autoHideDuration={6000}; advance past it inside act
+    // so the internal timer fires and triggers onClose.
+    act(() => {
+      jest.advanceTimersByTime(6000);
     });
-    
+
+    expect(mockProps.onClose).toHaveBeenCalled();
+
     jest.useRealTimers();
   });
 

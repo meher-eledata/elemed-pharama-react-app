@@ -14,6 +14,17 @@ const baseQuery = fetchBaseQuery({
   },
 });
 
+// Hard-redirect to the login route. Wrapped in an exported object so it can be
+// spied on in tests (jsdom locks down window.location). The login route is the
+// app's index route `/` (see src/pages/index.tsx → AuthLayout renders LogInLeft).
+export const redirect = {
+  toLogin: () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+  },
+};
+
 export const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -22,7 +33,11 @@ export const baseQueryWithReauth: BaseQueryFn<
   const result = await baseQuery(args, api, extraOptions);
 
   if (result.error && result.error.status === 401) {
-    // Session expiration logic removed as per request
+    // Token is invalid/expired: clear auth state + persisted token,
+    // then hard-redirect to the login route so the broken authenticated UI is
+    // fully torn down.
+    api.dispatch(logout());
+    redirect.toLogin();
   }
 
   return result;

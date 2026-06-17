@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import CustomerModal from '../CustomerModal';
@@ -58,17 +58,19 @@ describe('CustomerModal', () => {
     expect(screen.getByPlaceholderText(/drug license/i)).toBeInTheDocument();
   });
 
-  it('displays gender radio buttons', () => {
+  it('displays gender select with options', () => {
     renderComponent();
-    
-    // Use getAllByLabelText since there might be multiple elements, then check the first one
-    const maleRadios = screen.getAllByLabelText(/male/i);
-    const femaleRadios = screen.getAllByLabelText(/female/i);
-    const otherRadios = screen.getAllByLabelText(/other/i);
-    
-    expect(maleRadios.length).toBeGreaterThan(0);
-    expect(femaleRadios.length).toBeGreaterThan(0);
-    expect(otherRadios.length).toBeGreaterThan(0);
+
+    // Gender is now a MUI Select (combobox), not radio buttons.
+    const genderSelect = screen.getByLabelText(/gender/i);
+    expect(genderSelect).toBeInTheDocument();
+
+    // Open the dropdown and verify the options are listed.
+    fireEvent.mouseDown(genderSelect);
+    const listbox = within(screen.getByRole('listbox'));
+    expect(listbox.getByText(/^male$/i)).toBeInTheDocument();
+    expect(listbox.getByText(/^female$/i)).toBeInTheDocument();
+    expect(listbox.getByText(/^other$/i)).toBeInTheDocument();
   });
 
   it('calls onClose when close button is clicked', () => {
@@ -130,14 +132,15 @@ describe('CustomerModal', () => {
 
   it('handles gender selection', () => {
     renderComponent();
-    
-    // Use getAllByLabelText and get the first radio button
-    const maleRadios = screen.getAllByLabelText(/male/i);
-    if (maleRadios.length > 0) {
-      const maleRadio = maleRadios[0];
-      fireEvent.click(maleRadio);
-      expect(maleRadio).toBeChecked();
-    }
+
+    // Open the gender Select and pick "Male".
+    const genderSelect = screen.getByRole('combobox');
+    fireEvent.mouseDown(genderSelect);
+    const listbox = within(screen.getByRole('listbox'));
+    fireEvent.click(listbox.getByText(/^male$/i));
+
+    // The selected value should now be reflected in the combobox.
+    expect(genderSelect).toHaveTextContent(/male/i);
   });
 
   it('handles shipping address same as billing checkbox', () => {

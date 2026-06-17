@@ -68,10 +68,10 @@ describe('ConfirmationDialog', () => {
       expect(screen.getByText('Yes')).toBeInTheDocument();
     });
 
-    it('renders Do not delete button', () => {
+    it('renders Cancel button', () => {
       renderWithTheme(<ConfirmationDialog {...defaultProps} />);
 
-      expect(screen.getByText('Do not delete')).toBeInTheDocument();
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
 
     it('renders close icon button', () => {
@@ -96,10 +96,10 @@ describe('ConfirmationDialog', () => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
 
-    it('calls onClose when Do not delete button is clicked', () => {
+    it('calls onClose when Cancel button is clicked', () => {
       renderWithTheme(<ConfirmationDialog {...defaultProps} />);
 
-      const cancelButton = screen.getByText('Do not delete');
+      const cancelButton = screen.getByText('Cancel');
       fireEvent.click(cancelButton);
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);

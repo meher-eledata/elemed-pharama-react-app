@@ -2,23 +2,28 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SalePage from '../salepage';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
-import * as cartSlice from '../../../redux/slices/cartSlice';
+import * as inventoryApi from '../../../redux/slices/inventoryApi';
 
 // Mock dependencies
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/sales', state: null }),
 }));
 
 jest.mock('../../../redux/slices/salesApi');
 jest.mock('../../../redux/slices/receiveApi');
+jest.mock('../../../redux/slices/inventoryApi');
 jest.mock('../../../hooks/useDebounce', () => ({
   useDebounce: (value: any) => value,
 }));
+
+const theme = createTheme();
 
 const createMockStore = (initialState = {}) => {
   return configureStore({
@@ -76,9 +81,45 @@ describe('SalePage', () => {
     ]);
 
     (salesApi.useValidateSaleMutation as jest.Mock) = jest.fn(() => [
-      jest.fn().mockResolvedValue({
-        data: { mrp: 100, selling_price: 90 },
-      }),
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ mrp: 100, selling_price: 90 }),
+      })),
+      { isLoading: false },
+    ]);
+
+    // Doctor names used by both SalePage and ProductSelectionForm
+    (salesApi.useGetDoctorNamesQuery as jest.Mock) = jest.fn(() => ({
+      data: [{ id: '1', name: 'Dr. Smith' }],
+      isLoading: false,
+    }));
+
+    // Mutation used by SalePage when a product type is selected
+    (salesApi.useGetBatchNumbersByProductIdMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ batches: [] }),
+      })),
+      { isLoading: false },
+    ]);
+
+    // inventoryApi mutations used by SalePage cascade (brand -> type -> batch)
+    (inventoryApi.useGetBrandsFromProductNameMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([]),
+      })),
+      { isLoading: false },
+    ]);
+
+    (inventoryApi.useGetTypesForBrandAndProductMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([]),
+      })),
+      { isLoading: false },
+    ]);
+
+    (inventoryApi.useGetBatchesForProductMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([]),
+      })),
       { isLoading: false },
     ]);
   });
@@ -86,9 +127,11 @@ describe('SalePage', () => {
   const renderComponent = (store = createMockStore()) => {
     return render(
       <Provider store={store}>
-        <BrowserRouter>
-          <SalePage />
-        </BrowserRouter>
+        <ThemeProvider theme={theme}>
+          <BrowserRouter>
+            <SalePage />
+          </BrowserRouter>
+        </ThemeProvider>
       </Provider>
     );
   };
@@ -103,7 +146,8 @@ describe('SalePage', () => {
     renderComponent();
     
     expect(screen.getByText(/find product/i)).toBeInTheDocument();
-    expect(screen.getByText(/quantity/i)).toBeInTheDocument();
+    // Quantity field label renders as "Units" (also appears as a table header)
+    expect(screen.getAllByText(/units/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/discount/i)).toBeInTheDocument();
   });
 
@@ -163,7 +207,7 @@ describe('SalePage', () => {
       expect(qtyInput).toHaveValue('5');
     } else {
       // If input is not found, at least verify the quantity label exists
-      expect(screen.getByText(/quantity/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/units/i).length).toBeGreaterThan(0);
     }
   });
 

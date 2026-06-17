@@ -2,18 +2,26 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SaleHistory from '../SaleHistory';
 import * as salesApi from '../../../redux/slices/salesApi';
+
+const theme = createTheme();
 
 // Mock dependencies
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/sales/history', state: null }),
 }));
+
+jest.mock('../../../redux/slices/salesApi');
 
 jest.mock('../../../utils/cartStorage', () => ({
   getSalesHistoryFromStorage: jest.fn(() => []),
+  getEditInvoiceId: jest.fn(() => null),
+  clearEditInvoiceId: jest.fn(),
 }));
 
 const createMockStore = (initialState = {}) => {
@@ -33,16 +41,51 @@ const createMockStore = (initialState = {}) => {
 };
 
 describe('SaleHistory', () => {
+  // The component formats invoice numbers as "INV<number>" for display.
+  // invoice_number 7896 therefore renders as "INV7896".
+  const mockInvoices = [
+    {
+      id: 7896,
+      invoice_number: 7896,
+      invoice_date: '2026-01-10',
+      customer_name: 'John Doe',
+      doctor_name: 'Dr. Smith',
+      username: 'testuser',
+      total_amount: 1000,
+      payments: [{ payment_mode: 'Cash', amount: 1000, record_status: 'ACTIVE' }],
+    },
+  ];
+
   beforeEach(() => {
     jest.clearAllMocks();
+
+    const stableRefetch = jest.fn();
+    (salesApi.useGetInvoicesQuery as jest.Mock) = jest.fn(() => ({
+      data: mockInvoices,
+      isLoading: false,
+      error: null,
+      refetch: stableRefetch,
+    }));
+
+    // Stable trigger + options references so effects depending on them do not loop.
+    const stableTrigger = jest.fn(() => ({
+      unwrap: jest.fn().mockResolvedValue({ invoice: {}, items: [], payments: [] }),
+    }));
+    const stableOptions = { isLoading: false };
+    (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = jest.fn(() => [
+      stableTrigger,
+      stableOptions,
+    ]);
   });
 
   const renderComponent = (store = createMockStore()) => {
     return render(
       <Provider store={store}>
-        <BrowserRouter>
-          <SaleHistory />
-        </BrowserRouter>
+        <ThemeProvider theme={theme}>
+          <BrowserRouter>
+            <SaleHistory />
+          </BrowserRouter>
+        </ThemeProvider>
       </Provider>
     );
   };
@@ -100,7 +143,8 @@ describe('SaleHistory', () => {
     // Use getAllByText since "Username" appears multiple times (in filter label and table)
     const usernameElements = screen.getAllByText(/username/i);
     expect(usernameElements.length).toBeGreaterThan(0);
-    expect(screen.getByText(/date range/i)).toBeInTheDocument();
+    // The date range filter renders the DateRangeFilter component titled "Filter by Dates"
+    expect(screen.getByText(/filter by dates/i)).toBeInTheDocument();
   });
 
   it('handles doctor filter selection', async () => {
@@ -143,11 +187,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render with mock data (invoice numbers should appear)
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Find the invoice number element, then find the SVG in the same table cell/row
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -182,11 +226,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Find the invoice number, then find SVG in the same row
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -196,11 +240,12 @@ describe('SaleHistory', () => {
       }
     }
 
-    // Wait for modal and PrintPreviewModal content
+    // Wait for modal and PrintPreviewModal content.
+    // The "Customer receipt" title was removed from PrintPreviewModal; the
+    // pharmacy header ("ELITE PHARMACY") is now the stable receipt content.
     await waitFor(() => {
       expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
-      // PrintPreviewModal should show customer receipt
-      expect(screen.getByText(/customer receipt/i)).toBeInTheDocument();
+      expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 
@@ -209,11 +254,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Find and click the visibility icon in the table row
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -248,11 +293,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Open invoice modal by clicking eye icon
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -267,9 +312,9 @@ describe('SaleHistory', () => {
       expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    // Note: In SaleHistory, the Save/Print buttons are not visible in the modal
-    // because hideActionButtons={true} and CommonModal doesn't have actionButtons.
-    // However, the handlers exist and would open SaleConfirmationDialog if triggered.
+    // Note: In SaleHistory, the Save/Print buttons are not rendered inside
+    // PrintPreviewModal (it is a view-only body); action controls live in the
+    // parent dialog. The handlers exist and would open SaleConfirmationDialog if triggered.
     // This test verifies that SaleConfirmationDialog component is rendered and can be shown.
     // The actual Save/Print flow would need to be tested through integration tests
     // or by directly testing the handlers.

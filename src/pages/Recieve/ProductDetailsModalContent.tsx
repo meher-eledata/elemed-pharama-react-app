@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Box, Typography, Snackbar, Alert, Tooltip } from "@mui/material";
-import { OrderReceiveRow, ProductItem } from "./OrderReceive"; 
+import { OrderReceiveRow, ProductItem } from "./types";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import { PRODUCT_DETAILS_MODAL_CONSTANTS } from "../../config/constants/ProductDetailsModal.constants";
 import { PRODUCT_DETAILS_MODAL_LABELS } from "../../config/label/ProductDetailsModal.labels";
