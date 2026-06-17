@@ -7,6 +7,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
 import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
+import { SUPPLIER_REPORTS_LABELS } from '../../config/label/SupplierReports.labels';
+import { SUPPLIER_REPORTS_CONSTANTS } from '../../config/constants/SupplierReports.constants';
 import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
@@ -78,17 +80,37 @@ const Reports: React.FC = () => {
 
 const DetailedReportsView: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedReport, setSelectedReport] = useState<string | null>(
     (location.state as any)?.selectedReport || null
   );
 
-  const reportCards = [
+  const reportCards: {
+    id: string;
+    title: string;
+    description: string;
+    route?: string;
+  }[] = [
     {
       id: 'daily-sales',
       title: 'Daily Sales Report',
       description: 'View detailed daily sales information including payment methods, taxes, and trends',
     },
+    {
+      id: 'supplier-reports',
+      title: SUPPLIER_REPORTS_LABELS.DISCOVERY_CARD.TITLE,
+      description: SUPPLIER_REPORTS_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: SUPPLIER_REPORTS_CONSTANTS.ROUTES.OVERVIEW,
+    },
   ];
+
+  const handleCardClick = (report: { id: string; route?: string }) => {
+    if (report.route) {
+      navigate(report.route);
+    } else {
+      setSelectedReport(report.id);
+    }
+  };
 
   if (selectedReport === 'daily-sales') {
     return (
@@ -127,7 +149,7 @@ const DetailedReportsView: React.FC = () => {
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 },
               }}
-              onClick={() => setSelectedReport(report.id)}
+              onClick={() => handleCardClick(report)}
             >
               <Typography
                 sx={{
