@@ -7,6 +7,7 @@ import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
 import { ADMIN_CONSTANTS } from '../../config/constants/Admin.constants';
@@ -161,6 +162,14 @@ const AdminDashboard: React.FC = () => {
           action="Adjust Inventory"
           onAction={() => navigate('/admin/inventory-adjustment')}
           iconBgColor="#E0E7FF"
+        />
+        <Card
+          icon={<FolderOpenOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title="Historical Data"
+          desc="Upload, browse, and download historical data files for the pharmacy."
+          action="Manage Files"
+          onAction={() => navigate('/admin/historical-data')}
+          iconBgColor="#E0F2F1"
         />
         <Card
           icon={<AssignmentOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
