@@ -98,6 +98,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { RootState } from "../../redux/store";
 import { useNavigate } from "react-router-dom";
+import { getInitials } from "../../config/helpers/initials";
 
 import "./TopBar.scss";
 
@@ -148,21 +149,6 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
     dispatch(logout());
     // Redirect to login page
     navigate('/');
-  };
-
-  // Generate initials from the name
-  const getInitials = (fullName: string) => {
-    if (!fullName || fullName === "Guest") return "G";
-    
-    const nameParts = fullName.trim().split(' ');
-    if (nameParts.length >= 2) {
-      // First letter of first name + first letter of last name
-      return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
-    } else if (nameParts.length === 1) {
-      // If only one name, take first two letters
-      return nameParts[0].substring(0, 2).toUpperCase();
-    }
-    return "G";
   };
 
   return (
@@ -223,8 +209,7 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
             {isAdmin && (
               <MenuItem onClick={handleAdminAccess}>Admin Access</MenuItem>
             )}
-            <MenuItem onClick={handleClose}>Profile</MenuItem>
-            <MenuItem onClick={handleClose}>My account</MenuItem>
+            <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>Profile</MenuItem>
             <MenuItem onClick={handleLogout}>Logout</MenuItem>
           </Menu>
         </Box>

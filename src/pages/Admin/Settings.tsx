@@ -1,52 +1,102 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Accordion, 
-  AccordionSummary, 
+import {
+  Box,
+  Typography,
+  Accordion,
+  AccordionSummary,
   AccordionDetails,
   TextField,
   IconButton,
   InputAdornment,
+  CircularProgress,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
-import SaveIcon from '@mui/icons-material/Save';
+import SendIcon from '@mui/icons-material/Send';
 import { SETTINGS_LABELS } from '../../config/label/Settings.labels';
 import { SETTINGS_CONSTANTS } from '../../config/constants/Settings.constants';
 import { StandardButton } from '../../components/Common';
+import {
+  useGetDailyReportRecipientsQuery,
+  useAddDailyReportRecipientMutation,
+  useRemoveDailyReportRecipientMutation,
+  useSendDailyReportNowMutation,
+} from '../../redux/slices/adminSlice';
+import { extractErrorMessage } from '../../utils/errorUtils';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DAILY = SETTINGS_LABELS.SECTIONS.DAILY_REPORTS;
 
 const Settings: React.FC = () => {
   const [expanded, setExpanded] = useState<string | false>(false);
-  const [emailRecipients, setEmailRecipients] = useState<string[]>([
-    'susan.jones@example.com',
-    'david.lee@example.com',
-    'anna.kim@example.com',
-  ]);
   const [newEmail, setNewEmail] = useState<string>('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({ open: false, message: '', severity: 'success' });
+
+  const showToast = (message: string, severity: 'success' | 'error' | 'info' = 'success') =>
+    setSnackbar({ open: true, message, severity });
+
+  const {
+    data: recipientsData,
+    isLoading: isLoadingRecipients,
+    isError: isRecipientsError,
+  } = useGetDailyReportRecipientsQuery();
+  const [addRecipient, { isLoading: isAdding }] = useAddDailyReportRecipientMutation();
+  const [removeRecipient] = useRemoveDailyReportRecipientMutation();
+  const [sendNow, { isLoading: isSending }] = useSendDailyReportNowMutation();
+
+  const recipients = recipientsData?.recipients ?? [];
 
   const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? panel : false);
   };
 
-  const handleAddEmail = () => {
-    if (newEmail.trim() && !emailRecipients.includes(newEmail.trim())) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (emailRegex.test(newEmail.trim())) {
-        setEmailRecipients([...emailRecipients, newEmail.trim()]);
-        setNewEmail('');
-      }
+  const handleAddEmail = async () => {
+    const email = newEmail.trim();
+    if (!EMAIL_REGEX.test(email)) {
+      showToast(DAILY.INVALID_EMAIL, 'error');
+      return;
+    }
+    try {
+      await addRecipient({ email }).unwrap();
+      setNewEmail('');
+      showToast(DAILY.ADD_SUCCESS, 'success');
+    } catch (err) {
+      showToast(extractErrorMessage(err, DAILY.ADD_ERROR), 'error');
     }
   };
 
-  const handleDeleteEmail = (emailToDelete: string) => {
-    setEmailRecipients(emailRecipients.filter(email => email !== emailToDelete));
+  const handleDeleteEmail = async (id: string) => {
+    setPendingDeleteId(id);
+    try {
+      await removeRecipient(id).unwrap();
+      showToast(DAILY.REMOVE_SUCCESS, 'success');
+    } catch (err) {
+      showToast(extractErrorMessage(err, DAILY.REMOVE_ERROR), 'error');
+    } finally {
+      setPendingDeleteId(null);
+    }
   };
 
-  const handleSaveChanges = () => {
-    // TODO: Implement save functionality
-    console.log('Saving settings...', { emailRecipients });
+  const handleSendNow = async () => {
+    try {
+      const result = await sendNow().unwrap();
+      showToast(
+        result.failed > 0
+          ? DAILY.SEND_SUCCESS_WITH_FAILED(result.sent, result.failed)
+          : DAILY.SEND_SUCCESS(result.sent),
+        result.failed > 0 ? 'info' : 'success',
+      );
+    } catch (err) {
+      showToast(extractErrorMessage(err, DAILY.SEND_ERROR), 'error');
+    }
   };
 
   return (
@@ -307,9 +357,27 @@ const Settings: React.FC = () => {
             {/* Email Recipients List */}
             {expanded === 'daily-reports' && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {emailRecipients.map((email, index) => (
+              {isLoadingRecipients && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#6B7280' }}>
+                  <CircularProgress size={18} />
+                  <Typography sx={{ fontSize: '14px', fontFamily: "'Lexend', sans-serif" }}>
+                    {DAILY.LOADING}
+                  </Typography>
+                </Box>
+              )}
+              {!isLoadingRecipients && isRecipientsError && (
+                <Typography sx={{ fontSize: '14px', color: '#EF4444', fontFamily: "'Lexend', sans-serif" }}>
+                  {DAILY.LOAD_ERROR}
+                </Typography>
+              )}
+              {!isLoadingRecipients && !isRecipientsError && recipients.length === 0 && (
+                <Typography sx={{ fontSize: '14px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>
+                  {DAILY.EMPTY}
+                </Typography>
+              )}
+              {recipients.map((recipient) => (
                 <Box
-                  key={index}
+                  key={recipient.id}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -328,10 +396,11 @@ const Settings: React.FC = () => {
                       fontFamily: "'Lexend', sans-serif",
                     }}
                   >
-                    {email}
+                    {recipient.email}
                   </Typography>
                   <IconButton
-                    onClick={() => handleDeleteEmail(email)}
+                    onClick={() => handleDeleteEmail(recipient.id)}
+                    disabled={pendingDeleteId === recipient.id}
                     size="small"
                     sx={{
                       color: SETTINGS_CONSTANTS.DELETE_ICON.COLOR,
@@ -340,7 +409,11 @@ const Settings: React.FC = () => {
                       },
                     }}
                   >
-                    <DeleteIcon sx={{ fontSize: SETTINGS_CONSTANTS.DELETE_ICON.SIZE }} />
+                    {pendingDeleteId === recipient.id ? (
+                      <CircularProgress size={SETTINGS_CONSTANTS.DELETE_ICON.SIZE} />
+                    ) : (
+                      <DeleteIcon sx={{ fontSize: SETTINGS_CONSTANTS.DELETE_ICON.SIZE }} />
+                    )}
                   </IconButton>
                 </Box>
               ))}
@@ -396,6 +469,7 @@ const Settings: React.FC = () => {
               />
               <StandardButton
                 onClick={handleAddEmail}
+                disabled={isAdding}
                 variant="primary"
                 size="medium"
                 sx={{
@@ -404,31 +478,49 @@ const Settings: React.FC = () => {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {SETTINGS_LABELS.SECTIONS.DAILY_REPORTS.ADD_BUTTON}
+                {DAILY.ADD_BUTTON}
+              </StandardButton>
+            </Box>
+            )}
+
+            {/* Send Now */}
+            {expanded === 'daily-reports' && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <StandardButton
+                onClick={handleSendNow}
+                disabled={isSending || recipients.length === 0}
+                variant="primary"
+                size="medium"
+                startIcon={<SendIcon />}
+                sx={{
+                  minWidth: '140px',
+                  height: SETTINGS_CONSTANTS.EMAIL_INPUT.HEIGHT,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {DAILY.SEND_NOW_BUTTON}
               </StandardButton>
             </Box>
             )}
           </Box>
         </AccordionDetails>
       </Accordion>
+      </Box>
 
-      {/* Save Changes Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2 }}>
-        <StandardButton
-          onClick={handleSaveChanges}
-          variant="primary"
-          size="large"
-          startIcon={<SaveIcon />}
-          sx={{
-            height: SETTINGS_CONSTANTS.SAVE_BUTTON.HEIGHT,
-            minWidth: SETTINGS_CONSTANTS.SAVE_BUTTON.MIN_WIDTH,
-            borderRadius: SETTINGS_CONSTANTS.SAVE_BUTTON.RADIUS,
-          }}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
         >
-          {SETTINGS_LABELS.SAVE_BUTTON}
-        </StandardButton>
-      </Box>
-      </Box>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

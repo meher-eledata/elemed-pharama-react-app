@@ -1,5 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import { activityApi } from '../../../../redux/slices/activityApi';
 import MasterViewModal from '../MasterViewModal';
 import { MASTER_VIEW_LABELS } from '../../../../config/label/MasterView.labels';
 import {
@@ -16,9 +19,9 @@ import {
  * assert is the call to XLSX.writeFile (the side effect that produces the download),
  * including the per-category filename from MASTER_VIEW_LABELS.DOWNLOAD_FILENAMES.
  *
- * MasterViewModal takes all of its data via props (rows + the onUpdate callback) and
- * embeds MasterEditModal + MUI components, so — like the sibling MasterEditModal suite
- * — it needs no Redux store or router to render.
+ * MasterViewModal takes all of its data via props (rows + the onUpdate callback) but
+ * also calls useLogDownloadMutation() (RTK Query) to record download activity, so it
+ * must be rendered inside a Redux <Provider> wired with the activityApi slice.
  */
 
 // Mock SheetJS. utils.* are no-ops that just need to exist; writeFile is the spy we assert.
@@ -53,22 +56,35 @@ const CUSTOMER_ROWS: Record<string, unknown>[] = [
   },
 ];
 
+// MasterViewModal uses an RTK Query hook (useLogDownloadMutation), so it must be
+// rendered inside a Provider whose store wires up the activityApi reducer + middleware.
+const createStore = () =>
+  configureStore({
+    reducer: {
+      auth: (state = { token: 'JWT123', user: null }) => state,
+      [activityApi.reducerPath]: activityApi.reducer,
+    },
+    middleware: (gDM) => gDM().concat(activityApi.middleware),
+  });
+
 const renderModal = (
   overrides: Partial<React.ComponentProps<typeof MasterViewModal>> = {}
 ) => {
   const onClose = jest.fn();
   const onUpdate = jest.fn().mockResolvedValue(undefined);
   const utils = render(
-    <MasterViewModal
-      open
-      category="customer"
-      rows={CUSTOMER_ROWS}
-      isLoading={false}
-      isError={false}
-      onClose={onClose}
-      onUpdate={onUpdate}
-      {...overrides}
-    />
+    <Provider store={createStore()}>
+      <MasterViewModal
+        open
+        category="customer"
+        rows={CUSTOMER_ROWS}
+        isLoading={false}
+        isError={false}
+        onClose={onClose}
+        onUpdate={onUpdate}
+        {...overrides}
+      />
+    </Provider>
   );
   return { onClose, onUpdate, ...utils };
 };

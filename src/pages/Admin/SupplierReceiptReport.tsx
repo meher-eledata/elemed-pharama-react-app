@@ -26,6 +26,7 @@ import {
   SupplierReceiptReportRow,
 } from '../../redux/slices/reportsApi';
 import { useGetSuppliersQuery } from '../../redux/slices/masterApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import {
   toNum,
   formatCurrency,
@@ -54,6 +55,7 @@ interface ReceiptRow extends SupplierReceiptReportRow {
 const SupplierReceiptReport: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
+  const [logDownload] = useLogDownloadMutation();
   const [tab, setTab] = useState<Tab>('overview');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [supplierId, setSupplierId] = useState<string>('');
@@ -192,7 +194,10 @@ const SupplierReceiptReport: React.FC = () => {
   const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${start ? start.format('YYYY-MM-DD') : ''}_${
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
-  const handleDownloadCsv = () => csvLinkRef.current?.link?.click();
+  const handleDownloadCsv = () => {
+    csvLinkRef.current?.link?.click();
+    logDownload({ category: 'report', name: 'Supplier Receipt Report', format: 'csv', count: csvData.length }).catch(() => {});
+  };
 
   const summary = data?.summary;
 

@@ -32,6 +32,7 @@ import {
 } from '../../../config/constants/MasterView.constants';
 import { MASTER_VIEW_LABELS } from '../../../config/label/MasterView.labels';
 import { extractErrorMessage } from '../../../utils/errorUtils';
+import { useLogDownloadMutation } from '../../../redux/slices/activityApi';
 import MasterEditModal from './MasterEditModal';
 
 type Row = Record<string, unknown>;
@@ -96,6 +97,8 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string>('');
 
+  const [logDownload] = useLogDownloadMutation();
+
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackMessage, setSnackMessage] = useState('');
   const [snackSeverity, setSnackSeverity] = useState<'success' | 'error'>('success');
@@ -130,6 +133,7 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, MASTER_VIEW_LABELS.VIEW_TITLES[category]);
     XLSX.writeFile(workbook, MASTER_VIEW_LABELS.DOWNLOAD_FILENAMES[category]);
+    logDownload({ category: 'master', name: String(category), format: 'xlsx', count: data.length }).catch(() => {});
   };
 
   const handleEditClick = (row: Row) => {

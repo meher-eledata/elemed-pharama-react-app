@@ -18,6 +18,7 @@ import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
 const PaymentTypePieChart = lazy(() => import('../../components/Charts/PaymentTypePieChart'));
@@ -223,6 +224,7 @@ const DailySalesReport: React.FC = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const csvLinkRef = useRef<any>(null);
+  const [logDownload] = useLogDownloadMutation();
 
   const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
     { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
@@ -425,6 +427,7 @@ const DailySalesReport: React.FC = () => {
 
   const handleDownloadCSV = () => {
     csvLinkRef.current?.link?.click();
+    logDownload({ category: 'report', name: 'Daily Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
   if (isLoading) {

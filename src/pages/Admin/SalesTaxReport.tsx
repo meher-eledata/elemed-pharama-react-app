@@ -23,6 +23,7 @@ import {
   SalesTaxReportRow,
 } from '../../redux/slices/reportsApi';
 import { useGetProductsQuery } from '../../redux/slices/masterApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import {
   toNum,
   formatCurrency,
@@ -53,6 +54,7 @@ interface TaxRow extends SalesTaxReportRow {
 const SalesTaxReport: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
+  const [logDownload] = useLogDownloadMutation();
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [productId, setProductId] = useState<string>('');
   const [patientType, setPatientType] = useState<string>('');
@@ -197,7 +199,10 @@ const SalesTaxReport: React.FC = () => {
   const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${start ? start.format('YYYY-MM-DD') : ''}_${
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
-  const handleDownloadCsv = () => csvLinkRef.current?.link?.click();
+  const handleDownloadCsv = () => {
+    csvLinkRef.current?.link?.click();
+    logDownload({ category: 'report', name: 'Sales Tax Report', format: 'csv', count: csvData.length }).catch(() => {});
+  };
 
   return (
     <Box sx={{ padding: C.PAGE.PADDING, pb: C.PAGE.PADDING_BOTTOM }}>

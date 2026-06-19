@@ -27,6 +27,7 @@ import ProductSalesReport from "./Admin/ProductSalesReport";
 import SalesTaxReport from "./Admin/SalesTaxReport";
 import SupplierTaxReport from "./Admin/SupplierTaxReport";
 import HistoricalData from "./Admin/HistoricalData";
+import UserProfile from "./Profile/UserProfile";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
@@ -70,6 +71,10 @@ export const Pages = () => {
           <Route path="new" element={<Sale />} />
           <Route path="receipt" element={<SalesReceipt />} />
           <Route path="sale-return" element={<SaleReturn />} />
+        </Route>
+
+        <Route path="/profile" element={<DashboardLayout />}>
+          <Route index element={<UserProfile />} />
         </Route>
 
         {/* Admin Routes - Restricted to 'Admin' roles */}

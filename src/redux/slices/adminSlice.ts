@@ -89,10 +89,46 @@ export interface GetActivityLogResponse {
   activityLog: ActivityLogEntry[];
 }
 
+// Daily Report Email recipients (notification_preferences-backed).
+// CRITICAL: `id` is a Postgres BIGINT serialized as a numeric STRING — keep it a string everywhere.
+export interface Recipient {
+  id: string;
+  email: string;
+  enabled: boolean;
+}
+
+export interface GetDailyReportRecipientsResponse {
+  recipients: Recipient[];
+}
+
+export interface AddDailyReportRecipientRequest {
+  email: string;
+}
+
+export interface DailyReportRecipientResponse {
+  recipient: Recipient;
+}
+
+export interface RemoveDailyReportRecipientResponse {
+  message: string;
+}
+
+export interface SendDailyReportNowRequest {
+  date?: string;
+  to?: string[];
+}
+
+export interface SendDailyReportNowResponse {
+  sent: number;
+  failed: number;
+  recipients: string[];
+  date: string | null;
+}
+
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['AdminUser'] as const,
+  tagTypes: ['AdminUser', 'DailyReportRecipient'] as const,
   endpoints: (builder) => ({
     getAllUsers: builder.query<GetAllUsersResponse, void>({
       query: () => ({
@@ -131,6 +167,35 @@ export const adminApi = createApi({
       }),
       providesTags: ['AdminUser'],
     }),
+    getDailyReportRecipients: builder.query<GetDailyReportRecipientsResponse, void>({
+      query: () => ({
+        url: 'admin/daily-report/recipients',
+        method: 'GET',
+      }),
+      providesTags: ['DailyReportRecipient'],
+    }),
+    addDailyReportRecipient: builder.mutation<DailyReportRecipientResponse, AddDailyReportRecipientRequest>({
+      query: (body) => ({
+        url: 'admin/daily-report/recipients',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['DailyReportRecipient'],
+    }),
+    removeDailyReportRecipient: builder.mutation<RemoveDailyReportRecipientResponse, string>({
+      query: (id) => ({
+        url: `admin/daily-report/recipients/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['DailyReportRecipient'],
+    }),
+    sendDailyReportNow: builder.mutation<SendDailyReportNowResponse, SendDailyReportNowRequest | void>({
+      query: (body) => ({
+        url: 'admin/daily-report/send-now',
+        method: 'POST',
+        body: body ?? {},
+      }),
+    }),
   }),
 });
 
@@ -140,4 +205,8 @@ export const {
   useSendEmailTestMutation,
   useUpdateUserRoleMutation,
   useGetActivityLogQuery,
+  useGetDailyReportRecipientsQuery,
+  useAddDailyReportRecipientMutation,
+  useRemoveDailyReportRecipientMutation,
+  useSendDailyReportNowMutation,
 } = adminApi;
