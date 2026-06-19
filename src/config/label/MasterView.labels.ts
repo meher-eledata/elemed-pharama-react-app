@@ -20,9 +20,17 @@ export const MASTER_VIEW_LABELS = {
   // whitespace-only, NaN, or the string "nan"/"NaN").
   EMPTY_PLACEHOLDER: '-',
   EDIT_BUTTON: 'Edit',
+  DOWNLOAD_BUTTON: 'Download',
   SAVE_BUTTON: 'Save',
   CANCEL_BUTTON: 'Cancel',
   CLOSE_BUTTON: 'Close',
+  // Exported .xlsx file name per category
+  DOWNLOAD_FILENAMES: {
+    customer: 'customers.xlsx',
+    supplier: 'suppliers.xlsx',
+    product: 'products.xlsx',
+    doctor: 'doctors.xlsx',
+  },
   LOADING: 'Loading...',
   EMPTY: 'No records found.',
   // Placeholder for the VIEW modal's client-side search-by-name field

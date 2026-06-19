@@ -183,3 +183,32 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
     ],
   },
 };
+
+// Backend projects customers/doctors by role: admin gets the full record, while
+// pharmacists (any non-admin) get exactly { id, name, phone }. So for pharmacists we
+// must not render the PII columns/fields (email, gstin, pancard_num, drug_license,
+// addresses, city, state, …) — they arrive undefined and would show as blank cells.
+// We also hide `id` from pharmacists, so they see ONLY Name & Phone. `id` is still
+// present in the row data (this whitelist filters column/field DEFINITIONS only), so
+// the table row key and edit PK (both read row[pkKey] directly) keep working.
+const PHARMACIST_VISIBLE_KEYS: ReadonlySet<string> = new Set(['name', 'phone']);
+
+// Categories whose backend response is role-projected (PII stripped for pharmacists).
+const ROLE_PROJECTED_CATEGORIES: ReadonlySet<MasterCategory> = new Set(['customer', 'doctor']);
+
+// Returns the role-appropriate VIEW/EDIT config for a category.
+// - Admin (or any non-projected category) → the full config, unchanged.
+// - Pharmacist + a role-projected category (customer/doctor) → only Name & Phone
+//   columns and only the matching fields, so no empty PII cells/fields are rendered.
+export const getMasterViewConfig = (
+  category: MasterCategory,
+  isAdmin: boolean,
+): MasterCategoryConfig => {
+  const config = MASTER_VIEW_CONFIG[category];
+  if (isAdmin || !ROLE_PROJECTED_CATEGORIES.has(category)) return config;
+  return {
+    ...config,
+    columns: config.columns.filter((c) => PHARMACIST_VISIBLE_KEYS.has(c.key)),
+    fields: config.fields.filter((f) => PHARMACIST_VISIBLE_KEYS.has(f.key)),
+  };
+};

@@ -20,12 +20,15 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
+import * as XLSX from 'xlsx';
 import { StandardButton } from '../../../components/Common';
 import {
   MASTER_VIEW_CONFIG,
   MASTER_GENDER_OPTIONS,
   isEmptyMasterValue,
   type MasterCategory,
+  type MasterCategoryConfig,
 } from '../../../config/constants/MasterView.constants';
 import { MASTER_VIEW_LABELS } from '../../../config/label/MasterView.labels';
 import { extractErrorMessage } from '../../../utils/errorUtils';
@@ -42,6 +45,12 @@ interface MasterViewModalProps {
   onClose: () => void;
   // Calls the category's update mutation. Resolves on success, rejects on error.
   onUpdate: (body: Record<string, unknown>) => Promise<unknown>;
+  // Admin-only: shows a button to export the current rows as an .xlsx file.
+  // The prop IS the admin gate — set only by the admin route.
+  showDownload?: boolean;
+  // Role-appropriate column/field config. Defaults to the full config for the
+  // category; the caller passes a PII-filtered config for pharmacists.
+  config?: MasterCategoryConfig;
 }
 
 const modalStyle = {
@@ -78,8 +87,9 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
   isError,
   onClose,
   onUpdate,
+  showDownload = false,
+  config = MASTER_VIEW_CONFIG[category],
 }) => {
-  const config = MASTER_VIEW_CONFIG[category];
 
   const [editRow, setEditRow] = useState<Row | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -106,6 +116,21 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
       String(row[config.searchKey] ?? '').toLowerCase().includes(query),
     );
   }, [rows, query, config.searchKey]);
+
+  // Export the current rows to an .xlsx file using the same columns shown in the
+  // table (header labels + display formatting), then download it named by category.
+  const handleDownload = () => {
+    const data = rows.map((row) =>
+      config.columns.reduce<Record<string, string>>((acc, col) => {
+        acc[col.header] = String(renderCell(col.key, row[col.key]));
+        return acc;
+      }, {}),
+    );
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, MASTER_VIEW_LABELS.VIEW_TITLES[category]);
+    XLSX.writeFile(workbook, MASTER_VIEW_LABELS.DOWNLOAD_FILENAMES[category]);
+  };
 
   const handleEditClick = (row: Row) => {
     setEditRow(row);
@@ -146,9 +171,21 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
             <Typography sx={{ fontWeight: 700, fontSize: '20px', color: '#1A212B' }}>
               {MASTER_VIEW_LABELS.VIEW_TITLES[category]}
             </Typography>
-            <IconButton onClick={onClose} size="small" aria-label="close">
-              <CloseIcon />
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {showDownload && rows.length > 0 && (
+                <StandardButton
+                  variant="secondary"
+                  size="medium"
+                  startIcon={<DownloadIcon fontSize="small" />}
+                  onClick={handleDownload}
+                >
+                  {MASTER_VIEW_LABELS.DOWNLOAD_BUTTON}
+                </StandardButton>
+              )}
+              <IconButton onClick={onClose} size="small" aria-label="close">
+                <CloseIcon />
+              </IconButton>
+            </Box>
           </Box>
 
           <Box sx={{ px: 3, pb: 3, overflowY: 'auto' }}>
@@ -257,6 +294,7 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
       <MasterEditModal
         open={editOpen}
         category={category}
+        config={config}
         row={editRow}
         saving={saving}
         errorMessage={editError}

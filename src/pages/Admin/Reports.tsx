@@ -7,8 +7,12 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
 import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
-import { SUPPLIER_REPORTS_LABELS } from '../../config/label/SupplierReports.labels';
-import { SUPPLIER_REPORTS_CONSTANTS } from '../../config/constants/SupplierReports.constants';
+import { ADMIN_REPORTS_CONSTANTS } from '../../config/constants/AdminReports.constants';
+import { SUPPLIER_RECEIPT_REPORT_LABELS } from '../../config/label/SupplierReceiptReport.labels';
+import { SUPPLIER_PAYMENT_REPORT_LABELS } from '../../config/label/SupplierPaymentReport.labels';
+import { PRODUCT_SALES_REPORT_LABELS } from '../../config/label/ProductSalesReport.labels';
+import { SALES_TAX_REPORT_LABELS } from '../../config/label/SalesTaxReport.labels';
+import { SUPPLIER_TAX_REPORT_LABELS } from '../../config/label/SupplierTaxReport.labels';
 import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
@@ -97,10 +101,34 @@ const DetailedReportsView: React.FC = () => {
       description: 'View detailed daily sales information including payment methods, taxes, and trends',
     },
     {
-      id: 'supplier-reports',
-      title: SUPPLIER_REPORTS_LABELS.DISCOVERY_CARD.TITLE,
-      description: SUPPLIER_REPORTS_LABELS.DISCOVERY_CARD.DESCRIPTION,
-      route: SUPPLIER_REPORTS_CONSTANTS.ROUTES.OVERVIEW,
+      id: 'supplier-receipt',
+      title: SUPPLIER_RECEIPT_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SUPPLIER_RECEIPT_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_RECEIPT,
+    },
+    {
+      id: 'supplier-payments',
+      title: SUPPLIER_PAYMENT_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SUPPLIER_PAYMENT_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_PAYMENTS,
+    },
+    {
+      id: 'product-sales',
+      title: PRODUCT_SALES_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: PRODUCT_SALES_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.PRODUCT_SALES,
+    },
+    {
+      id: 'sales-tax',
+      title: SALES_TAX_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SALES_TAX_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SALES_TAX,
+    },
+    {
+      id: 'supplier-tax',
+      title: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_TAX,
     },
   ];
 

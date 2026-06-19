@@ -12,7 +12,9 @@ import NewDoctorModal from "../../components/Modal/NewDoctor/NewDoctorModal";
 import { MASTER_DATA_CONSTANTS } from "../../config/constants/MasterData.constants";
 import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
 import { MASTER_VIEW_LABELS } from "../../config/label/MasterView.labels";
-import type { MasterCategory } from "../../config/constants/MasterView.constants";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../redux/store";
+import { getMasterViewConfig, type MasterCategory } from "../../config/constants/MasterView.constants";
 import MasterViewModal from "./components/MasterViewModal";
 import {
   useAddCustomerMutation
@@ -155,7 +157,12 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, onView
   </Box>
 );
 
-const Masterpage: React.FC = () => {
+interface MasterpageProps {
+  // Admin-only: enables the per-view .xlsx download button. Set only by the admin route.
+  enableDownload?: boolean;
+}
+
+const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
@@ -167,6 +174,12 @@ const Masterpage: React.FC = () => {
 
   // Which category's view/edit table is open (null = none).
   const [viewCategory, setViewCategory] = useState<MasterCategory | null>(null);
+
+  // Same role detection RoleGuard uses (ROLE_MAP { 0: 'admin', 1: 'pharmacist' };
+  // string roles 'admin'/'Admin' also count as admin). The backend strips PII from
+  // customers/doctors for non-admins, so only admins see the full columns/fields.
+  const role = useSelector((state: RootState) => state.auth.user?.role);
+  const isAdmin = role === 0 || role === 'admin' || role === 'Admin';
 
   const { data: masterCounts, isLoading: loadingCounts } = useGetMasterCountsQuery();
   const [addCustomer] = useAddCustomerMutation();
@@ -418,6 +431,8 @@ const Masterpage: React.FC = () => {
         isError={customersQuery.isError}
         onClose={() => setViewCategory(null)}
         onUpdate={(body) => updateCustomer(body as any).unwrap()}
+        showDownload={enableDownload}
+        config={getMasterViewConfig('customer', isAdmin)}
       />
 
       <MasterViewModal
@@ -428,6 +443,7 @@ const Masterpage: React.FC = () => {
         isError={suppliersQuery.isError}
         onClose={() => setViewCategory(null)}
         onUpdate={(body) => updateSupplier(body as any).unwrap()}
+        showDownload={enableDownload}
       />
 
       <MasterViewModal
@@ -438,6 +454,7 @@ const Masterpage: React.FC = () => {
         isError={productsQuery.isError}
         onClose={() => setViewCategory(null)}
         onUpdate={(body) => updateProduct(body as any).unwrap()}
+        showDownload={enableDownload}
       />
 
       <MasterViewModal
@@ -448,6 +465,8 @@ const Masterpage: React.FC = () => {
         isError={doctorsQuery.isError}
         onClose={() => setViewCategory(null)}
         onUpdate={(body) => updateDoctor(body as any).unwrap()}
+        showDownload={enableDownload}
+        config={getMasterViewConfig('doctor', isAdmin)}
       />
 
       <Snackbar

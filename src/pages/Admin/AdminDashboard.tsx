@@ -8,6 +8,7 @@ import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
 import { ADMIN_CONSTANTS } from '../../config/constants/Admin.constants';
@@ -154,6 +155,14 @@ const AdminDashboard: React.FC = () => {
           action={ADMIN_LABELS.SECTIONS.REPORTS.ACTION}
           onAction={() => navigate('/admin/reports')}
           iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.REPORTS}
+        />
+        <Card
+          icon={<StorageIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title="Master"
+          desc="Manage master data such as products, categories, and suppliers."
+          action="Go to Master"
+          onAction={() => navigate('/admin/master')}
+          iconBgColor="#F0F4FF"
         />
         <Card
           icon={<InventoryIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}

@@ -117,9 +117,16 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   
   // Use Redux user name if available, otherwise use prop
-  const displayName = isAuthenticated && user 
-    ? `${user.first_name} ${user.last_name}` 
+  const displayName = isAuthenticated && user
+    ? `${user.first_name} ${user.last_name}`
     : (propName || 'Guest');
+
+  // Determine whether the current user is an admin (matches loginHandlers / RoleGuard)
+  const userRole = user?.role;
+  const isAdmin =
+    userRole === 0 ||
+    userRole === '0' ||
+    String(userRole).toLowerCase() === 'admin';
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -127,6 +134,12 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleAdminAccess = () => {
+    handleClose();
+    // Return an admin to their admin dashboard
+    navigate('/admin');
   };
 
   const handleLogout = () => {
@@ -162,12 +175,21 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
         </IconButton>
         <Divider orientation="vertical" flexItem  />
 
-        <Box className="user-profile">
-          <Avatar 
-            alt={displayName} 
+        <Box
+          className="user-profile"
+          id="user-button"
+          role="button"
+          aria-controls={open ? "user-menu" : undefined}
+          aria-haspopup="true"
+          aria-expanded={open ? "true" : undefined}
+          onClick={handleClick}
+          sx={{ cursor: 'pointer' }}
+        >
+          <Avatar
+            alt={displayName}
             className="user-avatar"
-            sx={{ 
-              backgroundColor: '#5C17E5', 
+            sx={{
+              backgroundColor: '#5C17E5',
               color: 'white',
               fontWeight: 'bold',
               fontSize: '14px',
@@ -182,13 +204,10 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
             {displayName}
           </Typography>
           <IconButton
-            id="user-button"
-            aria-controls={open ? "user-menu" : undefined}
-            aria-haspopup="true"
-            aria-expanded={open ? "true" : undefined}
-            onClick={handleClick}
             size="small"
             className="dropdown-arrow-button"
+            tabIndex={-1}
+            disableRipple
           >
             <KeyboardArrowDownIcon />
           </IconButton>
@@ -201,6 +220,9 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
               "aria-labelledby": "user-button",
             }}
           >
+            {isAdmin && (
+              <MenuItem onClick={handleAdminAccess}>Admin Access</MenuItem>
+            )}
             <MenuItem onClick={handleClose}>Profile</MenuItem>
             <MenuItem onClick={handleClose}>My account</MenuItem>
             <MenuItem onClick={handleLogout}>Logout</MenuItem>

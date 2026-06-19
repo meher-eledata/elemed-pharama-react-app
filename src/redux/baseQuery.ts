@@ -32,10 +32,22 @@ export const baseQueryWithReauth: BaseQueryFn<
 > = async (args, api, extraOptions) => {
   const result = await baseQuery(args, api, extraOptions);
 
-  if (result.error && result.error.status === 401) {
-    // Token is invalid/expired: clear auth state + persisted token,
-    // then hard-redirect to the login route so the broken authenticated UI is
-    // fully torn down.
+  // Auth failure: 401, or 403 specifically caused by an invalid/expired JWT
+  // (backend authMiddleWare returns 403 {"message":"Invalid token"}). A 403
+  // from requireAdmin ({"message":"Forbidden"}) is NOT an auth failure and must
+  // not log the user out — hence the message-specific gate.
+  const err = result.error;
+  const isAuthFailure =
+    !!err &&
+    (err.status === 401 ||
+      (err.status === 403 &&
+        typeof err.data === 'object' &&
+        err.data !== null &&
+        (err.data as { message?: unknown }).message === 'Invalid token'));
+
+  if (isAuthFailure) {
+    // Clear auth state + persisted token, then hard-redirect to the login route
+    // so the broken authenticated UI is fully torn down.
     api.dispatch(logout());
     redirect.toLogin();
   }

@@ -19,6 +19,7 @@ import {
   MASTER_GENDER_OPTIONS,
   isEmptyMasterValue,
   type MasterCategory,
+  type MasterCategoryConfig,
 } from '../../../config/constants/MasterView.constants';
 import { MASTER_VIEW_LABELS } from '../../../config/label/MasterView.labels';
 
@@ -32,6 +33,9 @@ interface MasterEditModalProps {
   onClose: () => void;
   // Receives ONLY { pk, ...editableWhitelist } — never locked fields.
   onSave: (body: Record<string, unknown>) => void;
+  // Role-appropriate field config. Defaults to the full config for the category;
+  // the caller passes a PII-filtered config for pharmacists.
+  config?: MasterCategoryConfig;
 }
 
 const modalStyle = {
@@ -72,8 +76,8 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
   errorMessage,
   onClose,
   onSave,
+  config = MASTER_VIEW_CONFIG[category],
 }) => {
-  const config = MASTER_VIEW_CONFIG[category];
   const editableFields = useMemo(
     () => config.fields.filter((f) => f.editable),
     [config]

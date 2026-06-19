@@ -72,4 +72,25 @@ describe('baseQueryWithReauth 401 handling', () => {
     expect(api.dispatch).not.toHaveBeenCalled();
     expect(redirectSpy).not.toHaveBeenCalled();
   });
+
+  it('dispatches logout and redirects on a 403 "Invalid token" response', async () => {
+    mockFetch(403, { message: 'Invalid token' });
+    const api = makeApi();
+
+    await baseQueryWithReauth('protected', api as never, {});
+
+    expect(api.dispatch).toHaveBeenCalledTimes(1);
+    expect(api.dispatch).toHaveBeenCalledWith(logout());
+    expect(redirectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not logout or redirect on a 403 "Forbidden" (non-admin) response', async () => {
+    mockFetch(403, { message: 'Forbidden' });
+    const api = makeApi();
+
+    await baseQueryWithReauth('protected', api as never, {});
+
+    expect(api.dispatch).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
 });
