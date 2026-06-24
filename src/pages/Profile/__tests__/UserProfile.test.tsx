@@ -6,6 +6,7 @@ import UserProfile from '../UserProfile';
 import {
   useGetProfileQuery,
   useGetProfileActivityQuery,
+  useUpdateProfileMutation,
   Profile,
   ProfileActivity,
 } from '../../../redux/slices/profileApi';
@@ -25,6 +26,10 @@ const mockUseGetProfileQuery = useGetProfileQuery as jest.MockedFunction<
 const mockUseGetProfileActivityQuery =
   useGetProfileActivityQuery as jest.MockedFunction<
     typeof useGetProfileActivityQuery
+  >;
+const mockUseUpdateProfileMutation =
+  useUpdateProfileMutation as jest.MockedFunction<
+    typeof useUpdateProfileMutation
   >;
 
 // Minimal RTK Query result shape the component reads (data/isLoading/isError).
@@ -53,6 +58,7 @@ const mockProfile: Profile = {
   status: 'active',
   last_login: '2026-06-17T10:00:00.000Z',
   created_at: '2025-01-01T00:00:00.000Z',
+  mobile: '9876543210',
   address_line1: '12 Main St',
   address_line2: 'Apt 4',
   city: 'Mumbai',
@@ -92,6 +98,11 @@ beforeEach(() => {
   mockUseGetProfileActivityQuery.mockReturnValue(
     queryResult({ activity: mockActivity })
   );
+  // Mutation hooks return a [trigger, state] tuple; trigger returns { unwrap }.
+  mockUseUpdateProfileMutation.mockReturnValue([
+    jest.fn().mockReturnValue({ unwrap: () => Promise.resolve(mockProfile) }),
+    { isLoading: false, reset: jest.fn() },
+  ] as any);
 });
 
 describe('UserProfile', () => {

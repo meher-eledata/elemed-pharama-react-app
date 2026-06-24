@@ -72,6 +72,7 @@ describe('Admin API Endpoints', () => {
       email: 'new@example.com',
       first_name: 'New',
       last_name: 'User',
+      mobile: '9876543210',
       address_line1: 'Line 1',
       city: 'City',
       state: 'State',
@@ -82,7 +83,7 @@ describe('Admin API Endpoints', () => {
       role: 1 as const,
     };
 
-    it('builds the correct request and returns data', async () => {
+    it('builds a multipart FormData request (text fields + pharmacist_certificate file) and returns data', async () => {
       const mockResponse = {
         message: 'created',
         user: {
@@ -98,17 +99,30 @@ describe('Admin API Endpoints', () => {
       };
       mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });
 
+      const certificate = new File(['cert'], 'cert.pdf', { type: 'application/pdf' });
       const store = makeStore();
       const result = await store.dispatch(
-        adminApi.endpoints.createUser.initiate(body)
+        adminApi.endpoints.createUser.initiate({
+          ...body,
+          pharmacist_certificate: certificate,
+        })
       );
 
       expect(result.data).toEqual(mockResponse);
-      expect(mockBaseQuery).toHaveBeenCalledWith(
-        { url: 'admin/create-user', method: 'POST', body },
-        expectExtraArgs,
-        undefined
-      );
+      // The mutation now sends FormData (multipart) — assert the path/method and the
+      // FormData payload rather than a plain JSON body.
+      const call = mockBaseQuery.mock.calls[0][0] as {
+        url: string;
+        method: string;
+        body: FormData;
+      };
+      expect(call.url).toBe('admin/create-user');
+      expect(call.method).toBe('POST');
+      expect(call.body).toBeInstanceOf(FormData);
+      expect(call.body.get('mobile')).toBe('9876543210');
+      expect(call.body.get('email')).toBe('new@example.com');
+      expect(call.body.get('role')).toBe('1');
+      expect(call.body.get('pharmacist_certificate')).toBeInstanceOf(File);
     });
 
     it('handles error', async () => {
@@ -201,6 +215,65 @@ describe('Admin API Endpoints', () => {
     });
   });
 
+  describe('PUT admin/users/:id/disable', () => {
+    it('builds the correct request and returns data', async () => {
+      const mockResponse = {
+        message: 'User disabled',
+        user: { id: 3, username: 'u3', email: 'u3@x.com', status: 'inactive' },
+      };
+      mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        adminApi.endpoints.disableUser.initiate(3)
+      );
+
+      expect(result.data).toEqual(mockResponse);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'admin/users/3/disable', method: 'PUT' },
+        expectExtraArgs,
+        undefined
+      );
+    });
+
+    it('handles the guard error', async () => {
+      mockBaseQuery.mockResolvedValueOnce({
+        error: { status: 400, data: { error: 'You cannot disable your own account.' } },
+        meta: okMeta,
+      });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        adminApi.endpoints.disableUser.initiate(1)
+      );
+
+      expect(result.error).toBeDefined();
+      expect((result.error as { status: number }).status).toBe(400);
+    });
+  });
+
+  describe('PUT admin/users/:id/enable', () => {
+    it('builds the correct request and returns data', async () => {
+      const mockResponse = {
+        message: 'User enabled',
+        user: { id: 3, username: 'u3', email: 'u3@x.com', status: 'active' },
+      };
+      mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        adminApi.endpoints.enableUser.initiate(3)
+      );
+
+      expect(result.data).toEqual(mockResponse);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'admin/users/3/enable', method: 'PUT' },
+        expectExtraArgs,
+        undefined
+      );
+    });
+  });
+
   describe('GET admin/get-activity-log', () => {
     it('builds the correct request and returns data', async () => {
       const mockResponse = { activityLog: [] };
@@ -224,6 +297,8 @@ describe('Admin API Endpoints', () => {
     it('defines all endpoints', () => {
       expect(adminApi.endpoints.getAllUsers).toBeDefined();
       expect(adminApi.endpoints.createUser).toBeDefined();
+      expect(adminApi.endpoints.disableUser).toBeDefined();
+      expect(adminApi.endpoints.enableUser).toBeDefined();
       expect(adminApi.endpoints.sendEmailTest).toBeDefined();
       expect(adminApi.endpoints.updateUserRole).toBeDefined();
       expect(adminApi.endpoints.getActivityLog).toBeDefined();
@@ -232,6 +307,8 @@ describe('Admin API Endpoints', () => {
     it('exports all hooks', () => {
       expect(adminApi.useGetAllUsersQuery).toBeDefined();
       expect(adminApi.useCreateUserMutation).toBeDefined();
+      expect(adminApi.useDisableUserMutation).toBeDefined();
+      expect(adminApi.useEnableUserMutation).toBeDefined();
       expect(adminApi.useSendEmailTestMutation).toBeDefined();
       expect(adminApi.useUpdateUserRoleMutation).toBeDefined();
       expect(adminApi.useGetActivityLogQuery).toBeDefined();

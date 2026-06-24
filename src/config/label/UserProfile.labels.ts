@@ -8,6 +8,17 @@ export const USER_PROFILE_LABELS = {
     PROFILE: 'Unable to load your profile. Please try again later.',
     ACTIVITY: 'Unable to load recent activity. Please try again later.',
   },
+  EDIT: {
+    BUTTON: 'Edit profile',
+    SAVE: 'Save',
+    CANCEL: 'Cancel',
+    SAVING: 'Saving…',
+    SUCCESS: 'Profile updated successfully.',
+    ERROR: 'Failed to update profile. Please try again.',
+    FIRST_NAME: 'First name',
+    LAST_NAME: 'Last name',
+    MOBILE: 'Mobile',
+  },
   SECTIONS: {
     ACCOUNT: {
       TITLE: 'Account',
@@ -17,6 +28,7 @@ export const USER_PROFILE_LABELS = {
     },
     CONTACT: {
       TITLE: 'Contact',
+      MOBILE: 'Mobile',
       ADDRESS_LINE1: 'Address line 1',
       ADDRESS_LINE2: 'Address line 2',
       CITY: 'City',

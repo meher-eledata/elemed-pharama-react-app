@@ -6,6 +6,9 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  Button,
+  TextField,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -17,8 +20,11 @@ import dayjs from 'dayjs';
 import {
   useGetProfileQuery,
   useGetProfileActivityQuery,
+  useUpdateProfileMutation,
   type Profile,
+  type UpdateProfileRequest,
 } from '../../redux/slices/profileApi';
+import { extractErrorMessage, logError } from '../../utils/errorUtils';
 import { USER_PROFILE_LABELS } from '../../config/label/UserProfile.labels';
 import { getInitials } from '../../config/helpers/initials';
 
@@ -105,6 +111,31 @@ const Header: React.FC<{ profile: Profile }> = ({ profile }) => {
   );
 };
 
+// Editable contact whitelist (matches PUT /api/profile). Keys map 1:1 to UpdateProfileRequest.
+const EDIT_FIELDS: Array<{ key: keyof UpdateProfileRequest; label: string }> = [
+  { key: 'first_name', label: L.EDIT.FIRST_NAME },
+  { key: 'last_name', label: L.EDIT.LAST_NAME },
+  { key: 'mobile', label: L.EDIT.MOBILE },
+  { key: 'address_line1', label: L.SECTIONS.CONTACT.ADDRESS_LINE1 },
+  { key: 'address_line2', label: L.SECTIONS.CONTACT.ADDRESS_LINE2 },
+  { key: 'city', label: L.SECTIONS.CONTACT.CITY },
+  { key: 'state', label: L.SECTIONS.CONTACT.STATE },
+  { key: 'postal_code', label: L.SECTIONS.CONTACT.POSTAL_CODE },
+  { key: 'country', label: L.SECTIONS.CONTACT.COUNTRY },
+];
+
+const toFormState = (profile: Profile): Required<UpdateProfileRequest> => ({
+  first_name: profile.first_name ?? '',
+  last_name: profile.last_name ?? '',
+  mobile: profile.mobile ?? '',
+  address_line1: profile.address_line1 ?? '',
+  address_line2: profile.address_line2 ?? '',
+  city: profile.city ?? '',
+  state: profile.state ?? '',
+  postal_code: profile.postal_code ?? '',
+  country: profile.country ?? '',
+});
+
 const UserProfile: React.FC = () => {
   const {
     data: profile,
@@ -116,6 +147,52 @@ const UserProfile: React.FC = () => {
     isLoading: activityLoading,
     isError: activityError,
   } = useGetProfileActivityQuery();
+
+  const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
+
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [form, setForm] = React.useState<Required<UpdateProfileRequest>>({
+    first_name: '',
+    last_name: '',
+    mobile: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: '',
+  });
+  const [snackbar, setSnackbar] = React.useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
+
+  const startEdit = () => {
+    if (profile) {
+      setForm(toFormState(profile));
+      setIsEditing(true);
+    }
+  };
+
+  const handleFieldChange = (key: keyof UpdateProfileRequest) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSave = async () => {
+    try {
+      await updateProfile(form).unwrap();
+      setIsEditing(false);
+      setSnackbar({ open: true, message: L.EDIT.SUCCESS, severity: 'success' });
+    } catch (error: unknown) {
+      logError(error, 'UserProfile.updateProfile');
+      setSnackbar({
+        open: true,
+        message: extractErrorMessage(error, L.EDIT.ERROR),
+        severity: 'error',
+      });
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3, maxWidth: '900px' }}>
@@ -148,17 +225,76 @@ const UserProfile: React.FC = () => {
             </Box>
           </Box>
 
-          {/* c) Contact */}
+          {/* c) Contact (editable) */}
           <Box sx={sectionSx}>
-            <Typography sx={sectionTitleSx}>{L.SECTIONS.CONTACT.TITLE}</Typography>
-            <Box sx={fieldGridSx}>
-              <Field label={L.SECTIONS.CONTACT.ADDRESS_LINE1} value={dash(profile.address_line1)} />
-              <Field label={L.SECTIONS.CONTACT.ADDRESS_LINE2} value={dash(profile.address_line2)} />
-              <Field label={L.SECTIONS.CONTACT.CITY} value={dash(profile.city)} />
-              <Field label={L.SECTIONS.CONTACT.STATE} value={dash(profile.state)} />
-              <Field label={L.SECTIONS.CONTACT.POSTAL_CODE} value={dash(profile.postal_code)} />
-              <Field label={L.SECTIONS.CONTACT.COUNTRY} value={dash(profile.country)} />
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 2,
+              }}
+            >
+              <Typography sx={{ ...sectionTitleSx, mb: 0 }}>
+                {L.SECTIONS.CONTACT.TITLE}
+              </Typography>
+              {!isEditing && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={startEdit}
+                  sx={{ textTransform: 'none', borderColor: PRIMARY, color: PRIMARY }}
+                >
+                  {L.EDIT.BUTTON}
+                </Button>
+              )}
             </Box>
+
+            {isEditing ? (
+              <>
+                <Box sx={fieldGridSx}>
+                  {EDIT_FIELDS.map(({ key, label }) => (
+                    <TextField
+                      key={key}
+                      label={label}
+                      value={form[key]}
+                      onChange={handleFieldChange(key)}
+                      size="small"
+                      fullWidth
+                      disabled={isSaving}
+                    />
+                  ))}
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1.5, mt: 2.5 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    sx={{ textTransform: 'none', backgroundColor: PRIMARY }}
+                  >
+                    {isSaving ? L.EDIT.SAVING : L.EDIT.SAVE}
+                  </Button>
+                  <Button
+                    variant="text"
+                    onClick={() => setIsEditing(false)}
+                    disabled={isSaving}
+                    sx={{ textTransform: 'none', color: '#6B7280' }}
+                  >
+                    {L.EDIT.CANCEL}
+                  </Button>
+                </Box>
+              </>
+            ) : (
+              <Box sx={fieldGridSx}>
+                <Field label={L.SECTIONS.CONTACT.MOBILE} value={dash(profile.mobile)} />
+                <Field label={L.SECTIONS.CONTACT.ADDRESS_LINE1} value={dash(profile.address_line1)} />
+                <Field label={L.SECTIONS.CONTACT.ADDRESS_LINE2} value={dash(profile.address_line2)} />
+                <Field label={L.SECTIONS.CONTACT.CITY} value={dash(profile.city)} />
+                <Field label={L.SECTIONS.CONTACT.STATE} value={dash(profile.state)} />
+                <Field label={L.SECTIONS.CONTACT.POSTAL_CODE} value={dash(profile.postal_code)} />
+                <Field label={L.SECTIONS.CONTACT.COUNTRY} value={dash(profile.country)} />
+              </Box>
+            )}
           </Box>
 
           {/* d) Identity document */}
@@ -231,6 +367,21 @@ const UserProfile: React.FC = () => {
           )
         )}
       </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

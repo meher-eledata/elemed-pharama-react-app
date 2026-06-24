@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { StandardButton } from '../../components/Common';
-import DashboardIcon from '@mui/icons-material/Dashboard';
+import LocalPharmacyOutlinedIcon from '@mui/icons-material/LocalPharmacyOutlined';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
@@ -133,7 +133,7 @@ const AdminDashboard: React.FC = () => {
         }}
       >
         <Card
-          icon={<DashboardIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          icon={<LocalPharmacyOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.DASHBOARD.TITLE}
           desc={ADMIN_LABELS.SECTIONS.DASHBOARD.DESC}
           action={ADMIN_LABELS.SECTIONS.DASHBOARD.ACTION}
@@ -159,7 +159,7 @@ const AdminDashboard: React.FC = () => {
         <Card
           icon={<StorageIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title="Master"
-          desc="Manage master data such as products, categories, and suppliers."
+          desc="Access and Manage master data of products, suppliers, customers and doctors"
           action="Go to Master"
           onAction={() => navigate('/admin/master')}
           iconBgColor="#F0F4FF"

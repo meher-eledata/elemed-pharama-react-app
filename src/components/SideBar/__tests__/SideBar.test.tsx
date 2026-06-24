@@ -49,9 +49,9 @@ describe('Sidebar', () => {
     it('includes a "Master" entry alongside the other admin items', () => {
       renderSidebar('/admin/users');
 
-      // The admin set is shown — Dashboard / User Management / Master all present.
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('User Management')).toBeInTheDocument();
+      // The admin set is shown — labels mirror the dashboard tiles.
+      expect(screen.getByText('Pharmacist access')).toBeInTheDocument();
+      expect(screen.getByText('User Account Management')).toBeInTheDocument();
       expect(screen.getByText('Master')).toBeInTheDocument();
     });
 

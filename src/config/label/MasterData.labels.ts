@@ -1,22 +1,22 @@
 export const MASTER_DATA_LABELS = {
   PAGE_TITLE: 'Master Data',
-  SUBTITLE: 'Add new entries (product, doctor, customer, supplier) to the database.',
+  SUBTITLE: 'Add new entries / edit existing entries',
   CARDS: {
     PRODUCT: {
       TITLE: 'Add New Product',
-      DESC: 'Register new inventory items and manage product information.',
+      DESC: 'Add a new product to the master catalogue',
       ACTION: 'Add Product',
       BADGE_LABEL: 'products',
     },
     CUSTOMER: {
       TITLE: 'Add New Customer',
-      DESC: 'Onboard new clients and patrons with their contact details.',
+      DESC: 'Add a new customer to the master records',
       ACTION: 'Add Customer',
       BADGE_LABEL: 'customers',
     },
     SUPPLIER: {
       TITLE: 'Add New Supplier',
-      DESC: 'Integrate new material providers and vendor relationships.',
+      DESC: 'Add a new supplier to the master records',
       ACTION: 'Add Supplier',
       BADGE_LABEL: 'suppliers',
     },

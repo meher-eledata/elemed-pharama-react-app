@@ -89,11 +89,9 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Divider,
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 // import dropdownIcon from "../../assets/DropDown.svg"; // Removed for standardization
-import Notification from "../../assets/Notification.svg";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { RootState } from "../../redux/store";
@@ -156,10 +154,7 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
       <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center' }}>
       </Box>
       <Box className="right-controls" sx={{ marginLeft: "auto" }}>
-        <IconButton className="notification-icon-button">
-          <img src={Notification} alt="icon" />
-        </IconButton>
-        <Divider orientation="vertical" flexItem  />
+        {/* Notification bell hidden pending a notifications feature. */}
 
         <Box
           className="user-profile"
@@ -197,22 +192,25 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
           >
             <KeyboardArrowDownIcon />
           </IconButton>
-          <Menu
-            id="user-menu"
-            anchorEl={anchorEl}
-            open={open}
-            onClose={handleClose}
-            MenuListProps={{
-              "aria-labelledby": "user-button",
-            }}
-          >
-            {isAdmin && (
-              <MenuItem onClick={handleAdminAccess}>Admin Access</MenuItem>
-            )}
-            <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>Profile</MenuItem>
-            <MenuItem onClick={handleLogout}>Logout</MenuItem>
-          </Menu>
         </Box>
+        {/* Menu rendered as a sibling (not inside the clickable user-profile Box) so
+            its portal click/backdrop events don't bubble back into handleClick and
+            re-open the menu — this is what allows click-outside (and Escape) to close it. */}
+        <Menu
+          id="user-menu"
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleClose}
+          MenuListProps={{
+            "aria-labelledby": "user-button",
+          }}
+        >
+          {isAdmin && (
+            <MenuItem onClick={handleAdminAccess}>Admin Access</MenuItem>
+          )}
+          <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>Profile</MenuItem>
+          <MenuItem onClick={handleLogout}>Logout</MenuItem>
+        </Menu>
       </Box>
     </Box>
   );

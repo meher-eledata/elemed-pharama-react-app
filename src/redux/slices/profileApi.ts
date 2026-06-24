@@ -19,8 +19,23 @@ export interface Profile {
   state: string | null;
   postal_code: string | null;
   country: string | null;
+  mobile: string | null;
   identity_document_type: string | null; // mapped label
   identity_document_number_masked: string | null; // last 4 only; raw never returned
+}
+
+// PUT /api/profile — current user edits THEIR OWN contact fields. Any subset of the
+// whitelist; email/role/status/identity are silently ignored server-side.
+export interface UpdateProfileRequest {
+  first_name?: string;
+  last_name?: string;
+  mobile?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
 }
 
 // GET /api/profile/activity — recent activity rows (newest first, limit 20).
@@ -44,7 +59,19 @@ export const profileApi = createApi({
       query: () => 'profile/activity',
       providesTags: ['Profile'],
     }),
+    updateProfile: builder.mutation<Profile, UpdateProfileRequest>({
+      query: (body) => ({
+        url: 'profile',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Profile'],
+    }),
   }),
 });
 
-export const { useGetProfileQuery, useGetProfileActivityQuery } = profileApi;
+export const {
+  useGetProfileQuery,
+  useGetProfileActivityQuery,
+  useUpdateProfileMutation,
+} = profileApi;
