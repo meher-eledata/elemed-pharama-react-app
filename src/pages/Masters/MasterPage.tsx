@@ -216,6 +216,10 @@ const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
         gstin: customerData.gstin || null,
         pancard_num: customerData.pancardNum || null,
         drug_license: customerData.drugLicense || null,
+        // Optional billing-location fields — only sent when filled.
+        ...(customerData.city?.trim() ? { city: customerData.city.trim() } : {}),
+        ...(customerData.state?.trim() ? { state: customerData.state.trim() } : {}),
+        ...(customerData.postalCode?.trim() ? { postal_code: customerData.postalCode.trim() } : {}),
         // CustomerModal.gender is a { male, female, other } booleans object.
         // Map to canonical ints (1=Male, 2=Female, 3=Other); none selected => null.
         gender: customerData.gender?.male
@@ -255,7 +259,9 @@ const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
         phone_number: supplierData.phoneNumber,
         gst_number: supplierData.gstin || '',
         cst_number: supplierData.cstNumber || '',
-        notes: supplierData.tinNumber || '',
+        notes: supplierData.notes?.trim() || null,
+        // Persist the entered email under the model column `email_id` so it round-trips to edit.
+        email_id: supplierData.emailId?.trim() || null,
       }).unwrap();
       setSupplierModalOpen(false);
       setSnackbarMessage(`Supplier "${supplierData.supplierName}" added successfully!`);
@@ -276,7 +282,7 @@ const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
       const payload: AddDoctorRequest = { name: doctorData.name.trim() };
       const optionalFields: Array<keyof AddDoctorRequest> = [
         'email', 'phone', 'branch', 'address', 'city', 'state',
-        'pin', 'country', 'gstin', 'pancard_num', 'drug_license',
+        'pin', 'country', 'drug_license',
       ];
       optionalFields.forEach((key) => {
         const value = doctorData[key];

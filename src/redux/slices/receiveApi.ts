@@ -137,6 +137,8 @@ export interface ReceiptLine {
   supplier_name: string;
   transaction_number: string;
   unit_price: string;
+  mrp?: string; // MRP field from backend (DECIMAL returned as string)
+  purchase_price?: string; // Purchase price field from backend (DECIMAL returned as string)
   expiry_date?: string | null; // Expiry date field from backend
   batch_number?: string; // Batch number field from backend
   hsn_id?: string; // HSN ID field from backend

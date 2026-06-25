@@ -24,8 +24,8 @@ interface SupplierData {
   pin: string;
   supplierCode: string;
   gstin: string;
-  tinNumber: string;
   cstNumber: string;
+  notes: string;
 }
 
 interface NewSupplierModalProps {
@@ -46,8 +46,8 @@ const initialSupplierState: SupplierData = {
   pin: '',
   supplierCode: '',
   gstin: '',
-  tinNumber: '',
   cstNumber: '',
+  notes: '',
 };
 
 const style = {
@@ -367,18 +367,21 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="TIN number"
-                  name="tinNumber"
-                  value={supplierData.tinNumber}
+                  placeholder="CST number"
+                  name="cstNumber"
+                  value={supplierData.cstNumber}
                   onChange={handleInputChange}
                   sx={inputStyle}
                 />
                 <TextField
                   fullWidth
+                  multiline
+                  minRows={3}
                   variant="outlined"
-                  placeholder="CST number"
-                  name="cstNumber"
-                  value={supplierData.cstNumber}
+                  label="Notes"
+                  placeholder="Notes"
+                  name="notes"
+                  value={supplierData.notes}
                   onChange={handleInputChange}
                   sx={inputStyle}
                 />

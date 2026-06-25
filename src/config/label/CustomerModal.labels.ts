@@ -20,6 +20,9 @@ export const CUSTOMER_MODAL_LABELS = {
 
   // Address Details Placeholders
   BILLING_ADDRESS_PLACEHOLDER: "Billing address *",
+  BILLING_CITY_PLACEHOLDER: "Billing City",
+  STATE_PLACEHOLDER: "State",
+  POSTAL_CODE_PLACEHOLDER: "Postal Code",
   SHIPPING_ADDRESS_PLACEHOLDER: "Shipping address",
   SHIPPING_SAME_AS_BILLING: "Shipping address same as billing address",
 

@@ -15,7 +15,10 @@ export interface AddSupplierRequest {
   phone_number: string;
   gst_number: string;
   cst_number: string;
-  notes: string;
+  notes?: string | null;
+  // Supplier model column is `email_id` (matches UpdateSupplierRequest); the ADD path must
+  // send the entered email under this key so it actually persists.
+  email_id?: string | null;
 }
 
 export interface AddDoctorRequest {
@@ -162,13 +165,10 @@ export interface UpdateSupplierRequest {
 export interface UpdateProductRequest {
   product_id: number;
   description?: string | null;
-  package_info?: string | null;
   unit_of_measure?: string | null;
-  dosage?: string | null;
   min_qty?: number | null;
   max_qty?: number | null;
   hsn_id?: string | null;
-  discount?: number | string | null;
 }
 
 export interface UpdateDoctorRequest {

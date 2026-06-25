@@ -1081,6 +1081,11 @@ export default function SaleHistory() {
         const returnStatus = getReturnStatus(item);
         const isFullyReturned = returnStatus.status === 'full';
         const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
+        // Invoices with ANY return can no longer be edited (backend enforces this with a 409).
+        const isEditDisabled = isDeleted || !!item.hasReturn;
+        const editDisabledTooltip = isDeleted
+          ? 'Invoice is deleted'
+          : 'Invoices with a return cannot be edited';
 
         return (
           <Box sx={{
@@ -1089,21 +1094,21 @@ export default function SaleHistory() {
             alignItems: 'center',
             gap: '0.5rem' // 8px = 0.5rem
           }}>
-            <Tooltip title={isDeleted ? 'Invoice is deleted' : 'Edit'} arrow placement="top">
+            <Tooltip title={isEditDisabled ? editDisabledTooltip : 'Edit'} arrow placement="top">
               <EditIcon
                 sx={{
                   fontSize: '1.5rem', // 24px = 1.5rem
-                  color: isDeleted ? '#9CA3AF' : '#000000',
-                  cursor: isDeleted ? 'not-allowed' : 'pointer',
+                  color: isEditDisabled ? '#9CA3AF' : '#000000',
+                  cursor: isEditDisabled ? 'not-allowed' : 'pointer',
                   padding: '0.25rem', // 4px = 0.25rem
                   borderRadius: '0.25rem', // 4px = 0.25rem
-                  opacity: isDeleted ? 0.5 : 1,
-                  '&:hover': isDeleted ? {} : {
+                  opacity: isEditDisabled ? 0.5 : 1,
+                  '&:hover': isEditDisabled ? {} : {
                     backgroundColor: '#f5f5f5',
                     color: '#000000'
                   }
                 }}
-                onClick={isDeleted ? undefined : () => handleEditInvoice(item.id)}
+                onClick={isEditDisabled ? undefined : () => handleEditInvoice(item.id)}
               />
             </Tooltip>
             {!isFullyReturned && (

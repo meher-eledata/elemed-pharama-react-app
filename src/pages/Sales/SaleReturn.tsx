@@ -252,8 +252,13 @@ export default function SaleReturn() {
             });
 
             if (lines.length > 0) {
-              const items: ReturnItem[] = lines.map((line: any) => {
-                const lineId = line.invoice_line_id?.toString() || line.id?.toString() || '';
+              const items: ReturnItem[] = lines
+                // Guard against legacy/inconsistent rows missing the required invoice_line_id —
+                // without it the line cannot be returned, and dereferencing it downstream would
+                // throw at render (ErrorBoundary "Something went wrong").
+                .filter((line: any) => line && (line.invoice_line_id ?? line.id) != null)
+                .map((line: any) => {
+                const lineId = String(line.invoice_line_id ?? line.id ?? '');
                 const originalItem = originalItemsMap.get(lineId);
                 const productId = line.product_id || line.productId;
 
@@ -261,7 +266,7 @@ export default function SaleReturn() {
 
                 let discountPercentValue = '0';
                 const rawDisc = line.discount_percent ?? line.discountPercent ?? line.discount ?? 0;
-                const discValue = parseFloat(rawDisc.toString());
+                const discValue = Number(rawDisc) || 0;
 
                 // Detection: if it looks like a fraction (e.g. 0.05 or 0.5), convert to percentage (5 or 50)
                 discountPercentValue = (discValue > 0 && discValue <= 1)
@@ -275,24 +280,24 @@ export default function SaleReturn() {
                     ? (typeof line.qty === 'number' ? line.qty : parseFloat(String(line.qty)))
                     : 0);
                 const originalQty = isNaN(quantityValue) ? 0 : quantityValue;
-                const returnedQty = parseInt(line.returned_quantity || '0');
+                const returnedQty = Number.parseInt(String(line.returned_quantity ?? '0'), 10) || 0;
                 const refundableQty = line.refundable_quantity !== undefined && line.refundable_quantity !== null
-                  ? parseInt(line.refundable_quantity)
+                  ? (Number.parseInt(String(line.refundable_quantity), 10) || 0)
                   : Math.max(0, originalQty - returnedQty);
 
-                const unitPrice = parseFloat(line.rate || line.unit_price || '0');
-                const quantity = originalQty > 0 ? originalQty : (parseFloat(line.quantity || line.qty || '1'));
+                const unitPrice = Number(line.rate ?? line.unit_price) || 0;
+                const quantity = originalQty > 0 ? originalQty : (Number(line.quantity ?? line.qty) || 1);
                 const baseAmount = unitPrice * quantity;
 
                 // Use refundable quantity for initial return quantity (not original quantity)
                 // If refundable is 0, start with 0; otherwise start with refundable quantity
                 const initialReturnQty = refundableQty;
 
-                const discountAmount = parseFloat(line.discount || '0');
+                const discountAmount = Number(line.discount) || 0;
                 const discountedAmount = baseAmount - discountAmount;
 
 
-                const lineBaseForTax = baseAmount - parseFloat(line.discount || '0');
+                const lineBaseForTax = baseAmount - discountAmount;
 
                 // Helper for robust tax derivation with defaults (9/9/0)
                 // Trust the stored value if it looks like a percentage (0.1 to 30)
@@ -1395,6 +1400,16 @@ export default function SaleReturn() {
               }}
             >
               Are you sure you want to confirm the return of the selected items? This change cannot be reversed.
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                color: '#B91C1C',
+                lineHeight: 1.7,
+                fontWeight: 600,
+              }}
+            >
+              Once you submit this return, this invoice can no longer be edited.
             </Typography>
           </Box>
         </DialogContent>

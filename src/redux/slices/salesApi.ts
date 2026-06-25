@@ -230,6 +230,7 @@ export interface SubmitSaleRequest {
   customer_name?: string; // Send name if ID not available
   customer_mobile?: string; // Send mobile if ID not available
   customer_city?: string; // Send city if ID not available
+  customer_phone?: string; // Snapshotted onto the invoice (with customer_id)
   doctor_id?: number; // ID of the doctor
   doctor_name?: string; // Name of the doctor
   doctor_mobile?: string; // Mobile of the doctor
@@ -269,6 +270,10 @@ export interface AddCustomerRequest {
   pancard_num: string | null;
   drug_license: string | null;
   gender: number | null;
+  // Optional billing-location fields (backend accepts these as optional strings).
+  city?: string;
+  state?: string;
+  postal_code?: string;
 }
 
 export interface AddCustomerResponse {
@@ -293,6 +298,7 @@ export interface EditSaleRequest {
   customer_name?: string;
   customer_mobile?: string;
   customer_city?: string;
+  customer_phone?: string; // Snapshotted onto the invoice (with customer_id)
   doctor_id?: number;
   doctor_name?: string;
   doctor_mobile?: string;

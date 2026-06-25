@@ -182,13 +182,15 @@ describe('MasterViewModal — customer phone is masked in the EXPORT only', () =
     expect(sheetData[0][PHONE_HEADER]).not.toBe('9876548919');
   });
 
-  // F. The on-screen table still shows the FULL phone (masking is download-only).
-  it('still renders the full phone in the on-screen table', () => {
+  // F. The on-screen table shows the MASKED phone (last 4 digits only) for customers.
+  it('renders the masked phone in the on-screen table', () => {
     renderModal({ showDownload: true });
 
-    expect(screen.getByText('9876548919')).toBeInTheDocument();
-    expect(screen.getByText('9123456780')).toBeInTheDocument();
-    expect(screen.queryByText('******8919')).not.toBeInTheDocument();
+    expect(screen.getByText('******8919')).toBeInTheDocument();
+    expect(screen.getByText('******6780')).toBeInTheDocument();
+    // The raw, unmasked phone is never shown on screen.
+    expect(screen.queryByText('9876548919')).not.toBeInTheDocument();
+    expect(screen.queryByText('9123456780')).not.toBeInTheDocument();
   });
 
   // G. (optional) supplier/doctor phones are NOT masked in the export.
@@ -209,7 +211,7 @@ describe('MasterViewModal — customer phone is masked in the EXPORT only', () =
     expect(sheetData[0][supplierPhoneHeader]).toBe('9876548919');
   });
 
-  it('does NOT mask doctor phone in the export', () => {
+  it('masks doctor phone in the export (last 4 digits only)', () => {
     renderModal({
       showDownload: true,
       category: 'doctor',
@@ -223,6 +225,58 @@ describe('MasterViewModal — customer phone is masked in the EXPORT only', () =
     )!.header;
     const sheetData = (XLSX.utils.json_to_sheet as jest.Mock).mock
       .calls[0][0] as Record<string, string>[];
-    expect(sheetData[0][doctorPhoneHeader]).toBe('9876548919');
+    expect(sheetData[0][doctorPhoneHeader]).toBe('******8919');
+    expect(sheetData[0][doctorPhoneHeader]).not.toBe('9876548919');
+  });
+});
+
+describe('MasterViewModal — doctor view shows only Name + masked Phone', () => {
+  const DOCTOR_ROWS: Record<string, unknown>[] = [
+    { id: 1, name: 'Dr. A', phone: '9876548919', email: 'a@example.com', city: 'Oldtown' },
+  ];
+
+  it('renders exactly the Name and Phone column headers for doctors', () => {
+    renderModal({ category: 'doctor', rows: DOCTOR_ROWS });
+
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+    expect(headers).toContain('Name');
+    expect(headers).toContain('Phone');
+    expect(headers).not.toContain('Email');
+    expect(headers).not.toContain('City');
+    expect(headers).not.toContain('ID');
+    expect(headers).not.toContain('Branch');
+  });
+
+  it('renders the masked doctor phone on screen', () => {
+    renderModal({ category: 'doctor', rows: DOCTOR_ROWS });
+
+    expect(screen.getByText('******8919')).toBeInTheDocument();
+    expect(screen.queryByText('9876548919')).not.toBeInTheDocument();
+  });
+});
+
+describe('MasterViewModal — customer view shows only Name + masked Phone', () => {
+  it('renders exactly the Name and Phone column headers', () => {
+    renderModal();
+
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+    // Name + Phone + the Actions column header.
+    expect(headers).toContain('Name');
+    expect(headers).toContain('Phone');
+    expect(headers).not.toContain('City');
+    expect(headers).not.toContain('State');
+    expect(headers).not.toContain('Email');
+    expect(headers).not.toContain('ID');
+  });
+
+  it('does not render other customer columns (city/state/email) in the view', () => {
+    renderModal();
+
+    // Values from CUSTOMER_ROWS for city/state/email must not appear in the table.
+    expect(screen.queryByText('Oldtown')).not.toBeInTheDocument();
+    expect(screen.queryByText('OldState')).not.toBeInTheDocument();
+    expect(screen.queryByText('acme@example.com')).not.toBeInTheDocument();
+    // Names still render.
+    expect(screen.getByText('Acme Health')).toBeInTheDocument();
   });
 });

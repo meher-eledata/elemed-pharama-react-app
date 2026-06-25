@@ -6,7 +6,9 @@ export const PRODUCT_DETAILS_MODAL_LABELS = {
     TYPE: 'Type',
     QUANTITY: 'Quantity',
     HSN_CODE: 'HSN code',
-    AMOUNT: 'Unit Price',
+    BATCH_NUMBER: 'Batch Number',
+    MRP: 'MRP',
+    PURCHASE_PRICE: 'Purchase Price',
   },
   DIALOG: {
     TITLE: 'Confirm Deletion',

@@ -16,8 +16,6 @@ export interface DoctorData {
     state: string;
     pin: string;
     country: string;
-    gstin: string;
-    pancard_num: string;
     drug_license: string;
     gender: number | null;
 }
@@ -38,8 +36,6 @@ const initialDoctorState: DoctorData = {
     state: "",
     pin: "",
     country: "India",
-    gstin: "",
-    pancard_num: "",
     drug_license: "",
     gender: null,
 }
@@ -410,25 +406,7 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                                 <TextField
                                     fullWidth
                                     variant="outlined"
-                                    placeholder="GSTIN"
-                                    name="gstin"
-                                    value={doctorData.gstin}
-                                    onChange={handleInputChange}
-                                    sx={inputStyle}
-                                />
-                                <TextField
-                                    fullWidth
-                                    variant="outlined"
-                                    placeholder="PAN Card Number"
-                                    name="pancard_num"
-                                    value={doctorData.pancard_num}
-                                    onChange={handleInputChange}
-                                    sx={inputStyle}
-                                />
-                                <TextField
-                                    fullWidth
-                                    variant="outlined"
-                                    placeholder="Drug License"
+                                    placeholder="License"
                                     name="drug_license"
                                     value={doctorData.drug_license}
                                     onChange={handleInputChange}

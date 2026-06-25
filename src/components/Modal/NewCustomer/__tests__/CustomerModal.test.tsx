@@ -52,6 +52,9 @@ describe('CustomerModal', () => {
     expect(screen.getByPlaceholderText(/mobile number/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/email/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/billing address/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/billing city/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/^state$/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/postal code/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/shipping address/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/gstin/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/pancard/i)).toBeInTheDocument();
@@ -193,6 +196,63 @@ describe('CustomerModal', () => {
     // Submit form - find the submit button specifically (type="submit")
     const submitButton = screen.getByRole('button', { name: /add/i });
     fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockProps.onSubmit).toHaveBeenCalled();
+    });
+  });
+
+  it('accepts the optional city, state and postal code fields and submits them', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '1234567890' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
+    const cityInput = screen.getByPlaceholderText(/billing city/i);
+    const stateInput = screen.getByPlaceholderText(/^state$/i);
+    const postalInput = screen.getByPlaceholderText(/postal code/i);
+    fireEvent.change(cityInput, { target: { value: 'Metropolis' } });
+    fireEvent.change(stateInput, { target: { value: 'NY' } });
+    fireEvent.change(postalInput, { target: { value: '560001' } });
+
+    expect(cityInput).toHaveValue('Metropolis');
+    expect(stateInput).toHaveValue('NY');
+    expect(postalInput).toHaveValue('560001');
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(mockProps.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          city: 'Metropolis',
+          state: 'NY',
+          postalCode: '560001',
+        })
+      );
+    });
+  });
+
+  it('keeps city, state and postal code optional (submits without them)', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '1234567890' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
 
     await waitFor(() => {
       expect(mockProps.onSubmit).toHaveBeenCalled();

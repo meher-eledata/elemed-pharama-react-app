@@ -225,6 +225,19 @@ describe('Sales API Endpoints', () => {
       );
     });
 
+    it('forwards customer_phone (snapshotted onto the invoice) when provided', async () => {
+      mockOk({ message: 'ok', invoice_id: 1, invoice_number: 'INV-1', total_amount: 100 });
+      const store = makeStore();
+      const bodyWithPhone = { ...body, customer_phone: '5551231000' };
+      await store.dispatch(salesApi.endpoints.editSale.initiate(bodyWithPhone));
+
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'sales/edit-sale', method: 'POST', body: bodyWithPhone },
+        expectExtraArgs,
+        undefined
+      );
+    });
+
     it('handles error', async () => {
       mockErr(422);
       const store = makeStore();
@@ -233,6 +246,21 @@ describe('Sales API Endpoints', () => {
       );
       expect(result.error).toBeDefined();
       expect((result.error as { status: number }).status).toBe(422);
+    });
+
+    it('surfaces the 409 (invoice has a return) error to the caller', async () => {
+      mockBaseQuery.mockResolvedValueOnce({
+        error: { status: 409, data: { error: 'Invoices with a return cannot be edited' } },
+        meta: okMeta,
+      });
+      const store = makeStore();
+      const result = await store.dispatch(
+        salesApi.endpoints.editSale.initiate(body)
+      );
+      expect((result.error as { status: number }).status).toBe(409);
+      expect((result.error as { data: { error: string } }).data.error).toBe(
+        'Invoices with a return cannot be edited'
+      );
     });
   });
 
@@ -421,6 +449,19 @@ describe('Sales API Endpoints', () => {
       );
     });
 
+    it('forwards customer_phone (snapshotted onto the invoice) when provided', async () => {
+      mockOk({ message: 'ok', invoice_number: 1, lines: [] });
+      const store = makeStore();
+      const bodyWithPhone = { ...body, customer_id: 2, customer_phone: '5551231000' };
+      await store.dispatch(salesApi.endpoints.submitSale.initiate(bodyWithPhone));
+
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'sales/submit-sale', method: 'POST', body: bodyWithPhone },
+        expectExtraArgs,
+        undefined
+      );
+    });
+
     it('handles error', async () => {
       mockErr(409);
       const store = makeStore();
@@ -457,6 +498,26 @@ describe('Sales API Endpoints', () => {
       expect(result.data).toEqual({ message: 'ok', id: '1', name: 'C' });
       expect(mockBaseQuery).toHaveBeenCalledWith(
         { url: 'sales/add-customer', method: 'POST', body },
+        expectExtraArgs,
+        undefined
+      );
+    });
+
+    it('forwards the optional city/state/postal_code fields when provided', async () => {
+      mockOk({ message: 'ok', id: '1', name: 'C' });
+      const store = makeStore();
+      const bodyWithLocation = {
+        ...body,
+        city: 'Metropolis',
+        state: 'NY',
+        postal_code: '560001',
+      };
+      await store.dispatch(
+        salesApi.endpoints.addCustomer.initiate(bodyWithLocation)
+      );
+
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'sales/add-customer', method: 'POST', body: bodyWithLocation },
         expectExtraArgs,
         undefined
       );

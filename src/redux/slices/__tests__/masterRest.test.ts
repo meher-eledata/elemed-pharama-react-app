@@ -29,6 +29,8 @@ describe('Master API Endpoints', () => {
         gst_number: '1234567890',
         cst_number: '1234567890',
         notes: 'Test Notes',
+        // ADD path must send the entered email under the model column `email_id`.
+        email_id: 'supplier@example.com',
       };
 
       const mockResponse = {

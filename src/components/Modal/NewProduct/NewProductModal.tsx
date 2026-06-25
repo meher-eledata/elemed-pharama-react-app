@@ -235,6 +235,7 @@ export const NEW_PRODUCT_MODAL_LABELS = {
     { key: 'unit_of_measure', label: 'Unit of measure *', type: 'text' },
     { key: 'min_quantity', label: 'Minimum quantity *', type: 'number' },
     { key: 'max_quantity', label: 'Maximum quantity', type: 'number' },
+    { key: 'description', label: 'Description', type: 'multiline' },
   ],
   BUTTON_CANCEL: 'Cancel',
   BUTTON_ADD: 'Add'
@@ -333,7 +334,8 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
     hsn_id: '',
     unit_of_measure: '',
     min_quantity: '',
-    max_quantity: ''
+    max_quantity: '',
+    description: ''
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -365,6 +367,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
     if (!validateForm()) return;
 
     try {
+      const description = formData.description.trim();
       const productData = {
         product_name: formData.product_name.trim(),
         type: formData.type.trim(),
@@ -374,6 +377,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         min_quantity: Number(formData.min_quantity),
         brand_name: formData.brand_name.trim(),
         username: user?.username || 'Guest',
+        ...(description ? { description } : {}),
       };
 
       // Validate numeric fields
@@ -397,7 +401,8 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         hsn_id: '',
         unit_of_measure: '',
         min_quantity: '',
-        max_quantity: ''
+        max_quantity: '',
+        description: ''
       });
       setFormErrors({});
 
@@ -421,7 +426,8 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       hsn_id: '',
       unit_of_measure: '',
       min_quantity: '',
-      max_quantity: ''
+      max_quantity: '',
+      description: ''
     });
     setFormErrors({});
     onClose();
@@ -547,8 +553,10 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
               rowSpacing={NEW_PRODUCT_MODAL_CONSTANTS.GRID.ROW_SPACING}
               sx={{ mb: 2 }}
             >
-              {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((field, idx) => (
-                <Grid key={idx} item xs={12} sm={6} component="div">
+              {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((field, idx) => {
+                const isMultiline = field.type === 'multiline';
+                return (
+                <Grid key={idx} item xs={12} sm={isMultiline ? 12 : 6} component="div">
                   <Box>
                     <Typography
                       variant="body2"
@@ -566,7 +574,9 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                       fullWidth
                       variant="outlined"
                       placeholder={`Enter ${field.label.toLowerCase()}`}
-                      type={field.type}
+                      type={isMultiline ? 'text' : field.type}
+                      multiline={isMultiline}
+                      minRows={isMultiline ? 2 : undefined}
                       value={formData[field.key as keyof typeof formData]}
                       onChange={(e) => handleInputChange(field.key, e.target.value)}
                       error={!!formErrors[field.key]}
@@ -588,7 +598,8 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                     />
                   </Box>
                 </Grid>
-              ))}
+                );
+              })}
             </Grid>
 
           </Box>

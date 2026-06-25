@@ -363,10 +363,56 @@ describe('SaleHistory', () => {
 
   it('handles pagination', () => {
     renderComponent();
-    
+
     // Pagination controls should be present
     // This depends on table implementation
     expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+  });
+
+  // Helper: re-point the mocked getInvoices query at a custom dataset for one test.
+  // Uses stable refetch/trigger references (auto-mocked-slice gotcha) so effects
+  // depending on them do not loop.
+  const useInvoices = (invoices: unknown[]) => {
+    const stableRefetch = jest.fn();
+    (salesApi.useGetInvoicesQuery as jest.Mock) = jest.fn(() => ({
+      data: invoices,
+      isLoading: false,
+      error: null,
+      refetch: stableRefetch,
+    }));
+  };
+
+  it('enables the Edit icon for an invoice with no return', async () => {
+    useInvoices([
+      { ...mockInvoices[0], return_status: 'No Return', has_return: false },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const row = screen.getByText(/inv7896/i).closest('tr')!;
+    const editIcon = row.querySelector('[data-testid="EditIcon"]') as HTMLElement;
+    expect(editIcon).toBeTruthy();
+    expect(editIcon).toHaveStyle({ cursor: 'pointer' });
+  });
+
+  it('disables the Edit icon for an invoice that has a return', async () => {
+    useInvoices([
+      { ...mockInvoices[0], return_status: 'Partial Return', has_return: true },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const row = screen.getByText(/inv7896/i).closest('tr')!;
+    const editIcon = row.querySelector('[data-testid="EditIcon"]') as HTMLElement;
+    expect(editIcon).toBeTruthy();
+    // Mirrors the existing isDeleted disable pattern: not-allowed cursor + dimmed.
+    expect(editIcon).toHaveStyle({ cursor: 'not-allowed' });
   });
 });
 

@@ -42,6 +42,18 @@ describe('NewDoctorModal', () => {
     expect(screen.getByLabelText('Gender')).toBeInTheDocument();
   });
 
+  it('does not render the GSTIN or PAN Card Number fields', () => {
+    renderModal();
+    expect(screen.queryByPlaceholderText('GSTIN')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('PAN Card Number')).not.toBeInTheDocument();
+  });
+
+  it('renders the license field labelled "License" (not "Drug License")', () => {
+    renderModal();
+    expect(screen.getByPlaceholderText('License')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Drug License')).not.toBeInTheDocument();
+  });
+
   it('blocks submit and shows an error when name is empty', () => {
     const { onSubmit } = renderModal();
 
@@ -76,6 +88,9 @@ describe('NewDoctorModal', () => {
     expect(submitted).not.toHaveProperty('doctor_name');
     expect(submitted).not.toHaveProperty('mobileNumber');
     expect(submitted).not.toHaveProperty('role');
+    // Removed compliance fields are no longer collected/submitted.
+    expect(submitted).not.toHaveProperty('gstin');
+    expect(submitted).not.toHaveProperty('pancard_num');
   });
 
   it('submits the selected gender as the canonical integer code', () => {

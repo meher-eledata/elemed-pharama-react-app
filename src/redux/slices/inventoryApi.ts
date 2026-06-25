@@ -51,6 +51,7 @@ export interface AddProductRequest {
   min_quantity: number;
   brand_name: string;
   username: string; // Required for activity log tracking
+  description?: string; // Optional; persisted to product.description when provided
 }
 
 export interface AddProductResponse {

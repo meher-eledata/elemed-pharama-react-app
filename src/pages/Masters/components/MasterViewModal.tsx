@@ -133,8 +133,8 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
     const data = rows.map((row) =>
       config.columns.reduce<Record<string, string>>((acc, col) => {
         let cell = String(renderCell(col.key, row[col.key]));
-        // Download-only PII masking: customer phone shows last 4 digits only.
-        if (category === 'customer' && col.key === 'phone') {
+        // Download-only PII masking: customer/doctor phone shows last 4 digits only.
+        if ((category === 'customer' || category === 'doctor') && col.key === 'phone') {
           cell = maskExceptLast4(cell);
         }
         acc[col.header] = cell;
@@ -265,11 +265,16 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
                   <TableBody>
                     {filteredRows.map((row, idx) => (
                       <TableRow key={String(row[config.pkKey] ?? idx)} hover>
-                        {config.columns.map((col) => (
-                          <TableCell key={col.key}>
-                            {renderCell(col.key, row[col.key])}
-                          </TableCell>
-                        ))}
+                        {config.columns.map((col) => {
+                          const rendered = renderCell(col.key, row[col.key]);
+                          // PII masking: customer/doctor phone shows last 4 digits only (on
+                          // screen + export), mirroring the download's special-case.
+                          const display =
+                            (category === 'customer' || category === 'doctor') && col.key === 'phone'
+                              ? maskExceptLast4(String(rendered))
+                              : rendered;
+                          return <TableCell key={col.key}>{display}</TableCell>;
+                        })}
                         <TableCell sx={{ textAlign: 'center' }}>
                           <IconButton
                             size="small"

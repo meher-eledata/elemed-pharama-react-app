@@ -33,7 +33,9 @@ const mockProductData: OrderReceiveRow = {
       type: 'Medicine',
       quantity: 10,
       hsnCode: 'HSN001',
-      amount: 1000,
+      batchNumber: 'BATCH001',
+      mrp: 1000,
+      purchasePrice: 850,
       lineId: 1,
     },
     {
@@ -41,7 +43,9 @@ const mockProductData: OrderReceiveRow = {
       type: 'Medicine',
       quantity: 20,
       hsnCode: 'HSN002',
-      amount: 2000,
+      batchNumber: 'BATCH002',
+      mrp: 2000,
+      purchasePrice: 1600,
       lineId: 2,
     },
     {
@@ -49,7 +53,9 @@ const mockProductData: OrderReceiveRow = {
       type: 'Medicine',
       quantity: 15,
       hsnCode: 'HSN003',
-      amount: 1500,
+      batchNumber: 'BATCH003',
+      mrp: 1500,
+      purchasePrice: 1200,
       lineId: 3,
     },
     {
@@ -57,7 +63,9 @@ const mockProductData: OrderReceiveRow = {
       type: 'Medicine',
       quantity: 5,
       hsnCode: 'HSN004',
-      amount: 500,
+      batchNumber: 'BATCH004',
+      mrp: 500,
+      purchasePrice: 400,
       lineId: 4,
     },
     {
@@ -65,7 +73,9 @@ const mockProductData: OrderReceiveRow = {
       type: 'Medicine',
       quantity: 8,
       hsnCode: 'HSN005',
-      amount: 800,
+      batchNumber: 'BATCH005',
+      mrp: 800,
+      purchasePrice: 640,
       lineId: 5,
     },
     {
@@ -73,7 +83,9 @@ const mockProductData: OrderReceiveRow = {
       type: 'Medicine',
       quantity: 12,
       hsnCode: 'HSN006',
-      amount: 1200,
+      batchNumber: 'BATCH006',
+      mrp: 1200,
+      purchasePrice: 960,
       lineId: 6,
     },
   ],
@@ -114,8 +126,11 @@ describe('ProductDetailsModalContent', () => {
       expect(screen.getByText(/Type/i)).toBeInTheDocument();
       expect(screen.getByText(/Quantity/i)).toBeInTheDocument();
       expect(screen.getByText(/HSN Code/i)).toBeInTheDocument();
-      // Component labels the amount column "Unit Price" (PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.AMOUNT)
-      expect(screen.getByText(/Unit Price/i)).toBeInTheDocument();
+      // Unit Price was removed; the modal now shows Batch Number / MRP / Purchase Price.
+      expect(screen.queryByText(/Unit Price/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/Batch Number/i)).toBeInTheDocument();
+      expect(screen.getByText(/MRP/i)).toBeInTheDocument();
+      expect(screen.getByText(/Purchase Price/i)).toBeInTheDocument();
     });
 
     it('should render product data in table', () => {
@@ -346,8 +361,10 @@ describe('ProductDetailsModalContent', () => {
       expect(screen.getAllByText(firstProduct.type)[0]).toBeInTheDocument();
       expect(screen.getByText(firstProduct.quantity.toString())).toBeInTheDocument();
       expect(screen.getByText(firstProduct.hsnCode)).toBeInTheDocument();
-      // The amount column renders as Indian-locale currency: ₹1,000.00 (amount=1000)
-      expect(screen.getByText('₹1,000.00')).toBeInTheDocument();
+      // Batch number renders as plain text; MRP/Purchase Price as Indian-locale currency.
+      expect(screen.getByText(firstProduct.batchNumber)).toBeInTheDocument();
+      expect(screen.getByText('₹1,000.00')).toBeInTheDocument(); // mrp=1000
+      expect(screen.getByText('₹850.00')).toBeInTheDocument(); // purchasePrice=850
     });
 
     it('should handle products with different data types', () => {
@@ -359,7 +376,9 @@ describe('ProductDetailsModalContent', () => {
             type: 'Medicine',
             quantity: 100,
             hsnCode: 'HSN100',
-            amount: 5000.50,
+            batchNumber: 'BATCH100',
+            mrp: 5000.50,
+            purchasePrice: 4000.25,
             lineId: 1,
           },
         ],
@@ -375,8 +394,9 @@ describe('ProductDetailsModalContent', () => {
 
       expect(screen.getByText('Product A')).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument();
-      // amount=5000.50 renders as Indian-locale currency with 2 fraction digits.
+      // mrp/purchasePrice render as Indian-locale currency with 2 fraction digits.
       expect(screen.getByText('₹5,000.50')).toBeInTheDocument();
+      expect(screen.getByText('₹4,000.25')).toBeInTheDocument();
     });
   });
 
@@ -443,7 +463,9 @@ describe('ProductDetailsModalContent', () => {
             type: 'Medicine',
             quantity: 50,
             hsnCode: 'HSN999',
-            amount: 5000,
+            batchNumber: 'BATCH999',
+            mrp: 5000,
+            purchasePrice: 4000,
             lineId: 1,
           },
         ],
@@ -474,7 +496,9 @@ describe('ProductDetailsModalContent', () => {
             type: 'Medicine',
             quantity: 10,
             hsnCode: 'HSN001',
-            amount: 1000,
+            batchNumber: 'BATCH001',
+            mrp: 1000,
+            purchasePrice: 800,
             lineId: 1,
           },
         ],
@@ -500,7 +524,9 @@ describe('ProductDetailsModalContent', () => {
             type: 'Medicine',
             quantity: 0,
             hsnCode: 'HSN001',
-            amount: 0,
+            batchNumber: 'BATCH000',
+            mrp: 0,
+            purchasePrice: 0,
             lineId: 1,
           },
         ],
@@ -527,7 +553,9 @@ describe('ProductDetailsModalContent', () => {
             type: 'Medicine',
             quantity: 1,
             hsnCode: '',
-            amount: 0,
+            batchNumber: '',
+            mrp: 0,
+            purchasePrice: 0,
           },
         ],
       };

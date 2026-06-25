@@ -259,7 +259,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         phone_number: supplierData.phoneNumber,
         gst_number: supplierData.gstin || '',
         cst_number: supplierData.cstNumber || '',
-        notes: supplierData.tinNumber || '',
+        notes: supplierData.notes || '',
       }).unwrap();
       form.setIsNewSupplierModalOpen(false);
       await data.fetchSupplierNames();

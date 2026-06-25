@@ -59,12 +59,8 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
     pkKey: 'id',
     searchKey: 'name',
     columns: [
-      { key: 'id', header: 'ID' },
       { key: 'name', header: 'Name' },
       { key: 'phone', header: 'Phone' },
-      { key: 'email', header: 'Email' },
-      { key: 'city', header: 'City' },
-      { key: 'state', header: 'State' },
     ],
     fields: [
       // LOCKED
@@ -74,8 +70,10 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       { key: 'gstin', label: 'GSTIN', type: 'text', editable: false },
       { key: 'pancard_num', label: 'PAN Card Number', type: 'text', editable: false },
       { key: 'drug_license', label: 'Drug License', type: 'text', editable: false },
+      // LOCKED — phone arrives MASKED from the server (e.g. ******9390); read-only so the
+      // masked value can never be edited or submitted back.
+      { key: 'phone', label: 'Phone', type: 'text', editable: false },
       // EDITABLE (whitelist)
-      { key: 'phone', label: 'Phone', type: 'text', editable: true, required: true },
       { key: 'billing_address', label: 'Billing Address', type: 'multiline', editable: true, required: true },
       { key: 'shipping_address', label: 'Shipping Address', type: 'multiline', editable: true },
       { key: 'address_line1', label: 'Address Line 1', type: 'text', editable: true },
@@ -141,12 +139,9 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       // EDITABLE (whitelist)
       { key: 'hsn_id', label: 'HSN Code', type: 'text', editable: true },
       { key: 'description', label: 'Description', type: 'multiline', editable: true },
-      { key: 'package_info', label: 'Package Info', type: 'text', editable: true },
       { key: 'unit_of_measure', label: 'Unit of Measure', type: 'text', editable: true },
-      { key: 'dosage', label: 'Dosage', type: 'text', editable: true },
       { key: 'min_qty', label: 'Min Qty', type: 'number', editable: true },
       { key: 'max_qty', label: 'Max Qty', type: 'number', editable: true },
-      { key: 'discount', label: 'Discount', type: 'number', editable: true },
     ],
   },
 
@@ -154,12 +149,8 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
     pkKey: 'id',
     searchKey: 'name',
     columns: [
-      { key: 'id', header: 'ID' },
       { key: 'name', header: 'Name' },
       { key: 'phone', header: 'Phone' },
-      { key: 'email', header: 'Email' },
-      { key: 'branch', header: 'Branch' },
-      { key: 'city', header: 'City' },
     ],
     fields: [
       // LOCKED
@@ -167,9 +158,7 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       { key: 'name', label: 'Name', type: 'text', editable: false },
       { key: 'phone', label: 'Phone', type: 'text', editable: false },
       { key: 'email', label: 'Email', type: 'text', editable: false },
-      { key: 'gstin', label: 'GSTIN', type: 'text', editable: false },
-      { key: 'pancard_num', label: 'PAN Card Number', type: 'text', editable: false },
-      { key: 'drug_license', label: 'Drug License', type: 'text', editable: false },
+      { key: 'drug_license', label: 'License', type: 'text', editable: false },
       // EDITABLE (whitelist)
       { key: 'branch', label: 'Branch', type: 'text', editable: true },
       { key: 'address', label: 'Address', type: 'multiline', editable: true },

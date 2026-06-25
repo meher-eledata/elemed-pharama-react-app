@@ -27,8 +27,9 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
   customer: {
     id: 42,
     name: 'Acme Health',
-    // phone is now an EDITABLE + required field, must be exactly 10 digits.
-    phone: '5551231000',
+    // phone is now a LOCKED (read-only) field — the server returns it MASKED, so it is
+    // displayed but never edited or submitted back.
+    phone: '******1000',
     email: 'acme@example.com',
     gstin: 'GST123',
     pancard_num: 'PAN123',
@@ -70,14 +71,11 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
     expiry: '2027-01-01',
     current_qty: 500,
     description: 'Old description',
-    package_info: 'box of 10',
     unit_of_measure: 'strip',
-    dosage: '500mg',
     min_qty: 10,
     max_qty: 100,
     mrp: 50,
     selling_price: 45,
-    discount: 5,
   },
   doctor: {
     id: 'DOC-1',
@@ -194,6 +192,25 @@ describe('MasterEditModal — submit payload contains only PK + editable whiteli
     }
   );
 
+  it('product: description is editable but package_info/dosage/discount are no longer rendered or sent', () => {
+    const { onSave } = renderModal('product');
+
+    // description is still part of the edit form.
+    expect(screen.getByLabelText('Description')).toBeInTheDocument();
+
+    // The removed fields must not render at all.
+    expect(screen.queryByLabelText('Package Info')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Dosage')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Discount')).not.toBeInTheDocument();
+
+    submit();
+    const body = onSave.mock.calls[0][0] as Record<string, unknown>;
+    expect(body).toHaveProperty('description');
+    expect(Object.prototype.hasOwnProperty.call(body, 'package_info')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(body, 'dosage')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(body, 'discount')).toBe(false);
+  });
+
   it('customer: an edit to an editable field is reflected; locked fields untouched', () => {
     const { onSave } = renderModal('customer');
 
@@ -282,44 +299,17 @@ describe('MasterEditModal — required + phone validation blocks save', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it('customer: clearing required phone blocks save (field marked required)', () => {
+  it('customer: phone is LOCKED (read-only) and never appears in the saved body', () => {
     const { onSave } = renderModal('customer');
 
-    const phone = requiredInput('Phone') as HTMLInputElement;
-    fireEvent.change(phone, { target: { value: '' } });
-    expect(phone.required).toBe(true);
+    // The masked phone renders read-only/disabled, not as an editable required input.
+    const phone = inputForLabel('Phone') as HTMLInputElement;
+    expect(phone.disabled || phone.readOnly).toBe(true);
 
     submit();
-
-    expect(onSave).not.toHaveBeenCalled();
-  });
-
-  it('customer: a non-10-digit phone blocks save and shows the exactly-10-digits error', () => {
-    const { onSave } = renderModal('customer');
-
-    // The phone input strips non-digits and caps at 10; 5 digits fails /^\d{10}$/.
-    const phone = requiredInput('Phone') as HTMLInputElement;
-    fireEvent.change(phone, { target: { value: '55512' } });
-    expect(phone.value).toBe('55512');
-
-    submit();
-
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Phone must be exactly 10 digits')).toBeInTheDocument();
-  });
-
-  it('customer: phone input strips non-digits and caps at 10', () => {
-    const { onSave } = renderModal('customer');
-
-    const phone = requiredInput('Phone') as HTMLInputElement;
-    fireEvent.change(phone, { target: { value: '555-123-1000-99' } });
-    // Non-digits stripped, capped to first 10 digits.
-    expect(phone.value).toBe('5551231000');
-
-    submit();
-    // Valid 10-digit phone + non-empty billing => save proceeds.
+    // billing_address is pre-filled (required) so the save proceeds; phone is not sent.
     expect(onSave).toHaveBeenCalledTimes(1);
     const body = onSave.mock.calls[0][0] as Record<string, unknown>;
-    expect(body.phone).toBe('5551231000');
+    expect(Object.prototype.hasOwnProperty.call(body, 'phone')).toBe(false);
   });
 });
