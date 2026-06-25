@@ -436,12 +436,14 @@ describe('Sales API Endpoints', () => {
     const body = {
       name: 'C',
       email: null,
-      phone: '999',
+      // phone must be a valid 10-digit value (add-customer contract).
+      phone: '5551231000',
       billing_address: 'Addr',
       shipping_address: null,
       gstin: null,
       pancard_num: null,
       drug_license: null,
+      // Canonical gender encoding is 1/2/3; null = unspecified.
       gender: null,
     };
 

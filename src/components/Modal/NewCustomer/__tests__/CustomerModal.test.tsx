@@ -114,11 +114,21 @@ describe('CustomerModal', () => {
 
   it('handles input changes for mobile number', () => {
     renderComponent();
-    
+
     const mobileInput = screen.getByPlaceholderText(/mobile number/i);
     fireEvent.change(mobileInput, { target: { value: '1234567890' } });
-    
+
     expect(mobileInput).toHaveValue('1234567890');
+  });
+
+  it('strips non-digits and caps the mobile number at 10 digits', () => {
+    renderComponent();
+
+    const mobileInput = screen.getByPlaceholderText(/mobile number/i);
+    // Letters/punctuation are stripped and only the first 10 digits are kept.
+    fireEvent.change(mobileInput, { target: { value: '(555) 123-1000-99' } });
+
+    expect(mobileInput).toHaveValue('5551231000');
   });
 
   it('handles input changes for email', () => {
@@ -164,8 +174,9 @@ describe('CustomerModal', () => {
 
   it('calls onSubmit with form data when form is submitted', async () => {
     renderComponent();
-    
-    // Fill in form fields
+
+    // Fill in form fields. mobileNumber must be exactly 10 digits and
+    // billingAddress is now required (validateCustomerData enforces both).
     fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
       target: { value: 'John Doe' },
     });
@@ -175,14 +186,54 @@ describe('CustomerModal', () => {
     fireEvent.change(screen.getByPlaceholderText(/email/i), {
       target: { value: 'john@example.com' },
     });
-    
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
     // Submit form - find the submit button specifically (type="submit")
     const submitButton = screen.getByRole('button', { name: /add/i });
     fireEvent.click(submitButton);
-    
+
     await waitFor(() => {
       expect(mockProps.onSubmit).toHaveBeenCalled();
     });
+  });
+
+  it('blocks submit and shows the 10-digit error when mobile is too short', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '12345' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+    // validateCustomerData rejects a non-10-digit phone; error surfaces in the Alert.
+    expect(await screen.findByText(/exactly 10 digits/i)).toBeInTheDocument();
+    expect(mockProps.onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('blocks submit and shows the billing-required error when billing is empty', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '1234567890' },
+    });
+    // Billing address intentionally left empty.
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+    expect(await screen.findByText(/billing address is required/i)).toBeInTheDocument();
+    expect(mockProps.onSubmit).not.toHaveBeenCalled();
   });
 
   it('resets form when modal closes', () => {

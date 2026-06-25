@@ -27,11 +27,13 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
   customer: {
     id: 42,
     name: 'Acme Health',
-    phone: '555-1000',
+    // phone is now an EDITABLE + required field, must be exactly 10 digits.
+    phone: '5551231000',
     email: 'acme@example.com',
     gstin: 'GST123',
     pancard_num: 'PAN123',
     drug_license: 'DL123',
+    // billing_address is now required in edit.
     billing_address: '1 Old Billing St',
     shipping_address: '1 Old Shipping St',
     address_line1: 'Line1',
@@ -40,7 +42,8 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
     state: 'OldState',
     postal_code: '00001',
     country: 'India',
-    gender: 0,
+    // Canonical gender: 1=Male, 2=Female, 3=Other. (Female)
+    gender: 2,
   },
   supplier: {
     id: 7,
@@ -79,7 +82,8 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
   doctor: {
     id: 'DOC-1',
     name: 'Dr. Old',
-    phone: '555-3000',
+    // doctor.phone is LOCKED (editable: false) so it is never sent and not validated.
+    phone: '5553331000',
     email: 'doc@example.com',
     gstin: 'GSTDOC',
     pancard_num: 'PANDOC',
@@ -90,6 +94,7 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
     state: 'OldState',
     pin: '22222',
     country: 'India',
+    // Canonical gender: 1=Male, 2=Female, 3=Other. (Male)
     gender: 1,
   },
 };
@@ -209,7 +214,7 @@ describe('MasterEditModal — gender is sent as an integer code, not a string', 
   it('customer: selecting a gender option sends a number', () => {
     const { onSave } = renderModal('customer');
 
-    // Open the gender Select and choose "Female" (code 1).
+    // Open the gender Select and choose "Female". Canonical code for Female is 2.
     const genderCombo = screen.getByLabelText('Gender');
     fireEvent.mouseDown(genderCombo);
     const listbox = within(screen.getByRole('listbox'));
@@ -218,16 +223,103 @@ describe('MasterEditModal — gender is sent as an integer code, not a string', 
     submit();
     const body = onSave.mock.calls[0][0] as Record<string, unknown>;
     expect(typeof body.gender).toBe('number');
+    expect(body.gender).toBe(2);
+  });
+
+  it('customer: selecting "Male" sends canonical code 1', () => {
+    const { onSave } = renderModal('customer');
+
+    const genderCombo = screen.getByLabelText('Gender');
+    fireEvent.mouseDown(genderCombo);
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('Male'));
+
+    submit();
+    const body = onSave.mock.calls[0][0] as Record<string, unknown>;
     expect(body.gender).toBe(1);
   });
 
+  it('customer: selecting "Other" sends canonical code 3', () => {
+    const { onSave } = renderModal('customer');
+
+    const genderCombo = screen.getByLabelText('Gender');
+    fireEvent.mouseDown(genderCombo);
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('Other'));
+
+    submit();
+    const body = onSave.mock.calls[0][0] as Record<string, unknown>;
+    expect(body.gender).toBe(3);
+  });
+
   it('doctor: pre-filled integer gender is emitted as a number (not "1")', () => {
-    // ROWS.doctor.gender = 1 (Female). Without touching the control it should serialize
-    // back to the integer 1, never the string "1".
+    // ROWS.doctor.gender = 1 (canonical Male). Without touching the control it should
+    // serialize back to the integer 1, never the string "1".
     const { onSave } = renderModal('doctor');
     submit();
     const body = onSave.mock.calls[0][0] as Record<string, unknown>;
     expect(typeof body.gender).toBe('number');
     expect(body.gender).toBe(1);
+  });
+});
+
+describe('MasterEditModal — required + phone validation blocks save', () => {
+  // Required editable fields render with a trailing " *" in their accessible label,
+  // so match by a leading-anchored regex rather than exact text.
+  const requiredInput = (labelStart: string): HTMLInputElement | HTMLTextAreaElement =>
+    screen.getByLabelText(new RegExp(`^${labelStart}`)) as
+      | HTMLInputElement
+      | HTMLTextAreaElement;
+
+  it('customer: clearing required billing_address blocks save (field marked required)', () => {
+    const { onSave } = renderModal('customer');
+
+    const billing = requiredInput('Billing Address') as HTMLTextAreaElement;
+    fireEvent.change(billing, { target: { value: '' } });
+    // The required attribute is what gates an empty submit.
+    expect(billing.required).toBe(true);
+
+    submit();
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('customer: clearing required phone blocks save (field marked required)', () => {
+    const { onSave } = renderModal('customer');
+
+    const phone = requiredInput('Phone') as HTMLInputElement;
+    fireEvent.change(phone, { target: { value: '' } });
+    expect(phone.required).toBe(true);
+
+    submit();
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('customer: a non-10-digit phone blocks save and shows the exactly-10-digits error', () => {
+    const { onSave } = renderModal('customer');
+
+    // The phone input strips non-digits and caps at 10; 5 digits fails /^\d{10}$/.
+    const phone = requiredInput('Phone') as HTMLInputElement;
+    fireEvent.change(phone, { target: { value: '55512' } });
+    expect(phone.value).toBe('55512');
+
+    submit();
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Phone must be exactly 10 digits')).toBeInTheDocument();
+  });
+
+  it('customer: phone input strips non-digits and caps at 10', () => {
+    const { onSave } = renderModal('customer');
+
+    const phone = requiredInput('Phone') as HTMLInputElement;
+    fireEvent.change(phone, { target: { value: '555-123-1000-99' } });
+    // Non-digits stripped, capped to first 10 digits.
+    expect(phone.value).toBe('5551231000');
+
+    submit();
+    // Valid 10-digit phone + non-empty billing => save proceeds.
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const body = onSave.mock.calls[0][0] as Record<string, unknown>;
+    expect(body.phone).toBe('5551231000');
   });
 });

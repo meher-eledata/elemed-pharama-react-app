@@ -19,6 +19,8 @@ export interface MasterFieldDef {
   type: MasterFieldType;
   // true => editable (sent in update body); false => LOCKED (read-only, never sent)
   editable: boolean;
+  // true => must be non-empty to save (enforced generically in MasterEditModal)
+  required?: boolean;
 }
 
 export interface MasterCategoryConfig {
@@ -45,11 +47,11 @@ export const isEmptyMasterValue = (value: unknown): boolean => {
 };
 
 // Gender integer code <-> label mapping (backend model uses INTEGER).
-// Matches the existing add-customer encoding: Male => 0, Female => 1.
+// CANONICAL ENCODING (app-wide, verified 2026-06-24): 1 = Male, 2 = Female, 3 = Other.
 export const MASTER_GENDER_OPTIONS: ReadonlyArray<{ value: number; label: string }> = [
-  { value: 0, label: 'Male' },
-  { value: 1, label: 'Female' },
-  { value: 2, label: 'Other' },
+  { value: 1, label: 'Male' },
+  { value: 2, label: 'Female' },
+  { value: 3, label: 'Other' },
 ];
 
 export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = {
@@ -68,13 +70,13 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       // LOCKED
       { key: 'id', label: 'Customer ID', type: 'text', editable: false },
       { key: 'name', label: 'Name', type: 'text', editable: false },
-      { key: 'phone', label: 'Phone', type: 'text', editable: false },
       { key: 'email', label: 'Email', type: 'text', editable: false },
       { key: 'gstin', label: 'GSTIN', type: 'text', editable: false },
       { key: 'pancard_num', label: 'PAN Card Number', type: 'text', editable: false },
       { key: 'drug_license', label: 'Drug License', type: 'text', editable: false },
       // EDITABLE (whitelist)
-      { key: 'billing_address', label: 'Billing Address', type: 'multiline', editable: true },
+      { key: 'phone', label: 'Phone', type: 'text', editable: true, required: true },
+      { key: 'billing_address', label: 'Billing Address', type: 'multiline', editable: true, required: true },
       { key: 'shipping_address', label: 'Shipping Address', type: 'multiline', editable: true },
       { key: 'address_line1', label: 'Address Line 1', type: 'text', editable: true },
       { key: 'address_line2', label: 'Address Line 2', type: 'text', editable: true },
@@ -127,27 +129,23 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       { key: 'brand_name', header: 'Brand' },
       { key: 'description', header: 'Description' },
       { key: 'unit_of_measure', header: 'Unit' },
-      { key: 'mrp', header: 'MRP' },
-      { key: 'selling_price', header: 'Selling Price' },
+      { key: 'hsn_id', header: 'HSN Code' },
     ],
     fields: [
       // LOCKED
       { key: 'product_id', label: 'Product ID', type: 'text', editable: false },
       { key: 'product_code', label: 'Product Code', type: 'text', editable: false },
       { key: 'brand_id', label: 'Brand ID', type: 'text', editable: false },
-      { key: 'hsn_id', label: 'HSN ID', type: 'text', editable: false },
       { key: 'type', label: 'Type', type: 'text', editable: false },
-      { key: 'expiry', label: 'Expiry', type: 'text', editable: false },
       { key: 'current_qty', label: 'Current Qty', type: 'text', editable: false },
       // EDITABLE (whitelist)
+      { key: 'hsn_id', label: 'HSN Code', type: 'text', editable: true },
       { key: 'description', label: 'Description', type: 'multiline', editable: true },
       { key: 'package_info', label: 'Package Info', type: 'text', editable: true },
       { key: 'unit_of_measure', label: 'Unit of Measure', type: 'text', editable: true },
       { key: 'dosage', label: 'Dosage', type: 'text', editable: true },
       { key: 'min_qty', label: 'Min Qty', type: 'number', editable: true },
       { key: 'max_qty', label: 'Max Qty', type: 'number', editable: true },
-      { key: 'mrp', label: 'MRP', type: 'number', editable: true },
-      { key: 'selling_price', label: 'Selling Price', type: 'number', editable: true },
       { key: 'discount', label: 'Discount', type: 'number', editable: true },
     ],
   },

@@ -15,6 +15,7 @@ import { MASTER_VIEW_LABELS } from "../../config/label/MasterView.labels";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../redux/store";
 import { getMasterViewConfig, type MasterCategory } from "../../config/constants/MasterView.constants";
+import { extractErrorMessage } from "../../utils/errorUtils";
 import MasterViewModal from "./components/MasterViewModal";
 import {
   useAddCustomerMutation
@@ -31,6 +32,7 @@ import {
   useUpdateSupplierMutation,
   useUpdateProductMutation,
   useUpdateDoctorMutation,
+  type AddDoctorRequest,
 } from "../../redux/slices/masterApi";
 
 interface CardProps {
@@ -214,18 +216,28 @@ const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
         gstin: customerData.gstin || null,
         pancard_num: customerData.pancardNum || null,
         drug_license: customerData.drugLicense || null,
-        gender: customerData.gender === 'Male' ? 0 : customerData.gender === 'Female' ? 1 : null,
+        // CustomerModal.gender is a { male, female, other } booleans object.
+        // Map to canonical ints (1=Male, 2=Female, 3=Other); none selected => null.
+        gender: customerData.gender?.male
+          ? 1
+          : customerData.gender?.female
+            ? 2
+            : customerData.gender?.other
+              ? 3
+              : null,
       }).unwrap();
       setCustomerModalOpen(false);
       setSnackbarMessage(`Customer "${customerData.customerName}" created successfully!`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error adding customer:', error);
-      setSnackbarMessage('Failed to add customer. Please try again.');
+      // Surface the backend message (e.g. 409 "phone already in use", 400 validation)
+      // to the modal: rethrow an Error so CustomerModal's catch shows error.message.
+      const message = extractErrorMessage(error, 'Failed to add customer. Please try again.');
+      setSnackbarMessage(message);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
-      throw error;
+      throw new Error(message);
     }
   }, [addCustomer]);
 
@@ -260,36 +272,35 @@ const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
 
   const handleDoctorSubmit = useCallback(async (doctorData: any) => {
     try {
-      const doctorPayload: any = {
-        doctor_name: doctorData.doctorName,
-        contact_name: doctorData.doctorName, // Using doctor name as contact name
-        address: doctorData.branch || '',
-        city: '',
-        state: '',
-        pin: '',
-        country: '',
-        phone_number: doctorData.mobileNumber || '',
-        gst_number: '',
-        cst_number: '',
-        notes: doctorData.role || '',
-      };
-
-      // Only include email if it has a value
-      if (doctorData.email && doctorData.email.trim()) {
-        doctorPayload.email = doctorData.email.trim();
+      // Send only provided values; gender is the canonical int (1/2/3) or null.
+      const payload: AddDoctorRequest = { name: doctorData.name.trim() };
+      const optionalFields: Array<keyof AddDoctorRequest> = [
+        'email', 'phone', 'branch', 'address', 'city', 'state',
+        'pin', 'country', 'gstin', 'pancard_num', 'drug_license',
+      ];
+      optionalFields.forEach((key) => {
+        const value = doctorData[key];
+        if (typeof value === 'string' && value.trim()) {
+          (payload as any)[key] = value.trim();
+        }
+      });
+      if (doctorData.gender !== null && doctorData.gender !== undefined) {
+        payload.gender = Number(doctorData.gender);
       }
 
-      await addDoctor(doctorPayload).unwrap();
+      await addDoctor(payload).unwrap();
       setDoctorModalOpen(false);
-      setSnackbarMessage(`Doctor "${doctorData.doctorName}" added successfully!`);
+      setSnackbarMessage(`Doctor "${doctorData.name}" added successfully!`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error adding doctor:', error);
-      setSnackbarMessage('Failed to add doctor. Please try again.');
+      // Surface the backend message (e.g. 409 "email or phone already in use",
+      // 400 "name is required") to the modal via a rethrown Error.
+      const message = extractErrorMessage(error, 'Failed to add doctor. Please try again.');
+      setSnackbarMessage(message);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
-      throw error;
+      throw new Error(message);
     }
   }, [addDoctor]);
 

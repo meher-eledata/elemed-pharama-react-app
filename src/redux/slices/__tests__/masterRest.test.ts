@@ -142,17 +142,19 @@ describe('Master API Endpoints', () => {
   describe('POST /master/add-doctor', () => {
     it('should successfully add a doctor with all required fields', async () => {
       const mockDoctorData = {
-        doctor_name: 'Test Doctor',
-        contact_name: 'Test Contact',
+        name: 'Test Doctor',
+        email: 'doctor@example.com',
+        phone: '1234567890',
+        branch: 'Main Branch',
         address: 'Test Address',
         city: 'Test City',
         state: 'Test State',
         pin: '123456',
         country: 'Test Country',
-        phone_number: '1234567890',
-        gst_number: '1234567890',
-        cst_number: '1234567890',
-        notes: 'Test Notes',
+        gstin: '1234567890',
+        pancard_num: 'ABCDE1234F',
+        drug_license: 'DL-123',
+        gender: 1,
       };
 
       const mockResponse = {
@@ -215,17 +217,19 @@ describe('Master API Endpoints', () => {
 
     it('should handle error when adding doctor fails', async () => {
       const mockDoctorData = {
-        doctor_name: 'Test Doctor',
-        contact_name: 'Test Contact',
+        name: 'Test Doctor',
+        email: 'doctor@example.com',
+        phone: '1234567890',
+        branch: 'Main Branch',
         address: 'Test Address',
         city: 'Test City',
         state: 'Test State',
         pin: '123456',
         country: 'Test Country',
-        phone_number: '1234567890',
-        gst_number: '1234567890',
-        cst_number: '1234567890',
-        notes: 'Test Notes',
+        gstin: '1234567890',
+        pancard_num: 'ABCDE1234F',
+        drug_license: 'DL-123',
+        gender: 1,
       };
 
       mockBaseQuery.mockResolvedValueOnce({

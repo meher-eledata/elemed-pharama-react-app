@@ -85,6 +85,8 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
 
   // Local form state holds only the editable fields (as strings for inputs).
   const [values, setValues] = useState<Record<string, string>>({});
+  // Per-field validation errors (keyed by field.key), shown as inline helperText.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (open && row) {
@@ -93,16 +95,35 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
         initial[field.key] = toFieldString(row[field.key]);
       }
       setValues(initial);
+      setFieldErrors({});
     }
   }, [open, row, editableFields]);
 
   const handleChange = (key: string, value: string) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    // `phone` is digits-only, capped at 10 (matches the add-customer contract).
+    const next = key === 'phone' ? value.replace(/\D/g, '').slice(0, 10) : value;
+    setValues((prev) => ({ ...prev, [key]: next }));
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: '' } : prev));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!row) return;
+
+    // Generic validation: required fields + phone exactly-10-digits.
+    const errors: Record<string, string> = {};
+    for (const field of editableFields) {
+      const raw = (values[field.key] ?? '').trim();
+      if (field.required && raw === '') {
+        errors[field.key] = `${field.label} is required`;
+      } else if (field.key === 'phone' && raw !== '' && !/^\d{10}$/.test(raw)) {
+        errors[field.key] = 'Phone must be exactly 10 digits';
+      }
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
 
     // Build the body from the PK + ONLY whitelisted editable fields.
     const body: Record<string, unknown> = {
@@ -200,6 +221,7 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
               }
 
               const isMultiline = field.type === 'multiline';
+              const fieldError = locked ? '' : fieldErrors[field.key] ?? '';
               return (
                 <Grid item xs={12} sm={isMultiline ? 12 : 6} key={field.key}>
                   <TextField
@@ -211,9 +233,17 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
                         ? undefined
                         : (e) => handleChange(field.key, e.target.value)
                     }
+                    required={!locked && Boolean(field.required)}
+                    error={Boolean(fieldError)}
+                    helperText={fieldError || undefined}
                     type={field.type === 'number' ? 'number' : 'text'}
                     multiline={isMultiline}
                     minRows={isMultiline ? 2 : undefined}
+                    inputProps={
+                      field.key === 'phone'
+                        ? { inputMode: 'numeric', maxLength: 10 }
+                        : undefined
+                    }
                     fullWidth
                     size="small"
                     disabled={locked}

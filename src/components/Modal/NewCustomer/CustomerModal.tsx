@@ -116,7 +116,9 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setCustomerData(prev => ({ ...prev, [name]: value }));
+    // Mobile number: digits only, capped at 10 (matches the add-customer contract).
+    const next = name === 'mobileNumber' ? value.replace(/\D/g, '').slice(0, 10) : value;
+    setCustomerData(prev => ({ ...prev, [name]: next }));
   };
 
   const handleGenderChange = (e: any) => {
@@ -286,6 +288,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                   name="mobileNumber"
                   value={customerData.mobileNumber}
                   onChange={handleInputChange}
+                  inputProps={{ inputMode: 'numeric', maxLength: 10 }}
                   sx={inputStyle}
                 />
 

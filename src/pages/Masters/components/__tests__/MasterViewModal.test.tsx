@@ -41,7 +41,7 @@ const CUSTOMER_ROWS: Record<string, unknown>[] = [
   {
     id: 1,
     name: 'Acme Health',
-    phone: '555-1000',
+    phone: '9876548919',
     email: 'acme@example.com',
     city: 'Oldtown',
     state: 'OldState',
@@ -49,7 +49,7 @@ const CUSTOMER_ROWS: Record<string, unknown>[] = [
   {
     id: 2,
     name: 'Beta Care',
-    phone: '555-2000',
+    phone: '9123456780',
     email: 'beta@example.com',
     city: 'Newtown',
     state: 'NewState',
@@ -159,4 +159,70 @@ describe('MasterViewModal — Download triggers the xlsx export', () => {
       expect(filename).toBe(MASTER_VIEW_LABELS.DOWNLOAD_FILENAMES[category]);
     }
   );
+});
+
+describe('MasterViewModal — customer phone is masked in the EXPORT only', () => {
+  // The Phone column header from the customer config; the export keys rows by header.
+  const PHONE_HEADER = MASTER_VIEW_CONFIG.customer.columns.find(
+    (c) => c.key === 'phone',
+  )!.header;
+
+  // E. The xlsx export masks all but the last 4 digits of each customer phone.
+  it('passes masked customer phones to XLSX.utils.json_to_sheet', () => {
+    renderModal({ showDownload: true });
+
+    fireEvent.click(queryDownloadButton()!);
+
+    const sheetData = (XLSX.utils.json_to_sheet as jest.Mock).mock
+      .calls[0][0] as Record<string, string>[];
+    expect(sheetData).toHaveLength(CUSTOMER_ROWS.length);
+    expect(sheetData[0][PHONE_HEADER]).toBe('******8919');
+    expect(sheetData[1][PHONE_HEADER]).toBe('******6780');
+    // Sanity: the raw (unmasked) phone never reaches the export.
+    expect(sheetData[0][PHONE_HEADER]).not.toBe('9876548919');
+  });
+
+  // F. The on-screen table still shows the FULL phone (masking is download-only).
+  it('still renders the full phone in the on-screen table', () => {
+    renderModal({ showDownload: true });
+
+    expect(screen.getByText('9876548919')).toBeInTheDocument();
+    expect(screen.getByText('9123456780')).toBeInTheDocument();
+    expect(screen.queryByText('******8919')).not.toBeInTheDocument();
+  });
+
+  // G. (optional) supplier/doctor phones are NOT masked in the export.
+  it('does NOT mask supplier phone in the export', () => {
+    renderModal({
+      showDownload: true,
+      category: 'supplier',
+      rows: [{ id: 1, supplier_name: 'S1', phone_number: '9876548919' }],
+    });
+
+    fireEvent.click(queryDownloadButton()!);
+
+    const supplierPhoneHeader = MASTER_VIEW_CONFIG.supplier.columns.find(
+      (c) => c.key === 'phone_number',
+    )!.header;
+    const sheetData = (XLSX.utils.json_to_sheet as jest.Mock).mock
+      .calls[0][0] as Record<string, string>[];
+    expect(sheetData[0][supplierPhoneHeader]).toBe('9876548919');
+  });
+
+  it('does NOT mask doctor phone in the export', () => {
+    renderModal({
+      showDownload: true,
+      category: 'doctor',
+      rows: [{ id: 1, name: 'Dr. A', phone: '9876548919' }],
+    });
+
+    fireEvent.click(queryDownloadButton()!);
+
+    const doctorPhoneHeader = MASTER_VIEW_CONFIG.doctor.columns.find(
+      (c) => c.key === 'phone',
+    )!.header;
+    const sheetData = (XLSX.utils.json_to_sheet as jest.Mock).mock
+      .calls[0][0] as Record<string, string>[];
+    expect(sheetData[0][doctorPhoneHeader]).toBe('9876548919');
+  });
 });

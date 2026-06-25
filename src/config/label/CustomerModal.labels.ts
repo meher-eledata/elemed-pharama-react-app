@@ -19,7 +19,7 @@ export const CUSTOMER_MODAL_LABELS = {
   GENDER_OTHER: "Other",
 
   // Address Details Placeholders
-  BILLING_ADDRESS_PLACEHOLDER: "Billing address",
+  BILLING_ADDRESS_PLACEHOLDER: "Billing address *",
   SHIPPING_ADDRESS_PLACEHOLDER: "Shipping address",
   SHIPPING_SAME_AS_BILLING: "Shipping address same as billing address",
 

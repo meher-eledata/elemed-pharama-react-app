@@ -19,18 +19,19 @@ export interface AddSupplierRequest {
 }
 
 export interface AddDoctorRequest {
-  doctor_name: string;
-  contact_name: string;
-  address: string;
-  city: string;
-  state: string;
-  pin: string;
-  country: string;
-  phone_number: string;
-  gst_number: string;
-  cst_number: string;
-  notes: string;
+  name: string;
   email?: string;
+  phone?: string;
+  branch?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pin?: string;
+  country?: string;
+  gstin?: string;
+  pancard_num?: string;
+  drug_license?: string;
+  gender?: number | null;
 }
 
 // Response interfaces
@@ -73,7 +74,7 @@ export interface Doctor {
   gstin: string | null;
   pancard_num: string | null;
   drug_license: string | null;
-  // Backend model defines gender as INTEGER (0 = Male, 1 = Female, 2 = Other).
+  // Backend model defines gender as INTEGER. CANONICAL: 1 = Male, 2 = Female, 3 = Other.
   // Reconciled drift: previously typed `string`. Send/render as an integer code.
   gender: number | null;
 }
@@ -90,7 +91,7 @@ export interface Customer {
   name: string;
   phone: string | null;
   email: string | null;
-  // gender is an INTEGER code in the backend model (0 = Male, 1 = Female, 2 = Other).
+  // gender is an INTEGER code in the backend model. CANONICAL: 1 = Male, 2 = Female, 3 = Other.
   gender: number | null;
   billing_address: string | null;
   shipping_address: string | null;
@@ -133,6 +134,7 @@ export interface Product {
 
 export interface UpdateCustomerRequest {
   id: number;
+  phone?: string;
   billing_address?: string | null;
   shipping_address?: string | null;
   address_line1?: string | null;
@@ -165,8 +167,7 @@ export interface UpdateProductRequest {
   dosage?: string | null;
   min_qty?: number | null;
   max_qty?: number | null;
-  mrp?: number | string | null;
-  selling_price?: number | string | null;
+  hsn_id?: string | null;
   discount?: number | string | null;
 }
 

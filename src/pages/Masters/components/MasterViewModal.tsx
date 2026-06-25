@@ -71,6 +71,13 @@ const modalStyle = {
   fontFamily: "'Lexend', sans-serif",
 };
 
+// Mask all but the last 4 characters of a string (e.g. '9876548919' -> '******8919').
+// Values of length <= 4 are left unchanged.
+const maskExceptLast4 = (value: string): string => {
+  if (value.length <= 4) return value;
+  return '*'.repeat(value.length - 4) + value.slice(-4);
+};
+
 const renderCell = (key: string, value: unknown): React.ReactNode => {
   if (isEmptyMasterValue(value)) return MASTER_VIEW_LABELS.EMPTY_PLACEHOLDER;
   if (key === 'gender') {
@@ -125,7 +132,12 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
   const handleDownload = () => {
     const data = rows.map((row) =>
       config.columns.reduce<Record<string, string>>((acc, col) => {
-        acc[col.header] = String(renderCell(col.key, row[col.key]));
+        let cell = String(renderCell(col.key, row[col.key]));
+        // Download-only PII masking: customer phone shows last 4 digits only.
+        if (category === 'customer' && col.key === 'phone') {
+          cell = maskExceptLast4(cell);
+        }
+        acc[col.header] = cell;
         return acc;
       }, {}),
     );
