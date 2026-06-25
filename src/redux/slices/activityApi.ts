@@ -20,7 +20,15 @@ export const activityApi = createApi({
         body,
       }),
     }),
+    // POST /api/logout — authenticated (Bearer token injected by baseQueryWithReauth),
+    // no body. Called while the token is still valid so the server logs the Logout event.
+    logout: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: 'logout',
+        method: 'POST',
+      }),
+    }),
   }),
 });
 
-export const { useLogDownloadMutation } = activityApi;
+export const { useLogDownloadMutation, useLogoutMutation } = activityApi;

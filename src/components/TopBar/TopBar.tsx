@@ -94,6 +94,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 // import dropdownIcon from "../../assets/DropDown.svg"; // Removed for standardization
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
+import { useLogoutMutation } from "../../redux/slices/activityApi";
 import { RootState } from "../../redux/store";
 import { useNavigate } from "react-router-dom";
 import { getInitials } from "../../config/helpers/initials";
@@ -111,7 +112,8 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   const open = Boolean(anchorEl);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+  const [logoutRequest] = useLogoutMutation();
+
   // Get user info from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   
@@ -141,8 +143,15 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
     navigate('/admin');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     handleClose();
+    // Tell the server to log the Logout event while the token is still valid.
+    // Never block logout on a failed/slow call — always clear the token + navigate.
+    try {
+      await logoutRequest().unwrap();
+    } catch {
+      // ignore — proceed to clear auth regardless of success/failure
+    }
     // Clear auth state from Redux and localStorage
     dispatch(logout());
     // Redirect to login page

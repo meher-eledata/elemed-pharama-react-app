@@ -90,18 +90,27 @@ export interface UpdateUserRoleResponse {
   };
 }
 
+// As-built shape of an activity_log row from GET /api/admin/get-activity-log.
+// The backend sends snake_case columns; `role` is an INTEGER (0=Admin, 1=Pharmacist) or null
+// for system/unmatched rows. All consumer code must defensively String()/null-default these.
 export interface ActivityLogEntry {
-  id: number;
-  username: string;
-  userAvatar: string;
-  accessLevel: string;
-  role: string;
-  module: string;
-  eventType: string;
-  eventTime: string;
-  eventDetails: string;
-  quantityChanged: string | number;
+  id?: number;
+  username?: string;
+  userAvatar?: string;
+  accessLevel?: string;
+  role?: number | string | null;
+  module?: string;
+  module_name?: string;
+  eventType?: string;
+  event_type?: string;
+  eventTime?: string;
+  event_time?: string;
+  eventDetails?: string;
+  event_details?: string;
+  quantityChanged?: string | number;
+  quantity_changed?: string | number;
   relatedId?: string | number;
+  related_id?: string | number;
 }
 
 export interface GetActivityLogResponse {

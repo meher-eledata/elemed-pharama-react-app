@@ -43,6 +43,7 @@ import {
   useGetTotalStockQuery,
   useUpdateMinQuantityMutation,
 } from '../../redux/slices/inventoryApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { extractErrorMessage } from '../../utils/errorUtils';
 
 
@@ -122,6 +123,7 @@ const InventoryModule: React.FC = () => {
     useState<boolean>(false);
 
   const [updateMinQuantity] = useUpdateMinQuantityMutation();
+  const [logDownload] = useLogDownloadMutation();
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -563,6 +565,12 @@ const InventoryModule: React.FC = () => {
 
   const handleDownloadCSV = () => {
     csvLinkRef.current?.link?.click();
+    logDownload({
+      category: 'inventory',
+      name: getCategoryLabel(selectedStockType),
+      format: 'csv',
+      count: filteredData.length,
+    }).catch(() => {});
   };
 
   const renderHeaderCheckbox = () => (

@@ -180,6 +180,25 @@ export interface AdjustInventoryBatchesResponse {
   new_balance_quantity: number;
 }
 
+export interface DeleteBatchRequest {
+  product_id: number;
+  batch_number: string | number;
+}
+
+export interface DeleteBatchResponse {
+  message: string;
+  product_id: number;
+  batch_number: string | number;
+  new_balance_quantity: number;
+}
+
+// 409 error body when a batch has been sold and cannot be deleted.
+export interface DeleteBatchSoldError {
+  error: string;
+  invoice_numbers: string[];
+  invoices: { invoice_id: number; invoice_number: string }[];
+}
+
 export interface UpdateMinQuantityRequest {
   product_id: number;
   min_quantity: number;
@@ -336,6 +355,14 @@ export const inventoryApi = createApi({
       }),
       invalidatesTags: ["Inventory"],
     }),
+    deleteBatch: builder.mutation<DeleteBatchResponse, DeleteBatchRequest>({
+      query: (body) => ({
+        url: "inventory/delete-batch",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Inventory"],
+    }),
     getProductIds: builder.query<{ product_ids: number[] }, void>({
       query: () => "inventory/get-product-ids",
       providesTags: ["Inventory"],
@@ -367,5 +394,6 @@ export const {
   useGetBrandsFromProductNameMutation,
   useGetTypesForBrandAndProductMutation,
   useAdjustInventoryBatchesMutation,
+  useDeleteBatchMutation,
   useUpdateMinQuantityMutation,
 } = inventoryApi;

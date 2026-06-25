@@ -195,7 +195,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
             if (onOpenChange) onOpenChange(!open);
           }}
         >
-          <img src={BgWhiteIcon} alt="Logo" style={{ width: '2.5rem', height: '2.5rem' }} />
+          <img
+            src={BgWhiteIcon}
+            alt="Logo"
+            style={{ width: '2.5rem', height: '2.5rem', cursor: 'pointer' }}
+            onClick={(e) => {
+              // Role-aware home navigation. Stop propagation so the click does NOT
+              // also fire the surrounding Box's sidebar open/close toggle.
+              e.stopPropagation();
+              const role = user?.role;
+              const isAdmin =
+                role === 0 ||
+                role === '0' ||
+                String(role).toLowerCase() === 'admin';
+              navigate(isAdmin ? '/admin' : '/dashboard');
+            }}
+          />
           {open && (
             <Typography
               variant="subtitle1"

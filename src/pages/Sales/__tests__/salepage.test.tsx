@@ -299,12 +299,56 @@ describe('SalePage', () => {
 
   it('shows warning when trying to proceed with empty cart', () => {
     renderComponent();
-    
+
     const nextButton = screen.getByText(/next/i);
     fireEvent.click(nextButton);
-    
+
     // Should show warning toast
     expect(nextButton).toBeInTheDocument();
+  });
+
+  it('shows the duplicate-batch admin warning modal when batches contain duplicate batch numbers', async () => {
+    // Cascade auto-resolves: one brand for the product → one type → batches with a dupe.
+    (inventoryApi.useGetBrandsFromProductNameMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([{ id: 1, brand_name: 'BrandA', currentQuantity: 100 }]),
+      })),
+      { isLoading: false },
+    ]);
+    (inventoryApi.useGetTypesForBrandAndProductMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([{ type: 'Capsule', product_id: 42, currentQuantity: 100 }]),
+      })),
+      { isLoading: false },
+    ]);
+    (salesApi.useGetBatchNumbersByProductIdMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({
+          batches: [
+            { batch_number: 'DUP-1', current_qty: 5 },
+            { batch_number: 'DUP-1', current_qty: 3 },
+            { batch_number: 'UNIQUE-2', current_qty: 7 },
+          ],
+        }),
+      })),
+      { isLoading: false },
+    ]);
+
+    renderComponent();
+
+    const productInput = screen.getByPlaceholderText(/search for a product/i);
+    productInput.focus();
+    fireEvent.change(productInput, { target: { value: 'Product A' } });
+    const option = await screen.findByRole('option', { name: /Product A/i });
+    fireEvent.click(option);
+
+    // Informational modal names the duplicated batch number and points to the admin/Inventory flow.
+    await waitFor(() =>
+      expect(screen.getByText(/Duplicate batch numbers found/i)).toBeInTheDocument()
+    );
+    expect(screen.getByText(/DUP-1/)).toBeInTheDocument();
+    expect(screen.getByText(/Inventory Adjustment/i)).toBeInTheDocument();
+    expect(screen.queryByText(/UNIQUE-2/)).not.toBeInTheDocument();
   });
 });
 
