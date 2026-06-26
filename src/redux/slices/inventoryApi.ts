@@ -86,8 +86,8 @@ export interface GetBatchesForProductRequest {
 }
 
 export interface Batch {
-  batch_id?: number; // Numeric batch ID (required for API calls)
-  batch_number: number | string; // Batch number (can be string like "CTZ-2026-06-A")
+  batch_id: number; // Unique PK — the stable identity for delete (batch_number is NOT unique)
+  batch_number: number | string; // Batch number (can be string like "CTZ-2026-06-A"); NOT unique
   current_qty: number;
   expiry_date: string;
   mrp?: number;
@@ -181,12 +181,12 @@ export interface AdjustInventoryBatchesResponse {
 }
 
 export interface DeleteBatchRequest {
-  product_id: number;
-  batch_number: string | number;
+  batch_id: number; // Unique PK — deletes exactly one row
 }
 
 export interface DeleteBatchResponse {
   message: string;
+  batch_id: number;
   product_id: number;
   batch_number: string | number;
   new_balance_quantity: number;

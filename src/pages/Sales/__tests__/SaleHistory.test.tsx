@@ -18,6 +18,35 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../redux/slices/salesApi');
 
+// Replace the calendar-driven DateRangeFilter with simple buttons that call
+// onDateRangeChange with fixed Dayjs values. This exercises the component's date
+// filter logic (the code under test) without fighting the MUI DateCalendar UI.
+// Dates align with the date-range invoices below (10 / 15 / 20 Jan 2026).
+jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', () => {
+  const dayjsLib = require('dayjs');
+  return {
+    __esModule: true,
+    default: ({ onDateRangeChange }: { onDateRangeChange: (r: [unknown, unknown]) => void }) => (
+      <div>
+        {/* Keep the real component's title so existing "filter options" test still passes. */}
+        <span>Filter by Dates</span>
+        <button onClick={() => onDateRangeChange([dayjsLib('2026-01-12'), dayjsLib('2026-01-18')])}>
+          set-range
+        </button>
+        <button onClick={() => onDateRangeChange([dayjsLib('2026-01-10'), dayjsLib('2026-01-15')])}>
+          set-range-boundary
+        </button>
+        <button onClick={() => onDateRangeChange([dayjsLib('2026-01-15'), null])}>
+          set-start-only
+        </button>
+        <button onClick={() => onDateRangeChange([null, dayjsLib('2026-01-15')])}>
+          set-end-only
+        </button>
+      </div>
+    ),
+  };
+});
+
 jest.mock('../../../utils/cartStorage', () => ({
   getSalesHistoryFromStorage: jest.fn(() => []),
   getEditInvoiceId: jest.fn(() => null),
@@ -413,6 +442,82 @@ describe('SaleHistory', () => {
     expect(editIcon).toBeTruthy();
     // Mirrors the existing isDeleted disable pattern: not-allowed cursor + dimmed.
     expect(editIcon).toHaveStyle({ cursor: 'not-allowed' });
+  });
+
+  describe('date range filter', () => {
+    // Three invoices on distinct days. invoice_date is rendered as "DD MMM YYYY";
+    // the parser must read that back robustly so the range filter works.
+    // INV1001 → 10 Jan, INV1015 → 15 Jan, INV1020 → 20 Jan.
+    const dateRangeInvoices = [
+      { ...mockInvoices[0], id: 1001, invoice_number: 1001, invoice_date: '2026-01-10' },
+      { ...mockInvoices[0], id: 1015, invoice_number: 1015, invoice_date: '2026-01-15' },
+      { ...mockInvoices[0], id: 1020, invoice_number: 1020, invoice_date: '2026-01-20' },
+    ];
+
+    const showFiltersAndClick = (buttonText: string) => {
+      fireEvent.click(screen.getByText(/show filters/i));
+      fireEvent.click(screen.getByText(buttonText));
+    };
+
+    it('keeps only invoices strictly inside the selected start+end range', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // Range 12–18 Jan: only the 15th qualifies.
+      showFiltersAndClick('set-range');
+
+      await waitFor(() => {
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.queryByText(/inv1001/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('includes both boundary dates of the range (inclusive)', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // Range 10–15 Jan: both endpoints (10th=INV1001 and 15th) included, 20th excluded.
+      showFiltersAndClick('set-range-boundary');
+
+      await waitFor(() => {
+        expect(screen.getByText(/inv1001/i)).toBeInTheDocument();
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('start-only filter keeps invoices on or after the start date', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // Start 15 Jan only: 15th and 20th remain, 10th (INV1001) drops.
+      showFiltersAndClick('set-start-only');
+
+      await waitFor(() => {
+        expect(screen.queryByText(/inv1001/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.getByText(/inv1020/i)).toBeInTheDocument();
+      });
+    });
+
+    it('end-only filter keeps invoices on or before the end date', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // End 15 Jan only: 10th (INV1001) and 15th remain, 20th drops.
+      showFiltersAndClick('set-end-only');
+
+      await waitFor(() => {
+        expect(screen.getByText(/inv1001/i)).toBeInTheDocument();
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
   });
 });
 

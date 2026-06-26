@@ -42,7 +42,8 @@ import { processProductOptions } from '../Sales/SalesPage.utils';
 import { extractErrorMessage } from '../../utils/errorUtils';
 
 type BatchRow = {
-  id: string;
+  id: string; // stable unique row id derived from batch_id (batch_number is NOT unique)
+  batch_id: number; // unique PK — the delete identity
   batchNumber: string | number;
   quantity: number;
   oldQuantity: number;
@@ -297,13 +298,14 @@ const InventoryAdjustment: React.FC = () => {
       // Transform API batches to BatchRow format
       const transformedBatches: BatchRow[] = result.batches.map((batch: any) => {
         const expiryDateStr = batch.expiry_date ? dayjs(batch.expiry_date).format('YYYY-MM-DD') : '';
-        // batch_number from API can be string (like "CTZ-2026-06-A") or number
-        // We'll use it as-is for the API call
+        // batch_number from API can be string (like "CTZ-2026-06-A") or number, and is NOT unique
+        // (duplicates allowed). batch_id is the unique PK — use it as the stable row identity.
         const batchNumber = batch.batch_number || batch.batchNumber;
 
         return {
-          id: String(batchNumber), // Use batch_number as the id for display
-          batchNumber: batchNumber, // Store batch_number for API calls
+          id: String(batch.batch_id), // Unique row id (batch_number is NOT unique)
+          batch_id: batch.batch_id, // Unique PK — the delete identity
+          batchNumber: batchNumber, // Display value only (may be duplicated across rows)
           quantity: batch.current_qty,
           oldQuantity: batch.current_qty, // Store original quantity
           expiryDate: expiryDateStr,
@@ -409,8 +411,9 @@ const InventoryAdjustment: React.FC = () => {
           break;
         case 'id':
         default:
-          aValue = a.id;
-          bValue = b.id;
+          // The "Batch Number" column sorts by the displayed batch_number, not the internal id.
+          aValue = String(a.batchNumber);
+          bValue = String(b.batchNumber);
           break;
       }
 
@@ -429,7 +432,7 @@ const InventoryAdjustment: React.FC = () => {
       return sortedRows;
     }
     const query = searchTerm.toLowerCase();
-    return sortedRows.filter((row) => row.id.toLowerCase().includes(query));
+    return sortedRows.filter((row) => String(row.batchNumber).toLowerCase().includes(query));
   }, [sortedRows, searchTerm]);
 
   const handleQuantityChange = (batchId: string, value: string) => {
@@ -675,15 +678,14 @@ const InventoryAdjustment: React.FC = () => {
       // Process deletions sequentially so error handling stays simple. Collect successes and the
       // batches the backend blocked (409 — sold) so we can explain why and list the invoice numbers.
       const deletedIds: string[] = [];
-      const blocked: { batchNumber: string | number; invoiceNumbers: string[] }[] = [];
+      const blocked: { batchId: number; batchNumber: string | number; invoiceNumbers: string[] }[] = [];
       let otherDeleteError: unknown = null;
 
       for (const batch of deletionBatches) {
         try {
-          await deleteBatch({
-            product_id: productId,
-            batch_number: batch.batchNumber,
-          }).unwrap();
+          // Delete the single unique row by its PK — batch_number is NOT unique, so deleting by
+          // batch_number would remove every duplicate-numbered row.
+          await deleteBatch({ batch_id: batch.batch_id }).unwrap();
           deletedIds.push(batch.id);
         } catch (err) {
           const status = (err as { status?: number })?.status;
@@ -692,7 +694,7 @@ const InventoryAdjustment: React.FC = () => {
             const invoiceNumbers = data.invoice_numbers.length
               ? data.invoice_numbers
               : (data.invoices || []).map((inv) => inv.invoice_number);
-            blocked.push({ batchNumber: batch.batchNumber, invoiceNumbers });
+            blocked.push({ batchId: batch.batch_id, batchNumber: batch.batchNumber, invoiceNumbers });
           } else {
             otherDeleteError = err;
           }
@@ -711,7 +713,7 @@ const InventoryAdjustment: React.FC = () => {
         setBlockedMessage(
           <Box sx={{ textAlign: 'left' }}>
             {blocked.map((b) => (
-              <Typography key={String(b.batchNumber)} variant="body2" sx={{ mb: 1 }}>
+              <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
                 Batch <strong>{String(b.batchNumber)}</strong> cannot be deleted because product
                 from it was sold on invoice(s): <strong>{b.invoiceNumbers.join(', ')}</strong>.
               </Typography>
@@ -813,7 +815,7 @@ const InventoryAdjustment: React.FC = () => {
               textDecoration: batch.markedForDeletion ? 'line-through' : 'none',
             }}
           >
-            {batch.id}
+            {batch.batchNumber}
           </Typography>
           {batch.markedForDeletion && (
             <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 600 }}>

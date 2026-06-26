@@ -61,9 +61,11 @@ const mockProductInfo = {
   total_quantity: 100,
 };
 
+// Two rows share the SAME batch_number ('AMX-DUP') but have DISTINCT batch_ids — the bug fix must
+// delete only the targeted batch_id, not every row with that batch_number.
 const mockBatches = [
-  { batch_number: 'AMX-1', current_qty: 50, expiry_date: '2027-01-01', mrp: 10, pack_qty: 1 },
-  { batch_number: 'AMX-2', current_qty: 50, expiry_date: '2027-02-01', mrp: 12, pack_qty: 1 },
+  { batch_id: 101, batch_number: 'AMX-DUP', current_qty: 50, expiry_date: '2027-01-01', mrp: 10, pack_qty: 1 },
+  { batch_id: 102, batch_number: 'AMX-DUP', current_qty: 50, expiry_date: '2027-02-01', mrp: 12, pack_qty: 1 },
 ];
 
 const createMockStore = () =>
@@ -179,17 +181,22 @@ describe('InventoryAdjustment - batch deletion', () => {
     expect(screen.queryByText('Will be deleted')).not.toBeInTheDocument();
   });
 
-  it('calls deleteBatch for marked rows on Save confirm', async () => {
+  it('deletes only the targeted batch_id when two rows share a batch_number', async () => {
     await loadBatches();
+
+    // Both rows display the SAME batch_number but are distinct rows (distinct batch_id).
+    expect(screen.getByTestId('table-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId('table-row-1')).toBeInTheDocument();
+
+    // Mark ONLY the first duplicate row for deletion.
     fireEvent.click(screen.getAllByAltText('Delete')[0]);
     fireEvent.click(screen.getByText('Save'));
-
-    // Confirm the adjustment dialog.
     fireEvent.click(screen.getByText('Confirm'));
 
-    await waitFor(() =>
-      expect(deleteBatchTrigger).toHaveBeenCalledWith({ product_id: 42, batch_number: 'AMX-1' })
-    );
+    await waitFor(() => expect(deleteBatchTrigger).toHaveBeenCalledTimes(1));
+    // Targets exactly the first row's unique batch_id (101) — NOT batch_number, NOT the second row (102).
+    expect(deleteBatchTrigger).toHaveBeenCalledWith({ batch_id: 101 });
+    expect(deleteBatchTrigger).not.toHaveBeenCalledWith({ batch_id: 102 });
   });
 
   it('shows the message modal listing invoice numbers on a 409 (sold) response', async () => {
@@ -216,7 +223,7 @@ describe('InventoryAdjustment - batch deletion', () => {
     const modal = await screen.findByTestId('dialog-Batch cannot be deleted');
     expect(modal).toBeInTheDocument();
     const message = screen.getByTestId('dialog-message');
-    expect(message).toHaveTextContent('AMX-1');
+    expect(message).toHaveTextContent('AMX-DUP');
     expect(message).toHaveTextContent('INV-001, INV-002');
   });
 

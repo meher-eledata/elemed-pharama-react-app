@@ -4,6 +4,7 @@ import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip,
 import { StandardButton } from '../../components/Common';
 import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import dayjs, { Dayjs } from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
@@ -31,6 +32,44 @@ import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
 import { clearCart, clearFormData } from '../../redux/slices/cartSlice';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
+
+// Load the customParseFormat plugin once at module scope so strict format strings
+// (e.g. 'DD/MM/YYYY') are honored. Without it dayjs silently ignores the format and
+// falls back to the native parser, which can't read DD/MM/YYYY → Invalid Date.
+dayjs.extend(customParseFormat);
+
+// Robust multi-format invoice-date parser shared by the date FILTER and SORT.
+// Handles DD/MM/YYYY, YYYY-MM-DD, and standard parses like "20 Mar 2026".
+// Returns a timestamp (ms); 0 for unparseable/empty values so callers can guard.
+const parseInvoiceDate = (val: unknown): number => {
+  if (!val) return 0;
+  const strVal = String(val).trim();
+
+  // 1. Try explicit DD/MM/YYYY or YYYY-MM-DD FIRST to prevent US date format mixups.
+  const parts = strVal.split(/[/-]/);
+  if (parts.length === 3) {
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    const p2 = parseInt(parts[2], 10);
+
+    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+      // If format is YYYY-MM-DD
+      if (p0 > 1000) {
+        return new Date(p0, p1 - 1, p2).getTime();
+      }
+      // Else assume DD/MM/YYYY
+      return new Date(p2, p1 - 1, p0).getTime();
+    }
+  }
+
+  // 2. Try standard Date parse (works for formats like "20 Mar 2026").
+  const stdTime = Date.parse(strVal);
+  if (!isNaN(stdTime)) return stdTime;
+
+  // 3. Fallback to dayjs.
+  const d = dayjs(strVal);
+  return d.isValid() ? d.valueOf() : 0;
+};
 
 // Invoice table has no payment_mode column — derive it from the payments array.
 // 1 active payment → that payment's method (mapped to dropdown casing).
@@ -686,7 +725,10 @@ export default function SaleHistory() {
 
     if (dateRange[0] || dateRange[1]) {
       filtered = filtered.filter(item => {
-        const itemDate = dayjs(item.invoiceDate, 'DD/MM/YYYY');
+        // Robust multi-format parse (DD/MM/YYYY, YYYY-MM-DD, "20 Mar 2026", …).
+        const ts = parseInvoiceDate(item.invoiceDate);
+        if (!ts) return false; // Unparseable rows are excluded from a date-bounded filter.
+        const itemDate = dayjs(ts);
         const startDate = dateRange[0];
         const endDate = dateRange[1];
 
@@ -751,38 +793,10 @@ export default function SaleHistory() {
       // CRITICAL: Special handling for date sorting
       // Handle string comparison on various date formats (e.g. "20/03/2026", "2026-03-20", "20 Mar 2026")
       if (activeSortKey === 'invoiceDate') {
-        const parseDate = (val: any) => {
-          if (!val) return 0;
-          const strVal = String(val).trim();
-
-          // 1. Try explicit DD/MM/YYYY or YYYY-MM-DD FIRST to prevent US date format mixups
-          const parts = strVal.split(/[\/\-]/);
-          if (parts.length === 3) {
-            let p0 = parseInt(parts[0], 10);
-            let p1 = parseInt(parts[1], 10);
-            let p2 = parseInt(parts[2], 10);
-
-            if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
-              // If format is YYYY-MM-DD
-              if (p0 > 1000) {
-                return new Date(p0, p1 - 1, p2).getTime();
-              }
-              // Else assume DD/MM/YYYY
-              return new Date(p2, p1 - 1, p0).getTime();
-            }
-          }
-
-          // 2. Try standard Date parse (works for format like "20 Mar 2026")
-          const stdTime = Date.parse(strVal);
-          if (!isNaN(stdTime)) return stdTime;
-
-          // 3. Fallback to dayjs
-          const d = dayjs(strVal);
-          return d.isValid() ? d.valueOf() : 0;
-        };
-
-        const aDate = parseDate(aValue);
-        const bDate = parseDate(bValue);
+        // Shared robust parser (see parseInvoiceDate at module scope) — same
+        // multi-format handling the date filter uses.
+        const aDate = parseInvoiceDate(aValue);
+        const bDate = parseInvoiceDate(bValue);
 
         if (!isNaN(aDate) && !isNaN(bDate) && aDate !== bDate) {
           return activeSortDirection === 'asc' ? aDate - bDate : bDate - aDate;

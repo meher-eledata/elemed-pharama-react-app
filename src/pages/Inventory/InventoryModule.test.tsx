@@ -48,9 +48,11 @@ jest.mock('../../components/PharmaTable', () => ({
     totalRows,
     rowsPerPage,
     currentPage,
-    sortConfig
+    sortConfig,
+    customSearchBarContent
   }: any) => (
     <div data-testid="reusable-table">
+      {customSearchBarContent}
       <input
         data-testid="search-input"
         value={currentSearchTerm}
@@ -177,6 +179,27 @@ const mockExpiredStockData = [
     batchNumber: 'BATCH002',
     expiryDate: '2023-11-15',
     daysPastExpiry: 45,
+  },
+];
+
+// Near-expiry list as returned at the default 3-month window: includes both the
+// within-1-month band (daysToExpiry <= 30) and the 1-3 month band (daysToExpiry > 30).
+const mockNearExpiryStockData = [
+  {
+    id: '7',
+    name: 'Soon Expiring 20d',
+    currentQuantity: 12,
+    batchNumber: 'NEAR020',
+    expiryDate: '2026-07-15',
+    daysToExpiry: 20,
+  },
+  {
+    id: '8',
+    name: 'Later Expiring 60d',
+    currentQuantity: 8,
+    batchNumber: 'NEAR060',
+    expiryDate: '2026-08-24',
+    daysToExpiry: 60,
   },
 ];
 
@@ -546,10 +569,63 @@ describe('InventoryModule', () => {
 
     it('displays correct counts in summary cards', () => {
       renderWithProviders(<InventoryModule />);
-      
+
       // Check that all three summary cards show the value "2"
       const summaryNumbers = screen.getAllByText('2');
       expect(summaryNumbers).toHaveLength(3);
+    });
+  });
+
+  describe('Near-expiry search selection', () => {
+    beforeEach(() => {
+      mockUseGetNearExpiryStockQuery.mockReturnValue(
+        createMockQueryResult(mockNearExpiryStockData)
+      );
+    });
+
+    // Picks an option from the Autocomplete by its visible product name.
+    const selectSearchOption = async (productName: string) => {
+      const autocompleteInput = screen.getByPlaceholderText(
+        'Search products across all tabs...'
+      );
+      fireEvent.mouseDown(autocompleteInput);
+      fireEvent.change(autocompleteInput, { target: { value: productName } });
+      const option = await screen.findByText(productName, {
+        selector: '.MuiAutocomplete-option *, .MuiAutocomplete-option',
+      });
+      fireEvent.click(option);
+    };
+
+    it('opens the 1-month range and shows a within-1-month (daysToExpiry <= 30) product', async () => {
+      renderWithProviders(<InventoryModule />);
+
+      await selectSearchOption('Soon Expiring 20d');
+
+      // 1-month range button is now active (filled purple), 3-month is not.
+      const oneMonthBtn = screen.getByRole('button', { name: '1 month' });
+      const threeMonthBtn = screen.getByRole('button', { name: '3 months' });
+      expect(oneMonthBtn).toHaveStyle('background-color: #5C17E5');
+      expect(threeMonthBtn).not.toHaveStyle('background-color: #5C17E5');
+
+      // The within-1-month product is visible in the table (it would be filtered
+      // out by the default 3-month band).
+      const table = screen.getByTestId('table-data');
+      expect(within(table).getByText('Soon Expiring 20d')).toBeInTheDocument();
+      expect(within(table).queryByText('Later Expiring 60d')).not.toBeInTheDocument();
+    });
+
+    it('opens the 3-month range for a 1-3 month (daysToExpiry > 30) product', async () => {
+      renderWithProviders(<InventoryModule />);
+
+      await selectSearchOption('Later Expiring 60d');
+
+      const oneMonthBtn = screen.getByRole('button', { name: '1 month' });
+      const threeMonthBtn = screen.getByRole('button', { name: '3 months' });
+      expect(threeMonthBtn).toHaveStyle('background-color: #5C17E5');
+      expect(oneMonthBtn).not.toHaveStyle('background-color: #5C17E5');
+
+      const table = screen.getByTestId('table-data');
+      expect(within(table).getByText('Later Expiring 60d')).toBeInTheDocument();
     });
   });
 });
