@@ -19,6 +19,7 @@ const createStore = (user: any) =>
   configureStore({
     reducer: {
       auth: (state = { token: 'JWT123', isAuthenticated: true, user }) => state,
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
     },
   });
 
