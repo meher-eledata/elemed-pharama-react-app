@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { AuthLayout } from "../components/Layout";
 import LogInLeft from "./LogIn/LogInLeft/LogInLeft";
+import SignUp from "./SignUp/SignUp";
 import ForgotPassword from "../pages/LogIn/ForgotPassword/ForgotPassword";
 import CreatePassword from "../pages/LogIn/CreatePassword/CreatePassword";
 import { DashboardLayout } from "../layouts/Dashboard";
@@ -39,6 +40,7 @@ export const Pages = () => {
     <Routes>
       <Route path="/" element={<AuthLayout />}>
         <Route index element={<LogInLeft />} />
+        <Route path="signup" element={<SignUp />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="reset-password" element={<CreatePassword />} />
         <Route path="create-password" element={<CreatePassword />} />

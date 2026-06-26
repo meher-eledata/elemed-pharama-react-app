@@ -11,11 +11,13 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  Switch,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
 import SendIcon from '@mui/icons-material/Send';
+import { useDispatch } from 'react-redux';
 import { SETTINGS_LABELS } from '../../config/label/Settings.labels';
 import { SETTINGS_CONSTANTS } from '../../config/constants/Settings.constants';
 import { StandardButton } from '../../components/Common';
@@ -25,13 +27,22 @@ import {
   useRemoveDailyReportRecipientMutation,
   useSendDailyReportNowMutation,
 } from '../../redux/slices/adminSlice';
+import { useGetMeQuery, useToggleModuleMutation } from '../../redux/slices/orgApi';
+import { setOrgContext } from '../../redux/slices/orgSlice';
+import { MODULES, ALL_MODULE_KEYS } from '../../config/modules.config';
 import { extractErrorMessage } from '../../utils/errorUtils';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DAILY = SETTINGS_LABELS.SECTIONS.DAILY_REPORTS;
+const MODULES_LABELS = SETTINGS_LABELS.SECTIONS.MODULES;
+// pharmacy is the core app — its switch is always-on and disabled so an admin can
+// never zero-out the base product. Only optional modules (e.g. inpatient) toggle.
+const CORE_MODULE_KEY = 'pharmacy';
 
 const Settings: React.FC = () => {
+  const dispatch = useDispatch();
   const [expanded, setExpanded] = useState<string | false>(false);
+  const [pendingModuleKey, setPendingModuleKey] = useState<string | null>(null);
   const [newEmail, setNewEmail] = useState<string>('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState<{
@@ -52,7 +63,39 @@ const Settings: React.FC = () => {
   const [removeRecipient] = useRemoveDailyReportRecipientMutation();
   const [sendNow, { isLoading: isSending }] = useSendDailyReportNowMutation();
 
+  const {
+    data: meData,
+    isLoading: isLoadingModules,
+    isError: isModulesError,
+  } = useGetMeQuery();
+  const [toggleModule] = useToggleModuleMutation();
+
   const recipients = recipientsData?.recipients ?? [];
+  const activeModules = meData?.activeModules ?? [];
+
+  const handleToggleModule = async (moduleKey: string, label: string, enabled: boolean) => {
+    setPendingModuleKey(moduleKey);
+    try {
+      const result = await toggleModule({ module_key: moduleKey, enabled }).unwrap();
+      // toggleModule invalidates the 'Me' tag, so OrgBootstrap's getMe refetch will
+      // re-seed orgSlice and update the sidebar. Dispatch here too so the change is
+      // immediate (no wait for the refetch round-trip).
+      dispatch(
+        setOrgContext({
+          organization: meData?.organization ?? null,
+          activeModules: result.activeModules,
+        }),
+      );
+      showToast(
+        enabled ? MODULES_LABELS.ENABLED_SUCCESS(label) : MODULES_LABELS.DISABLED_SUCCESS(label),
+        'success',
+      );
+    } catch (err) {
+      showToast(extractErrorMessage(err, MODULES_LABELS.TOGGLE_ERROR), 'error');
+    } finally {
+      setPendingModuleKey(null);
+    }
+  };
 
   const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? panel : false);
@@ -298,6 +341,148 @@ const Settings: React.FC = () => {
           <Typography sx={{ color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>
             Data & Privacy settings content will be added here.
           </Typography>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Modules */}
+      <Accordion
+        expanded={expanded === 'modules'}
+        onChange={handleAccordionChange('modules')}
+        sx={{
+          borderRadius: SETTINGS_CONSTANTS.ACCORDION.RADIUS,
+          boxShadow: SETTINGS_CONSTANTS.ACCORDION.SHADOW,
+          backgroundColor: SETTINGS_CONSTANTS.ACCORDION.BG,
+          '&:before': { display: 'none' },
+          '&.Mui-expanded': {
+            margin: 0,
+          },
+        }}
+      >
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon sx={{ color: '#1A212B' }} />}
+          sx={{
+            padding: SETTINGS_CONSTANTS.ACCORDION.PADDING,
+            '&.Mui-expanded': {
+              minHeight: '48px',
+            },
+            '& .MuiAccordionSummary-content': {
+              margin: 0,
+              '&.Mui-expanded': {
+                margin: 0,
+              },
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1 }}>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                fontSize: '18px',
+                color: '#1A212B',
+                fontFamily: "'Lexend', sans-serif",
+              }}
+            >
+              {MODULES_LABELS.TITLE}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                color: '#6B7280',
+                fontFamily: "'Lexend', sans-serif",
+              }}
+            >
+              {MODULES_LABELS.DESC}
+            </Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails sx={{ padding: `0 ${SETTINGS_CONSTANTS.ACCORDION.PADDING} ${SETTINGS_CONSTANTS.ACCORDION.PADDING}` }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {isLoadingModules && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#6B7280' }}>
+                <CircularProgress size={18} />
+                <Typography sx={{ fontSize: '14px', fontFamily: "'Lexend', sans-serif" }}>
+                  {MODULES_LABELS.LOADING}
+                </Typography>
+              </Box>
+            )}
+            {!isLoadingModules && isModulesError && (
+              <Typography sx={{ fontSize: '14px', color: '#EF4444', fontFamily: "'Lexend', sans-serif" }}>
+                {MODULES_LABELS.LOAD_ERROR}
+              </Typography>
+            )}
+            {!isLoadingModules && !isModulesError && ALL_MODULE_KEYS.map((key) => {
+              const mod = MODULES[key];
+              const isCore = key === CORE_MODULE_KEY;
+              const isEnabled = isCore || activeModules.includes(key);
+              return (
+                <Box
+                  key={key}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    padding: '12px 16px',
+                    backgroundColor: '#F9FAFB',
+                    borderRadius: '8px',
+                    border: '1px solid #E5E7EB',
+                  }}
+                >
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography
+                        sx={{
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          color: '#1A212B',
+                          fontFamily: "'Lexend', sans-serif",
+                        }}
+                      >
+                        {mod.label}
+                      </Typography>
+                      {isCore && (
+                        <Typography
+                          sx={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: '#5C17E5',
+                            backgroundColor: 'rgba(92, 23, 229, 0.1)',
+                            borderRadius: '6px',
+                            px: 1,
+                            py: '2px',
+                            fontFamily: "'Lexend', sans-serif",
+                          }}
+                        >
+                          {MODULES_LABELS.CORE_TAG}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Typography
+                      sx={{
+                        fontSize: '13px',
+                        color: '#6B7280',
+                        fontFamily: "'Lexend', sans-serif",
+                        mt: '2px',
+                      }}
+                    >
+                      {mod.description}
+                    </Typography>
+                  </Box>
+                  <Switch
+                    checked={isEnabled}
+                    // pharmacy stays on permanently; also block while a toggle is in flight.
+                    disabled={isCore || pendingModuleKey === key}
+                    onChange={(e) => handleToggleModule(key, mod.label, e.target.checked)}
+                    sx={{
+                      '& .MuiSwitch-switchBase.Mui-checked': { color: '#5C17E5' },
+                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                        backgroundColor: '#5C17E5',
+                      },
+                    }}
+                  />
+                </Box>
+              );
+            })}
+          </Box>
         </AccordionDetails>
       </Accordion>
 

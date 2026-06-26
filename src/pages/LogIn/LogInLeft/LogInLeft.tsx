@@ -311,6 +311,18 @@ const LoginForm: React.FC = () => {
             : LOGIN_LABELS.LOGIN_BUTTON}
         </Button>
 
+        {/* Create-an-organization CTA */}
+        <Box sx={{ mt: "1.5rem", display: "flex", justifyContent: "center", gap: "0.375rem" }}>
+          <Typography sx={{ fontSize: "0.875rem", color: "#728197" }}>
+            {LOGIN_LABELS.SIGNUP_QUESTION}
+          </Typography>
+          <Link to="/signup" style={{ textDecoration: "none" }}>
+            <Typography sx={{ fontSize: "0.875rem", fontWeight: 600, color: "#5C17E5", cursor: "pointer" }}>
+              {LOGIN_LABELS.SIGNUP_LINK}
+            </Typography>
+          </Link>
+        </Box>
+
       </Box>
 
       {/* Snackbar */}
