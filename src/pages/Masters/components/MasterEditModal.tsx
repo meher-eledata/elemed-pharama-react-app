@@ -22,6 +22,7 @@ import {
   type MasterCategoryConfig,
 } from '../../../config/constants/MasterView.constants';
 import { MASTER_VIEW_LABELS } from '../../../config/label/MasterView.labels';
+import { useGetProductFieldOptionsQuery } from '../../../redux/slices/masterApi';
 
 interface MasterEditModalProps {
   open: boolean;
@@ -68,6 +69,11 @@ const toLockedDisplay = (value: unknown): string => {
   return String(value);
 };
 
+// A masked phone value (the server prefills `phone` redacted, e.g. ******9390) contains
+// an asterisk. We treat such an untouched value as UNCHANGED: skip 10-digit validation and
+// never submit it. Only a real, user-entered value (no '*') is validated and sent.
+const isMaskedValue = (value: string): boolean => value.includes('*');
+
 const MasterEditModal: React.FC<MasterEditModalProps> = ({
   open,
   category,
@@ -82,6 +88,25 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
     () => config.fields.filter((f) => f.editable),
     [config]
   );
+
+  // Product Type / Unit-of-Measure dropdown options. Only fetched while editing a
+  // product (the only category with `select` fields), and only when the modal is open.
+  const hasSelectField = useMemo(
+    () => config.fields.some((f) => f.type === 'select'),
+    [config]
+  );
+  const { data: fieldOptions } = useGetProductFieldOptionsQuery(undefined, {
+    skip: !open || !hasSelectField,
+  });
+
+  // Resolve the option list for a select field, ensuring the current stored value is
+  // present (prepended if missing) so editing other fields never drops an off-list value.
+  const selectOptionsFor = (key: string, current: string): string[] => {
+    const base = key === 'type' ? fieldOptions?.types : fieldOptions?.units;
+    const list = base ?? [];
+    if (current !== '' && !list.includes(current)) return [current, ...list];
+    return list;
+  };
 
   // Local form state holds only the editable fields (as strings for inputs).
   const [values, setValues] = useState<Record<string, string>>({});
@@ -116,7 +141,13 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
       const raw = (values[field.key] ?? '').trim();
       if (field.required && raw === '') {
         errors[field.key] = `${field.label} is required`;
-      } else if (field.key === 'phone' && raw !== '' && !/^\d{10}$/.test(raw)) {
+      } else if (
+        field.key === 'phone' &&
+        raw !== '' &&
+        !isMaskedValue(raw) &&
+        !/^\d{10}$/.test(raw)
+      ) {
+        // Skip validation while phone is still the untouched masked prefill (contains '*').
         errors[field.key] = 'Phone must be exactly 10 digits';
       }
     }
@@ -132,6 +163,11 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
 
     for (const field of editableFields) {
       const raw = values[field.key] ?? '';
+      if (field.key === 'phone' && isMaskedValue(raw)) {
+        // Untouched masked prefill → phone is UNCHANGED; omit it from the body so the
+        // stored real phone is never overwritten by the redacted placeholder.
+        continue;
+      }
       if (field.type === 'gender') {
         body[field.key] = raw === '' ? null : Number(raw);
       } else if (field.type === 'number') {
@@ -220,8 +256,43 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
                 );
               }
 
+              if (field.type === 'select' && !locked) {
+                const options = selectOptionsFor(field.key, editValue);
+                return (
+                  <Grid item xs={12} sm={6} key={field.key}>
+                    <FormControl fullWidth size="small" required={Boolean(field.required)}>
+                      <InputLabel id={`master-edit-${field.key}-label`}>
+                        {field.label}
+                      </InputLabel>
+                      <Select
+                        labelId={`master-edit-${field.key}-label`}
+                        label={field.label}
+                        value={editValue}
+                        onChange={(e) => handleChange(field.key, String(e.target.value))}
+                      >
+                        <MenuItem value="">
+                          <em>—</em>
+                        </MenuItem>
+                        {options.map((opt) => (
+                          <MenuItem key={opt} value={opt}>
+                            {opt}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                );
+              }
+
               const isMultiline = field.type === 'multiline';
               const fieldError = locked ? '' : fieldErrors[field.key] ?? '';
+              // Customer phone prefills MASKED (e.g. ******9390). Clarify it can be changed
+              // by entering a full 10-digit number; show this hint when there's no error.
+              const isMaskedPhone =
+                !locked && field.key === 'phone' && isMaskedValue(editValue);
+              const phoneHelper = isMaskedPhone
+                ? 'Showing masked number — enter a full 10-digit number to change'
+                : undefined;
               return (
                 <Grid item xs={12} sm={isMultiline ? 12 : 6} key={field.key}>
                   <TextField
@@ -235,10 +306,13 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
                     }
                     required={!locked && Boolean(field.required)}
                     error={Boolean(fieldError)}
-                    helperText={fieldError || undefined}
+                    helperText={fieldError || phoneHelper || undefined}
                     type={field.type === 'number' ? 'number' : 'text'}
                     multiline={isMultiline}
                     minRows={isMultiline ? 2 : undefined}
+                    placeholder={
+                      field.key === 'phone' ? 'Enter a 10-digit number' : undefined
+                    }
                     inputProps={
                       field.key === 'phone'
                         ? { inputMode: 'numeric', maxLength: 10 }

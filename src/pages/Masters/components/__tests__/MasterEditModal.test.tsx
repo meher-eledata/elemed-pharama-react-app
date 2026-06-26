@@ -5,6 +5,21 @@ import {
   MASTER_VIEW_CONFIG,
   type MasterCategory,
 } from '../../../../config/constants/MasterView.constants';
+import { useGetProductFieldOptionsQuery } from '../../../../redux/slices/masterApi';
+
+// The product edit form's Type / Unit-of-Measure are `select` fields sourced from this
+// query. Mock the slice (auto-mocked-slice gotcha: a new hook auto-mocks to undefined and
+// would break these no-Provider renders).
+jest.mock('../../../../redux/slices/masterApi', () => ({
+  useGetProductFieldOptionsQuery: jest.fn(),
+}));
+
+beforeEach(() => {
+  (useGetProductFieldOptionsQuery as jest.Mock).mockReturnValue({
+    // Include the row's stored values ('tablet' / 'strip') so the selects show them.
+    data: { types: ['tablet', 'capsule'], units: ['strip', 'bottle'] },
+  });
+});
 
 /**
  * Contract under test (see .claude/memory/api-contract.md, POST /api/master/update-*):
@@ -27,8 +42,8 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
   customer: {
     id: 42,
     name: 'Acme Health',
-    // phone is now a LOCKED (read-only) field — the server returns it MASKED, so it is
-    // displayed but never edited or submitted back.
+    // phone is EDITABLE again — the server returns it MASKED (contains '*'). The untouched
+    // masked prefill is treated as UNCHANGED: not validated and omitted from the body.
     phone: '******1000',
     email: 'acme@example.com',
     gstin: 'GST123',
@@ -174,9 +189,22 @@ describe('MasterEditModal — submit payload contains only PK + editable whiteli
       expect(body).toHaveProperty(pk);
       expect(body[pk]).toBe(ROWS[category][pk]);
 
-      // Every editable whitelist key present.
-      for (const key of editableKeys(category)) {
+      // The customer's editable `phone` prefills MASKED (contains '*') and is left
+      // untouched here, so it is OMITTED from the body (treated as unchanged). Every other
+      // editable whitelist key must be present.
+      const maskedUntouched = (key: string) =>
+        category === 'customer' &&
+        key === 'phone' &&
+        String(ROWS[category][key]).includes('*');
+      const expectedEditable = editableKeys(category).filter((k) => !maskedUntouched(k));
+      for (const key of expectedEditable) {
         expect(body).toHaveProperty(key);
+      }
+      // The untouched masked phone must NOT be in the body.
+      for (const key of editableKeys(category)) {
+        if (maskedUntouched(key)) {
+          expect(Object.prototype.hasOwnProperty.call(body, key)).toBe(false);
+        }
       }
 
       // No locked key (other than the PK itself, which lives in the locked-field list
@@ -186,8 +214,8 @@ describe('MasterEditModal — submit payload contains only PK + editable whiteli
         expect(Object.prototype.hasOwnProperty.call(body, key)).toBe(false);
       }
 
-      // The body key set is EXACTLY pk + editable keys — nothing extra.
-      const expectedKeys = new Set<string>([pk, ...editableKeys(category)]);
+      // The body key set is EXACTLY pk + editable keys (minus an untouched masked phone).
+      const expectedKeys = new Set<string>([pk, ...expectedEditable]);
       expect(new Set(Object.keys(body))).toEqual(expectedKeys);
     }
   );
@@ -209,6 +237,45 @@ describe('MasterEditModal — submit payload contains only PK + editable whiteli
     expect(Object.prototype.hasOwnProperty.call(body, 'package_info')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(body, 'dosage')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(body, 'discount')).toBe(false);
+  });
+
+  it('product: Type and Unit of Measure are dropdowns; Type is now editable and sent', () => {
+    const { onSave } = renderModal('product');
+
+    // Both render as MUI Selects (combobox role), not text inputs.
+    const typeCombo = screen.getByLabelText('Type');
+    const unitCombo = screen.getByLabelText('Unit of Measure');
+    expect(typeCombo).toHaveAttribute('role', 'combobox');
+    expect(unitCombo).toHaveAttribute('role', 'combobox');
+
+    // Type is editable now (backend accepts it) — its current stored value is shown.
+    expect(within(typeCombo).getByText('tablet')).toBeInTheDocument();
+
+    // Change Type to another option and confirm it's emitted as a plain string.
+    fireEvent.mouseDown(typeCombo);
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('capsule'));
+
+    submit();
+    const body = onSave.mock.calls[0][0] as Record<string, unknown>;
+    expect(body.type).toBe('capsule');
+    // Unit of measure (untouched) keeps its stored value.
+    expect(body.unit_of_measure).toBe('strip');
+  });
+
+  it('product: a stored value not in the options list is still shown/selected', () => {
+    (useGetProductFieldOptionsQuery as jest.Mock).mockReturnValue({
+      // 'tablet' (the row's type) is intentionally absent from the list.
+      data: { types: ['capsule'], units: ['strip', 'bottle'] },
+    });
+    const { onSave } = renderModal('product');
+
+    const typeCombo = screen.getByLabelText('Type');
+    // The off-list current value is prepended so editing other fields never drops it.
+    expect(within(typeCombo).getByText('tablet')).toBeInTheDocument();
+
+    submit();
+    const body = onSave.mock.calls[0][0] as Record<string, unknown>;
+    expect(body.type).toBe('tablet');
   });
 
   it('customer: an edit to an editable field is reflected; locked fields untouched', () => {
@@ -299,17 +366,44 @@ describe('MasterEditModal — required + phone validation blocks save', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it('customer: phone is LOCKED (read-only) and never appears in the saved body', () => {
+  it('customer: phone is EDITABLE (not read-only/disabled)', () => {
+    renderModal('customer');
+    const phone = inputForLabel('Phone') as HTMLInputElement;
+    expect(phone.disabled).toBe(false);
+    expect(phone.readOnly).toBe(false);
+  });
+
+  it('customer: untouched masked phone does NOT block save and is OMITTED from the body', () => {
     const { onSave } = renderModal('customer');
 
-    // The masked phone renders read-only/disabled, not as an editable required input.
-    const phone = inputForLabel('Phone') as HTMLInputElement;
-    expect(phone.disabled || phone.readOnly).toBe(true);
-
+    // The masked prefill (******1000) is left untouched — no validation error, save proceeds.
     submit();
-    // billing_address is pre-filled (required) so the save proceeds; phone is not sent.
     expect(onSave).toHaveBeenCalledTimes(1);
     const body = onSave.mock.calls[0][0] as Record<string, unknown>;
+    // Phone is treated as unchanged → never sent, so the masked value can't overwrite it.
     expect(Object.prototype.hasOwnProperty.call(body, 'phone')).toBe(false);
+  });
+
+  it('customer: a new valid 10-digit phone is sent in the body', () => {
+    const { onSave } = renderModal('customer');
+
+    const phone = inputForLabel('Phone') as HTMLInputElement;
+    fireEvent.change(phone, { target: { value: '9876543210' } });
+
+    submit();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const body = onSave.mock.calls[0][0] as Record<string, unknown>;
+    expect(body.phone).toBe('9876543210');
+  });
+
+  it('customer: an invalid (short) new phone blocks save', () => {
+    const { onSave } = renderModal('customer');
+
+    const phone = inputForLabel('Phone') as HTMLInputElement;
+    fireEvent.change(phone, { target: { value: '12345' } });
+
+    submit();
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Phone must be exactly 10 digits')).toBeInTheDocument();
   });
 });

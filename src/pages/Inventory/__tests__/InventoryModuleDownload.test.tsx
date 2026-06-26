@@ -47,6 +47,13 @@ jest.mock('../../../redux/slices/inventoryApi', () => ({
   useUpdateMinQuantityMutation: lazyMutation,
 }));
 
+// NewProductModal (mounted by this page) calls useGetProductFieldOptionsQuery for its
+// Type/Unit-of-Measure dropdowns; the test store doesn't wire masterApi, so mock the hook
+// (auto-mocked-slice gotcha) to a non-loading empty options result.
+jest.mock('../../../redux/slices/masterApi', () => ({
+  useGetProductFieldOptionsQuery: () => ({ data: { types: [], units: [] } }),
+}));
+
 import InventoryModule from '../InventoryModule';
 
 const createStore = () =>

@@ -7,6 +7,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import NewProductModal from '../NewProductModal';
 import { useAddProductMutation } from '../../../../redux/slices/inventoryApi';
+import { useGetProductFieldOptionsQuery } from '../../../../redux/slices/masterApi';
 
 const theme = createTheme();
 
@@ -19,8 +20,13 @@ const createMockStore = () =>
     },
   });
 
-// Mock the Redux API hook
+// Mock the Redux API hooks
 jest.mock('../../../../redux/slices/inventoryApi');
+// The Type / Unit-of-Measure dropdowns are populated from this query (auto-mocked-slice
+// gotcha: a new hook auto-mocks to undefined and breaks tests, so register it explicitly).
+jest.mock('../../../../redux/slices/masterApi', () => ({
+  useGetProductFieldOptionsQuery: jest.fn(),
+}));
 
 // Mock PharmaDatePicker
 jest.mock('../../../../components/Common', () => ({
@@ -67,6 +73,9 @@ describe('NewProductModal', () => {
         isSuccess: false,
       },
     ]);
+    (useGetProductFieldOptionsQuery as jest.Mock).mockReturnValue({
+      data: { types: ['Tablet', 'Syrup'], units: ['Box', 'Strip'] },
+    });
   });
 
   describe('Rendering', () => {
@@ -423,6 +432,45 @@ describe('NewProductModal', () => {
         }
       }, { timeout: 2000 });
     }, 10000);
+  });
+
+  describe('Type / Unit-of-Measure dropdowns', () => {
+    it('fetches the field options only while the modal is open', () => {
+      const { rerender } = renderWithTheme(
+        <NewProductModal open={false} onClose={mockOnClose} />
+      );
+      // skip: true while closed
+      expect(useGetProductFieldOptionsQuery).toHaveBeenLastCalledWith(undefined, { skip: true });
+
+      rerender(
+        <Provider store={createMockStore()}>
+          <ThemeProvider theme={theme}>
+            <NewProductModal open={true} onClose={mockOnClose} />
+          </ThemeProvider>
+        </Provider>
+      );
+      expect(useGetProductFieldOptionsQuery).toHaveBeenLastCalledWith(undefined, { skip: false });
+    });
+
+    it('renders Type and Unit of measure as dropdowns populated from the options query', async () => {
+      const user = userEvent.setup();
+      renderWithTheme(<NewProductModal open={true} onClose={mockOnClose} />);
+
+      // The two `select` fields (Type, Unit of measure) are the only comboboxes; the
+      // remaining product fields are plain text/number inputs. Type is the first.
+      const comboboxes = screen.getAllByRole('combobox');
+      expect(comboboxes).toHaveLength(2);
+
+      await user.click(comboboxes[0]);
+      // Distinct type values from the query appear as options.
+      expect(await screen.findByRole('option', { name: 'Tablet' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Syrup' })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: 'Tablet' }));
+
+      await user.click(comboboxes[1]);
+      expect(await screen.findByRole('option', { name: 'Box' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Strip' })).toBeInTheDocument();
+    });
   });
 
   describe('Date Picker', () => {

@@ -7,6 +7,7 @@ import MasterViewModal from '../MasterViewModal';
 import { MASTER_VIEW_LABELS } from '../../../../config/label/MasterView.labels';
 import {
   MASTER_VIEW_CONFIG,
+  getMasterViewConfig,
   type MasterCategory,
 } from '../../../../config/constants/MasterView.constants';
 
@@ -23,6 +24,16 @@ import {
  * also calls useLogDownloadMutation() (RTK Query) to record download activity, so it
  * must be rendered inside a Redux <Provider> wired with the activityApi slice.
  */
+
+// MasterViewModal mounts MasterEditModal, which calls useGetProductFieldOptionsQuery
+// (masterApi) for the product Type/Unit-of-Measure dropdowns. The test store only wires
+// activityApi, so mock the masterApi hook (auto-mocked-slice gotcha) to keep the edit
+// modal renderable without the masterApi middleware.
+jest.mock('../../../../redux/slices/masterApi', () => ({
+  useGetProductFieldOptionsQuery: jest.fn(() => ({
+    data: { types: [], units: [] },
+  })),
+}));
 
 // Mock SheetJS. utils.* are no-ops that just need to exist; writeFile is the spy we assert.
 jest.mock('xlsx', () => ({
@@ -230,21 +241,55 @@ describe('MasterViewModal — customer phone is masked in the EXPORT only', () =
   });
 });
 
-describe('MasterViewModal — doctor view shows only Name + masked Phone', () => {
+describe('MasterViewModal — doctor view shows Name, masked Phone, Branch + City', () => {
   const DOCTOR_ROWS: Record<string, unknown>[] = [
-    { id: 1, name: 'Dr. A', phone: '9876548919', email: 'a@example.com', city: 'Oldtown' },
+    {
+      id: 1,
+      name: 'Dr. A',
+      phone: '9876548919',
+      email: 'a@example.com',
+      branch: 'Cardiology',
+      city: 'Oldtown',
+    },
   ];
 
-  it('renders exactly the Name and Phone column headers for doctors', () => {
-    renderModal({ category: 'doctor', rows: DOCTOR_ROWS });
+  // ADMIN view (default full config): Name, Phone, Branch, City — but NOT other PII.
+  it('admin: renders Name, Phone, Branch and City column headers (no other PII)', () => {
+    renderModal({
+      category: 'doctor',
+      rows: DOCTOR_ROWS,
+      config: getMasterViewConfig('doctor', true),
+    });
 
     const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
     expect(headers).toContain('Name');
     expect(headers).toContain('Phone');
+    expect(headers).toContain('Branch');
+    expect(headers).toContain('City');
     expect(headers).not.toContain('Email');
-    expect(headers).not.toContain('City');
     expect(headers).not.toContain('ID');
-    expect(headers).not.toContain('Branch');
+    // Branch + City values render in the table.
+    expect(screen.getByText('Cardiology')).toBeInTheDocument();
+    expect(screen.getByText('Oldtown')).toBeInTheDocument();
+  });
+
+  // PHARMACIST view (role-projected config): Branch + City must still be visible.
+  it('pharmacist: still shows Name, Phone, Branch and City (no other PII)', () => {
+    renderModal({
+      category: 'doctor',
+      rows: DOCTOR_ROWS,
+      config: getMasterViewConfig('doctor', false),
+    });
+
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+    expect(headers).toContain('Name');
+    expect(headers).toContain('Phone');
+    expect(headers).toContain('Branch');
+    expect(headers).toContain('City');
+    expect(headers).not.toContain('Email');
+    expect(headers).not.toContain('ID');
+    expect(screen.getByText('Cardiology')).toBeInTheDocument();
+    expect(screen.getByText('Oldtown')).toBeInTheDocument();
   });
 
   it('renders the masked doctor phone on screen', () => {

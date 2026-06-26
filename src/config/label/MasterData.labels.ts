@@ -4,7 +4,7 @@ export const MASTER_DATA_LABELS = {
   CARDS: {
     PRODUCT: {
       TITLE: 'Products',
-      DESC: 'Add a new product to the master catalogue',
+      DESC: 'Add a new product to the master records',
       ACTION: 'Add Product',
       BADGE_LABEL: 'products',
     },
@@ -22,7 +22,7 @@ export const MASTER_DATA_LABELS = {
     },
     DOCTOR: {
       TITLE: 'Doctors',
-      DESC: 'Expand the network of medical professionals and their specialties.',
+      DESC: 'Add a new doctor to the master records',
       ACTION: 'Add Doctor',
       BADGE_LABEL: 'members',
     },

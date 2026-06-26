@@ -158,12 +158,13 @@
 
 
 import React, { useState } from 'react';
-import { Modal, Box, Typography, TextField, Grid, IconButton, Alert, CircularProgress } from '@mui/material';
+import { Modal, Box, Typography, TextField, Grid, IconButton, Alert, CircularProgress, MenuItem } from '@mui/material';
 import { StandardButton } from '../../Common';
 import CloseIcon from '@mui/icons-material/Close';
 import styled from '@mui/system/styled';
 import { useSelector } from 'react-redux';
 import { useAddProductMutation } from '../../../redux/slices/inventoryApi';
+import { useGetProductFieldOptionsQuery } from '../../../redux/slices/masterApi';
 import { extractErrorMessage } from '../../../utils/errorUtils';
 import { RootState } from '../../../redux/store';
 
@@ -229,10 +230,10 @@ export const NEW_PRODUCT_MODAL_LABELS = {
   TITLE: 'New Product',
   FIELDS: [
     { key: 'product_name', label: 'Product name *', type: 'text' },
-    { key: 'type', label: 'Type *', type: 'text' },
+    { key: 'type', label: 'Type *', type: 'select' },
     { key: 'brand_name', label: 'Brand name *', type: 'text' },
     { key: 'hsn_id', label: 'HSN code *', type: 'text' },
-    { key: 'unit_of_measure', label: 'Unit of measure *', type: 'text' },
+    { key: 'unit_of_measure', label: 'Unit of measure *', type: 'select' },
     { key: 'min_quantity', label: 'Minimum quantity *', type: 'number' },
     { key: 'max_quantity', label: 'Maximum quantity', type: 'number' },
     { key: 'description', label: 'Description', type: 'multiline' },
@@ -325,6 +326,11 @@ interface NewProductModalProps {
 const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProductAdded }) => {
   const [addProduct, { isLoading, error, isSuccess }] = useAddProductMutation();
   const user = useSelector((state: RootState) => state.auth.user);
+
+  // Type / Unit-of-measure dropdown options — fetched only while the modal is open.
+  const { data: fieldOptions } = useGetProductFieldOptionsQuery(undefined, { skip: !open });
+  const typeOptions = fieldOptions?.types ?? [];
+  const unitOptions = fieldOptions?.units ?? [];
 
   // Form state
   const [formData, setFormData] = useState({
@@ -555,6 +561,13 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
             >
               {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((field, idx) => {
                 const isMultiline = field.type === 'multiline';
+                const isSelect = field.type === 'select';
+                // Dropdown source: `type` → distinct types, `unit_of_measure` → distinct units.
+                const selectOptions = isSelect
+                  ? field.key === 'type'
+                    ? typeOptions
+                    : unitOptions
+                  : [];
                 return (
                 <Grid key={idx} item xs={12} sm={isMultiline ? 12 : 6} component="div">
                   <Box>
@@ -573,8 +586,9 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                     <StyledTextField
                       fullWidth
                       variant="outlined"
-                      placeholder={`Enter ${field.label.toLowerCase()}`}
-                      type={isMultiline ? 'text' : field.type}
+                      select={isSelect}
+                      placeholder={isSelect ? undefined : `Enter ${field.label.toLowerCase()}`}
+                      type={isMultiline || isSelect ? 'text' : field.type}
                       multiline={isMultiline}
                       minRows={isMultiline ? 2 : undefined}
                       value={formData[field.key as keyof typeof formData]}
@@ -595,7 +609,15 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                           },
                         }
                       }}
-                    />
+                    >
+                      {isSelect
+                        ? selectOptions.map((opt) => (
+                            <MenuItem key={opt} value={opt}>
+                              {opt}
+                            </MenuItem>
+                          ))
+                        : null}
+                    </StyledTextField>
                   </Box>
                 </Grid>
                 );

@@ -164,6 +164,7 @@ export interface UpdateSupplierRequest {
 
 export interface UpdateProductRequest {
   product_id: number;
+  type?: string | null;
   description?: string | null;
   unit_of_measure?: string | null;
   min_qty?: number | null;
@@ -193,6 +194,14 @@ export interface MasterCountsResponse {
   doctors: number;
   customers: number;
   products: number;
+}
+
+// Dropdown options for the Add/Edit Product Type + Unit of Measure fields
+// (GET /api/master/get-product-field-options). Both arrays are distinct, trimmed,
+// non-empty values, de-duplicated and sorted ascending case-insensitively.
+export interface ProductFieldOptionsResponse {
+  types: string[];
+  units: string[];
 }
 
 export const masterApi = createApi({
@@ -231,6 +240,13 @@ export const masterApi = createApi({
     getMasterCounts: builder.query<MasterCountsResponse, void>({
       query: () => ({
         url: 'master/get-master-counts',
+        method: 'GET',
+      }),
+      providesTags: ['Master'],
+    }),
+    getProductFieldOptions: builder.query<ProductFieldOptionsResponse, void>({
+      query: () => ({
+        url: 'master/get-product-field-options',
         method: 'GET',
       }),
       providesTags: ['Master'],
@@ -306,6 +322,7 @@ export const {
   useAddSupplierMutation,
   useAddDoctorMutation,
   useGetMasterCountsQuery,
+  useGetProductFieldOptionsQuery,
   useGetCustomersQuery,
   useGetSuppliersQuery,
   useGetProductsQuery,

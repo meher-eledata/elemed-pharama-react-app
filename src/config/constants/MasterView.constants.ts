@@ -5,7 +5,7 @@
 
 export type MasterCategory = 'customer' | 'supplier' | 'product' | 'doctor';
 
-export type MasterFieldType = 'text' | 'number' | 'multiline' | 'gender';
+export type MasterFieldType = 'text' | 'number' | 'multiline' | 'gender' | 'select';
 
 export interface MasterColumnDef {
   // dot-free key matching the row object property
@@ -70,9 +70,11 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       { key: 'gstin', label: 'GSTIN', type: 'text', editable: false },
       { key: 'pancard_num', label: 'PAN Card Number', type: 'text', editable: false },
       { key: 'drug_license', label: 'Drug License', type: 'text', editable: false },
-      // LOCKED — phone arrives MASKED from the server (e.g. ******9390); read-only so the
-      // masked value can never be edited or submitted back.
-      { key: 'phone', label: 'Phone', type: 'text', editable: false },
+      // EDITABLE — phone arrives MASKED from the server (e.g. ******9390). The field is
+      // editable so a user can replace it with a full 10-digit number; the masked prefill
+      // (any value containing '*') is treated as UNCHANGED — not validated, not submitted.
+      // Each invoice snapshots its own phone, so editing the master phone loses no history.
+      { key: 'phone', label: 'Phone', type: 'text', editable: true },
       // EDITABLE (whitelist)
       { key: 'billing_address', label: 'Billing Address', type: 'multiline', editable: true, required: true },
       { key: 'shipping_address', label: 'Shipping Address', type: 'multiline', editable: true },
@@ -134,12 +136,12 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       { key: 'product_id', label: 'Product ID', type: 'text', editable: false },
       { key: 'product_code', label: 'Product Code', type: 'text', editable: false },
       { key: 'brand_id', label: 'Brand ID', type: 'text', editable: false },
-      { key: 'type', label: 'Type', type: 'text', editable: false },
       { key: 'current_qty', label: 'Current Qty', type: 'text', editable: false },
-      // EDITABLE (whitelist)
+      // EDITABLE (whitelist) — backend now accepts `type` (in addition to unit_of_measure).
+      { key: 'type', label: 'Type', type: 'select', editable: true },
       { key: 'hsn_id', label: 'HSN Code', type: 'text', editable: true },
       { key: 'description', label: 'Description', type: 'multiline', editable: true },
-      { key: 'unit_of_measure', label: 'Unit of Measure', type: 'text', editable: true },
+      { key: 'unit_of_measure', label: 'Unit of Measure', type: 'select', editable: true },
       { key: 'min_qty', label: 'Min Qty', type: 'number', editable: true },
       { key: 'max_qty', label: 'Max Qty', type: 'number', editable: true },
     ],
@@ -151,6 +153,8 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
     columns: [
       { key: 'name', header: 'Name' },
       { key: 'phone', header: 'Phone' },
+      { key: 'branch', header: 'Branch' },
+      { key: 'city', header: 'City' },
     ],
     fields: [
       // LOCKED
@@ -180,6 +184,16 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
 // the table row key and edit PK (both read row[pkKey] directly) keep working.
 const PHARMACIST_VISIBLE_KEYS: ReadonlySet<string> = new Set(['name', 'phone']);
 
+// Doctors expose Branch and City in addition to Name + Phone — the backend now returns
+// these for non-admins too (get-doctors), so pharmacists must see them. Customers stay
+// at name + phone only (their PII is still stripped for pharmacists).
+const PHARMACIST_DOCTOR_VISIBLE_KEYS: ReadonlySet<string> = new Set([
+  'name',
+  'phone',
+  'branch',
+  'city',
+]);
+
 // Categories whose backend response is role-projected (PII stripped for pharmacists).
 const ROLE_PROJECTED_CATEGORIES: ReadonlySet<MasterCategory> = new Set(['customer', 'doctor']);
 
@@ -193,9 +207,11 @@ export const getMasterViewConfig = (
 ): MasterCategoryConfig => {
   const config = MASTER_VIEW_CONFIG[category];
   if (isAdmin || !ROLE_PROJECTED_CATEGORIES.has(category)) return config;
+  const visibleKeys =
+    category === 'doctor' ? PHARMACIST_DOCTOR_VISIBLE_KEYS : PHARMACIST_VISIBLE_KEYS;
   return {
     ...config,
-    columns: config.columns.filter((c) => PHARMACIST_VISIBLE_KEYS.has(c.key)),
-    fields: config.fields.filter((f) => PHARMACIST_VISIBLE_KEYS.has(f.key)),
+    columns: config.columns.filter((c) => visibleKeys.has(c.key)),
+    fields: config.fields.filter((f) => visibleKeys.has(f.key)),
   };
 };
