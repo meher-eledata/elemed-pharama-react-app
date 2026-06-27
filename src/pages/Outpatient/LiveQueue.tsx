@@ -22,6 +22,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
 import { OPD_LABELS } from '../../config/label/Outpatient.labels';
@@ -42,6 +43,8 @@ import {
   type AppointmentStatus,
 } from '../../redux/slices/outpatientApi';
 
+dayjs.extend(utc);
+
 const L = OPD_LABELS.QUEUE;
 
 const StatusChip: React.FC<{ status: AppointmentStatus }> = ({ status }) => {
@@ -58,7 +61,7 @@ const StatusChip: React.FC<{ status: AppointmentStatus }> = ({ status }) => {
 // Wait elapsed since check-in (or "—" if not checked in yet).
 const waitText = (a: OutpatientAppointment): string => {
   if (!a.check_in_at) return '—';
-  const mins = dayjs().diff(dayjs(a.check_in_at), 'minute');
+  const mins = dayjs.utc().diff(dayjs.utc(a.check_in_at), 'minute');
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins} min`;
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
