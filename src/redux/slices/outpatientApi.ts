@@ -92,6 +92,7 @@ export interface AvailabilityWriteRequest {
   provider_type: ProviderType;
   provider_id: number;
   weekday?: number | null;
+  weekdays?: number[];
   specific_date?: string | null;
   start_time?: string;
   end_time?: string;
@@ -126,6 +127,7 @@ export interface OutpatientAppointment extends AppointmentJoins {
   source: AppointmentSource;
   token_number?: number | null;
   cancel_reason?: string | null;
+  cancelled_reason?: string | null;
   check_in_at?: string | null; // ISO
   priority?: number | null;
 }
@@ -255,7 +257,11 @@ export const outpatientApi = createApi({
       query: (params) => ({ url: 'outpatient/availability', params }),
       providesTags: ['Availability'],
     }),
-    createAvailability: builder.mutation<OutpatientAvailability, AvailabilityWriteRequest>({
+    createAvailability: builder.mutation<
+      | OutpatientAvailability
+      | { availability?: OutpatientAvailability; availabilities?: OutpatientAvailability[] },
+      AvailabilityWriteRequest
+    >({
       query: (body) => ({ url: 'outpatient/availability', method: 'POST', body }),
       invalidatesTags: ['Availability'],
     }),
@@ -321,6 +327,17 @@ export const outpatientApi = createApi({
     }),
     checkInAppointment: builder.mutation<{ appointment: OutpatientAppointment }, { id: number }>({
       query: ({ id }) => ({ url: `outpatient/appointments/${id}/check-in`, method: 'PUT' }),
+      invalidatesTags: ['Appointment', 'Queue'],
+    }),
+    setAppointmentStatus: builder.mutation<
+      { appointment: OutpatientAppointment },
+      { id: number; status: AppointmentStatus }
+    >({
+      query: ({ id, status }) => ({
+        url: `outpatient/appointments/${id}/status`,
+        method: 'PUT',
+        body: { status },
+      }),
       invalidatesTags: ['Appointment', 'Queue'],
     }),
 
@@ -392,6 +409,7 @@ export const {
   useRescheduleAppointmentMutation,
   useCancelAppointmentMutation,
   useCheckInAppointmentMutation,
+  useSetAppointmentStatusMutation,
   useRegisterWalkInMutation,
   useCancelWalkInMutation,
   useGetQueueQuery,
