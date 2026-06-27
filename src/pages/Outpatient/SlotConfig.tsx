@@ -12,6 +12,8 @@ import {
   FormControlLabel,
   RadioGroup,
   Radio,
+  Checkbox,
+  ListItemText,
   Chip,
   IconButton,
   CircularProgress,
@@ -70,7 +72,8 @@ interface AvailabilityEditorProps {
 
 interface AvailabilityForm {
   mode: 'weekly' | 'date';
-  weekday: number;
+  weekday: number; // used when editing one existing weekly row
+  weekdays: number[]; // used when creating (multi-select)
   specific_date: Dayjs | null;
   start_time: string;
   end_time: string;
@@ -82,6 +85,7 @@ interface AvailabilityForm {
 const emptyForm = (): AvailabilityForm => ({
   mode: 'weekly',
   weekday: 1,
+  weekdays: [1],
   specific_date: null,
   start_time: OPD_CONSTANTS.AVAILABILITY.DEFAULT_START,
   end_time: OPD_CONSTANTS.AVAILABILITY.DEFAULT_END,
@@ -114,6 +118,7 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({ providerType, p
     setForm({
       mode: a.specific_date ? 'date' : 'weekly',
       weekday: a.weekday ?? 1,
+      weekdays: [a.weekday ?? 1],
       specific_date: a.specific_date ? dayjs(a.specific_date) : null,
       start_time: a.start_time ?? OPD_CONSTANTS.AVAILABILITY.DEFAULT_START,
       end_time: a.end_time ?? OPD_CONSTANTS.AVAILABILITY.DEFAULT_END,
@@ -125,15 +130,19 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({ providerType, p
   };
 
   const handleSave = async () => {
-    if (!form.start_time || !form.end_time || (form.mode === 'date' && !form.specific_date)) {
+    const weeklyCreateInvalid = form.mode === 'weekly' && !editing && form.weekdays.length === 0;
+    if (
+      !form.start_time ||
+      !form.end_time ||
+      (form.mode === 'date' && !form.specific_date) ||
+      weeklyCreateInvalid
+    ) {
       notify(L.MESSAGES.VALIDATION, 'error');
       return;
     }
-    const body: AvailabilityWriteRequest = {
+    const base = {
       provider_type: providerType,
       provider_id: providerId,
-      weekday: form.mode === 'weekly' ? form.weekday : null,
-      specific_date: form.mode === 'date' ? form.specific_date!.format(OPD_CONSTANTS.API_DATE_FORMAT) : null,
       start_time: form.start_time,
       end_time: form.end_time,
       slot_duration_min: form.slot_duration_min,
@@ -141,8 +150,26 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({ providerType, p
       active: form.active,
     };
     try {
-      if (editing) await updateAvailability({ id: editing.id, ...body }).unwrap();
-      else await createAvailability(body).unwrap();
+      if (editing) {
+        // Editing remains a single row: send one weekday.
+        const body: AvailabilityWriteRequest = {
+          ...base,
+          weekday: form.mode === 'weekly' ? form.weekday : null,
+          specific_date:
+            form.mode === 'date' ? form.specific_date!.format(OPD_CONSTANTS.API_DATE_FORMAT) : null,
+        };
+        await updateAvailability({ id: editing.id, ...body }).unwrap();
+      } else if (form.mode === 'weekly') {
+        // Creating weekly: send the selected weekdays array (one row per weekday).
+        await createAvailability({ ...base, weekdays: form.weekdays }).unwrap();
+      } else {
+        // Creating date-specific: unchanged single-row create.
+        await createAvailability({
+          ...base,
+          weekday: null,
+          specific_date: form.specific_date!.format(OPD_CONSTANTS.API_DATE_FORMAT),
+        }).unwrap();
+      }
       notify(L.MESSAGES.SAVE_SUCCESS, 'success');
       setDialogOpen(false);
     } catch (err: any) {
@@ -279,20 +306,52 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({ providerType, p
             </RadioGroup>
           </Box>
           {form.mode === 'weekly' ? (
-            <TextField
-              label={L.DIALOG.WEEKDAY}
-              select
-              size="small"
-              value={form.weekday}
-              onChange={(e) => setForm((f) => ({ ...f, weekday: Number(e.target.value) }))}
-              fullWidth
-            >
-              {OPD_CONSTANTS.WEEKDAY_OPTIONS.map((o) => (
-                <MenuItem key={o.value} value={o.value}>
-                  {o.label}
-                </MenuItem>
-              ))}
-            </TextField>
+            editing ? (
+              <TextField
+                label={L.DIALOG.WEEKDAY}
+                select
+                size="small"
+                value={form.weekday}
+                onChange={(e) => setForm((f) => ({ ...f, weekday: Number(e.target.value) }))}
+                fullWidth
+              >
+                {OPD_CONSTANTS.WEEKDAY_OPTIONS.map((o) => (
+                  <MenuItem key={o.value} value={o.value}>
+                    {o.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <TextField
+                label={L.DIALOG.WEEKDAYS}
+                select
+                size="small"
+                value={form.weekdays}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    weekdays: (e.target.value as unknown as number[]).map(Number),
+                  }))
+                }
+                fullWidth
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) =>
+                    (selected as number[])
+                      .slice()
+                      .sort((a, b) => a - b)
+                      .map((v) => OPD_LABELS.WEEKDAYS[v])
+                      .join(', '),
+                }}
+              >
+                {OPD_CONSTANTS.WEEKDAY_OPTIONS.map((o) => (
+                  <MenuItem key={o.value} value={o.value}>
+                    <Checkbox size="small" checked={form.weekdays.includes(o.value)} />
+                    <ListItemText primary={o.label} />
+                  </MenuItem>
+                ))}
+              </TextField>
+            )
           ) : (
             <Box>
               <Typography sx={{ fontSize: 12, color: '#6B7280', mb: 0.5 }}>{L.DIALOG.DATE}</Typography>
