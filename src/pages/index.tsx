@@ -18,6 +18,7 @@ import SaleHistory from "./Sales/SaleHistory";
 import SaleReturn from "./Sales/SaleReturn";
 import AdminDashboard from "./Admin/AdminDashboard";
 import Users from "./Admin/Users";
+import RoleManagement from "./Admin/RoleManagement";
 import Reports from "./Admin/Reports";
 import AdminSettings from "./Admin/Settings";
 import AuditLog from "./Admin/AuditLog";
@@ -89,6 +90,7 @@ export const Pages = () => {
             <Route index element={<AdminDashboard />} />
             <Route path="master" element={<Masterpage enableDownload />} />
             <Route path="users" element={<Users />} />
+            <Route path="roles" element={<RoleManagement />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
             <Route path="reports/supplier-receipt" element={<SupplierReceiptReport />} />

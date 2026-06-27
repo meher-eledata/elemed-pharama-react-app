@@ -1,19 +1,23 @@
 import React, { useState, useMemo, ChangeEvent } from 'react';
-import { Box, Typography, Button, Avatar, Chip, IconButton, Select, MenuItem, SelectChangeEvent, TextField, InputAdornment, CircularProgress, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Button, Avatar, Chip, IconButton, TextField, InputAdornment, CircularProgress, Snackbar, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { USERS_LABELS } from '../../config/label/Users.labels';
 import { USERS_CONSTANTS } from '../../config/constants/Users.constants';
 import AddUserModal from '../../components/Modal/AddUser/AddUserModal';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
-import { useGetAllUsersQuery, useUpdateUserRoleMutation, useDisableUserMutation, useEnableUserMutation } from '../../redux/slices/adminSlice';
+import { useGetAllUsersQuery, useDisableUserMutation, useEnableUserMutation } from '../../redux/slices/adminSlice';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
+
+// Org-level role labels for read-only display. Role changes now live in Role Management.
+const ORG_ROLE_LABELS: Record<string, string> = {
+  superadmin: 'Superadmin',
+  admin: 'Admin',
+  member: 'Member',
+};
 
 interface User {
   id: number;
@@ -28,11 +32,8 @@ interface User {
 const Users: React.FC = () => {
   // Fetch users from API
   const { data, isLoading, error, refetch } = useGetAllUsersQuery();
-  const [updateUserRole] = useUpdateUserRoleMutation();
   const [disableUser] = useDisableUserMutation();
   const [enableUser] = useEnableUserMutation();
-
-  const [localRoleUpdates, setLocalRoleUpdates] = useState<Record<number, string>>({});
 
   // Confirmation dialog for disable/enable. action is null when closed.
   const [statusDialog, setStatusDialog] = useState<{
@@ -87,13 +88,12 @@ const Users: React.FC = () => {
       }
       
       const status = user.status.charAt(0).toUpperCase() + user.status.slice(1);
-      
-      let role = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-      
-      if (localRoleUpdates[user.id]) {
-        role = localRoleUpdates[user.id].charAt(0).toUpperCase() + localRoleUpdates[user.id].slice(1);
-      }
-      
+
+      // Display the org-level role (read-only). Editing moved to Role Management.
+      const role = user.org_role
+        ? (ORG_ROLE_LABELS[user.org_role] ?? user.org_role)
+        : user.role.charAt(0).toUpperCase() + user.role.slice(1);
+
       return {
         id: user.id,
         name: user.name,
@@ -104,7 +104,7 @@ const Users: React.FC = () => {
         avatar,
       };
     });
-  }, [data, localRoleUpdates]);
+  }, [data]);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -115,8 +115,6 @@ const Users: React.FC = () => {
     direction: USERS_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION
   });
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
-  const [editedRole, setEditedRole] = useState<string>('');
 
   const filteredData = useMemo(() => {
     let filtered = [...usersData];
@@ -192,74 +190,23 @@ const Users: React.FC = () => {
       key: 'role',
       header: USERS_LABELS.TABLE.ROLE,
       sortable: true,
-      render: (user) => {
-        const isEditing = editingUserId === user.id;
-        
-        if (isEditing) {
-          return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: USERS_CONSTANTS.ROLE_EDIT.GAP }}>
-              <Select
-                value={editedRole}
-                onChange={(e: SelectChangeEvent<string>) => setEditedRole(e.target.value)}
-                size="small"
-                sx={{
-                  height: USERS_CONSTANTS.CHIP.ROLE.HEIGHT,
-                  fontSize: USERS_CONSTANTS.CHIP.ROLE.FONT_SIZE,
-                  minWidth: USERS_CONSTANTS.ROLE_EDIT.SELECT_MIN_WIDTH,
-                }}
-                autoFocus
-              >
-                <MenuItem value="admin">{USERS_LABELS.ROLES.ADMIN}</MenuItem>
-                <MenuItem value="pharmacist">{USERS_LABELS.ROLES.PHARMACIST}</MenuItem>
-              </Select>
-              <IconButton 
-                size="small" 
-                onClick={() => {
-                  // Update role in local state (frontend only, not persisted to backend)
-                  setLocalRoleUpdates(prev => ({
-                    ...prev,
-                    [user.id]: editedRole
-                  }));
-                  
-                  // Close edit mode
-                  setEditingUserId(null);
-                  setEditedRole('');
-                }}
-                sx={{ padding: USERS_CONSTANTS.ACTIONS.BUTTON_PADDING, color: USERS_CONSTANTS.ACTIONS.CONFIRM_COLOR }}
-              >
-                <CheckIcon fontSize="small" />
-              </IconButton>
-              <IconButton 
-                size="small" 
-                onClick={() => {
-                  setEditingUserId(null);
-                  setEditedRole('');
-                }}
-                sx={{ padding: USERS_CONSTANTS.ACTIONS.BUTTON_PADDING, color: USERS_CONSTANTS.ACTIONS.CANCEL_COLOR }}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Box>
-          );
-        }
-        
-        return (
-          <Chip
-            label={user.role}
-            size="small"
-            sx={{
-              backgroundColor: USERS_CONSTANTS.CHIP.ROLE.BACKGROUND_COLOR,
-              color: USERS_CONSTANTS.CHIP.ROLE.COLOR,
-              fontWeight: USERS_CONSTANTS.CHIP.ROLE.FONT_WEIGHT,
-              height: USERS_CONSTANTS.CHIP.ROLE.HEIGHT,
-              fontSize: USERS_CONSTANTS.CHIP.ROLE.FONT_SIZE,
-              '& .MuiChip-label': {
-                padding: USERS_CONSTANTS.CHIP.ROLE.LABEL_PADDING,
-              },
-            }}
-          />
-        );
-      },
+      // Read-only org role. Role changes are managed on the Role Management page.
+      render: (user) => (
+        <Chip
+          label={user.role}
+          size="small"
+          sx={{
+            backgroundColor: USERS_CONSTANTS.CHIP.ROLE.BACKGROUND_COLOR,
+            color: USERS_CONSTANTS.CHIP.ROLE.COLOR,
+            fontWeight: USERS_CONSTANTS.CHIP.ROLE.FONT_WEIGHT,
+            height: USERS_CONSTANTS.CHIP.ROLE.HEIGHT,
+            fontSize: USERS_CONSTANTS.CHIP.ROLE.FONT_SIZE,
+            '& .MuiChip-label': {
+              padding: USERS_CONSTANTS.CHIP.ROLE.LABEL_PADDING,
+            },
+          }}
+        />
+      ),
     },
     {
       key: 'status',
@@ -310,21 +257,6 @@ const Users: React.FC = () => {
       columnWidth: '140px',
       render: (user) => (
         <Box sx={{ display: 'flex', gap: USERS_CONSTANTS.ACTIONS.GAP, justifyContent: 'flex-start' }}>
-          <IconButton 
-            size="small" 
-            onClick={() => {
-              setEditingUserId(user.id);
-              // Convert to lowercase to match dropdown values (admin/pharmacist)
-              setEditedRole(user.role.toLowerCase());
-            }}
-            sx={{ 
-              color: USERS_CONSTANTS.ACTIONS.EDIT_COLOR,
-              padding: USERS_CONSTANTS.ACTIONS.ICON_PADDING,
-              '& svg': { fontSize: USERS_CONSTANTS.ACTIONS.ICON_SIZE },
-            }}
-          >
-            <EditIcon />
-          </IconButton>
           {user.status === USERS_LABELS.STATUS.INACTIVE ? (
             <IconButton
               size="small"

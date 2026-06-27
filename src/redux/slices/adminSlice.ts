@@ -66,15 +66,62 @@ export interface SendEmailTestResponse {
   message: string;
 }
 
+export type OrgRole = 'superadmin' | 'admin' | 'member';
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string; // legacy role (admin/pharmacist)
+  status: string;
+  last_login: string | null;
+  // Per-module RBAC (PHASE A).
+  org_role: OrgRole;
+  module_roles: Record<string, string>;
+  can_manage_roles: boolean;
+}
+
 export interface GetAllUsersResponse {
-  users: Array<{
+  users: AdminUser[];
+}
+
+// GET /api/admin/role-options — allowed org roles + per-module role choices.
+export interface RoleOptionsResponse {
+  org_roles: OrgRole[];
+  module_roles: Record<string, string[]>;
+}
+
+// PUT /api/admin/users/:id/roles — upsert org_role and/or per-module roles.
+// A module value of null removes that module role.
+export interface UpdateUserRolesRequest {
+  userId: number;
+  org_role?: OrgRole;
+  module_roles?: Record<string, string | null>;
+}
+
+export interface UpdateUserRolesResponse {
+  message: string;
+  user: {
     id: number;
-    name: string;
-    email: string;
-    role: string;
-    status: string;
-    last_login: string | null;
-  }>;
+    org_role: OrgRole;
+    module_roles: Record<string, string>;
+    can_manage_roles: boolean;
+  };
+}
+
+// PUT /api/admin/users/:id/manage-roles — superadmin grants/revokes the manage-roles
+// capability on an admin.
+export interface SetManageRolesRequest {
+  userId: number;
+  can_manage_roles: boolean;
+}
+
+export interface SetManageRolesResponse {
+  message: string;
+  user: {
+    id: number;
+    can_manage_roles: boolean;
+  };
 }
 
 export interface UpdateUserRoleRequest {
@@ -199,6 +246,30 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ['AdminUser'],
     }),
+    getRoleOptions: builder.query<RoleOptionsResponse, void>({
+      query: () => ({
+        url: 'admin/role-options',
+        method: 'GET',
+      }),
+    }),
+    updateUserRoles: builder.mutation<UpdateUserRolesResponse, UpdateUserRolesRequest>({
+      query: ({ userId, org_role, module_roles }) => ({
+        url: `admin/users/${userId}/roles`,
+        method: 'PUT',
+        body: { ...(org_role !== undefined && { org_role }), ...(module_roles !== undefined && { module_roles }) },
+      }),
+      // Refresh the admin users list. ('Me' lives in orgApi; the RoleManagement page
+      // dispatches a getMe refetch after a successful edit to keep viewer context fresh.)
+      invalidatesTags: ['AdminUser'],
+    }),
+    setManageRoles: builder.mutation<SetManageRolesResponse, SetManageRolesRequest>({
+      query: ({ userId, can_manage_roles }) => ({
+        url: `admin/users/${userId}/manage-roles`,
+        method: 'PUT',
+        body: { can_manage_roles },
+      }),
+      invalidatesTags: ['AdminUser'],
+    }),
     disableUser: builder.mutation<SetUserStatusResponse, number>({
       query: (id) => ({
         url: `admin/users/${id}/disable`,
@@ -259,6 +330,9 @@ export const {
   useEnableUserMutation,
   useSendEmailTestMutation,
   useUpdateUserRoleMutation,
+  useGetRoleOptionsQuery,
+  useUpdateUserRolesMutation,
+  useSetManageRolesMutation,
   useGetActivityLogQuery,
   useGetDailyReportRecipientsQuery,
   useAddDailyReportRecipientMutation,

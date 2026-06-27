@@ -2,6 +2,8 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQueryWithReauth } from '../baseQuery';
 
 // GET /api/me — the authenticated user's identity, org context and active modules.
+export type OrgRole = 'superadmin' | 'admin' | 'member';
+
 export interface MeUser {
   id: number;
   username: string;
@@ -9,7 +11,10 @@ export interface MeUser {
   first_name: string;
   last_name: string;
   role?: number | string;
-  org_role?: 'owner' | 'admin' | 'staff' | string;
+  // Per-module RBAC (PHASE A): org-level role + per-module roles + manage-roles capability.
+  org_role?: OrgRole;
+  module_roles?: Record<string, string>;
+  can_manage_roles?: boolean;
 }
 
 export interface MeOrganization {

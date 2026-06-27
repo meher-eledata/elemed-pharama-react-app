@@ -22,6 +22,9 @@ export const OrgBootstrap = () => {
         setOrgContext({
           organization: data.organization,
           activeModules: data.activeModules,
+          orgRole: data.user.org_role ?? null,
+          moduleRoles: data.user.module_roles ?? {},
+          canManageRoles: data.user.can_manage_roles ?? false,
         })
       );
     }
