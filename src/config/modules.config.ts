@@ -1,13 +1,18 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import StorageIcon from '@mui/icons-material/Storage';
+import EventIcon from '@mui/icons-material/Event';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import QueueIcon from '@mui/icons-material/Queue';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import DollarIcon from '../assets/Dollor.svg';
 import BoxIcon from '../assets/Box.svg';
 import MailIcon from '../assets/Mail.svg';
 
 // Client-side module registry. Mirrors the backend `config/modules.js`.
 // An org enables a subset of these; the UI is gated by `state.org.activeModules`.
-export type ModuleKey = 'pharmacy' | 'inpatient';
+export type ModuleKey = 'pharmacy' | 'inpatient' | 'outpatient';
 
 // Shape compatible with SideBar.tsx's local `SidebarItem` interface so module
 // items can be rendered by the existing sidebar without any mapping.
@@ -74,7 +79,19 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     description: 'Inpatient module (no pages yet).',
     sidebarItems: [],
   },
+  outpatient: {
+    key: 'outpatient',
+    label: 'Outpatient',
+    description: 'Outpatient (OPD): appointments, booking, walk-ins and the live queue.',
+    sidebarItems: [
+      { id: 'opd-appointments', icon: React.createElement(WhiteIcon, null, React.createElement(EventIcon, { sx: { fontSize: 24 } })), alt: 'Appointments', label: 'Appointments', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient', isComponent: true },
+      { id: 'opd-book', icon: React.createElement(WhiteIcon, null, React.createElement(EventAvailableIcon, { sx: { fontSize: 24 } })), alt: 'Book', label: 'Book', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/book', isComponent: true },
+      { id: 'opd-walk-in', icon: React.createElement(WhiteIcon, null, React.createElement(PeopleAltIcon, { sx: { fontSize: 24 } })), alt: 'Walk-in', label: 'Walk-in', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/walk-in', isComponent: true },
+      { id: 'opd-queue', icon: React.createElement(WhiteIcon, null, React.createElement(QueueIcon, { sx: { fontSize: 24 } })), alt: 'Live Queue', label: 'Live Queue', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/queue', isComponent: true },
+      { id: 'opd-slots-config', icon: React.createElement(WhiteIcon, null, React.createElement(AccessTimeIcon, { sx: { fontSize: 24 } })), alt: 'Slot Config', label: 'Slot Config', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/slots-config', isComponent: true },
+    ],
+  },
 };
 
 // Registry order — used to render module sidebar items deterministically.
-export const ALL_MODULE_KEYS: ModuleKey[] = ['pharmacy', 'inpatient'];
+export const ALL_MODULE_KEYS: ModuleKey[] = ['pharmacy', 'inpatient', 'outpatient'];

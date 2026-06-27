@@ -1,0 +1,43 @@
+import type { AppointmentStatus, AppointmentType, AppointmentSource } from '../../redux/slices/outpatientApi';
+
+// Shared constants for the Outpatient (OPD) module: option lists, chip colors,
+// date formats and layout tokens. Theme primary is #5C17E5.
+export const OPD_CONSTANTS = {
+  THEME: { PRIMARY: '#5C17E5', PRIMARY_HOVER: '#4C14CC' },
+  DATE_FORMAT: 'DD/MM/YYYY',
+  TIME_FORMAT: 'HH:mm',
+  DATETIME_FORMAT: 'DD/MM/YYYY HH:mm',
+  API_DATE_FORMAT: 'YYYY-MM-DD',
+  PAGINATION: { ROWS_PER_PAGE: 10 },
+  LAYOUT: { PAGE_PADDING: 3, PAGE_GAP: 2 },
+  STATUS_OPTIONS: [
+    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'checked_in', label: 'Checked in' },
+    { value: 'in_consultation', label: 'In consultation' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'no_show', label: 'No show' },
+  ] as { value: AppointmentStatus; label: string }[],
+  TYPE_OPTIONS: [
+    { value: 'consultation', label: 'Consultation' },
+    { value: 'service', label: 'Service' },
+  ] as { value: AppointmentType; label: string }[],
+  SOURCE_OPTIONS: [
+    { value: 'booked', label: 'Booked' },
+    { value: 'walk_in', label: 'Walk-in' },
+  ] as { value: AppointmentSource; label: string }[],
+  GENDER_OPTIONS: [
+    { value: 'male', label: 'Male' },
+    { value: 'female', label: 'Female' },
+    { value: 'other', label: 'Other' },
+  ],
+  // Chip palette keyed by appointment status.
+  STATUS_CHIP: {
+    scheduled: { bg: '#EDE9FE', color: '#5C17E5' },
+    checked_in: { bg: '#DBEAFE', color: '#1D4ED8' },
+    in_consultation: { bg: '#FEF3C7', color: '#B45309' },
+    completed: { bg: '#DCFCE7', color: '#15803D' },
+    cancelled: { bg: '#FEE2E2', color: '#B91C1C' },
+    no_show: { bg: '#F3F4F6', color: '#6B7280' },
+  } as Record<string, { bg: string; color: string }>,
+};

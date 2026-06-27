@@ -23,7 +23,12 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import { RootState } from '../../redux/store';
+import { selectHasModuleAccess } from '../../redux/slices/orgSlice';
 import { MODULES, ALL_MODULE_KEYS, ModuleKey } from '../../config/modules.config';
+
+// Modules whose sidebar items are additionally gated by a per-module role
+// (active alone is not enough). Pharmacy is intentionally left ungated.
+const ROLE_GATED_MODULES: ModuleKey[] = ['outpatient'];
 interface SidebarItem {
   id: string;
   icon: string | React.ReactNode;
@@ -95,16 +100,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const user = useSelector((state: any) => state.auth.user);
   const activeModules = useSelector((state: RootState) => state.org.activeModules);
   const orgLoaded = useSelector((state: RootState) => state.org.loaded);
+  const hasOutpatientAccess = useSelector(selectHasModuleAccess('outpatient'));
+
+  // Per-module role access lookup. Role-gated modules (e.g. outpatient) only show
+  // when the viewer is admin/superadmin or holds a role in them.
+  const moduleAccess: Partial<Record<ModuleKey, boolean>> = useMemo(
+    () => ({ outpatient: hasOutpatientAccess }),
+    [hasOutpatientAccess]
+  );
 
   // Non-admin sidebar = fixed Home + each active module's items in registry order.
   // Before /me resolves, optimistically show pharmacy items to avoid a flash.
   const baseItems: SidebarItem[] = useMemo(() => {
     const keys: ModuleKey[] = orgLoaded
-      ? ALL_MODULE_KEYS.filter((k) => activeModules.includes(k))
+      ? ALL_MODULE_KEYS.filter((k) => activeModules.includes(k)).filter(
+          (k) => !ROLE_GATED_MODULES.includes(k) || moduleAccess[k]
+        )
       : ['pharmacy'];
     const moduleItems = keys.flatMap((k) => MODULES[k].sidebarItems);
     return [homeItem, ...moduleItems];
-  }, [activeModules, orgLoaded]);
+  }, [activeModules, orgLoaded, moduleAccess]);
 
   // Order, labels and icons mirror the AdminDashboard tiles (tiles are canonical).
   const adminItems: SidebarItem[] = useMemo(() => [

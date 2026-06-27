@@ -78,4 +78,14 @@ export const selectOrgRole = (state: { org: OrgState }) => state.org.orgRole;
 export const selectModuleRoles = (state: { org: OrgState }) => state.org.moduleRoles;
 export const selectCanManageRoles = (state: { org: OrgState }) => state.org.canManageRoles;
 
+// UX gate (backend still enforces per-endpoint): a module is accessible when it is
+// active AND the viewer is an org admin/superadmin OR holds a role within it.
+export const selectHasModuleAccess =
+  (moduleKey: string) =>
+  (state: { org: OrgState }): boolean => {
+    const { activeModules, orgRole, moduleRoles } = state.org;
+    if (!activeModules.includes(moduleKey)) return false;
+    return orgRole === 'superadmin' || orgRole === 'admin' || !!moduleRoles[moduleKey];
+  };
+
 export default orgSlice.reducer;

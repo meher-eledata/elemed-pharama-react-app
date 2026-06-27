@@ -30,6 +30,11 @@ import SalesTaxReport from "./Admin/SalesTaxReport";
 import SupplierTaxReport from "./Admin/SupplierTaxReport";
 import HistoricalData from "./Admin/HistoricalData";
 import UserProfile from "./Profile/UserProfile";
+import AppointmentList from "./Outpatient/AppointmentList";
+import BookingFlow from "./Outpatient/BookingFlow";
+import WalkInRegister from "./Outpatient/WalkInRegister";
+import LiveQueue from "./Outpatient/LiveQueue";
+import SlotConfig from "./Outpatient/SlotConfig";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
@@ -77,6 +82,17 @@ export const Pages = () => {
             <Route path="new" element={<Sale />} />
             <Route path="receipt" element={<SalesReceipt />} />
             <Route path="sale-return" element={<SaleReturn />} />
+          </Route>
+        </Route>
+
+        {/* Outpatient (OPD) module routes - gated by the org's active modules */}
+        <Route element={<ModuleGuard module="outpatient" />}>
+          <Route path="/outpatient" element={<DashboardLayout />}>
+            <Route index element={<AppointmentList />} />
+            <Route path="book" element={<BookingFlow />} />
+            <Route path="walk-in" element={<WalkInRegister />} />
+            <Route path="queue" element={<LiveQueue />} />
+            <Route path="slots-config" element={<SlotConfig />} />
           </Route>
         </Route>
 
