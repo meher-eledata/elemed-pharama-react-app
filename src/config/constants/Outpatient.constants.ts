@@ -43,6 +43,15 @@ export const OPD_CONSTANTS = {
     { value: 'female', label: 'Female' },
     { value: 'other', label: 'Other' },
   ],
+  // Allowed status transitions FROM each status (mirror of the backend whitelist).
+  STATUS_TRANSITIONS: {
+    scheduled: ['checked_in', 'in_consultation', 'completed', 'cancelled', 'no_show'],
+    checked_in: ['scheduled', 'in_consultation', 'completed', 'cancelled', 'no_show'],
+    in_consultation: ['checked_in', 'completed', 'cancelled', 'no_show'],
+    completed: ['in_consultation'],
+    cancelled: ['scheduled'],
+    no_show: ['scheduled'],
+  } as Record<AppointmentStatus, AppointmentStatus[]>,
   // Chip palette keyed by appointment status.
   STATUS_CHIP: {
     scheduled: { bg: '#EDE9FE', color: '#5C17E5' },

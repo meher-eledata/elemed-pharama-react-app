@@ -25,6 +25,7 @@ import EditCalendarIcon from '@mui/icons-material/EditCalendar';
 import CancelIcon from '@mui/icons-material/Cancel';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import dayjs, { Dayjs } from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { PharmaDatePicker, StandardButton } from '../../components/Common';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
@@ -39,6 +40,7 @@ import {
   useCheckInAppointmentMutation,
   useCancelAppointmentMutation,
   useRescheduleAppointmentMutation,
+  useSetAppointmentStatusMutation,
   type OutpatientAppointment,
   type GetAppointmentsParams,
   type AppointmentStatus,
@@ -46,7 +48,14 @@ import {
   type AppointmentSource,
 } from '../../redux/slices/outpatientApi';
 
+dayjs.extend(utc);
+
 const L = OPD_LABELS.APPOINTMENTS;
+
+// OPD scheduled times are stored as naive UTC-labeled wall-clock; format in UTC
+// so a 14:00 booking reads back as 14:00 regardless of the browser timezone.
+const formatOpdDateTime = (value?: string | null) =>
+  value ? dayjs.utc(value).format(OPD_CONSTANTS.DATETIME_FORMAT) : '—';
 
 const StatusChip: React.FC<{ status: AppointmentStatus }> = ({ status }) => {
   const cfg = OPD_CONSTANTS.STATUS_CHIP[status] ?? { bg: '#F3F4F6', color: '#6B7280' };
@@ -58,6 +67,17 @@ const StatusChip: React.FC<{ status: AppointmentStatus }> = ({ status }) => {
     />
   );
 };
+
+const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+    <Typography sx={{ fontSize: 13, color: '#6B7280' }}>{label}</Typography>
+    {typeof value === 'string' ? (
+      <Typography sx={{ fontSize: 14, fontWeight: 600, textAlign: 'right' }}>{value}</Typography>
+    ) : (
+      value
+    )}
+  </Box>
+);
 
 const AppointmentList: React.FC = () => {
   const navigate = useNavigate();
@@ -83,6 +103,7 @@ const AppointmentList: React.FC = () => {
   const [cancelTarget, setCancelTarget] = useState<OutpatientAppointment | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [rescheduleTarget, setRescheduleTarget] = useState<OutpatientAppointment | null>(null);
+  const [viewTarget, setViewTarget] = useState<OutpatientAppointment | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -94,6 +115,7 @@ const AppointmentList: React.FC = () => {
   const [checkIn] = useCheckInAppointmentMutation();
   const [cancelAppointment] = useCancelAppointmentMutation();
   const [rescheduleAppointment, { isLoading: isRescheduling }] = useRescheduleAppointmentMutation();
+  const [setAppointmentStatus, { isLoading: isSettingStatus }] = useSetAppointmentStatusMutation();
 
   // Build query params. Tab sets the date bound; explicit From/To override.
   const params: GetAppointmentsParams = useMemo(() => {
@@ -116,6 +138,13 @@ const AppointmentList: React.FC = () => {
 
   const rows = useMemo(() => data?.appointments ?? [], [data]);
 
+  // Keep the open details dialog in sync with refreshed list data.
+  React.useEffect(() => {
+    if (!viewTarget) return;
+    const fresh = rows.find((r) => r.id === viewTarget.id);
+    if (fresh && fresh !== viewTarget) setViewTarget(fresh);
+  }, [rows, viewTarget]);
+
   const notify = (message: string, severity: 'success' | 'error') =>
     setSnackbar({ open: true, message, severity });
 
@@ -126,6 +155,17 @@ const AppointmentList: React.FC = () => {
     } catch (err) {
       logError(err, 'AppointmentList.checkIn');
       notify(extractErrorMessage(err, L.MESSAGES.CHECK_IN_ERROR), 'error');
+    }
+  };
+
+  const handleChangeStatus = async (id: number, next: AppointmentStatus) => {
+    try {
+      const res = await setAppointmentStatus({ id, status: next }).unwrap();
+      setViewTarget(res.appointment);
+      notify(L.MESSAGES.STATUS_SUCCESS, 'success');
+    } catch (err) {
+      logError(err, 'AppointmentList.setStatus');
+      notify(extractErrorMessage(err, L.MESSAGES.STATUS_ERROR), 'error');
     }
   };
 
@@ -169,7 +209,7 @@ const AppointmentList: React.FC = () => {
       key: 'scheduled_start',
       header: L.TABLE.DATETIME,
       sortable: true,
-      render: (a) => dayjs(a.scheduled_start).format(OPD_CONSTANTS.DATETIME_FORMAT),
+      render: (a) => formatOpdDateTime(a.scheduled_start),
     },
     {
       key: 'status',
@@ -190,7 +230,7 @@ const AppointmentList: React.FC = () => {
         return (
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             <Tooltip title={L.ACTIONS.VIEW}>
-              <IconButton size="small" onClick={() => navigate(`/outpatient?id=${a.id}`)}>
+              <IconButton size="small" onClick={() => setViewTarget(a)}>
                 <VisibilityIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -287,15 +327,9 @@ const AppointmentList: React.FC = () => {
       </Tabs>
 
       {/* Filter bar */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-          <Typography sx={{ fontSize: 11, color: '#6B7280', mb: 0.25 }}>{L.FILTERS.FROM}</Typography>
-          <PharmaDatePicker value={from} onChange={setFrom} width={150} height={40} />
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-          <Typography sx={{ fontSize: 11, color: '#6B7280', mb: 0.25 }}>{L.FILTERS.TO}</Typography>
-          <PharmaDatePicker value={to} onChange={setTo} width={150} height={40} minDate={from ?? undefined} />
-        </Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'flex-end' }}>
+        <PharmaDatePicker value={from} onChange={setFrom} label={L.FILTERS.FROM} width={150} height={40} />
+        <PharmaDatePicker value={to} onChange={setTo} label={L.FILTERS.TO} width={150} height={40} minDate={from ?? undefined} />
         <TextField
           label={L.FILTERS.DOCTOR}
           select
@@ -412,6 +446,76 @@ const AppointmentList: React.FC = () => {
           sortConfig={sortConfig}
         />
       )}
+
+      {/* Appointment details dialog */}
+      <Dialog open={viewTarget !== null} onClose={() => setViewTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>{L.VIEW_DIALOG.TITLE}</DialogTitle>
+        {viewTarget && (
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 2 }}>
+            <DetailRow label={L.VIEW_DIALOG.PATIENT} value={viewTarget.Patient?.name ?? '—'} />
+            <DetailRow label={L.VIEW_DIALOG.PHONE} value={viewTarget.Patient?.phone ?? '—'} />
+            <DetailRow
+              label={L.VIEW_DIALOG.TYPE}
+              value={OPD_LABELS.TYPE_LABELS[viewTarget.appointment_type] ?? viewTarget.appointment_type}
+            />
+            <DetailRow
+              label={L.VIEW_DIALOG.PROVIDER}
+              value={viewTarget.Doctor?.name ?? viewTarget.Service?.name ?? '—'}
+            />
+            <DetailRow label={L.VIEW_DIALOG.DATETIME} value={formatOpdDateTime(viewTarget.scheduled_start)} />
+            <DetailRow
+              label={L.VIEW_DIALOG.STATUS}
+              value={<StatusChip status={viewTarget.status} />}
+            />
+            <DetailRow
+              label={L.VIEW_DIALOG.SOURCE}
+              value={OPD_LABELS.SOURCE_LABELS[viewTarget.source] ?? viewTarget.source}
+            />
+            {viewTarget.token_number != null && (
+              <DetailRow label={L.VIEW_DIALOG.TOKEN} value={String(viewTarget.token_number)} />
+            )}
+            {viewTarget.check_in_at && (
+              <DetailRow label={L.VIEW_DIALOG.CHECK_IN_AT} value={formatOpdDateTime(viewTarget.check_in_at)} />
+            )}
+            {viewTarget.cancelled_reason && (
+              <DetailRow label={L.VIEW_DIALOG.CANCEL_REASON} value={viewTarget.cancelled_reason} />
+            )}
+
+            <Box sx={{ mt: 1 }}>
+              <Typography sx={{ fontSize: 12, color: '#6B7280', mb: 0.5 }}>
+                {L.VIEW_DIALOG.CHANGE_STATUS}
+              </Typography>
+              {(OPD_CONSTANTS.STATUS_TRANSITIONS[viewTarget.status] ?? []).length === 0 ? (
+                <Typography sx={{ fontSize: 13, color: '#6B7280' }}>{L.VIEW_DIALOG.NO_TRANSITIONS}</Typography>
+              ) : (
+                <TextField
+                  select
+                  size="small"
+                  value=""
+                  disabled={isSettingStatus}
+                  onChange={(e) => handleChangeStatus(viewTarget.id, e.target.value as AppointmentStatus)}
+                  fullWidth
+                  SelectProps={{ displayEmpty: true }}
+                >
+                  <MenuItem value="" disabled>
+                    {L.VIEW_DIALOG.CHANGE_STATUS}
+                  </MenuItem>
+                  {(OPD_CONSTANTS.STATUS_TRANSITIONS[viewTarget.status] ?? []).map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {OPD_LABELS.STATUS_LABELS[s] ?? s}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            </Box>
+          </DialogContent>
+        )}
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <StandardButton variant="secondary" size="small" onClick={() => setViewTarget(null)}>
+            {L.VIEW_DIALOG.CLOSE}
+          </StandardButton>
+        </DialogActions>
+      </Dialog>
 
       {/* Reschedule dialog */}
       <RescheduleDialog
