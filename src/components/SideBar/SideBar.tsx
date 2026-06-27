@@ -15,20 +15,18 @@ import SettingsIcon from '../../assets/Setting.svg';
 import ThunderIcon from '../../assets/Thunder.svg';
 import LocalPharmacyOutlinedIcon from '@mui/icons-material/LocalPharmacyOutlined';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
-import { RootState } from '../../redux/store';
-import { selectHasModuleAccess } from '../../redux/slices/orgSlice';
-import { MODULES, ALL_MODULE_KEYS, ModuleKey } from '../../config/modules.config';
+import BusinessIcon from '@mui/icons-material/Business';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import { MODULES } from '../../config/modules.config';
+import { currentAreaKeyFromPath } from '../../config/areas.config';
 
-// Modules whose sidebar items are additionally gated by a per-module role
-// (active alone is not enough). Pharmacy is intentionally left ungated.
-const ROLE_GATED_MODULES: ModuleKey[] = ['outpatient'];
 interface SidebarItem {
   id: string;
   icon: string | React.ReactNode;
@@ -98,34 +96,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector((state: any) => state.auth.user);
-  const activeModules = useSelector((state: RootState) => state.org.activeModules);
-  const orgLoaded = useSelector((state: RootState) => state.org.loaded);
-  const hasOutpatientAccess = useSelector(selectHasModuleAccess('outpatient'));
 
-  // Per-module role access lookup. Role-gated modules (e.g. outpatient) only show
-  // when the viewer is admin/superadmin or holds a role in them.
-  const moduleAccess: Partial<Record<ModuleKey, boolean>> = useMemo(
-    () => ({ outpatient: hasOutpatientAccess }),
-    [hasOutpatientAccess]
+  // The current top-level area (pharmacy / outpatient / org) determines which nav
+  // set the sidebar shows. Areas are switched via the TopBar ModuleSwitcher /
+  // launcher — each area is self-contained, never mixing another area's items.
+  const area = currentAreaKeyFromPath(location.pathname);
+
+  // Pharmacy APP sidebar = fixed Home + pharmacy module items only. Outpatient is a
+  // separate area (see below) and is never mixed in here.
+  const pharmacyItems: SidebarItem[] = useMemo(
+    () => [homeItem, ...MODULES.pharmacy.sidebarItems],
+    []
   );
 
-  // Non-admin sidebar = fixed Home + each active module's items in registry order.
-  // Before /me resolves, optimistically show pharmacy items to avoid a flash.
-  const baseItems: SidebarItem[] = useMemo(() => {
-    const keys: ModuleKey[] = orgLoaded
-      ? ALL_MODULE_KEYS.filter((k) => activeModules.includes(k)).filter(
-          (k) => !ROLE_GATED_MODULES.includes(k) || moduleAccess[k]
-        )
-      : ['pharmacy'];
-    const moduleItems = keys.flatMap((k) => MODULES[k].sidebarItems);
-    return [homeItem, ...moduleItems];
-  }, [activeModules, orgLoaded, moduleAccess]);
-
-  // Order, labels and icons mirror the AdminDashboard tiles (tiles are canonical).
+  // Pharmacy ADMIN sidebar. Order, labels and icons mirror the AdminDashboard tiles
+  // (tiles are canonical). Org-level concerns (roles, module toggle) now live in the
+  // dedicated /org area, so they are intentionally absent here.
   const adminItems: SidebarItem[] = useMemo(() => [
-    { id: 'admin-home', icon: <WhiteIcon><LocalPharmacyOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Pharmacist access', label: 'Pharmacist access', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard', isComponent: true },
+    { id: 'admin-home', icon: <WhiteIcon><LocalPharmacyOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Pharmacy Home', label: 'Pharmacy Home', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard', isComponent: true },
     { id: 'admin-users', icon: <WhiteIcon><PeopleAltIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Account Management', label: 'User Account Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/users', isComponent: true },
-    { id: 'admin-roles', icon: <WhiteIcon><AdminPanelSettingsIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Role Management', label: 'Role Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/roles', isComponent: true },
     { id: 'admin-reports', icon: <WhiteIcon><BarChartIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'System Performance Reports', label: 'System Performance Reports', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/reports', isComponent: true },
     { id: 'admin-master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: 'Master', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/master', isComponent: true },
     { id: 'admin-inventory-adjustment', icon: <WhiteIcon><InventoryIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Inventory Adjustment', label: 'Inventory Adjustment', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/inventory-adjustment', isComponent: true },
@@ -134,10 +123,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
     { id: 'admin-settings', icon: <WhiteIcon><SettingsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'System Settings', label: 'System Settings', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/settings', isComponent: true },
   ], []);
 
+  // Org Management sidebar — the dedicated /org area (roles, modules, settings).
+  const orgItems: SidebarItem[] = useMemo(() => [
+    { id: 'org-home', icon: <WhiteIcon><BusinessIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Org Home', label: 'Org Home', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org', isComponent: true },
+    { id: 'org-roles', icon: <WhiteIcon><GroupsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Role Management', label: 'Role Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/roles', isComponent: true },
+    { id: 'org-modules', icon: <WhiteIcon><ViewModuleOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Modules', label: 'Modules', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/modules', isComponent: true },
+    { id: 'org-settings', icon: <WhiteIcon><SettingsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Organization Settings', label: 'Organization Settings', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/settings', isComponent: true },
+  ], []);
+
   const sidebarItems = useMemo(() => {
+    if (area === 'org') return orgItems;
+    if (area === 'outpatient') return MODULES.outpatient.sidebarItems;
+    // pharmacy area: admin sub-mode vs the pharmacy app
     if (location.pathname.startsWith('/admin')) return adminItems;
-    return baseItems;
-  }, [location.pathname, adminItems, baseItems]);
+    return pharmacyItems;
+  }, [area, location.pathname, orgItems, adminItems, pharmacyItems]);
 
   useEffect(() => {
     const currentPath = location.pathname;

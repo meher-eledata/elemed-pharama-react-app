@@ -124,7 +124,6 @@ export const Pages = () => {
             <Route index element={<AdminDashboard />} />
             <Route path="master" element={<Masterpage enableDownload />} />
             <Route path="users" element={<Users />} />
-            <Route path="roles" element={<RoleManagement />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
             <Route path="reports/supplier-receipt" element={<SupplierReceiptReport />} />

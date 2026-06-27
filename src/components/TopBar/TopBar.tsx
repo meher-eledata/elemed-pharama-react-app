@@ -96,9 +96,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { useLogoutMutation } from "../../redux/slices/activityApi";
 import { RootState } from "../../redux/store";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getInitials } from "../../config/helpers/initials";
 import { ModuleSwitcher } from "../ModuleSwitcher/ModuleSwitcher";
+import { currentAreaKeyFromPath } from "../../config/areas.config";
 
 import "./TopBar.scss";
 
@@ -113,7 +114,12 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   const open = Boolean(anchorEl);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [logoutRequest] = useLogoutMutation();
+
+  // Pharmacy Admin is a pharmacy-area destination, so only surface it while in
+  // the pharmacy area — it would be confusing alongside the Org/Outpatient areas.
+  const inPharmacyArea = currentAreaKeyFromPath(location.pathname) === 'pharmacy';
 
   // Get user info from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -216,8 +222,8 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
             "aria-labelledby": "user-button",
           }}
         >
-          {isAdmin && (
-            <MenuItem onClick={handleAdminAccess}>Admin Access</MenuItem>
+          {isAdmin && inPharmacyArea && (
+            <MenuItem onClick={handleAdminAccess}>Pharmacy Admin</MenuItem>
           )}
           <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>Profile</MenuItem>
           <MenuItem onClick={handleLogout}>Logout</MenuItem>

@@ -14,13 +14,11 @@ import {
   useRemoveDailyReportRecipientMutation,
   useSendDailyReportNowMutation,
 } from '../../../redux/slices/adminSlice';
-import { useGetMeQuery, useToggleModuleMutation } from '../../../redux/slices/orgApi';
 
-// Auto-mock the admin + org slices. GOTCHA (gotchas.md → "New RTK Query hook breaks auto-mocked
+// Auto-mock the admin slice. GOTCHA (gotchas.md → "New RTK Query hook breaks auto-mocked
 // slice test suites"): every hook the component uses MUST get a return value in beforeEach,
 // or array-destructuring the mutation tuples throws "undefined is not iterable".
 jest.mock('../../../redux/slices/adminSlice');
-jest.mock('../../../redux/slices/orgApi');
 
 const theme = createTheme();
 const DAILY = SETTINGS_LABELS.SECTIONS.DAILY_REPORTS;
@@ -33,9 +31,6 @@ const mockUseRemoveRecipient =
   useRemoveDailyReportRecipientMutation as jest.MockedFunction<typeof useRemoveDailyReportRecipientMutation>;
 const mockUseSendNow =
   useSendDailyReportNowMutation as jest.MockedFunction<typeof useSendDailyReportNowMutation>;
-const mockUseGetMe = useGetMeQuery as jest.MockedFunction<typeof useGetMeQuery>;
-const mockUseToggleModule =
-  useToggleModuleMutation as jest.MockedFunction<typeof useToggleModuleMutation>;
 
 // id is a BIGINT serialized as a STRING (see adminSlice Recipient type).
 const RECIPIENTS = [
@@ -98,18 +93,6 @@ beforeEach(() => {
   mockUseAddRecipient.mockReturnValue([addTrigger, { isLoading: false }] as any);
   mockUseRemoveRecipient.mockReturnValue([removeTrigger, { isLoading: false }] as any);
   mockUseSendNow.mockReturnValue([sendTrigger, { isLoading: false }] as any);
-
-  mockUseGetMe.mockReturnValue(
-    createMockQueryResult({
-      user: { id: 1, username: 'admin', email: 'a@x.com', first_name: 'A', last_name: 'D' },
-      organization: { id: 1, name: 'Org', slug: 'org' },
-      activeModules: ['pharmacy'],
-    }) as any,
-  );
-  mockUseToggleModule.mockReturnValue([
-    jest.fn().mockReturnValue({ unwrap: () => Promise.resolve({ activeModules: ['pharmacy'] }) }),
-    { isLoading: false },
-  ] as any);
 });
 
 describe('Settings — Daily Report Recipients', () => {
