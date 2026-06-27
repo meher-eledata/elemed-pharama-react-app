@@ -10,6 +10,18 @@ export const OPD_CONSTANTS = {
   API_DATE_FORMAT: 'YYYY-MM-DD',
   PAGINATION: { ROWS_PER_PAGE: 10 },
   LAYOUT: { PAGE_PADDING: 3, PAGE_GAP: 2 },
+  // Live-queue polling cadence (ms) — keeps the queue feeling real-time.
+  QUEUE_POLL_MS: 12000,
+  AVAILABILITY: { DEFAULT_SLOT_MIN: 15, DEFAULT_START: '09:00', DEFAULT_END: '17:00' },
+  WEEKDAY_OPTIONS: [
+    { value: 0, label: 'Sunday' },
+    { value: 1, label: 'Monday' },
+    { value: 2, label: 'Tuesday' },
+    { value: 3, label: 'Wednesday' },
+    { value: 4, label: 'Thursday' },
+    { value: 5, label: 'Friday' },
+    { value: 6, label: 'Saturday' },
+  ],
   STATUS_OPTIONS: [
     { value: 'scheduled', label: 'Scheduled' },
     { value: 'checked_in', label: 'Checked in' },

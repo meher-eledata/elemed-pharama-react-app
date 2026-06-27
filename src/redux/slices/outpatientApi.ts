@@ -79,9 +79,10 @@ export interface OutpatientAvailability {
   id: number;
   provider_type: ProviderType;
   provider_id: number;
-  day_of_week?: number;
-  start_time?: string;
-  end_time?: string;
+  weekday?: number | null; // 0=Sun … 6=Sat (recurring)
+  specific_date?: string | null; // 'YYYY-MM-DD' (one-off)
+  start_time?: string; // 'HH:mm'
+  end_time?: string; // 'HH:mm'
   slot_duration_min?: number;
   accepts_walk_ins?: boolean;
   active?: boolean;
@@ -90,7 +91,8 @@ export interface OutpatientAvailability {
 export interface AvailabilityWriteRequest {
   provider_type: ProviderType;
   provider_id: number;
-  day_of_week?: number;
+  weekday?: number | null;
+  specific_date?: string | null;
   start_time?: string;
   end_time?: string;
   slot_duration_min?: number;
@@ -124,6 +126,14 @@ export interface OutpatientAppointment extends AppointmentJoins {
   source: AppointmentSource;
   token_number?: number | null;
   cancel_reason?: string | null;
+  check_in_at?: string | null; // ISO
+  priority?: number | null;
+}
+
+// Queue entry: an appointment plus its computed position in the live queue.
+export interface QueueEntry {
+  position: number;
+  appointment: OutpatientAppointment;
 }
 
 export interface GetAppointmentsParams {
@@ -324,7 +334,7 @@ export const outpatientApi = createApi({
       { id: number; reason?: string }
     >({
       query: ({ id, ...body }) => ({
-        url: `outpatient/walk-ins/${id}/cancel`,
+        url: `outpatient/appointments/${id}/cancel-walk-in`,
         method: 'PUT',
         body,
       }),
@@ -332,7 +342,7 @@ export const outpatientApi = createApi({
     }),
 
     // ----- Queue (B2b) -----
-    getQueue: builder.query<{ queue: OutpatientAppointment[] }, { doctor_id?: number } | void>({
+    getQueue: builder.query<{ queue: QueueEntry[] }, { doctor_id?: number } | void>({
       query: (params) => ({ url: 'outpatient/queue', params: params || undefined }),
       providesTags: ['Queue'],
     }),
@@ -341,16 +351,16 @@ export const outpatientApi = createApi({
       invalidatesTags: ['Queue', 'Appointment'],
     }),
     skipAppointment: builder.mutation<{ appointment: OutpatientAppointment }, { id: number }>({
-      query: ({ id }) => ({ url: `outpatient/queue/${id}/skip`, method: 'PUT' }),
+      query: ({ id }) => ({ url: `outpatient/appointments/${id}/skip`, method: 'PUT' }),
       invalidatesTags: ['Queue', 'Appointment'],
     }),
     noShowAppointment: builder.mutation<{ appointment: OutpatientAppointment }, { id: number }>({
-      query: ({ id }) => ({ url: `outpatient/queue/${id}/no-show`, method: 'PUT' }),
+      query: ({ id }) => ({ url: `outpatient/appointments/${id}/no-show`, method: 'PUT' }),
       invalidatesTags: ['Queue', 'Appointment'],
     }),
     reorderQueue: builder.mutation<
       { queue: OutpatientAppointment[] },
-      { doctor_id: number; order: number[] }
+      { doctor_id: number; ordered_ids: number[] }
     >({
       query: (body) => ({ url: 'outpatient/queue/reorder', method: 'PUT', body }),
       invalidatesTags: ['Queue'],
