@@ -32,6 +32,18 @@ const createStore = () =>
           user: { first_name: 'Pat', last_name: 'Lee', role: 1 },
         },
       ) => state,
+      // Minimal org context so the ModuleSwitcher (rendered in the TopBar) can read
+      // state.org. `loaded: false` → no accessible areas → switcher renders nothing.
+      org: (
+        state = {
+          organization: null,
+          activeModules: [],
+          orgRole: null,
+          moduleRoles: {},
+          canManageRoles: false,
+          loaded: false,
+        },
+      ) => state,
     },
   });
 

@@ -78,14 +78,8 @@ const LoginForm: React.FC = () => {
       // Set credentials before navigating
       dispatch(setCredentials(response));
 
-      const userRole = response?.user?.role;
-      const isAdmin = userRole === 0 || userRole === '0' || String(userRole).toLowerCase() === 'admin';
-
-      if (isAdmin) {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
-      }
+      // Land on the launcher, which routes the user to whatever area(s) they can access.
+      navigate("/home");
     } catch (err) {
       const errMsg =
         (err as any)?.data?.error ||

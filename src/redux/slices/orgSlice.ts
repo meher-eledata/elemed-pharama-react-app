@@ -88,4 +88,11 @@ export const selectHasModuleAccess =
     return orgRole === 'superadmin' || orgRole === 'admin' || !!moduleRoles[moduleKey];
   };
 
+// The viewer can reach the Org Management area when they are an org admin/superadmin.
+export const selectCanManageOrg = (state: { org: OrgState }): boolean =>
+  state.org.orgRole === 'superadmin' || state.org.orgRole === 'admin';
+
+export const selectIsSuperadmin = (state: { org: OrgState }): boolean =>
+  state.org.orgRole === 'superadmin';
+
 export default orgSlice.reducer;

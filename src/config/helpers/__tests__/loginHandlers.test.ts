@@ -58,7 +58,7 @@ describe('loginHandlers', () => {
       expect(mockSetSnackbarOpen).toHaveBeenCalledWith(true);
     });
 
-    it('navigates to dashboard on success for a non-admin user', () => {
+    it('navigates to the launcher home on success for a non-admin user', () => {
       const mockData = {
         token: 'test-token',
         user: {
@@ -82,12 +82,12 @@ describe('loginHandlers', () => {
         setSnackbarOpen: mockSetSnackbarOpen,
       });
 
-      // The handler now navigates on success; non-admin users go to /dashboard
+      // The handler now always lands on /home; the launcher routes from there.
       expect(mockNavigate).toHaveBeenCalledTimes(1);
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+      expect(mockNavigate).toHaveBeenCalledWith('/home');
     });
 
-    it('navigates to admin on success for an admin user', () => {
+    it('navigates to the launcher home on success for an admin user', () => {
       const mockData = {
         token: 'test-token',
         user: {
@@ -112,7 +112,7 @@ describe('loginHandlers', () => {
         setSnackbarOpen: mockSetSnackbarOpen,
       });
 
-      expect(mockNavigate).toHaveBeenCalledWith('/admin');
+      expect(mockNavigate).toHaveBeenCalledWith('/home');
     });
 
     it('handles success with minimal data', () => {

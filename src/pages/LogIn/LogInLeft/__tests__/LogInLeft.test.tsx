@@ -292,7 +292,7 @@ describe('LogInLeft (LoginForm)', () => {
   });
 
   describe('Success Handling', () => {
-    it('navigates to dashboard on successful login', async () => {
+    it('navigates to the launcher home on successful login', async () => {
       const mockUnwrap = jest.fn().mockResolvedValue({
         token: 'test-token',
         user: { id: 1, username: 'testuser', email: 'test@test.com' },
@@ -315,7 +315,7 @@ describe('LogInLeft (LoginForm)', () => {
       }
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+        expect(mockNavigate).toHaveBeenCalledWith('/home');
       }, { timeout: 3000 });
     });
 

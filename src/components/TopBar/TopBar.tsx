@@ -98,6 +98,7 @@ import { useLogoutMutation } from "../../redux/slices/activityApi";
 import { RootState } from "../../redux/store";
 import { useNavigate } from "react-router-dom";
 import { getInitials } from "../../config/helpers/initials";
+import { ModuleSwitcher } from "../ModuleSwitcher/ModuleSwitcher";
 
 import "./TopBar.scss";
 
@@ -161,6 +162,7 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   return (
     <Box className="topbar-container">
       <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center' }}>
+        <ModuleSwitcher />
       </Box>
       <Box className="right-controls" sx={{ marginLeft: "auto" }}>
         {/* Notification bell hidden pending a notifications feature. */}

@@ -129,14 +129,21 @@ const SignUp: React.FC = () => {
 
       const { token, user, organization } = response;
 
-      // Authenticate, then seed org context immediately so the sidebar/guards are
-      // correct without waiting for the /me round-trip.
+      // Authenticate, then seed org context immediately so the sidebar/guards and
+      // the launcher are correct without waiting for the /me round-trip.
       dispatch(setCredentials({ token, user }));
-      dispatch(setOrgContext({ organization, activeModules: modules }));
+      dispatch(
+        setOrgContext({
+          organization,
+          activeModules: modules,
+          orgRole: (user.org_role as any) ?? null,
+          moduleRoles: (user as any).module_roles ?? {},
+          canManageRoles: (user as any).can_manage_roles ?? false,
+        }),
+      );
 
-      const orgRole = String(user.org_role ?? "").toLowerCase();
-      const isAdmin = orgRole === "owner" || orgRole === "admin";
-      navigate(isAdmin ? "/admin" : "/dashboard");
+      // Land on the launcher, which routes the user to whatever area(s) they can access.
+      navigate("/home");
     } catch (err) {
       setSnackbarMessage(extractErrorMessage(err, SIGNUP_LABELS.ERROR_DEFAULT));
       setSnackbarSeverity("error");

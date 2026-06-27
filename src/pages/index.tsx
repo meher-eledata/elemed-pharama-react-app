@@ -30,6 +30,10 @@ import SalesTaxReport from "./Admin/SalesTaxReport";
 import SupplierTaxReport from "./Admin/SupplierTaxReport";
 import HistoricalData from "./Admin/HistoricalData";
 import UserProfile from "./Profile/UserProfile";
+import Launcher from "./Home/Launcher";
+import OrgDashboard from "./Org/OrgDashboard";
+import OrgModules from "./Org/OrgModules";
+import OrgSettings from "./Org/OrgSettings";
 import AppointmentList from "./Outpatient/AppointmentList";
 import BookingFlow from "./Outpatient/BookingFlow";
 import WalkInRegister from "./Outpatient/WalkInRegister";
@@ -40,6 +44,7 @@ import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
 import { RoleGuard } from "../guards/RoleGuard";
 import { ModuleGuard } from "../guards/ModuleGuard";
+import { OrgGuard } from "../guards/OrgGuard";
 
 export const Pages = () => {
   return (
@@ -56,6 +61,9 @@ export const Pages = () => {
 
       {/* App Routes - Protected by Authentication */}
       <Route element={<ProtectedRoute />}>
+        {/* Launcher home — post-login landing; routes single-area users straight in */}
+        <Route path="/home" element={<Launcher />} />
+
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardMain />} />
         </Route>
@@ -98,6 +106,16 @@ export const Pages = () => {
 
         <Route path="/profile" element={<DashboardLayout />}>
           <Route index element={<UserProfile />} />
+        </Route>
+
+        {/* Org Management section - org admin/superadmin only */}
+        <Route element={<OrgGuard />}>
+          <Route path="/org" element={<DashboardLayout />}>
+            <Route index element={<OrgDashboard />} />
+            <Route path="roles" element={<RoleManagement />} />
+            <Route path="modules" element={<OrgModules />} />
+            <Route path="settings" element={<OrgSettings />} />
+          </Route>
         </Route>
 
         {/* Admin Routes - Restricted to 'Admin' roles */}

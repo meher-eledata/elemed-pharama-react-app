@@ -41,10 +41,30 @@ export interface ToggleModuleResponse {
   activeModules: string[];
 }
 
+// GET /api/org — the viewer's organization profile.
+export interface OrgProfile {
+  id: number;
+  name: string;
+  slug: string;
+  status: string;
+  country: string | null;
+  timezone: string | null;
+  currency: string | null;
+  created_at: string;
+}
+
+// PUT /api/org — superadmin only. Updates editable org profile fields.
+export interface UpdateOrgRequest {
+  name?: string;
+  country?: string;
+  timezone?: string;
+  currency?: string;
+}
+
 export const orgApi = createApi({
   reducerPath: 'orgApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Me'] as const,
+  tagTypes: ['Me', 'Org'] as const,
   endpoints: (builder) => ({
     getMe: builder.query<MeResponse, void>({
       query: () => ({
@@ -61,7 +81,27 @@ export const orgApi = createApi({
       }),
       invalidatesTags: ['Me'],
     }),
+    getOrg: builder.query<OrgProfile, void>({
+      query: () => ({
+        url: 'org',
+        method: 'GET',
+      }),
+      providesTags: ['Org'],
+    }),
+    updateOrg: builder.mutation<OrgProfile, UpdateOrgRequest>({
+      query: (body) => ({
+        url: 'org',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Org', 'Me'],
+    }),
   }),
 });
 
-export const { useGetMeQuery, useToggleModuleMutation } = orgApi;
+export const {
+  useGetMeQuery,
+  useToggleModuleMutation,
+  useGetOrgQuery,
+  useUpdateOrgMutation,
+} = orgApi;
