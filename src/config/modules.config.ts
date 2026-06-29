@@ -5,6 +5,7 @@ import EventIcon from '@mui/icons-material/Event';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import QueueIcon from '@mui/icons-material/Queue';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import DollarIcon from '../assets/Dollor.svg';
 import BoxIcon from '../assets/Box.svg';
@@ -87,6 +88,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
       { id: 'opd-appointments', icon: React.createElement(WhiteIcon, null, React.createElement(EventIcon, { sx: { fontSize: 24 } })), alt: 'Appointments', label: 'Appointments', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient', isComponent: true },
       { id: 'opd-book', icon: React.createElement(WhiteIcon, null, React.createElement(EventAvailableIcon, { sx: { fontSize: 24 } })), alt: 'Book', label: 'Book', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/book', isComponent: true },
       { id: 'opd-walk-in', icon: React.createElement(WhiteIcon, null, React.createElement(PeopleAltIcon, { sx: { fontSize: 24 } })), alt: 'Walk-in', label: 'Walk-in', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/walk-in', isComponent: true },
+      { id: 'opd-services', icon: React.createElement(WhiteIcon, null, React.createElement(MedicalServicesIcon, { sx: { fontSize: 24 } })), alt: 'Services', label: 'Services', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/services', isComponent: true },
       { id: 'opd-queue', icon: React.createElement(WhiteIcon, null, React.createElement(QueueIcon, { sx: { fontSize: 24 } })), alt: 'Live Queue', label: 'Live Queue', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/queue', isComponent: true },
       { id: 'opd-slots-config', icon: React.createElement(WhiteIcon, null, React.createElement(AccessTimeIcon, { sx: { fontSize: 24 } })), alt: 'Slot Config', label: 'Slot Config', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/outpatient/slots-config', isComponent: true },
     ],

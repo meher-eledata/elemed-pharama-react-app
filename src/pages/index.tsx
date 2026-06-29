@@ -37,6 +37,7 @@ import OrgSettings from "./Org/OrgSettings";
 import AppointmentList from "./Outpatient/AppointmentList";
 import BookingFlow from "./Outpatient/BookingFlow";
 import WalkInRegister from "./Outpatient/WalkInRegister";
+import ServiceOrders from "./Outpatient/ServiceOrders";
 import LiveQueue from "./Outpatient/LiveQueue";
 import SlotConfig from "./Outpatient/SlotConfig";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
@@ -99,6 +100,7 @@ export const Pages = () => {
             <Route index element={<AppointmentList />} />
             <Route path="book" element={<BookingFlow />} />
             <Route path="walk-in" element={<WalkInRegister />} />
+            <Route path="services" element={<ServiceOrders />} />
             <Route path="queue" element={<LiveQueue />} />
             <Route path="slots-config" element={<SlotConfig />} />
           </Route>
