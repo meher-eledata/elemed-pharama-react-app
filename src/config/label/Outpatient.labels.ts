@@ -286,10 +286,9 @@ export const OPD_LABELS = {
   },
   SLOT_CONFIG: {
     PAGE_TITLE: 'Slot Configuration',
-    SUBTITLE: 'Set provider availability, manage services and link provider accounts.',
+    SUBTITLE: 'Set provider availability and link provider accounts.',
     SECTIONS: {
       AVAILABILITY: { TITLE: 'Provider Availability', DESC: 'Define recurring or one-off availability windows.' },
-      SERVICES: { TITLE: 'Services', DESC: 'Create and manage bookable services.' },
       LINK: { TITLE: 'Link Provider Accounts', DESC: 'Connect a doctor record to a user login.' },
     },
     PROVIDER: 'Doctor',
