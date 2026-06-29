@@ -1,4 +1,9 @@
-import type { AppointmentStatus, AppointmentType, AppointmentSource } from '../../redux/slices/outpatientApi';
+import type {
+  AppointmentStatus,
+  AppointmentType,
+  AppointmentSource,
+  ServiceOrderStatus,
+} from '../../redux/slices/outpatientApi';
 
 // Shared constants for the Outpatient (OPD) module: option lists, chip colors,
 // date formats and layout tokens. Theme primary is #5C17E5.
@@ -60,5 +65,20 @@ export const OPD_CONSTANTS = {
     completed: { bg: '#DCFCE7', color: '#15803D' },
     cancelled: { bg: '#FEE2E2', color: '#B91C1C' },
     no_show: { bg: '#F3F4F6', color: '#6B7280' },
+  } as Record<string, { bg: string; color: string }>,
+  // Status filter tabs for the service-orders worklist ('' = All).
+  SERVICE_ORDER_STATUS_OPTIONS: [
+    { value: '', label: 'All' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+  ] as { value: ServiceOrderStatus | ''; label: string }[],
+  // Chip palette keyed by service-order status.
+  SERVICE_ORDER_STATUS_CHIP: {
+    pending: { bg: '#FEF3C7', color: '#B45309' },
+    scheduled: { bg: '#EDE9FE', color: '#5C17E5' },
+    completed: { bg: '#DCFCE7', color: '#15803D' },
+    cancelled: { bg: '#FEE2E2', color: '#B91C1C' },
   } as Record<string, { bg: string; color: string }>,
 };
