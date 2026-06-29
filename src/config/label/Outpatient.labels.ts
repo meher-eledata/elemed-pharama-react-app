@@ -346,6 +346,7 @@ export const OPD_LABELS = {
       NAME: 'Name',
       DESCRIPTION: 'Description',
       DURATION: 'Default duration (minutes)',
+      DEFAULT_SESSIONS: 'Default sessions',
       ACTIVE: 'Active',
       SAVE: 'Save',
       CANCEL: 'Cancel',
