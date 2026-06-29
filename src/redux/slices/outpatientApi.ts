@@ -53,6 +53,7 @@ export interface OutpatientService {
   name: string;
   description?: string | null;
   duration_min?: number | null;
+  default_sessions?: number | null;
   active: boolean;
 }
 
@@ -60,7 +61,50 @@ export interface CreateServiceRequest {
   name: string;
   description?: string;
   duration_min?: number;
+  default_sessions?: number;
   active?: boolean;
+}
+
+// ----- Service orders (patient-level sessions layer) -----
+export type ServiceOrderStatus = 'pending' | 'scheduled' | 'completed' | 'cancelled';
+
+export interface ServiceOrder {
+  id: number;
+  patient_id: number;
+  service_id: number;
+  status: ServiceOrderStatus;
+  total_sessions: number;
+  completed_sessions: number;
+  remaining_sessions: number;
+  notes?: string | null;
+  cancelled_reason?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  Patient?: { id: number; name: string; phone?: string | null; mrn?: string | null };
+  Service?: { id: number; name: string; duration_min?: number | null; default_sessions?: number | null };
+}
+
+// Appointment summary returned alongside a service order's detail view.
+export interface ServiceOrderAppointment {
+  id: number;
+  scheduled_start: string; // ISO
+  status: AppointmentStatus;
+  service_id: number;
+  token_number?: number | null;
+}
+
+export interface CreateServiceOrderRequest {
+  patient_id: number;
+  service_id: number;
+  total_sessions?: number;
+  notes?: string;
+}
+
+export interface GetServiceOrdersParams {
+  status?: ServiceOrderStatus;
+  patient_id?: number;
+  service_id?: number;
 }
 
 // ----- Providers (doctors) -----
@@ -120,6 +164,7 @@ export interface OutpatientAppointment extends AppointmentJoins {
   appointment_type: AppointmentType;
   doctor_id?: number | null;
   service_id?: number | null;
+  service_order_id?: number | null;
   scheduled_start: string; // ISO
   scheduled_end?: string | null;
   slot_duration_min?: number | null;
@@ -160,6 +205,7 @@ export interface CreateAppointmentRequest {
   appointment_type: AppointmentType;
   doctor_id?: number;
   service_id?: number;
+  service_order_id?: number;
   scheduled_start: string; // ISO or 'YYYY-MM-DD'
   time?: string; // 'HH:mm' when scheduled_start is a date
   slot_duration_min?: number;
@@ -191,7 +237,7 @@ export interface LinkProviderUserRequest {
 export const outpatientApi = createApi({
   reducerPath: 'outpatientApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Appointment', 'Patient', 'Availability', 'Queue'] as const,
+  tagTypes: ['Appointment', 'Patient', 'Availability', 'Queue', 'ServiceOrder'] as const,
   endpoints: (builder) => ({
     // ----- Patients -----
     getPatients: builder.query<OutpatientPatient[], { search?: string } | void>({
@@ -235,6 +281,65 @@ export const outpatientApi = createApi({
     >({
       query: ({ id, ...body }) => ({ url: `outpatient/services/${id}`, method: 'PUT', body }),
       invalidatesTags: ['Availability'],
+    }),
+
+    // ----- Service orders -----
+    getServiceOrders: builder.query<
+      { service_orders: ServiceOrder[] },
+      GetServiceOrdersParams | void
+    >({
+      query: (params) => ({
+        url: 'outpatient/service-orders',
+        params: params || undefined,
+      }),
+      providesTags: ['ServiceOrder'],
+    }),
+    getServiceOrder: builder.query<
+      { service_order: ServiceOrder; appointments: ServiceOrderAppointment[] },
+      number
+    >({
+      query: (id) => `outpatient/service-orders/${id}`,
+      providesTags: ['ServiceOrder'],
+    }),
+    createServiceOrder: builder.mutation<{ service_order: ServiceOrder }, CreateServiceOrderRequest>({
+      query: (body) => ({ url: 'outpatient/service-orders', method: 'POST', body }),
+      invalidatesTags: ['ServiceOrder'],
+    }),
+    updateServiceOrder: builder.mutation<
+      { service_order: ServiceOrder },
+      { id: number; notes?: string; total_sessions?: number }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `outpatient/service-orders/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['ServiceOrder'],
+    }),
+    completeServiceSession: builder.mutation<{ service_order: ServiceOrder }, { id: number }>({
+      query: ({ id }) => ({
+        url: `outpatient/service-orders/${id}/complete-session`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['ServiceOrder', 'Appointment'],
+    }),
+    cancelServiceOrder: builder.mutation<
+      { service_order: ServiceOrder },
+      { id: number; reason?: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `outpatient/service-orders/${id}/cancel`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['ServiceOrder', 'Appointment'],
+    }),
+    reopenServiceOrder: builder.mutation<{ service_order: ServiceOrder }, { id: number }>({
+      query: ({ id }) => ({
+        url: `outpatient/service-orders/${id}/reopen`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['ServiceOrder', 'Appointment'],
     }),
 
     // ----- Providers -----
@@ -301,7 +406,7 @@ export const outpatientApi = createApi({
       CreateAppointmentRequest
     >({
       query: (body) => ({ url: 'outpatient/appointments', method: 'POST', body }),
-      invalidatesTags: ['Appointment', 'Queue', 'Availability'],
+      invalidatesTags: ['Appointment', 'Queue', 'Availability', 'ServiceOrder'],
     }),
     rescheduleAppointment: builder.mutation<
       { appointment: OutpatientAppointment },
@@ -395,6 +500,13 @@ export const {
   useGetServicesQuery,
   useCreateServiceMutation,
   useUpdateServiceMutation,
+  useGetServiceOrdersQuery,
+  useGetServiceOrderQuery,
+  useCreateServiceOrderMutation,
+  useUpdateServiceOrderMutation,
+  useCompleteServiceSessionMutation,
+  useCancelServiceOrderMutation,
+  useReopenServiceOrderMutation,
   useGetProvidersQuery,
   useLinkProviderUserMutation,
   useGetAvailabilityQuery,
