@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Typography,
@@ -18,21 +19,27 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import DoneIcon from '@mui/icons-material/Done';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { StandardButton } from '../../components/Common';
 import PatientPicker from '../../components/Outpatient/PatientPicker';
+import ServicesSection from '../../components/Outpatient/ServicesSection';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
 import { OPD_LABELS } from '../../config/label/Outpatient.labels';
 import { OPD_CONSTANTS } from '../../config/constants/Outpatient.constants';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
+import { selectOrgRole, selectIsSuperadmin } from '../../redux/slices/orgSlice';
 import {
   useGetServiceOrdersQuery,
   useGetServiceOrderQuery,
@@ -88,8 +95,21 @@ const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
   </Box>
 );
 
+// Accordion styling shared with Slot Config for visual consistency.
+const sectionSx = {
+  borderRadius: '12px',
+  boxShadow: '0px 1px 3px rgba(0,0,0,0.08)',
+  backgroundColor: '#FFFFFF',
+  '&:before': { display: 'none' },
+  '&.Mui-expanded': { margin: 0 },
+} as const;
+
 const ServiceOrders: React.FC = () => {
   const navigate = useNavigate();
+
+  const orgRole = useSelector(selectOrgRole);
+  const isSuperadmin = useSelector(selectIsSuperadmin);
+  const isAdmin = orgRole === 'admin' || isSuperadmin;
 
   const [tab, setTab] = useState<ServiceOrderStatus | ''>('');
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
@@ -275,6 +295,21 @@ const ServiceOrders: React.FC = () => {
           {L.NEW_BUTTON}
         </Button>
       </Box>
+
+      {/* Manage services (admin only): collapsed by default so the worklist stays the focus. */}
+      {isAdmin && (
+        <Accordion sx={sectionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 16 }}>{L.MANAGE_SERVICES_TITLE}</Typography>
+              <Typography sx={{ fontSize: 13, color: '#6B7280' }}>{L.MANAGE_SERVICES_DESC}</Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <ServicesSection notify={notify} />
+          </AccordionDetails>
+        </Accordion>
+      )}
 
       <Tabs
         value={tab}

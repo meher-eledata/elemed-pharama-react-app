@@ -119,6 +119,8 @@ export const OPD_LABELS = {
     PAGE_TITLE: 'Service Orders',
     SUBTITLE: 'Track patient service orders and their sessions.',
     NEW_BUTTON: 'New Service Order',
+    MANAGE_SERVICES_TITLE: 'Manage Services',
+    MANAGE_SERVICES_DESC: 'Create and manage bookable services and their availability.',
     TABS: {
       ALL: 'All',
       PENDING: 'Pending',
