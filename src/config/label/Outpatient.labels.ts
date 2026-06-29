@@ -108,6 +108,7 @@ export const OPD_LABELS = {
       BOOK: 'Confirm booking',
     },
     NAV: { BACK: 'Back', NEXT: 'Next' },
+    SERVICE_CONTEXT_BANNER: 'Booking a session for {service}',
     MESSAGES: {
       SUCCESS: 'Appointment booked.',
       ERROR: 'Failed to book appointment. Please try again.',

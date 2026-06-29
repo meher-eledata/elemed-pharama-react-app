@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -34,14 +34,26 @@ import {
 const L = OPD_LABELS.BOOKING;
 const STEPS = [L.STEPS.PATIENT, L.STEPS.CATEGORY, L.STEPS.PROVIDER, L.STEPS.CONFIRM];
 
+// Optional navigation state passed when booking a session for a service order.
+interface ServiceOrderContext {
+  serviceOrderId?: number;
+  patient?: OutpatientPatient | null;
+  serviceId?: number;
+  serviceName?: string;
+}
+
 const BookingFlow: React.FC = () => {
   const navigate = useNavigate();
+  const ctx = (useLocation().state as ServiceOrderContext | null) ?? null;
+  const serviceOrderId = ctx?.serviceOrderId;
+  // Service-order mode: lock the flow to the order's service.
+  const serviceMode = serviceOrderId != null;
   const [activeStep, setActiveStep] = useState(0);
 
-  const [patient, setPatient] = useState<OutpatientPatient | null>(null);
-  const [apptType, setApptType] = useState<AppointmentType>('consultation');
+  const [patient, setPatient] = useState<OutpatientPatient | null>(serviceMode ? ctx?.patient ?? null : null);
+  const [apptType, setApptType] = useState<AppointmentType>(serviceMode ? 'service' : 'consultation');
   const [doctorId, setDoctorId] = useState<number | ''>('');
-  const [serviceId, setServiceId] = useState<number | ''>('');
+  const [serviceId, setServiceId] = useState<number | ''>(serviceMode && ctx?.serviceId != null ? ctx.serviceId : '');
   const [date, setDate] = useState<Dayjs | null>(null);
   const [slotStart, setSlotStart] = useState('');
 
@@ -98,11 +110,12 @@ const BookingFlow: React.FC = () => {
         ...(apptType === 'consultation'
           ? { doctor_id: doctorId as number }
           : { service_id: serviceId as number }),
+        ...(serviceOrderId != null ? { service_order_id: serviceOrderId } : {}),
         scheduled_start: date.format(OPD_CONSTANTS.API_DATE_FORMAT),
         time: slotStart,
       }).unwrap();
       notify(L.MESSAGES.SUCCESS, 'success');
-      navigate('/outpatient');
+      navigate(serviceMode ? '/outpatient/services' : '/outpatient');
     } catch (err: any) {
       logError(err, 'BookingFlow.createAppointment');
       if (err?.status === 409) {
@@ -121,6 +134,12 @@ const BookingFlow: React.FC = () => {
       <Typography variant="h5" fontWeight={700}>
         {L.PAGE_TITLE}
       </Typography>
+
+      {serviceMode && (
+        <Alert severity="info" sx={{ maxWidth: 720 }}>
+          {L.SERVICE_CONTEXT_BANNER.replace('{service}', ctx?.serviceName ?? '')}
+        </Alert>
+      )}
 
       <Stepper activeStep={activeStep} alternativeLabel>
         {STEPS.map((label) => (
@@ -166,7 +185,7 @@ const BookingFlow: React.FC = () => {
                 exclusive
                 value={apptType}
                 onChange={(_e, v) => {
-                  if (v) {
+                  if (v && !serviceMode) {
                     setApptType(v);
                     setDoctorId('');
                     setServiceId('');
@@ -177,6 +196,7 @@ const BookingFlow: React.FC = () => {
               >
                 <ToggleButton
                   value="consultation"
+                  disabled={serviceMode}
                   sx={{
                     textTransform: 'none',
                     '&.Mui-selected': { backgroundColor: '#EDE9FE', color: OPD_CONSTANTS.THEME.PRIMARY },
@@ -224,6 +244,7 @@ const BookingFlow: React.FC = () => {
                 select
                 size="small"
                 value={serviceId}
+                disabled={serviceMode}
                 onChange={(e) => {
                   setServiceId(Number(e.target.value));
                   resetProviderStep();
