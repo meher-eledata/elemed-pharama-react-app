@@ -21,6 +21,8 @@ export interface MeOrganization {
   id: number;
   name: string;
   slug: string;
+  // Base64 data URL of the org's logo, or null when unset.
+  logo_url?: string | null;
 }
 
 export interface MeResponse {
@@ -51,6 +53,8 @@ export interface OrgProfile {
   timezone: string | null;
   currency: string | null;
   created_at: string;
+  // Base64 data URL of the org's logo, or null when unset.
+  logo_url?: string | null;
 }
 
 // PUT /api/org — superadmin only. Updates editable org profile fields.
@@ -96,6 +100,23 @@ export const orgApi = createApi({
       }),
       invalidatesTags: ['Org', 'Me'],
     }),
+    // PUT /api/org/logo — superadmin only. `image` is a data URL.
+    updateOrgLogo: builder.mutation<OrgProfile, { image: string }>({
+      query: (body) => ({
+        url: 'org/logo',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Org', 'Me'],
+    }),
+    // DELETE /api/org/logo — superadmin only. Clears the org logo.
+    deleteOrgLogo: builder.mutation<OrgProfile, void>({
+      query: () => ({
+        url: 'org/logo',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Org', 'Me'],
+    }),
   }),
 });
 
@@ -104,4 +125,6 @@ export const {
   useToggleModuleMutation,
   useGetOrgQuery,
   useUpdateOrgMutation,
+  useUpdateOrgLogoMutation,
+  useDeleteOrgLogoMutation,
 } = orgApi;
