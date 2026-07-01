@@ -34,6 +34,7 @@ import Launcher from "./Home/Launcher";
 import OrgDashboard from "./Org/OrgDashboard";
 import OrgModules from "./Org/OrgModules";
 import OrgSettings from "./Org/OrgSettings";
+import OrgLabel from "./Org/OrgLabel";
 import AppointmentList from "./Outpatient/AppointmentList";
 import BookingFlow from "./Outpatient/BookingFlow";
 import WalkInRegister from "./Outpatient/WalkInRegister";
@@ -117,6 +118,7 @@ export const Pages = () => {
             <Route path="roles" element={<RoleManagement />} />
             <Route path="modules" element={<OrgModules />} />
             <Route path="settings" element={<OrgSettings />} />
+            <Route path="label" element={<OrgLabel />} />
           </Route>
         </Route>
 
