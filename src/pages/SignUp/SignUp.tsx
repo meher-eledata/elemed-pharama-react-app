@@ -21,7 +21,7 @@ import { MODULES, ALL_MODULE_KEYS, ModuleKey } from "../../config/modules.config
 import { SIGNUP_LABELS } from "../../config/label/signupLabels";
 import { SIGNUP_CONSTANTS } from "../../config/constants/signupConstants";
 import { extractErrorMessage } from "../../utils/errorUtils";
-import bgWhiteIcon from "../../assets/BG_White.svg";
+import elemedLogo from "../../assets/ElemedLogo.svg";
 
 const REQUIRED_MODULE = SIGNUP_CONSTANTS.REQUIRED_MODULE_KEY;
 
@@ -174,7 +174,7 @@ const SignUp: React.FC = () => {
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem", mb: "0.5rem" }}>
-          <img src={bgWhiteIcon} alt="Logo" style={{ height: "100px", width: "auto" }} />
+          <img src={elemedLogo} alt="Elemed" style={{ height: "100px", width: "auto" }} />
           <Typography
             sx={{
               fontFamily: "'Lexend', sans-serif",
@@ -185,7 +185,7 @@ const SignUp: React.FC = () => {
               whiteSpace: "nowrap",
             }}
           >
-            Elite  Pharmacy
+            Elemed
           </Typography>
         </Box>
         <Typography sx={{ fontWeight: 700, fontSize: "1.25rem", color: "#1A212B" }}>
