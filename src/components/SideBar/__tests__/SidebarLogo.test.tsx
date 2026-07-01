@@ -13,19 +13,27 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+// The sidebar brand now sources the org logo/name via useGetMeQuery. Mock it so
+// the test controls the org context without a live network layer.
+let mockMe: any = { organization: null };
+jest.mock('../../../redux/slices/orgApi', () => ({
+  ...jest.requireActual('../../../redux/slices/orgApi'),
+  useGetMeQuery: () => ({ data: mockMe }),
+}));
+
 import { Sidebar } from '../SideBar';
 
-const createStore = (user: any) =>
+const createStore = () =>
   configureStore({
     reducer: {
-      auth: (state = { token: 'JWT123', isAuthenticated: true, user }) => state,
+      auth: (state = { token: 'JWT123', isAuthenticated: true, user: { role: 1 } }) => state,
       org: (state = { organization: null, activeModules: [], loaded: false }) => state,
     },
   });
 
-const renderSidebar = (user: any) =>
+const renderSidebar = () =>
   render(
-    <Provider store={createStore(user)}>
+    <Provider store={createStore()}>
       <MemoryRouter>
         <Sidebar />
       </MemoryRouter>
@@ -36,24 +44,25 @@ const clickLogo = () => fireEvent.click(screen.getByAltText('Logo'));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockMe = { organization: null };
 });
 
-describe('Sidebar logo — role-aware navigation', () => {
-  it('navigates an admin (role 0) to /admin', () => {
-    renderSidebar({ role: 0 });
+describe('Sidebar logo — org brand + home navigation', () => {
+  it('navigates to /home when the logo is clicked', () => {
+    renderSidebar();
     clickLogo();
-    expect(mockNavigate).toHaveBeenCalledWith('/admin');
+    expect(mockNavigate).toHaveBeenCalledWith('/home');
   });
 
-  it('navigates an admin (role "admin") to /admin', () => {
-    renderSidebar({ role: 'admin' });
-    clickLogo();
-    expect(mockNavigate).toHaveBeenCalledWith('/admin');
+  it('shows the default Elemed logo when the org has none', () => {
+    renderSidebar();
+    // fileMock returns a stub path; the default asset import resolves to it.
+    expect(screen.getByAltText('Logo')).toBeInTheDocument();
   });
 
-  it('navigates a pharmacist (role 1) to /dashboard', () => {
-    renderSidebar({ role: 1 });
-    clickLogo();
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+  it('uses the org logo_url as the image source when present', () => {
+    mockMe = { organization: { id: 1, name: 'Acme', slug: 'acme', logo_url: 'data:image/png;base64,AAA' } };
+    renderSidebar();
+    expect(screen.getByAltText('Logo')).toHaveAttribute('src', 'data:image/png;base64,AAA');
   });
 });

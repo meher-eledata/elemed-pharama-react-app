@@ -19,6 +19,13 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => navigateSpy,
 }));
 
+// The sidebar brand reads the org via useGetMeQuery; mock it so the minimal
+// test store (no orgApi reducer/middleware) does not need the live query layer.
+jest.mock('../../../redux/slices/orgApi', () => ({
+  ...jest.requireActual('../../../redux/slices/orgApi'),
+  useGetMeQuery: () => ({ data: { organization: null } }),
+}));
+
 // Minimal auth store — Sidebar only reads state.auth.user.
 const createStore = (user: any = { id: 1, role: 0 }) =>
   configureStore({
@@ -115,13 +122,14 @@ describe('Sidebar', () => {
   });
 
   describe('org sidebar (on an /org/* path)', () => {
-    it('shows the org nav — Org Home, Role Management, Modules, Organization Settings', () => {
+    it('shows the org nav — Org Home, Role Management, Modules, Organization Settings, Org Label', () => {
       renderSidebar('/org');
 
       expect(screen.getByText('Org Home')).toBeInTheDocument();
       expect(screen.getByText('Role Management')).toBeInTheDocument();
       expect(screen.getByText('Modules')).toBeInTheDocument();
       expect(screen.getByText('Organization Settings')).toBeInTheDocument();
+      expect(screen.getByText('Org Label')).toBeInTheDocument();
       // No pharmacy/outpatient cross-mixing.
       expect(screen.queryByText('Sales')).not.toBeInTheDocument();
       expect(screen.queryByText('Appointments')).not.toBeInTheDocument();

@@ -2,10 +2,9 @@ import './Sidebar.scss';
 import { Box, IconButton, Typography, Divider } from '@mui/material';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from "react-router-dom";
-import { useSelector } from 'react-redux';
 import { List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import ArrowIcon from '../../assets/Arrow.svg';
-import BgWhiteIcon from '../../assets/BG_White.svg';
+import ElemedLogo from '../../assets/ElemedLogo.svg';
 import CheckBoxIcon from '../../assets/CheckBox.svg';
 import GearIcon from '../../assets/Gear.svg';
 import GroupIcon from '../../assets/Group.svg';
@@ -24,6 +23,8 @@ import BusinessIcon from '@mui/icons-material/Business';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import { useGetMeQuery } from '../../redux/slices/orgApi';
 import { MODULES } from '../../config/modules.config';
 import { currentAreaKeyFromPath } from '../../config/areas.config';
 
@@ -95,7 +96,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   }, [open, onOpenChange]);
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useSelector((state: any) => state.auth.user);
+  // Org identity (logo + name) for the top-left brand. Falls back to the Elemed
+  // default when the org has no custom logo.
+  const { data: me } = useGetMeQuery();
+  const orgLogo = me?.organization?.logo_url || ElemedLogo;
+  const orgName = me?.organization?.name || 'Elemed';
 
   // The current top-level area (pharmacy / outpatient / org) determines which nav
   // set the sidebar shows. Areas are switched via the TopBar ModuleSwitcher /
@@ -129,6 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
     { id: 'org-roles', icon: <WhiteIcon><GroupsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Role Management', label: 'Role Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/roles', isComponent: true },
     { id: 'org-modules', icon: <WhiteIcon><ViewModuleOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Modules', label: 'Modules', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/modules', isComponent: true },
     { id: 'org-settings', icon: <WhiteIcon><SettingsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Organization Settings', label: 'Organization Settings', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/settings', isComponent: true },
+    { id: 'org-label', icon: <WhiteIcon><ImageOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Org Label', label: 'Org Label', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/label', isComponent: true },
   ], []);
 
   const sidebarItems = useMemo(() => {
@@ -216,19 +222,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
           }}
         >
           <img
-            src={BgWhiteIcon}
+            src={orgLogo}
             alt="Logo"
-            style={{ width: '2.5rem', height: '2.5rem', cursor: 'pointer' }}
+            style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain', cursor: 'pointer' }}
             onClick={(e) => {
-              // Role-aware home navigation. Stop propagation so the click does NOT
-              // also fire the surrounding Box's sidebar open/close toggle.
+              // Always land on the launcher home. Stop propagation so the click does
+              // NOT also fire the surrounding Box's sidebar open/close toggle.
               e.stopPropagation();
-              const role = user?.role;
-              const isAdmin =
-                role === 0 ||
-                role === '0' ||
-                String(role).toLowerCase() === 'admin';
-              navigate(isAdmin ? '/admin' : '/dashboard');
+              navigate('/home');
             }}
           />
           {open && (
@@ -243,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
                 color: '#5C17E5'
               }}
             >
-              Elite  pharmacy
+              {orgName}
             </Typography>
           )}
         </Box>
