@@ -1,5 +1,5 @@
-export const ORDER_RECEIVE_TITLE = "Order Receive";
-export const ADD_RECEIVE_BUTTON = "Add Receive";
+export const ORDER_RECEIVE_TITLE = "Stock Receipt History";
+export const ADD_RECEIVE_BUTTON = "Receive Stock";
 
 export const TAB_CURRENT_ORDER = "Current Order";
 export const TAB_RECEIVE_HISTORY = "Receive History";
