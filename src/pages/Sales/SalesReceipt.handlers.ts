@@ -13,6 +13,12 @@ export const validateCustomerData = (customerData: any): { isValid: boolean; err
   if (!customerData.mobileNumber || !customerData.mobileNumber.trim()) {
     return { isValid: false, error: 'Phone number is required' };
   }
+  if (!/^\d{10}$/.test(customerData.mobileNumber.trim())) {
+    return { isValid: false, error: 'Mobile number must be exactly 10 digits' };
+  }
+  if (!customerData.billingAddress || !customerData.billingAddress.trim()) {
+    return { isValid: false, error: 'Billing address is required' };
+  }
 
   if (customerData.emailId && customerData.emailId.trim()) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

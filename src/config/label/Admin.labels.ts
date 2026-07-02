@@ -1,15 +1,15 @@
 export const ADMIN_LABELS = {
   PAGE_TITLE: 'Hello, Guest!',
-  SUBTITLE: 'Access key administrative functions and system insights..',
+  SUBTITLE: 'Access key administrative functions and system insights.',
   SECTIONS: {
     DASHBOARD: {
       TITLE: 'Pharmacist access',
-      DESC: 'Access the overall application dashboard with comprehensive insights and metrics.',
+      DESC: 'Switch to pharmacist access and operate pharmacy functions directly',
       ACTION: 'Go to Pharmacist access',
     },
     USER_MGMT: {
       TITLE: 'User Account Management',
-      DESC: 'Oversee user profiles, roles, permissions, s controls within the system.',
+      DESC: 'Manage user profiles, roles & permissions',
       ACTION: 'Manage Users',
     },
     REPORTS: {

@@ -1,0 +1,58 @@
+name: Deploy Dev (frontend)
+
+# Auto-deploys the frontend to the DEV ECS service whenever the `developer`
+# branch updates (direct push or PR merge). DEV-ONLY: the IAM role this assumes
+# can only be assumed from refs/heads/developer of this repo (see dev_deployment
+# OIDC runbook), so this workflow can never touch the production service.
+on:
+  push:
+    branches: [developer]
+  workflow_dispatch:        # allow manual re-deploy from the Actions tab
+
+concurrency:
+  group: deploy-dev-frontend
+  cancel-in-progress: false
+
+permissions:
+  id-token: write           # required for OIDC -> AWS
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 187691954418.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: elemed-frontend-dev
+  ECS_CLUSTER: elemed-cluster
+  ECS_SERVICE: elemed-frontend-dev-service
+  AWS_ROLE_ARN: arn:aws:iam::187691954418:role/elemed-github-actions-dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        # VITE_API_BASE_URL=/api/ is baked in at build time (same as the manual deploy).
+        run: |
+          docker build \
+            --build-arg VITE_API_BASE_URL=/api/ \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" \
+            .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
+
+      - name: Force a new ECS deployment
+        run: aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --force-new-deployment
+
+      - name: Wait for the service to stabilize
+        run: aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"

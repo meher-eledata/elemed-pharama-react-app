@@ -256,6 +256,7 @@ export const executeSave = async ({
       customer_id: customerId,
       customer_name: customerName,
       customer_mobile: customerMobile,
+      customer_phone: customerMobile, // Snapshotted onto the invoice alongside customer_id
       customer_city: customerCity,
       doctor_id: doctorId,
       doctor_name: doctorName,
@@ -353,6 +354,7 @@ export const executeSave = async ({
           : (editModeData?.customer_id && editModeData.customer_id > 0 ? editModeData.customer_id : null), // null = keep existing backend value, never overwrite with 0
         customer_name: customerName,
         customer_mobile: customerMobile,
+        customer_phone: customerMobile, // Snapshotted onto the invoice alongside customer_id
         customer_city: customerCity,
         doctor_id: doctorId,
         doctor_name: doctorName,

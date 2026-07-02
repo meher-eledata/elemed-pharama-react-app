@@ -1,0 +1,59 @@
+export const SALES_TAX_REPORT_LABELS = {
+  PAGE: {
+    TITLE: 'Sales Tax Report',
+    SUBTITLE:
+      'GST breakdown per sale line (CGST / SGST / IGST) with range-level aggregates. Selling price is tax-inclusive.',
+    DOWNLOAD_CSV: 'Download CSV',
+    CSV_FILENAME_PREFIX: 'sales_tax_report',
+  },
+  DISCOVERY_CARD: {
+    TITLE: 'Sales Tax Report',
+    DESCRIPTION:
+      'Per-line GST extraction (CGST / SGST / IGST) plus prominent taxable, tax and sales aggregates.',
+    ACTION: 'View Report',
+  },
+  FILTER: {
+    PRODUCT_LABEL: 'Product',
+    PRODUCT_ALL: 'All Products',
+    PATIENT_TYPE_LABEL: 'Patient Type',
+    PATIENT_TYPE_ALL: 'All Patient Types',
+    PATIENT_TYPE_INPATIENT: 'In Patient',
+    PATIENT_TYPE_OUTPATIENT: 'Out Patient',
+  },
+  SUMMARY: {
+    TITLE: 'Range Aggregates',
+    TOTAL_TAXABLE: 'Total Taxable',
+    TOTAL_CGST: 'Total CGST',
+    TOTAL_SGST: 'Total SGST',
+    TOTAL_IGST: 'Total IGST',
+    TOTAL_TAX: 'Total Tax',
+    TOTAL_SALES: 'Total Sales',
+    TOTAL_MRP_VALUE: 'Total MRP Value',
+    LINES: 'Lines',
+    PRODUCTS: 'Products',
+    INVOICES: 'Invoices',
+  },
+  TABLE: {
+    INVOICE_NUMBER: 'Invoice #',
+    SALE_DATE: 'Sale Date',
+    PRODUCT: 'Product',
+    CODE: 'Code',
+    HSN: 'HSN',
+    BATCH_NUMBER: 'Batch #',
+    QTY: 'Qty',
+    MRP: 'MRP',
+    SP: 'SP',
+    TAXABLE_VALUE: 'Taxable Value',
+    CGST_RATE: 'CGST%',
+    SGST_RATE: 'SGST%',
+    IGST_RATE: 'IGST%',
+    CGST_AMT: 'CGST ₹',
+    SGST_AMT: 'SGST ₹',
+    IGST_AMT: 'IGST ₹',
+    TOTAL_TAX: 'Total Tax',
+    LINE_TOTAL: 'Line Total',
+  },
+  EMPTY_TABLE: 'No sales for the selected period.',
+} as const;
+
+export type SalesTaxReportLabels = typeof SALES_TAX_REPORT_LABELS;

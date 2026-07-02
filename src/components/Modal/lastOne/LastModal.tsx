@@ -465,7 +465,7 @@ import { styled } from '@mui/material/styles';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CloseIcon from '@mui/icons-material/Close';
 import { StandardButton } from '../../Common';
-import { PharmaTableRow } from "../../../pages/Recieve/OrderDetails";
+import { PharmaTableRow } from "../../../pages/Recieve/types";
 
 // Inline SVGs for self-contained component
 const ModalIconSVG = () => (
@@ -566,7 +566,9 @@ const LastModal: React.FC<LastModalProps> = ({
             productId: productName || 'Unknown Product',
             qtyReceived: Number(qtyReceived),
             qtyFree: Number(qtyFree),
-            batch: batch,
+            batchNumber: batch,
+            batch: null,
+            expiryDate: null,
             pp: Number(pp),
             sp: Number(sp),
             mrp: Number(mrp),

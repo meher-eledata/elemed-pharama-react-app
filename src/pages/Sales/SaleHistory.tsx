@@ -4,6 +4,7 @@ import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip,
 import { StandardButton } from '../../components/Common';
 import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import dayjs, { Dayjs } from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
@@ -11,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,8 +29,47 @@ import bgWhiteIcon from '../../assets/BG_White.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
-import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
+import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
+import { clearCart, clearFormData } from '../../redux/slices/cartSlice';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
+
+// Load the customParseFormat plugin once at module scope so strict format strings
+// (e.g. 'DD/MM/YYYY') are honored. Without it dayjs silently ignores the format and
+// falls back to the native parser, which can't read DD/MM/YYYY → Invalid Date.
+dayjs.extend(customParseFormat);
+
+// Robust multi-format invoice-date parser shared by the date FILTER and SORT.
+// Handles DD/MM/YYYY, YYYY-MM-DD, and standard parses like "20 Mar 2026".
+// Returns a timestamp (ms); 0 for unparseable/empty values so callers can guard.
+const parseInvoiceDate = (val: unknown): number => {
+  if (!val) return 0;
+  const strVal = String(val).trim();
+
+  // 1. Try explicit DD/MM/YYYY or YYYY-MM-DD FIRST to prevent US date format mixups.
+  const parts = strVal.split(/[/-]/);
+  if (parts.length === 3) {
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    const p2 = parseInt(parts[2], 10);
+
+    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+      // If format is YYYY-MM-DD
+      if (p0 > 1000) {
+        return new Date(p0, p1 - 1, p2).getTime();
+      }
+      // Else assume DD/MM/YYYY
+      return new Date(p2, p1 - 1, p0).getTime();
+    }
+  }
+
+  // 2. Try standard Date parse (works for formats like "20 Mar 2026").
+  const stdTime = Date.parse(strVal);
+  if (!isNaN(stdTime)) return stdTime;
+
+  // 3. Fallback to dayjs.
+  const d = dayjs(strVal);
+  return d.isValid() ? d.valueOf() : 0;
+};
 
 // Invoice table has no payment_mode column — derive it from the payments array.
 // 1 active payment → that payment's method (mapped to dropdown casing).
@@ -120,6 +160,7 @@ export interface InvoiceDetails {
 export default function SaleHistory() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
 
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -684,7 +725,10 @@ export default function SaleHistory() {
 
     if (dateRange[0] || dateRange[1]) {
       filtered = filtered.filter(item => {
-        const itemDate = dayjs(item.invoiceDate, 'DD/MM/YYYY');
+        // Robust multi-format parse (DD/MM/YYYY, YYYY-MM-DD, "20 Mar 2026", …).
+        const ts = parseInvoiceDate(item.invoiceDate);
+        if (!ts) return false; // Unparseable rows are excluded from a date-bounded filter.
+        const itemDate = dayjs(ts);
         const startDate = dateRange[0];
         const endDate = dateRange[1];
 
@@ -749,38 +793,10 @@ export default function SaleHistory() {
       // CRITICAL: Special handling for date sorting
       // Handle string comparison on various date formats (e.g. "20/03/2026", "2026-03-20", "20 Mar 2026")
       if (activeSortKey === 'invoiceDate') {
-        const parseDate = (val: any) => {
-          if (!val) return 0;
-          const strVal = String(val).trim();
-
-          // 1. Try explicit DD/MM/YYYY or YYYY-MM-DD FIRST to prevent US date format mixups
-          const parts = strVal.split(/[\/\-]/);
-          if (parts.length === 3) {
-            let p0 = parseInt(parts[0], 10);
-            let p1 = parseInt(parts[1], 10);
-            let p2 = parseInt(parts[2], 10);
-
-            if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
-              // If format is YYYY-MM-DD
-              if (p0 > 1000) {
-                return new Date(p0, p1 - 1, p2).getTime();
-              }
-              // Else assume DD/MM/YYYY
-              return new Date(p2, p1 - 1, p0).getTime();
-            }
-          }
-
-          // 2. Try standard Date parse (works for format like "20 Mar 2026")
-          const stdTime = Date.parse(strVal);
-          if (!isNaN(stdTime)) return stdTime;
-
-          // 3. Fallback to dayjs
-          const d = dayjs(strVal);
-          return d.isValid() ? d.valueOf() : 0;
-        };
-
-        const aDate = parseDate(aValue);
-        const bDate = parseDate(bValue);
+        // Shared robust parser (see parseInvoiceDate at module scope) — same
+        // multi-format handling the date filter uses.
+        const aDate = parseInvoiceDate(aValue);
+        const bDate = parseInvoiceDate(bValue);
 
         if (!isNaN(aDate) && !isNaN(bDate) && aDate !== bDate) {
           return activeSortDirection === 'asc' ? aDate - bDate : bDate - aDate;
@@ -911,55 +927,55 @@ export default function SaleHistory() {
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: '0.125rem', // 2px = 0.125rem
+            justifyContent: 'center',
             minHeight: '1.5rem', // 24px = 1.5rem
             width: '100%',
             position: 'relative',
-            whiteSpace: 'nowrap',
-            flexWrap: 'nowrap'
           }}>
-            <VisibilityIcon
-              sx={{
-                fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
-                color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
-                cursor: 'pointer',
-                padding: '0.125rem', // 2px = 0.125rem
-                borderRadius: '0.25rem', // 4px = 0.25rem
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                  color: '#666'
-                }
-              }}
-              onClick={() => handleViewInvoice(item.id)}
-            />
-            {isDeleted && (
-              <Tooltip title="Invoice is deleted" arrow placement="top">
-                <BlockIcon
-                  sx={{
-                    fontSize: '1rem', // 16px
-                    color: '#DC2626',
-                    flexShrink: 0,
-                    marginLeft: '0.25rem', // 4px
-                  }}
-                />
-              </Tooltip>
-            )}
+            <Box sx={{ position: 'absolute', left: 0, display: 'flex', alignItems: 'center' }}>
+              <VisibilityIcon
+                sx={{
+                  fontSize: SALES_HISTORY_CONSTANTS.ICONS.VIEW_SIZE,
+                  color: SALES_HISTORY_CONSTANTS.ICONS.VIEW_COLOR,
+                  cursor: 'pointer',
+                  padding: '0.125rem', // 2px = 0.125rem
+                  borderRadius: '0.25rem', // 4px = 0.25rem
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                    color: '#666'
+                  }
+                }}
+                onClick={() => handleViewInvoice(item.id)}
+              />
+            </Box>
+
             <span style={{
-              marginLeft: '0.25rem', // 4px = 0.25rem
               fontWeight: 500,
-              fontSize: '0.8125rem', // 13px — keeps long numbers + icon on one line
+              fontSize: '0.8125rem', // 13px
               color: '#1A212B',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              padding: '0 1.5rem' // space for left and right icons
             }}>
               {item.invoiceNumber}
             </span>
+
+            <Box sx={{ position: 'absolute', right: 0, display: 'flex', alignItems: 'center' }}>
+              {isDeleted && (
+                <Tooltip title="Invoice is deleted" arrow placement="top">
+                  <BlockIcon
+                    sx={{
+                      fontSize: '1rem', // 16px
+                      color: '#DC2626',
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Box>
           </Box>
         );
       },
@@ -973,6 +989,7 @@ export default function SaleHistory() {
       key: 'customerName',
       header: SALES_HISTORY_LABELS.TABLE.CUSTOMER_NAME,
       sortable: true,
+      columnWidth: '180px',
     },
     {
       key: 'customerMobile',
@@ -994,12 +1011,13 @@ export default function SaleHistory() {
       key: 'username',
       header: SALES_HISTORY_LABELS.TABLE.USERNAME,
       sortable: true,
+      columnWidth: '115px',
     },
     {
       key: 'totalAmount',
-      header: SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT,
+      header: `${SALES_HISTORY_LABELS.TABLE.TOTAL_AMOUNT}`,
       sortable: true,
-      columnWidth: '110px',
+      columnWidth: '130px',
       render: (item) => {
         // Round to 2 decimal places to avoid floating point ghost paise values
         // e.g. 11.06 - 11.06 can give 0.0000000001 instead of 0 in JavaScript
@@ -1077,6 +1095,11 @@ export default function SaleHistory() {
         const returnStatus = getReturnStatus(item);
         const isFullyReturned = returnStatus.status === 'full';
         const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
+        // Invoices with ANY return can no longer be edited (backend enforces this with a 409).
+        const isEditDisabled = isDeleted || !!item.hasReturn;
+        const editDisabledTooltip = isDeleted
+          ? 'Invoice is deleted'
+          : 'Invoices with a return cannot be edited';
 
         return (
           <Box sx={{
@@ -1085,21 +1108,21 @@ export default function SaleHistory() {
             alignItems: 'center',
             gap: '0.5rem' // 8px = 0.5rem
           }}>
-            <Tooltip title={isDeleted ? 'Invoice is deleted' : 'Edit'} arrow placement="top">
+            <Tooltip title={isEditDisabled ? editDisabledTooltip : 'Edit'} arrow placement="top">
               <EditIcon
                 sx={{
                   fontSize: '1.5rem', // 24px = 1.5rem
-                  color: isDeleted ? '#9CA3AF' : '#000000',
-                  cursor: isDeleted ? 'not-allowed' : 'pointer',
+                  color: isEditDisabled ? '#9CA3AF' : '#000000',
+                  cursor: isEditDisabled ? 'not-allowed' : 'pointer',
                   padding: '0.25rem', // 4px = 0.25rem
                   borderRadius: '0.25rem', // 4px = 0.25rem
-                  opacity: isDeleted ? 0.5 : 1,
-                  '&:hover': isDeleted ? {} : {
+                  opacity: isEditDisabled ? 0.5 : 1,
+                  '&:hover': isEditDisabled ? {} : {
                     backgroundColor: '#f5f5f5',
                     color: '#000000'
                   }
                 }}
-                onClick={isDeleted ? undefined : () => handleEditInvoice(item.id)}
+                onClick={isEditDisabled ? undefined : () => handleEditInvoice(item.id)}
               />
             </Tooltip>
             {!isFullyReturned && (
@@ -1166,7 +1189,14 @@ export default function SaleHistory() {
 
   // Event handlers
   const handleStartNewSale = () => {
-    navigate('/sales/new');
+    // Smart Reset: Only clear the cart if the user was actively editing an old invoice
+    // If they were just building a normal new sale draft, preserve it!
+    if (getEditInvoiceId()) {
+      dispatch(clearCart());
+      dispatch(clearFormData());
+      clearEditInvoiceId();
+    }
+    navigate('/sales/new', { state: null }); // explicitly wipe location state
   };
 
   const handleViewInvoice = (invoiceId: number) => {
@@ -1208,10 +1238,14 @@ export default function SaleHistory() {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
+
+      // Delay print slightly to allow images to load
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.onafterprint = () => {
+          printWindow.close();
+        };
+      }, 500);
     }
   };
 
@@ -1846,11 +1880,7 @@ export default function SaleHistory() {
               totalDiscount={invoiceDetails.totalDiscount || '0'}
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
-              onCancel={handleCancelPrint}
-              onPrint={handlePrintToPDF}
-              onSaveClick={handleSaveClick}
               brandIcon={bgWhiteIcon}
-              hideActionButtons={true}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
               splitPayments={invoiceDetails.splitPayments || []}

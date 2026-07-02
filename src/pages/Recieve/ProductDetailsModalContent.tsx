@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Box, Typography, Snackbar, Alert, Tooltip } from "@mui/material";
-import { OrderReceiveRow, ProductItem } from "./OrderReceive"; 
+import { OrderReceiveRow, ProductItem } from "./types";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import { PRODUCT_DETAILS_MODAL_CONSTANTS } from "../../config/constants/ProductDetailsModal.constants";
 import { PRODUCT_DETAILS_MODAL_LABELS } from "../../config/label/ProductDetailsModal.labels";
@@ -94,7 +94,7 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
       key: 'hsnCode',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.HSN_CODE,
       sortable: true,
-      columnWidth: '23%',
+      columnWidth: '15%',
       render: (item) => (
         <Tooltip title="Harmonized System of Nomenclature (HSN) Code" arrow placement="top">
           <span style={{ cursor: 'help' }}>{item.hsnCode || '-'}</span>
@@ -102,11 +102,25 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
       ),
     },
     {
-      key: 'amount',
-      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.AMOUNT,
+      key: 'batchNumber',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.BATCH_NUMBER,
       sortable: true,
-      columnWidth: '20%',
-      render: (item) => `₹${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      columnWidth: '13%',
+      render: (item) => item.batchNumber || '-',
+    },
+    {
+      key: 'mrp',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.MRP,
+      sortable: true,
+      columnWidth: '15%',
+      render: (item) => `₹${item.mrp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    },
+    {
+      key: 'purchasePrice',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.PURCHASE_PRICE,
+      sortable: true,
+      columnWidth: '15%',
+      render: (item) => `₹${item.purchasePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     },
   ];
 

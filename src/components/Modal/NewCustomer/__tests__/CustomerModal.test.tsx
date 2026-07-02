@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import CustomerModal from '../CustomerModal';
@@ -52,23 +52,28 @@ describe('CustomerModal', () => {
     expect(screen.getByPlaceholderText(/mobile number/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/email/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/billing address/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/billing city/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/^state$/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/postal code/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/shipping address/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/gstin/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/pancard/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/drug license/i)).toBeInTheDocument();
   });
 
-  it('displays gender radio buttons', () => {
+  it('displays gender select with options', () => {
     renderComponent();
-    
-    // Use getAllByLabelText since there might be multiple elements, then check the first one
-    const maleRadios = screen.getAllByLabelText(/male/i);
-    const femaleRadios = screen.getAllByLabelText(/female/i);
-    const otherRadios = screen.getAllByLabelText(/other/i);
-    
-    expect(maleRadios.length).toBeGreaterThan(0);
-    expect(femaleRadios.length).toBeGreaterThan(0);
-    expect(otherRadios.length).toBeGreaterThan(0);
+
+    // Gender is now a MUI Select (combobox), not radio buttons.
+    const genderSelect = screen.getByLabelText(/gender/i);
+    expect(genderSelect).toBeInTheDocument();
+
+    // Open the dropdown and verify the options are listed.
+    fireEvent.mouseDown(genderSelect);
+    const listbox = within(screen.getByRole('listbox'));
+    expect(listbox.getByText(/^male$/i)).toBeInTheDocument();
+    expect(listbox.getByText(/^female$/i)).toBeInTheDocument();
+    expect(listbox.getByText(/^other$/i)).toBeInTheDocument();
   });
 
   it('calls onClose when close button is clicked', () => {
@@ -112,11 +117,21 @@ describe('CustomerModal', () => {
 
   it('handles input changes for mobile number', () => {
     renderComponent();
-    
+
     const mobileInput = screen.getByPlaceholderText(/mobile number/i);
     fireEvent.change(mobileInput, { target: { value: '1234567890' } });
-    
+
     expect(mobileInput).toHaveValue('1234567890');
+  });
+
+  it('strips non-digits and caps the mobile number at 10 digits', () => {
+    renderComponent();
+
+    const mobileInput = screen.getByPlaceholderText(/mobile number/i);
+    // Letters/punctuation are stripped and only the first 10 digits are kept.
+    fireEvent.change(mobileInput, { target: { value: '(555) 123-1000-99' } });
+
+    expect(mobileInput).toHaveValue('5551231000');
   });
 
   it('handles input changes for email', () => {
@@ -130,14 +145,15 @@ describe('CustomerModal', () => {
 
   it('handles gender selection', () => {
     renderComponent();
-    
-    // Use getAllByLabelText and get the first radio button
-    const maleRadios = screen.getAllByLabelText(/male/i);
-    if (maleRadios.length > 0) {
-      const maleRadio = maleRadios[0];
-      fireEvent.click(maleRadio);
-      expect(maleRadio).toBeChecked();
-    }
+
+    // Open the gender Select and pick "Male".
+    const genderSelect = screen.getByRole('combobox');
+    fireEvent.mouseDown(genderSelect);
+    const listbox = within(screen.getByRole('listbox'));
+    fireEvent.click(listbox.getByText(/^male$/i));
+
+    // The selected value should now be reflected in the combobox.
+    expect(genderSelect).toHaveTextContent(/male/i);
   });
 
   it('handles shipping address same as billing checkbox', () => {
@@ -161,8 +177,9 @@ describe('CustomerModal', () => {
 
   it('calls onSubmit with form data when form is submitted', async () => {
     renderComponent();
-    
-    // Fill in form fields
+
+    // Fill in form fields. mobileNumber must be exactly 10 digits and
+    // billingAddress is now required (validateCustomerData enforces both).
     fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
       target: { value: 'John Doe' },
     });
@@ -172,14 +189,111 @@ describe('CustomerModal', () => {
     fireEvent.change(screen.getByPlaceholderText(/email/i), {
       target: { value: 'john@example.com' },
     });
-    
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
     // Submit form - find the submit button specifically (type="submit")
     const submitButton = screen.getByRole('button', { name: /add/i });
     fireEvent.click(submitButton);
-    
+
     await waitFor(() => {
       expect(mockProps.onSubmit).toHaveBeenCalled();
     });
+  });
+
+  it('accepts the optional city, state and postal code fields and submits them', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '1234567890' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
+    const cityInput = screen.getByPlaceholderText(/billing city/i);
+    const stateInput = screen.getByPlaceholderText(/^state$/i);
+    const postalInput = screen.getByPlaceholderText(/postal code/i);
+    fireEvent.change(cityInput, { target: { value: 'Metropolis' } });
+    fireEvent.change(stateInput, { target: { value: 'NY' } });
+    fireEvent.change(postalInput, { target: { value: '560001' } });
+
+    expect(cityInput).toHaveValue('Metropolis');
+    expect(stateInput).toHaveValue('NY');
+    expect(postalInput).toHaveValue('560001');
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(mockProps.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          city: 'Metropolis',
+          state: 'NY',
+          postalCode: '560001',
+        })
+      );
+    });
+  });
+
+  it('keeps city, state and postal code optional (submits without them)', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '1234567890' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(mockProps.onSubmit).toHaveBeenCalled();
+    });
+  });
+
+  it('blocks submit and shows the 10-digit error when mobile is too short', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '12345' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/billing address/i), {
+      target: { value: '123 Main St' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+    // validateCustomerData rejects a non-10-digit phone; error surfaces in the Alert.
+    expect(await screen.findByText(/exactly 10 digits/i)).toBeInTheDocument();
+    expect(mockProps.onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('blocks submit and shows the billing-required error when billing is empty', async () => {
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText(/customer name/i), {
+      target: { value: 'John Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/mobile number/i), {
+      target: { value: '1234567890' },
+    });
+    // Billing address intentionally left empty.
+
+    fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+    expect(await screen.findByText(/billing address is required/i)).toBeInTheDocument();
+    expect(mockProps.onSubmit).not.toHaveBeenCalled();
   });
 
   it('resets form when modal closes', () => {

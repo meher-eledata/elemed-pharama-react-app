@@ -27,3 +27,6 @@ coverage
 *.env.local
 *.env.production
 !.env.example
+
+# AI assistant directories
+.claude

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, ChangeEvent } from 'react';
-import { Box, Typography, Button, Avatar, Chip, IconButton, Select, MenuItem, SelectChangeEvent, TextField, InputAdornment, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, Avatar, Chip, IconButton, Select, MenuItem, SelectChangeEvent, TextField, InputAdornment, CircularProgress, Snackbar, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -10,7 +11,9 @@ import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { USERS_LABELS } from '../../config/label/Users.labels';
 import { USERS_CONSTANTS } from '../../config/constants/Users.constants';
 import AddUserModal from '../../components/Modal/AddUser/AddUserModal';
-import { useGetAllUsersQuery, useUpdateUserRoleMutation } from '../../redux/slices/adminSlice';
+import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
+import { useGetAllUsersQuery, useUpdateUserRoleMutation, useDisableUserMutation, useEnableUserMutation } from '../../redux/slices/adminSlice';
+import { extractErrorMessage, logError } from '../../utils/errorUtils';
 
 interface User {
   id: number;
@@ -26,8 +29,43 @@ const Users: React.FC = () => {
   // Fetch users from API
   const { data, isLoading, error, refetch } = useGetAllUsersQuery();
   const [updateUserRole] = useUpdateUserRoleMutation();
-  
+  const [disableUser] = useDisableUserMutation();
+  const [enableUser] = useEnableUserMutation();
+
   const [localRoleUpdates, setLocalRoleUpdates] = useState<Record<number, string>>({});
+
+  // Confirmation dialog for disable/enable. action is null when closed.
+  const [statusDialog, setStatusDialog] = useState<{
+    userId: number;
+    action: 'disable' | 'enable';
+  } | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
+
+  const handleConfirmStatusChange = async () => {
+    if (!statusDialog) return;
+    const { userId, action } = statusDialog;
+    setStatusDialog(null);
+    try {
+      if (action === 'disable') {
+        await disableUser(userId).unwrap();
+        setSnackbar({ open: true, message: USERS_LABELS.ACCOUNT_STATUS.DISABLE_SUCCESS, severity: 'success' });
+      } else {
+        await enableUser(userId).unwrap();
+        setSnackbar({ open: true, message: USERS_LABELS.ACCOUNT_STATUS.ENABLE_SUCCESS, severity: 'success' });
+      }
+    } catch (err: unknown) {
+      logError(err, `Users.${action}User`);
+      const fallback =
+        action === 'disable'
+          ? USERS_LABELS.ACCOUNT_STATUS.DISABLE_ERROR
+          : USERS_LABELS.ACCOUNT_STATUS.ENABLE_ERROR;
+      setSnackbar({ open: true, message: extractErrorMessage(err, fallback), severity: 'error' });
+    }
+  };
 
   const usersData: User[] = useMemo(() => {
     if (!data?.users) return [];
@@ -287,16 +325,35 @@ const Users: React.FC = () => {
           >
             <EditIcon />
           </IconButton>
-          <IconButton 
-            size="small" 
-            sx={{ 
-              color: USERS_CONSTANTS.ACTIONS.DELETE_COLOR,
-              padding: USERS_CONSTANTS.ACTIONS.ICON_PADDING,
-              '& svg': { fontSize: USERS_CONSTANTS.ACTIONS.ICON_SIZE },
-            }}
-          >
-            <BlockIcon />
-          </IconButton>
+          {user.status === USERS_LABELS.STATUS.INACTIVE ? (
+            <IconButton
+              size="small"
+              aria-label={USERS_LABELS.ACCOUNT_STATUS.ENABLE_TOOLTIP}
+              title={USERS_LABELS.ACCOUNT_STATUS.ENABLE_TOOLTIP}
+              onClick={() => setStatusDialog({ userId: user.id, action: 'enable' })}
+              sx={{
+                color: '#16a34a',
+                padding: USERS_CONSTANTS.ACTIONS.ICON_PADDING,
+                '& svg': { fontSize: USERS_CONSTANTS.ACTIONS.ICON_SIZE },
+              }}
+            >
+              <CheckCircleOutlineIcon />
+            </IconButton>
+          ) : (
+            <IconButton
+              size="small"
+              aria-label={USERS_LABELS.ACCOUNT_STATUS.DISABLE_TOOLTIP}
+              title={USERS_LABELS.ACCOUNT_STATUS.DISABLE_TOOLTIP}
+              onClick={() => setStatusDialog({ userId: user.id, action: 'disable' })}
+              sx={{
+                color: USERS_CONSTANTS.ACTIONS.DELETE_COLOR,
+                padding: USERS_CONSTANTS.ACTIONS.ICON_PADDING,
+                '& svg': { fontSize: USERS_CONSTANTS.ACTIONS.ICON_SIZE },
+              }}
+            >
+              <BlockIcon />
+            </IconButton>
+          )}
         </Box>
       ),
     },
@@ -575,6 +632,40 @@ const Users: React.FC = () => {
         onClose={handleCloseAddUserModal}
         onSuccess={handleUserCreated}
       />
+
+      <ConfirmationDialog
+        open={statusDialog !== null}
+        title={
+          statusDialog?.action === 'enable'
+            ? USERS_LABELS.ACCOUNT_STATUS.ENABLE_TITLE
+            : USERS_LABELS.ACCOUNT_STATUS.DISABLE_TITLE
+        }
+        message={
+          statusDialog?.action === 'enable'
+            ? USERS_LABELS.ACCOUNT_STATUS.ENABLE_CONFIRM
+            : USERS_LABELS.ACCOUNT_STATUS.DISABLE_CONFIRM
+        }
+        confirmLabel={USERS_LABELS.ACCOUNT_STATUS.YES}
+        cancelLabel={USERS_LABELS.ACCOUNT_STATUS.NO}
+        onClose={() => setStatusDialog(null)}
+        onCancel={() => setStatusDialog(null)}
+        onConfirm={handleConfirmStatusChange}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

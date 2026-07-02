@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Box, Stack, Grid, Typography, Skeleton } from '@mui/material';
+import dayjs from 'dayjs';
 import ChartCard from './ChartsCard';
 import { useGetInvoiceKpisQuery } from '../../../redux/slices/dashboardApi';
 import { DASHBOARD_LABELS } from '../../../config/label/SimpleAreaChart.label';
@@ -63,12 +64,23 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
 
   if (!kpis) return null;
 
+  // Parse a date value as a LOCAL calendar date, ignoring any timezone marker
+  // on the incoming string. Using dayjs on the raw "YYYY-MM-DD" portion avoids
+  // the UTC midnight -> previous-day shift that `new Date(...)` + toLocaleDateString
+  // produced in non-UTC environments (the one-day-shift bug).
+  const toLocalCalendarDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    // Strip any time/timezone component so the date is interpreted in local time.
+    const datePart = dateStr.split('T')[0];
+    const d = dayjs(datePart);
+    return d.isValid() ? d : null;
+  };
+
   const formatDateForFile = (dateStr: string | null) => {
-    if (!dateStr) return 'NA';
-    const date = new Date(dateStr);
-    return date
-      .toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
-      .replace(/ /g, '-');
+    const d = toLocalCalendarDate(dateStr);
+    if (!d) return 'NA';
+    // DD-MMM-YYYY (e.g. 01-Sep-2025)
+    return d.format('DD-MMM-YYYY');
   };
 
   const fileDuration = `${formatDateForFile(dateRange.startDate)}_to_${formatDateForFile(
@@ -164,11 +176,9 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map((item) => ({
-        Date: new Date(item.date).toLocaleDateString('en-US', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        }),
+        // D MMM YYYY (e.g. 1 Sep 2025) from the local calendar date in the
+        // payload, so the exported date is not shifted by the runner timezone.
+        Date: toLocalCalendarDate(item.date)?.format('D MMM YYYY') ?? '',
         [header]: item[valueKey] ?? 0,
       }));
   };

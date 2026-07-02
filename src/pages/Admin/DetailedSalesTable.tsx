@@ -12,6 +12,7 @@ import { DETAILED_SALES_TABLE_CONSTANTS } from '../../config/constants/DetailedS
 import { DETAILED_SALES_TABLE_LABELS } from '../../config/label/DetailedSalesTable.labels';
 import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 
 interface SalesData {
@@ -35,6 +36,7 @@ const DetailedSalesTable: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
+  const [logDownload] = useLogDownloadMutation();
 
   const { data: apiData, isLoading, isError } = useGetDailySalesTableQuery(
     { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
@@ -404,6 +406,7 @@ const DetailedSalesTable: React.FC = () => {
 
   const handleDownloadCSV = () => {
     csvLinkRef.current?.link?.click();
+    logDownload({ category: 'report', name: 'Detailed Sales Table', format: 'csv', count: sortedData.length }).catch(() => {});
   };
 
   // Prepare CSV data

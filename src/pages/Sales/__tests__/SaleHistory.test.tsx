@@ -2,18 +2,55 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SaleHistory from '../SaleHistory';
 import * as salesApi from '../../../redux/slices/salesApi';
+
+const theme = createTheme();
 
 // Mock dependencies
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/sales/history', state: null }),
 }));
+
+jest.mock('../../../redux/slices/salesApi');
+
+// Replace the calendar-driven DateRangeFilter with simple buttons that call
+// onDateRangeChange with fixed Dayjs values. This exercises the component's date
+// filter logic (the code under test) without fighting the MUI DateCalendar UI.
+// Dates align with the date-range invoices below (10 / 15 / 20 Jan 2026).
+jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', () => {
+  const dayjsLib = require('dayjs');
+  return {
+    __esModule: true,
+    default: ({ onDateRangeChange }: { onDateRangeChange: (r: [unknown, unknown]) => void }) => (
+      <div>
+        {/* Keep the real component's title so existing "filter options" test still passes. */}
+        <span>Filter by Dates</span>
+        <button onClick={() => onDateRangeChange([dayjsLib('2026-01-12'), dayjsLib('2026-01-18')])}>
+          set-range
+        </button>
+        <button onClick={() => onDateRangeChange([dayjsLib('2026-01-10'), dayjsLib('2026-01-15')])}>
+          set-range-boundary
+        </button>
+        <button onClick={() => onDateRangeChange([dayjsLib('2026-01-15'), null])}>
+          set-start-only
+        </button>
+        <button onClick={() => onDateRangeChange([null, dayjsLib('2026-01-15')])}>
+          set-end-only
+        </button>
+      </div>
+    ),
+  };
+});
 
 jest.mock('../../../utils/cartStorage', () => ({
   getSalesHistoryFromStorage: jest.fn(() => []),
+  getEditInvoiceId: jest.fn(() => null),
+  clearEditInvoiceId: jest.fn(),
 }));
 
 const createMockStore = (initialState = {}) => {
@@ -33,16 +70,51 @@ const createMockStore = (initialState = {}) => {
 };
 
 describe('SaleHistory', () => {
+  // The component formats invoice numbers as "INV<number>" for display.
+  // invoice_number 7896 therefore renders as "INV7896".
+  const mockInvoices = [
+    {
+      id: 7896,
+      invoice_number: 7896,
+      invoice_date: '2026-01-10',
+      customer_name: 'John Doe',
+      doctor_name: 'Dr. Smith',
+      username: 'testuser',
+      total_amount: 1000,
+      payments: [{ payment_mode: 'Cash', amount: 1000, record_status: 'ACTIVE' }],
+    },
+  ];
+
   beforeEach(() => {
     jest.clearAllMocks();
+
+    const stableRefetch = jest.fn();
+    (salesApi.useGetInvoicesQuery as jest.Mock) = jest.fn(() => ({
+      data: mockInvoices,
+      isLoading: false,
+      error: null,
+      refetch: stableRefetch,
+    }));
+
+    // Stable trigger + options references so effects depending on them do not loop.
+    const stableTrigger = jest.fn(() => ({
+      unwrap: jest.fn().mockResolvedValue({ invoice: {}, items: [], payments: [] }),
+    }));
+    const stableOptions = { isLoading: false };
+    (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = jest.fn(() => [
+      stableTrigger,
+      stableOptions,
+    ]);
   });
 
   const renderComponent = (store = createMockStore()) => {
     return render(
       <Provider store={store}>
-        <BrowserRouter>
-          <SaleHistory />
-        </BrowserRouter>
+        <ThemeProvider theme={theme}>
+          <BrowserRouter>
+            <SaleHistory />
+          </BrowserRouter>
+        </ThemeProvider>
       </Provider>
     );
   };
@@ -100,7 +172,8 @@ describe('SaleHistory', () => {
     // Use getAllByText since "Username" appears multiple times (in filter label and table)
     const usernameElements = screen.getAllByText(/username/i);
     expect(usernameElements.length).toBeGreaterThan(0);
-    expect(screen.getByText(/date range/i)).toBeInTheDocument();
+    // The date range filter renders the DateRangeFilter component titled "Filter by Dates"
+    expect(screen.getByText(/filter by dates/i)).toBeInTheDocument();
   });
 
   it('handles doctor filter selection', async () => {
@@ -143,11 +216,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render with mock data (invoice numbers should appear)
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Find the invoice number element, then find the SVG in the same table cell/row
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -182,11 +255,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Find the invoice number, then find SVG in the same row
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -196,11 +269,12 @@ describe('SaleHistory', () => {
       }
     }
 
-    // Wait for modal and PrintPreviewModal content
+    // Wait for modal and PrintPreviewModal content.
+    // The "Customer receipt" title was removed from PrintPreviewModal; the
+    // pharmacy header ("ELITE PHARMACY") is now the stable receipt content.
     await waitFor(() => {
       expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
-      // PrintPreviewModal should show customer receipt
-      expect(screen.getByText(/customer receipt/i)).toBeInTheDocument();
+      expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 
@@ -209,11 +283,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Find and click the visibility icon in the table row
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -248,11 +322,11 @@ describe('SaleHistory', () => {
     
     // Wait for table to render
     await waitFor(() => {
-      expect(screen.getByText(/ra7896/i)).toBeInTheDocument();
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
     });
 
     // Open invoice modal by clicking eye icon
-    const invoiceElement = screen.getByText(/ra7896/i);
+    const invoiceElement = screen.getByText(/inv7896/i);
     const tableRow = invoiceElement.closest('tr');
     
     if (tableRow) {
@@ -267,9 +341,9 @@ describe('SaleHistory', () => {
       expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    // Note: In SaleHistory, the Save/Print buttons are not visible in the modal
-    // because hideActionButtons={true} and CommonModal doesn't have actionButtons.
-    // However, the handlers exist and would open SaleConfirmationDialog if triggered.
+    // Note: In SaleHistory, the Save/Print buttons are not rendered inside
+    // PrintPreviewModal (it is a view-only body); action controls live in the
+    // parent dialog. The handlers exist and would open SaleConfirmationDialog if triggered.
     // This test verifies that SaleConfirmationDialog component is rendered and can be shown.
     // The actual Save/Print flow would need to be tested through integration tests
     // or by directly testing the handlers.
@@ -318,10 +392,132 @@ describe('SaleHistory', () => {
 
   it('handles pagination', () => {
     renderComponent();
-    
+
     // Pagination controls should be present
     // This depends on table implementation
     expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+  });
+
+  // Helper: re-point the mocked getInvoices query at a custom dataset for one test.
+  // Uses stable refetch/trigger references (auto-mocked-slice gotcha) so effects
+  // depending on them do not loop.
+  const useInvoices = (invoices: unknown[]) => {
+    const stableRefetch = jest.fn();
+    (salesApi.useGetInvoicesQuery as jest.Mock) = jest.fn(() => ({
+      data: invoices,
+      isLoading: false,
+      error: null,
+      refetch: stableRefetch,
+    }));
+  };
+
+  it('enables the Edit icon for an invoice with no return', async () => {
+    useInvoices([
+      { ...mockInvoices[0], return_status: 'No Return', has_return: false },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const row = screen.getByText(/inv7896/i).closest('tr')!;
+    const editIcon = row.querySelector('[data-testid="EditIcon"]') as HTMLElement;
+    expect(editIcon).toBeTruthy();
+    expect(editIcon).toHaveStyle({ cursor: 'pointer' });
+  });
+
+  it('disables the Edit icon for an invoice that has a return', async () => {
+    useInvoices([
+      { ...mockInvoices[0], return_status: 'Partial Return', has_return: true },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const row = screen.getByText(/inv7896/i).closest('tr')!;
+    const editIcon = row.querySelector('[data-testid="EditIcon"]') as HTMLElement;
+    expect(editIcon).toBeTruthy();
+    // Mirrors the existing isDeleted disable pattern: not-allowed cursor + dimmed.
+    expect(editIcon).toHaveStyle({ cursor: 'not-allowed' });
+  });
+
+  describe('date range filter', () => {
+    // Three invoices on distinct days. invoice_date is rendered as "DD MMM YYYY";
+    // the parser must read that back robustly so the range filter works.
+    // INV1001 → 10 Jan, INV1015 → 15 Jan, INV1020 → 20 Jan.
+    const dateRangeInvoices = [
+      { ...mockInvoices[0], id: 1001, invoice_number: 1001, invoice_date: '2026-01-10' },
+      { ...mockInvoices[0], id: 1015, invoice_number: 1015, invoice_date: '2026-01-15' },
+      { ...mockInvoices[0], id: 1020, invoice_number: 1020, invoice_date: '2026-01-20' },
+    ];
+
+    const showFiltersAndClick = (buttonText: string) => {
+      fireEvent.click(screen.getByText(/show filters/i));
+      fireEvent.click(screen.getByText(buttonText));
+    };
+
+    it('keeps only invoices strictly inside the selected start+end range', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // Range 12–18 Jan: only the 15th qualifies.
+      showFiltersAndClick('set-range');
+
+      await waitFor(() => {
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.queryByText(/inv1001/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('includes both boundary dates of the range (inclusive)', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // Range 10–15 Jan: both endpoints (10th=INV1001 and 15th) included, 20th excluded.
+      showFiltersAndClick('set-range-boundary');
+
+      await waitFor(() => {
+        expect(screen.getByText(/inv1001/i)).toBeInTheDocument();
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('start-only filter keeps invoices on or after the start date', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // Start 15 Jan only: 15th and 20th remain, 10th (INV1001) drops.
+      showFiltersAndClick('set-start-only');
+
+      await waitFor(() => {
+        expect(screen.queryByText(/inv1001/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.getByText(/inv1020/i)).toBeInTheDocument();
+      });
+    });
+
+    it('end-only filter keeps invoices on or before the end date', async () => {
+      useInvoices(dateRangeInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv1015/i)).toBeInTheDocument());
+
+      // End 15 Jan only: 10th (INV1001) and 15th remain, 20th drops.
+      showFiltersAndClick('set-end-only');
+
+      await waitFor(() => {
+        expect(screen.getByText(/inv1001/i)).toBeInTheDocument();
+        expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
+        expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
   });
 });
 

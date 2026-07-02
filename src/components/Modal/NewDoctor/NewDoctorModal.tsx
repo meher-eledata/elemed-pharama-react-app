@@ -2,14 +2,22 @@ import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { Modal, Box, Typography, TextField, Select, FormControl, InputLabel, MenuItem, Grid, Stack, IconButton, Alert } from '@mui/material';
 import { StandardButton } from '../../Common';
 import CloseIcon from '@mui/icons-material/Close';
+import { MASTER_GENDER_OPTIONS } from '../../../config/constants/MasterView.constants';
 
-
-interface DoctorData {
-    doctorName: string;
-    role: string;
-    branch: string;
-    mobileNumber: string;
+// Canonical Doctor-table fields. `name` required; gender is the canonical int (1/2/3)
+// or null when unselected. All other fields optional.
+export interface DoctorData {
+    name: string;
     email: string;
+    phone: string;
+    branch: string;
+    address: string;
+    city: string;
+    state: string;
+    pin: string;
+    country: string;
+    drug_license: string;
+    gender: number | null;
 }
 
 interface NewDoctorModalProps {
@@ -19,11 +27,17 @@ interface NewDoctorModalProps {
 }
 
 const initialDoctorState: DoctorData = {
-    doctorName: "",
-    role: "",
-    branch: "",
-    mobileNumber: "",
+    name: "",
     email: "",
+    phone: "",
+    branch: "",
+    address: "",
+    city: "",
+    state: "",
+    pin: "",
+    country: "India",
+    drug_license: "",
+    gender: null,
 }
 
 // Styling Constants
@@ -132,30 +146,24 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
         setDoctorData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSelectChange = (e: any) => {
+    const handleGenderChange = (e: any) => {
         const { value } = e.target;
-        setDoctorData(prev => ({ ...prev, role: value }));
+        setDoctorData(prev => ({ ...prev, gender: value === '' ? null : Number(value) }));
     };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setErrorMessage('');
 
-        const missingFields: string[] = [];
-
-        if (!doctorData.doctorName || !doctorData.doctorName.trim()) {
-            missingFields.push('Name');
-        }
-
-        if (missingFields.length > 0) {
-            setErrorMessage(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+        if (!doctorData.name || !doctorData.name.trim()) {
+            setErrorMessage('Please fill in the following required fields: Name');
             return;
         }
 
         try {
             await onSubmit(doctorData);
         } catch (error) {
-            setErrorMessage(error instanceof Error ? error.message : 'Failed to add doctor/user. Please try again.');
+            setErrorMessage(error instanceof Error ? error.message : 'Failed to add doctor. Please try again.');
         }
     };
 
@@ -196,7 +204,7 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                                 mb: 0.5,
                             }}
                         >
-                            New Doctor / User
+                            New Doctor
                         </Typography>
                         <Typography
                             variant="body2"
@@ -206,7 +214,7 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                                 fontFamily: "'Lexend', sans-serif",
                             }}
                         >
-                            Enter the doctor/user details below to create a new profile.
+                            Enter the doctor details below to create a new profile.
                         </Typography>
                     </Box>
                     <IconButton
@@ -247,25 +255,52 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                         </Alert>
                     )}
                     <Grid container spacing={5}>
-                        {/* Left Section: Doctor/User details */}
+                        {/* Left Section: Doctor details */}
                         <Grid item xs={12} md={6}>
                             <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 3 }}>
-                                Doctor/ User details
+                                Doctor details
                             </Typography>
                             <Stack spacing={3}>
                                 <TextField
                                     fullWidth
                                     variant="outlined"
                                     placeholder="Name *"
-                                    name="doctorName"
-                                    value={doctorData.doctorName}
+                                    name="name"
+                                    value={doctorData.name}
                                     onChange={handleInputChange}
                                     sx={inputStyle}
                                 />
-
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="Email id"
+                                    name="email"
+                                    type="email"
+                                    value={doctorData.email}
+                                    onChange={handleInputChange}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="Phone number"
+                                    name="phone"
+                                    value={doctorData.phone}
+                                    onChange={handleInputChange}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="Branch"
+                                    name="branch"
+                                    value={doctorData.branch}
+                                    onChange={handleInputChange}
+                                    sx={inputStyle}
+                                />
                                 <FormControl fullWidth sx={inputStyle}>
                                     <InputLabel
-                                        id="role-select-label"
+                                        id="gender-select-label"
                                         sx={{
                                             color: '#B0B7C3',
                                             fontSize: '14px',
@@ -277,14 +312,14 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                                             }
                                         }}
                                     >
-                                        Role
+                                        Gender
                                     </InputLabel>
                                     <Select
-                                        labelId="role-select-label"
-                                        id="role-select"
-                                        value={doctorData.role}
-                                        label="Role"
-                                        onChange={handleSelectChange}
+                                        labelId="gender-select-label"
+                                        id="gender-select"
+                                        value={doctorData.gender === null ? '' : doctorData.gender}
+                                        label="Gender"
+                                        onChange={handleGenderChange}
                                         sx={selectStyle}
                                         MenuProps={{
                                             PaperProps: {
@@ -309,48 +344,71 @@ const NewDoctorModal: React.FC<NewDoctorModalProps> = ({ isOpen, onClose, onSubm
                                             },
                                         }}
                                     >
-                                        <MenuItem value="Admin">Admin</MenuItem>
-                                        <MenuItem value="Pharmacist">Pharmacist</MenuItem>
-                                        <MenuItem value="Doctor">Doctor</MenuItem>
-                                        <MenuItem value="Manager">Manager</MenuItem>
+                                        {MASTER_GENDER_OPTIONS.map((opt) => (
+                                            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                                        ))}
                                     </Select>
                                 </FormControl>
-
-                                <TextField
-                                    fullWidth
-                                    variant="outlined"
-                                    placeholder="Branch"
-                                    name="branch"
-                                    value={doctorData.branch}
-                                    onChange={handleInputChange}
-                                    sx={inputStyle}
-                                />
                             </Stack>
                         </Grid>
 
-                        {/* Right Section: Contact details */}
+                        {/* Right Section: Address & registration details */}
                         <Grid item xs={12} md={6}>
                             <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 3 }}>
-                                Contact details
+                                Address & registration
                             </Typography>
                             <Stack spacing={3}>
                                 <TextField
                                     fullWidth
                                     variant="outlined"
-                                    placeholder="Email id"
-                                    name="email"
-                                    type="email"
-                                    value={doctorData.email}
+                                    placeholder="Address"
+                                    name="address"
+                                    value={doctorData.address}
                                     onChange={handleInputChange}
                                     sx={inputStyle}
                                 />
-
                                 <TextField
                                     fullWidth
                                     variant="outlined"
-                                    placeholder="Phone number (optional)"
-                                    name="mobileNumber"
-                                    value={doctorData.mobileNumber}
+                                    placeholder="City"
+                                    name="city"
+                                    value={doctorData.city}
+                                    onChange={handleInputChange}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="State"
+                                    name="state"
+                                    value={doctorData.state}
+                                    onChange={handleInputChange}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="PIN"
+                                    name="pin"
+                                    value={doctorData.pin}
+                                    onChange={handleInputChange}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="Country"
+                                    name="country"
+                                    value={doctorData.country}
+                                    onChange={handleInputChange}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="License"
+                                    name="drug_license"
+                                    value={doctorData.drug_license}
                                     onChange={handleInputChange}
                                     sx={inputStyle}
                                 />

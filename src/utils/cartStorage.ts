@@ -69,8 +69,21 @@ export const clearCartFromStorage = (): void => {
   try {
     sessionStorage.removeItem(CART_STORAGE_KEY);
     sessionStorage.removeItem(CART_TIMESTAMP_KEY);
+    sessionStorage.removeItem('pharma_edit_invoice_id');
   } catch (error) {
   }
+};
+
+export const setEditInvoiceId = (id: string | number): void => {
+  sessionStorage.setItem('pharma_edit_invoice_id', id.toString());
+};
+
+export const getEditInvoiceId = (): string | null => {
+  return sessionStorage.getItem('pharma_edit_invoice_id');
+};
+
+export const clearEditInvoiceId = (): void => {
+  sessionStorage.removeItem('pharma_edit_invoice_id');
 };
 
 export const hasCartInStorage = (): boolean => {

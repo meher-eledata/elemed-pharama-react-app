@@ -1,12 +1,14 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { StandardButton } from '../../components/Common';
-import DashboardIcon from '@mui/icons-material/Dashboard';
+import LocalPharmacyOutlinedIcon from '@mui/icons-material/LocalPharmacyOutlined';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
 import { ADMIN_CONSTANTS } from '../../config/constants/Admin.constants';
@@ -131,7 +133,7 @@ const AdminDashboard: React.FC = () => {
         }}
       >
         <Card
-          icon={<DashboardIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          icon={<LocalPharmacyOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.DASHBOARD.TITLE}
           desc={ADMIN_LABELS.SECTIONS.DASHBOARD.DESC}
           action={ADMIN_LABELS.SECTIONS.DASHBOARD.ACTION}
@@ -155,12 +157,28 @@ const AdminDashboard: React.FC = () => {
           iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.REPORTS}
         />
         <Card
+          icon={<StorageIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title="Master"
+          desc="Access and Manage master data of products, suppliers, customers and doctors"
+          action="Go to Master"
+          onAction={() => navigate('/admin/master')}
+          iconBgColor="#F0F4FF"
+        />
+        <Card
           icon={<InventoryIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title="Inventory Adjustment"
           desc="Adjust inventory quantities for products and batches"
           action="Adjust Inventory"
           onAction={() => navigate('/admin/inventory-adjustment')}
           iconBgColor="#E0E7FF"
+        />
+        <Card
+          icon={<FolderOpenOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title="Historical Data"
+          desc="Upload, browse, and download historical data files for the pharmacy."
+          action="Manage Files"
+          onAction={() => navigate('/admin/historical-data')}
+          iconBgColor="#E0F2F1"
         />
         <Card
           icon={<AssignmentOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}

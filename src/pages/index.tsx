@@ -21,6 +21,13 @@ import Reports from "./Admin/Reports";
 import AdminSettings from "./Admin/Settings";
 import AuditLog from "./Admin/AuditLog";
 import DetailedSalesTable from "./Admin/DetailedSalesTable";
+import SupplierReceiptReport from "./Admin/SupplierReceiptReport";
+import SupplierPaymentReport from "./Admin/SupplierPaymentReport";
+import ProductSalesReport from "./Admin/ProductSalesReport";
+import SalesTaxReport from "./Admin/SalesTaxReport";
+import SupplierTaxReport from "./Admin/SupplierTaxReport";
+import HistoricalData from "./Admin/HistoricalData";
+import UserProfile from "./Profile/UserProfile";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
@@ -66,14 +73,25 @@ export const Pages = () => {
           <Route path="sale-return" element={<SaleReturn />} />
         </Route>
 
+        <Route path="/profile" element={<DashboardLayout />}>
+          <Route index element={<UserProfile />} />
+        </Route>
+
         {/* Admin Routes - Restricted to 'Admin' roles */}
         <Route element={<RoleGuard allowedRoles={['admin', 'Admin']} />}>
           <Route path={ADMIN_CONSTANTS.ROUTE_BASE} element={<DashboardLayout />}>
             <Route index element={<AdminDashboard />} />
+            <Route path="master" element={<Masterpage enableDownload />} />
             <Route path="users" element={<Users />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
+            <Route path="reports/supplier-receipt" element={<SupplierReceiptReport />} />
+            <Route path="reports/supplier-payments" element={<SupplierPaymentReport />} />
+            <Route path="reports/product-sales" element={<ProductSalesReport />} />
+            <Route path="reports/sales-tax" element={<SalesTaxReport />} />
+            <Route path="reports/supplier-tax" element={<SupplierTaxReport />} />
             <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
+            <Route path="historical-data" element={<HistoricalData />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="audit" element={<AuditLog />} />
           </Route>

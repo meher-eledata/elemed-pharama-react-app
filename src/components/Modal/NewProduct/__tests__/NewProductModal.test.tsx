@@ -2,14 +2,31 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import NewProductModal from '../NewProductModal';
 import { useAddProductMutation } from '../../../../redux/slices/inventoryApi';
+import { useGetProductFieldOptionsQuery } from '../../../../redux/slices/masterApi';
 
 const theme = createTheme();
 
-// Mock the Redux API hook
+// The component reads state.auth.user via useSelector, so a Provider with an
+// auth reducer is required even though the RTK Query hook itself is mocked.
+const createMockStore = () =>
+  configureStore({
+    reducer: {
+      auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+    },
+  });
+
+// Mock the Redux API hooks
 jest.mock('../../../../redux/slices/inventoryApi');
+// The Type / Unit-of-Measure dropdowns are populated from this query (auto-mocked-slice
+// gotcha: a new hook auto-mocks to undefined and breaks tests, so register it explicitly).
+jest.mock('../../../../redux/slices/masterApi', () => ({
+  useGetProductFieldOptionsQuery: jest.fn(),
+}));
 
 // Mock PharmaDatePicker
 jest.mock('../../../../components/Common', () => ({
@@ -34,7 +51,11 @@ jest.mock('../../../../components/Common', () => ({
 }));
 
 const renderWithTheme = (component: React.ReactElement) => {
-  return render(<ThemeProvider theme={theme}>{component}</ThemeProvider>);
+  return render(
+    <Provider store={createMockStore()}>
+      <ThemeProvider theme={theme}>{component}</ThemeProvider>
+    </Provider>
+  );
 };
 
 describe('NewProductModal', () => {
@@ -52,6 +73,9 @@ describe('NewProductModal', () => {
         isSuccess: false,
       },
     ]);
+    (useGetProductFieldOptionsQuery as jest.Mock).mockReturnValue({
+      data: { types: ['Tablet', 'Syrup'], units: ['Box', 'Strip'] },
+    });
   });
 
   describe('Rendering', () => {
@@ -390,12 +414,14 @@ describe('NewProductModal', () => {
 
       // Reopen modal
       rerender(
-        <ThemeProvider theme={theme}>
-          <NewProductModal
-            open={true}
-            onClose={mockOnClose}
-          />
-        </ThemeProvider>
+        <Provider store={createMockStore()}>
+          <ThemeProvider theme={theme}>
+            <NewProductModal
+              open={true}
+              onClose={mockOnClose}
+            />
+          </ThemeProvider>
+        </Provider>
       );
 
       // Form should be reset (empty)
@@ -408,20 +434,51 @@ describe('NewProductModal', () => {
     }, 10000);
   });
 
-  describe('Date Picker', () => {
-    it('renders date picker for expiry field', () => {
-      renderWithTheme(
-        <NewProductModal
-          open={true}
-          onClose={mockOnClose}
-        />
+  describe('Type / Unit-of-Measure dropdowns', () => {
+    it('fetches the field options only while the modal is open', () => {
+      const { rerender } = renderWithTheme(
+        <NewProductModal open={false} onClose={mockOnClose} />
       );
+      // skip: true while closed
+      expect(useGetProductFieldOptionsQuery).toHaveBeenLastCalledWith(undefined, { skip: true });
 
-      const datePicker = screen.getByTestId('date-picker');
-      expect(datePicker).toBeInTheDocument();
+      rerender(
+        <Provider store={createMockStore()}>
+          <ThemeProvider theme={theme}>
+            <NewProductModal open={true} onClose={mockOnClose} />
+          </ThemeProvider>
+        </Provider>
+      );
+      expect(useGetProductFieldOptionsQuery).toHaveBeenLastCalledWith(undefined, { skip: false });
     });
 
-    it('updates expiry date when date is selected', () => {
+    it('renders Type and Unit of measure as dropdowns populated from the options query', async () => {
+      const user = userEvent.setup();
+      renderWithTheme(<NewProductModal open={true} onClose={mockOnClose} />);
+
+      // The two `select` fields (Type, Unit of measure) are the only comboboxes; the
+      // remaining product fields are plain text/number inputs. Type is the first.
+      const comboboxes = screen.getAllByRole('combobox');
+      expect(comboboxes).toHaveLength(2);
+
+      await user.click(comboboxes[0]);
+      // Distinct type values from the query appear as options.
+      expect(await screen.findByRole('option', { name: 'Tablet' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Syrup' })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: 'Tablet' }));
+
+      await user.click(comboboxes[1]);
+      expect(await screen.findByRole('option', { name: 'Box' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Strip' })).toBeInTheDocument();
+    });
+  });
+
+  describe('Date Picker', () => {
+    // The current NewProductModal collects master-product fields
+    // (product name, type, brand, HSN, unit of measure, min/max quantity)
+    // and does NOT render an expiry date picker. These tests assert that
+    // current behavior rather than a stale expectation.
+    it('does not render a date picker (no expiry field on this modal)', () => {
       renderWithTheme(
         <NewProductModal
           open={true}
@@ -429,10 +486,20 @@ describe('NewProductModal', () => {
         />
       );
 
-      const datePicker = screen.getByTestId('date-picker');
-      fireEvent.change(datePicker, { target: { value: '2025-12-31' } });
+      expect(screen.queryByTestId('date-picker')).not.toBeInTheDocument();
+    });
 
-      expect(datePicker).toHaveValue('2025-12-31');
+    it('renders numeric quantity fields instead of a date picker', () => {
+      renderWithTheme(
+        <NewProductModal
+          open={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Minimum/Maximum quantity render as number inputs (spinbuttons).
+      const numberInputs = screen.getAllByRole('spinbutton');
+      expect(numberInputs.length).toBeGreaterThan(0);
     });
   });
 });

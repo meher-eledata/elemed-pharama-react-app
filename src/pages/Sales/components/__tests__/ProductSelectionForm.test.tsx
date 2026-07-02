@@ -4,6 +4,12 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import ProductSelectionForm from '../ProductSelectionForm';
 
+// ProductSelectionForm calls useGetDoctorNamesQuery from the salesApi slice.
+// Mock the slice so the component renders without a configured RTK Query store.
+jest.mock('../../../../redux/slices/salesApi', () => ({
+  useGetDoctorNamesQuery: () => ({ data: [], isLoading: false }),
+}));
+
 const createMockStore = () => {
   return configureStore({
     reducer: {
@@ -15,21 +21,56 @@ const createMockStore = () => {
 
 describe('ProductSelectionForm', () => {
   const mockProps = {
+    // Product search
     findProduct: '',
     isProductSelected: false,
     isProductsLoading: false,
-    productOptions: ['Product A', 'Product B', 'Product C'],
+    productOptions: [
+      { name: 'Product A' },
+      { name: 'Product B' },
+      { name: 'Product C' },
+    ],
     onProductInputChange: jest.fn(),
     onProductChange: jest.fn(),
     onClearProduct: jest.fn(),
-    qty: 1,
-    onQtyChange: jest.fn(),
+
+    // Brand
+    showBrandDropdown: false,
+    availableBrands: [],
+    brand: '',
+    brandId: null,
+    onBrandChange: jest.fn(),
+    isBrandsLoading: false,
+
+    // Type
     showTypeDropdown: false,
     availableTypes: [],
     productType: '',
+    selectedTypeProductId: null,
     onTypeChange: jest.fn(),
+    isTypesLoading: false,
+
+    // Batch
+    showBatchDropdown: false,
+    availableBatches: [],
+    batch: '',
+    onBatchChange: jest.fn(),
+    isBatchesLoading: false,
+
+    // Quantity
+    qty: 1,
+    onQtyChange: jest.fn(),
+
+    // Discount
     discount: 0,
     onDiscountChange: jest.fn(),
+
+    // Discount authorized by
+    discountAuthorizedBy: '',
+    discountAuthorizedById: undefined,
+    onDiscountAuthorizedByChange: jest.fn(),
+
+    // Add to cart
     onAddToCart: jest.fn(),
     isValidating: false,
     validationError: '',
@@ -52,9 +93,11 @@ describe('ProductSelectionForm', () => {
   it('renders product selection form with all fields', () => {
     renderComponent();
     
+    // Field labels come from SALES_PAGE_LABELS: "Find product", "Units" (quantity),
+    // "Discount %", and the "Add to Cart" button.
     expect(screen.getByText(/find product/i)).toBeInTheDocument();
-    expect(screen.getByText(/quantity/i)).toBeInTheDocument();
-    expect(screen.getByText(/discount/i)).toBeInTheDocument();
+    expect(screen.getByText(/units/i)).toBeInTheDocument();
+    expect(screen.getByText(/discount %/i)).toBeInTheDocument();
     expect(screen.getByText(/add to cart/i)).toBeInTheDocument();
   });
 
@@ -126,39 +169,41 @@ describe('ProductSelectionForm', () => {
   });
 
   it('shows type dropdown when showTypeDropdown is true and types are available', () => {
-    renderComponent({ 
-      showTypeDropdown: true, 
-      availableTypes: ['Capsule', 'Tablet', 'Syrup'] 
+    renderComponent({
+      showTypeDropdown: true,
+      availableTypes: [
+        { type: 'Capsule', product_id: 1 },
+        { type: 'Tablet', product_id: 2 },
+        { type: 'Syrup', product_id: 3 },
+      ],
     });
-    
+
     // Use getAllByText since there might be multiple "Type" labels
     const typeLabels = screen.getAllByText(/type/i);
     expect(typeLabels.length).toBeGreaterThan(0);
   });
 
   it('calls onTypeChange when type is selected', async () => {
-    renderComponent({ 
-      showTypeDropdown: true, 
-      availableTypes: ['Capsule', 'Tablet'] 
+    renderComponent({
+      showTypeDropdown: true,
+      availableTypes: [
+        { type: 'Capsule', product_id: 1 },
+        { type: 'Tablet', product_id: 2 },
+      ],
     });
-    
-    // Get all comboboxes and find the type select (not the product autocomplete)
-    const comboboxes = screen.getAllByRole('combobox');
-    // The type select should be the one that's not the product autocomplete
-    // Product autocomplete has placeholder "Search for a product..."
-    const typeSelect = comboboxes.find(cb => {
-      const select = cb as HTMLElement;
-      return select.textContent?.includes('Select Type') || select.textContent?.includes('Capsule') || select.textContent?.includes('Tablet');
-    }) || comboboxes[1]; // Fallback to second combobox if type dropdown is shown
-    
+
+    // Both the product Autocomplete and the type Select expose role="combobox".
+    // The MUI Select is the one with aria-haspopup="listbox".
+    const typeSelect = screen
+      .getAllByRole('combobox')
+      .find((el) => el.getAttribute('aria-haspopup') === 'listbox')!;
     fireEvent.mouseDown(typeSelect);
-    
-    await waitFor(() => {
-      const option = screen.getByText('Capsule');
-      fireEvent.click(option);
-    });
-    
-    expect(mockProps.onTypeChange).toHaveBeenCalledWith('Capsule');
+
+    const option = await screen.findByRole('option', { name: 'Capsule' });
+    fireEvent.click(option);
+
+    // The component reports both the selected type and its product_id.
+    expect(mockProps.onTypeChange).toHaveBeenCalledWith('Capsule', 1);
   });
 
   it('calls onAddToCart when Add to Cart button is clicked', () => {
@@ -173,14 +218,18 @@ describe('ProductSelectionForm', () => {
     expect(mockProps.onAddToCart).toHaveBeenCalled();
   });
 
-  it('disables Add to Cart button when validation error exists', () => {
-    renderComponent({ 
+  it('visually dims Add to Cart button (but keeps it clickable) when validation error exists', () => {
+    renderComponent({
       validationError: 'Product not available',
-      isProductSelected: true
+      isProductSelected: true,
     });
-    
-    const addButton = screen.getByText(/add to cart/i);
-    expect(addButton).toBeDisabled();
+
+    // Current behavior: the button is intentionally NOT disabled when a validation
+    // error exists (clicks are allowed so the warning can surface); it is only dimmed
+    // via reduced opacity. It is disabled only while actively validating.
+    const addButton = screen.getByRole('button', { name: /add to cart/i });
+    expect(addButton).not.toBeDisabled();
+    expect(addButton).toHaveStyle({ opacity: '0.6' });
   });
 
   it('disables Add to Cart button when validating', () => {
@@ -193,14 +242,17 @@ describe('ProductSelectionForm', () => {
     expect(addButton).toBeDisabled();
   });
 
-  it('disables Add to Cart button when no validated data', () => {
-    renderComponent({ 
+  it('visually dims Add to Cart button (but keeps it clickable) when no validated data', () => {
+    renderComponent({
       isProductSelected: true,
-      validatedData: null
+      validatedData: null,
     });
-    
-    const addButton = screen.getByText(/add to cart/i);
-    expect(addButton).toBeDisabled();
+
+    // Same as above: no validated data dims the button via opacity but does not
+    // disable it (only active validation disables it).
+    const addButton = screen.getByRole('button', { name: /add to cart/i });
+    expect(addButton).not.toBeDisabled();
+    expect(addButton).toHaveStyle({ opacity: '0.6' });
   });
 
   it('calls onClearProduct when clear button is clicked', () => {

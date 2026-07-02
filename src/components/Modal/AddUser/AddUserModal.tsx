@@ -16,13 +16,30 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useSelector } from 'react-redux';
 import { StandardButton } from '../../Common';
 import styled from '@mui/system/styled';
 import PasswordLinkConfirmationDialog from './PasswordLinkConfirmationDialog';
-import { useCreateUserMutation, CreateUserRequest, IdentityDocumentType, UserRole } from '../../../redux/slices/adminSlice';
+import { useCreateUserMutation, CreateUserRequest, CreateUserFiles, IdentityDocumentType, UserRole } from '../../../redux/slices/adminSlice';
 import { extractErrorMessage, logError } from '../../../utils/errorUtils';
 import { RootState } from '../../../redux/store';
+
+// File rules mirror the server (POST /api/admin/create-user): PNG/JPEG/PDF, max 50MB.
+const ACCEPTED_FILE_TYPES = '.png,.jpg,.jpeg,.pdf';
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'application/pdf'];
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
+const UNSUPPORTED_FILE_MSG = 'Unsupported file type. Allowed: PNG, JPEG, PDF.';
+const FILE_TOO_LARGE_MSG = 'File too large. Max 50MB.';
+
+// Returns an error message string when the file is invalid, otherwise null.
+const validateFile = (file: File): string | null => {
+  const name = file.name.toLowerCase();
+  const extOk = ['.png', '.jpg', '.jpeg', '.pdf'].some((ext) => name.endsWith(ext));
+  if (!ALLOWED_MIME.includes(file.type) || !extOk) return UNSUPPORTED_FILE_MSG;
+  if (file.size > MAX_FILE_BYTES) return FILE_TOO_LARGE_MSG;
+  return null;
+};
 
 export const ADD_USER_MODAL_CONSTANTS = {
   MODAL: {
@@ -232,6 +249,100 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
   },
 }));
 
+interface FileUploadFieldProps {
+  label: string;
+  required?: boolean;
+  file: File | null;
+  error?: string;
+  onSelect: (e: ChangeEvent<HTMLInputElement>) => void;
+  onRemove: () => void;
+}
+
+// Single file picker showing the chosen filename with a remove action. PNG/JPEG/PDF only.
+const FileUploadField: React.FC<FileUploadFieldProps> = ({
+  label,
+  required,
+  file,
+  error,
+  onSelect,
+  onRemove,
+}) => (
+  <Box>
+    <Typography
+      variant="body2"
+      sx={{
+        mb: 0.5,
+        color: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.LABEL_COLOR,
+        fontSize: '14px',
+        fontWeight: 500,
+        fontFamily: "'Lexend', sans-serif",
+      }}
+    >
+      {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
+    </Typography>
+    {file ? (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          height: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
+          px: 1.5,
+          border: `2px solid ${ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR}`,
+          borderRadius: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_RADIUS,
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: '14px',
+            color: '#2d3748',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontFamily: "'Lexend', sans-serif",
+          }}
+        >
+          {file.name}
+        </Typography>
+        <IconButton aria-label="remove file" size="small" onClick={onRemove}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    ) : (
+      <Button
+        component="label"
+        variant="outlined"
+        startIcon={<UploadFileIcon />}
+        sx={{
+          height: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.HEIGHT,
+          width: '100%',
+          justifyContent: 'flex-start',
+          textTransform: 'none',
+          borderColor: ADD_USER_MODAL_CONSTANTS.TEXTFIELD.BORDER_COLOR,
+          borderWidth: '2px',
+          color: '#4a5568',
+          fontFamily: "'Lexend', sans-serif",
+          '&:hover': { borderColor: '#D1D5DB', borderWidth: '2px' },
+        }}
+      >
+        Upload document
+        <input type="file" hidden accept={ACCEPTED_FILE_TYPES} onChange={onSelect} />
+      </Button>
+    )}
+    <Typography
+      sx={{
+        mt: 0.5,
+        fontSize: '12px',
+        color: error ? '#e53e3e' : '#a0aec0',
+        fontFamily: "'Lexend', sans-serif",
+      }}
+    >
+      {error || 'PNG, JPEG or PDF. Max 50MB.'}
+    </Typography>
+  </Box>
+);
+
 interface UserData {
   firstName: string;
   lastName: string;
@@ -275,6 +386,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
   const [showAddressFields, setShowAddressFields] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [idDocumentFile, setIdDocumentFile] = useState<File | null>(null);
+  const [pharmacistCertFile, setPharmacistCertFile] = useState<File | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const currentUser = useSelector((state: RootState) => state.auth.user);
 
@@ -310,6 +424,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
       email: userData.emailId,
       first_name: userData.firstName,
       last_name: userData.lastName,
+      mobile: userData.mobileNumber,
       address_line1: userData.address_line1 || '',
       address_line2: userData.address_line2 || undefined,
       city: userData.city || '',
@@ -326,12 +441,65 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
     if (!open) {
       setFormData(initialUserState);
       setShowAddressFields(false);
+      setIdDocumentFile(null);
+      setPharmacistCertFile(null);
+      setFieldErrors({});
     }
   }, [open]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setFieldErrors(prev => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+
+  const handleFileChange =
+    (which: 'idDocument' | 'pharmacistCert') =>
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ''; // allow re-selecting the same file
+      if (!file) return;
+      const errorKey = which === 'idDocument' ? 'idDocumentFile' : 'pharmacistCertFile';
+      const validationError = validateFile(file);
+      if (validationError) {
+        setFieldErrors(prev => ({ ...prev, [errorKey]: validationError }));
+        return;
+      }
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        delete next[errorKey];
+        return next;
+      });
+      if (which === 'idDocument') setIdDocumentFile(file);
+      else setPharmacistCertFile(file);
+    };
+
+  // Mirror the server required-field rules so users get immediate feedback; the
+  // server remains authoritative.
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!formData.firstName.trim()) errors.firstName = 'First name is required.';
+    if (!formData.lastName.trim()) errors.lastName = 'Last name is required.';
+    if (!formData.emailId.trim()) errors.emailId = 'Email is required.';
+    if (!formData.mobileNumber.trim()) errors.mobileNumber = 'mobile is required.';
+    if (!formData.idDocumentNumber.trim())
+      errors.idDocumentNumber = 'Identity document number is required.';
+    if (!formData.address_line1.trim())
+      errors.address_line1 = 'address_line1 is required.';
+    if (!formData.role) errors.role = 'Role is required.';
+    if (!formData.identityDocument)
+      errors.identityDocument = 'Identity document is required.';
+    if (formData.role === 'Pharmacist' && !pharmacistCertFile) {
+      errors.pharmacistCertFile =
+        'pharmacist_certificate file is required for a pharmacist account.';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSelectChange = (e: any) => {
@@ -354,13 +522,24 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
   };
 
   const handleSave = () => {
+    if (!validateForm()) {
+      // Address line 1 lives in the collapsible address block — reveal it on error.
+      if (!formData.address_line1.trim()) setShowAddressFields(true);
+      showToast('Please fix the highlighted fields.', 'error');
+      return;
+    }
     setShowPasswordConfirmation(true);
   };
 
   const handleConfirmSave = async () => {
     setIsCreatingUser(true);
     try {
-      const requestData = transformUserDataToRequest(formData);
+      const requestData: CreateUserRequest & CreateUserFiles = {
+        ...transformUserDataToRequest(formData),
+        id_document: idDocumentFile ?? undefined,
+        pharmacist_certificate:
+          formData.role === 'Pharmacist' ? pharmacistCertFile ?? undefined : undefined,
+      };
 
       const createUserResponse = await createUser(requestData).unwrap();
 
@@ -567,7 +746,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                     fontFamily: "'Lexend', sans-serif"
                   }}
                 >
-                  Mobile Number
+                  Mobile Number <span style={{ color: '#ef4444' }}>*</span>
                 </Typography>
                 <StyledTextField
                   fullWidth
@@ -576,6 +755,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   name="mobileNumber"
                   value={formData.mobileNumber}
                   onChange={handleInputChange}
+                  error={!!fieldErrors.mobileNumber}
+                  helperText={fieldErrors.mobileNumber}
                 />
               </Grid>
 
@@ -590,7 +771,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                       fontFamily: "'Lexend', sans-serif"
                     }}
                   >
-                    Address (optional)
+                    Address <span style={{ color: '#ef4444' }}>*</span>
                   </Typography>
                   {!showAddressFields && (
                     <Button
@@ -688,7 +869,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                             fontFamily: "'Lexend', sans-serif"
                           }}
                         >
-                          Street address, house/building number
+                          Street address, house/building number <span style={{ color: '#ef4444' }}>*</span>
                         </Typography>
                         <StyledTextField
                           fullWidth
@@ -697,6 +878,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                           name="address_line1"
                           value={formData.address_line1}
                           onChange={handleInputChange}
+                          error={!!fieldErrors.address_line1}
+                          helperText={fieldErrors.address_line1}
                         />
                       </Grid>
 
@@ -846,6 +1029,11 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                     <MenuItem value="Driving Licence">Driving Licence</MenuItem>
                   </Select>
                 </StyledFormControl>
+                {fieldErrors.identityDocument && (
+                  <Typography sx={{ mt: 0.5, fontSize: '12px', color: '#e53e3e', fontFamily: "'Lexend', sans-serif" }}>
+                    {fieldErrors.identityDocument}
+                  </Typography>
+                )}
               </Grid>
 
               <Grid item xs={12} sm={6} component="div">
@@ -859,7 +1047,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                     fontFamily: "'Lexend', sans-serif"
                   }}
                 >
-                  ID Document Number
+                  ID Document Number <span style={{ color: '#ef4444' }}>*</span>
                 </Typography>
                 <StyledTextField
                   fullWidth
@@ -869,6 +1057,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                   value={formData.idDocumentNumber}
                   onChange={handleInputChange}
                   disabled={!formData.identityDocument}
+                  error={!!fieldErrors.idDocumentNumber}
+                  helperText={fieldErrors.idDocumentNumber}
                 />
               </Grid>
 
@@ -899,7 +1089,37 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
                     <MenuItem value="Pharmacist">Pharmacist</MenuItem>
                   </Select>
                 </StyledFormControl>
+                {fieldErrors.role && (
+                  <Typography sx={{ mt: 0.5, fontSize: '12px', color: '#e53e3e', fontFamily: "'Lexend', sans-serif" }}>
+                    {fieldErrors.role}
+                  </Typography>
+                )}
               </Grid>
+
+              {/* UAM-3: identity/document verification upload → id_document part (optional) */}
+              <Grid item xs={12} sm={6} component="div">
+                <FileUploadField
+                  label="Upload document"
+                  file={idDocumentFile}
+                  error={fieldErrors.idDocumentFile}
+                  onSelect={handleFileChange('idDocument')}
+                  onRemove={() => setIdDocumentFile(null)}
+                />
+              </Grid>
+
+              {/* UAM-4: pharmacist certificate → pharmacist_certificate part (required for role 1) */}
+              {formData.role === 'Pharmacist' && (
+                <Grid item xs={12} sm={6} component="div">
+                  <FileUploadField
+                    label="Pharmacist certificate"
+                    required
+                    file={pharmacistCertFile}
+                    error={fieldErrors.pharmacistCertFile}
+                    onSelect={handleFileChange('pharmacistCert')}
+                    onRemove={() => setPharmacistCertFile(null)}
+                  />
+                </Grid>
+              )}
             </Grid>
           </Box>
 

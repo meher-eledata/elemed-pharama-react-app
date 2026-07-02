@@ -15,10 +15,6 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl,
   Autocomplete
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
@@ -32,20 +28,22 @@ import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDial
 import { ReusableTable, TableColumn, SearchAndFilterConfig } from '../../components/PharmaTable';
 import {
   useGetBatchesForProductMutation,
-  useGetAllBrandsQuery,
-  useGetProductsForBrandMutation,
+  useGetBrandsFromProductNameMutation,
   useGetTypesForBrandAndProductMutation,
   useAdjustInventoryBatchesMutation,
-  useGetProductIdsQuery,
+  useDeleteBatchMutation,
+  DeleteBatchSoldError,
   ProductInfo,
-  Brand,
-  ProductForBrand,
+  GetBrandsFromProductNameResponse,
   TypeForBrandAndProduct,
 } from '../../redux/slices/inventoryApi';
+import { useGetProductsQuery } from '../../redux/slices/receiveApi';
+import { processProductOptions } from '../Sales/SalesPage.utils';
 import { extractErrorMessage } from '../../utils/errorUtils';
 
 type BatchRow = {
-  id: string;
+  id: string; // stable unique row id derived from batch_id (batch_number is NOT unique)
+  batch_id: number; // unique PK — the delete identity
   batchNumber: string | number;
   quantity: number;
   oldQuantity: number;
@@ -58,13 +56,12 @@ type BatchRow = {
   oldPackQty: number;
   mrpInput?: string;
   packQtyInput?: string;
+  markedForDeletion?: boolean;
 };
 
-type SelectedBrand = Brand | null;
-type SelectedProduct = ProductForBrand | null;
+type ProductOption = { name: string; currentQuantity?: number };
+type SelectedBrand = GetBrandsFromProductNameResponse | null;
 type SelectedType = TypeForBrandAndProduct | null;
-
-type SearchType = 'product' | 'id';
 
 
 const inputFieldStyles = {
@@ -206,17 +203,19 @@ const EditableNumberInput: React.FC<EditableNumberInputProps> = ({
 const InventoryAdjustment: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   const [getBatchesForProduct, { isLoading: isLoadingBatches, error: batchesError }] = useGetBatchesForProductMutation();
-  const [getProductsForBrand] = useGetProductsForBrandMutation();
+  const [getBrandsFromProductName] = useGetBrandsFromProductNameMutation();
   const [getTypesForBrandAndProduct] = useGetTypesForBrandAndProductMutation();
   const [adjustInventoryBatches, { isLoading: isSaving }] = useAdjustInventoryBatchesMutation();
-  const { data: brands = [], isLoading: isLoadingBrands } = useGetAllBrandsQuery();
+  const [deleteBatch] = useDeleteBatchMutation();
+  // Medicine-name autocomplete options — IDENTICAL source as the Sales flow (receiveApi get-products).
+  const { data: apiProducts = [], isLoading: isLoadingProducts } = useGetProductsQuery();
 
+  const [selectedProductName, setSelectedProductName] = useState<string | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<SelectedBrand>(null);
-  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct>(null);
   const [selectedType, setSelectedType] = useState<SelectedType>(null);
-  const [productsForBrand, setProductsForBrand] = useState<ProductForBrand[]>([]);
+  const [brandsForProduct, setBrandsForProduct] = useState<GetBrandsFromProductNameResponse[]>([]);
   const [typesForProduct, setTypesForProduct] = useState<TypeForBrandAndProduct[]>([]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isLoadingBrands, setIsLoadingBrands] = useState(false);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -229,13 +228,6 @@ const InventoryAdjustment: React.FC = () => {
   };
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
 
-  const [searchType, setSearchType] = useState<SearchType>('product');
-
-  // New efficient endpoint for fetching all product IDs
-  const { data: productIdData, isLoading: isLoadingProductIds } = useGetProductIdsQuery(undefined, {
-    skip: searchType !== 'id'
-  });
-
   const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
   const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
@@ -244,12 +236,11 @@ const InventoryAdjustment: React.FC = () => {
     key: 'id',
     direction: 'asc'
   });
-  const [productIdSearch, setProductIdSearch] = useState<string>('');
-  const [productIdOptions, setProductIdOptions] = useState<Array<{ id: number; name: string }>>([]);
-  const [selectedProductById, setSelectedProductById] = useState<{ id: number; name: string } | null>(null);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [originalValues, setOriginalValues] = useState<{ quantity: number; expiryDate: string; mrp: number; packQty: number } | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  // Message modal shown when one or more batches were blocked from deletion (sold; backend 409).
+  const [blockedMessage, setBlockedMessage] = useState<React.ReactNode>(null);
 
   // Ensure consistent border radius from the start
   useEffect(() => {
@@ -294,44 +285,11 @@ const InventoryAdjustment: React.FC = () => {
     [batchRows]
   );
 
-  // Fetch products when brand is selected
-  const fetchProductsForBrand = useCallback(async (brandId: number) => {
-    setIsLoadingProducts(true);
-    try {
-      const result = await getProductsForBrand({ brand_id: brandId }).unwrap();
-      setProductsForBrand(result);
-      setSelectedProduct(null);
-      setSelectedType(null);
-      setTypesForProduct([]);
-      setProductInfo(null);
-      setBatchRows([]);
-    } catch (error) {
-      console.error('Error fetching products for brand:', error);
-      setProductsForBrand([]);
-    } finally {
-      setIsLoadingProducts(false);
-    }
-  }, [getProductsForBrand]);
-
-  // Fetch types when product is selected
-  const fetchTypesForProduct = useCallback(async (brandId: number, brandName: string, productName: string) => {
-    setIsLoadingTypes(true);
-    try {
-      const result = await getTypesForBrandAndProduct({
-        brand_id: brandId,
-        product_name: productName,
-      }).unwrap();
-      setTypesForProduct(result);
-      setSelectedType(null);
-      setProductInfo(null);
-      setBatchRows([]);
-    } catch (error) {
-      console.error('Error fetching types for product:', error);
-      setTypesForProduct([]);
-    } finally {
-      setIsLoadingTypes(false);
-    }
-  }, [getTypesForBrandAndProduct]);
+  // Medicine-name autocomplete options — IDENTICAL source as the Sales flow.
+  const productOptions: ProductOption[] = useMemo(
+    () => processProductOptions(apiProducts),
+    [apiProducts]
+  );
 
   const fetchBatchesForProduct = useCallback(async (productId: number) => {
     try {
@@ -340,13 +298,14 @@ const InventoryAdjustment: React.FC = () => {
       // Transform API batches to BatchRow format
       const transformedBatches: BatchRow[] = result.batches.map((batch: any) => {
         const expiryDateStr = batch.expiry_date ? dayjs(batch.expiry_date).format('YYYY-MM-DD') : '';
-        // batch_number from API can be string (like "CTZ-2026-06-A") or number
-        // We'll use it as-is for the API call
+        // batch_number from API can be string (like "CTZ-2026-06-A") or number, and is NOT unique
+        // (duplicates allowed). batch_id is the unique PK — use it as the stable row identity.
         const batchNumber = batch.batch_number || batch.batchNumber;
 
         return {
-          id: String(batchNumber), // Use batch_number as the id for display
-          batchNumber: batchNumber, // Store batch_number for API calls
+          id: String(batch.batch_id), // Unique row id (batch_number is NOT unique)
+          batch_id: batch.batch_id, // Unique PK — the delete identity
+          batchNumber: batchNumber, // Display value only (may be duplicated across rows)
           quantity: batch.current_qty,
           oldQuantity: batch.current_qty, // Store original quantity
           expiryDate: expiryDateStr,
@@ -361,14 +320,6 @@ const InventoryAdjustment: React.FC = () => {
       startTransition(() => {
         setProductInfo(result.product);
         setBatchRows(transformedBatches);
-
-        // If selectedType is null (searching by Product ID), create it from productInfo
-        if (!selectedType && result.product) {
-          setSelectedType({
-            type: result.product.type,
-            product_id: result.product.product_id,
-          });
-        }
       });
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -377,18 +328,57 @@ const InventoryAdjustment: React.FC = () => {
         setBatchRows([]);
       });
     }
-  }, [getBatchesForProduct, selectedType]);
+  }, [getBatchesForProduct]);
 
-  // Update product ID options when new data arrives from the single efficient endpoint
-  useEffect(() => {
-    if (productIdData?.product_ids) {
-      const options = productIdData.product_ids.map(id => ({
-        id: id,
-        name: String(id)
-      }));
-      setProductIdOptions(options);
+  // Fetch types when a brand is selected (mirrors the Sales cascade: brand_id + product_name).
+  const fetchTypesForBrandAndProduct = useCallback(async (brandId: number, productName: string) => {
+    setIsLoadingTypes(true);
+    try {
+      const result = await getTypesForBrandAndProduct({
+        brand_id: brandId,
+        product_name: productName,
+      }).unwrap();
+      setTypesForProduct(result);
+      setSelectedType(null);
+      setProductInfo(null);
+      setBatchRows([]);
+      // Auto-select when exactly one type (matches Sales behaviour) → load its batches.
+      if (result.length === 1) {
+        setSelectedType(result[0]);
+        await fetchBatchesForProduct(result[0].product_id);
+      }
+    } catch (error) {
+      console.error('Error fetching types for product:', error);
+      setTypesForProduct([]);
+    } finally {
+      setIsLoadingTypes(false);
     }
-  }, [productIdData]);
+  }, [getTypesForBrandAndProduct, fetchBatchesForProduct]);
+
+  // Fetch brands for the selected medicine name (mirrors the Sales cascade).
+  const fetchBrandsForProductName = useCallback(async (productName: string) => {
+    setIsLoadingBrands(true);
+    setSelectedBrand(null);
+    setBrandsForProduct([]);
+    setSelectedType(null);
+    setTypesForProduct([]);
+    setProductInfo(null);
+    setBatchRows([]);
+    try {
+      const result = await getBrandsFromProductName({ product_name: productName }).unwrap();
+      setBrandsForProduct(result);
+      // Auto-select when exactly one brand (matches Sales behaviour).
+      if (result.length === 1) {
+        setSelectedBrand(result[0]);
+        await fetchTypesForBrandAndProduct(result[0].id, productName);
+      }
+    } catch (error) {
+      console.error('Error fetching brands for product:', error);
+      setBrandsForProduct([]);
+    } finally {
+      setIsLoadingBrands(false);
+    }
+  }, [getBrandsFromProductName, fetchTypesForBrandAndProduct]);
 
   const sortedRows = useMemo(() => {
     const rowsCopy = [...batchRows];
@@ -421,8 +411,9 @@ const InventoryAdjustment: React.FC = () => {
           break;
         case 'id':
         default:
-          aValue = a.id;
-          bValue = b.id;
+          // The "Batch Number" column sorts by the displayed batch_number, not the internal id.
+          aValue = String(a.batchNumber);
+          bValue = String(b.batchNumber);
           break;
       }
 
@@ -441,53 +432,8 @@ const InventoryAdjustment: React.FC = () => {
       return sortedRows;
     }
     const query = searchTerm.toLowerCase();
-    return sortedRows.filter((row) => row.id.toLowerCase().includes(query));
+    return sortedRows.filter((row) => String(row.batchNumber).toLowerCase().includes(query));
   }, [sortedRows, searchTerm]);
-
-  // Handle brand selection
-  const handleBrandChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const brandId = parseInt(event.target.value);
-    const brand = brands.find((b) => b.id === brandId) || null;
-    setSelectedBrand(brand);
-    if (brand) {
-      fetchProductsForBrand(brand.id);
-    } else {
-      setProductsForBrand([]);
-      setSelectedProduct(null);
-      setSelectedType(null);
-      setTypesForProduct([]);
-      setProductInfo(null);
-      setBatchRows([]);
-    }
-  };
-
-  // Handle product selection
-  const handleProductChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const productName = event.target.value;
-    const product = productsForBrand.find((p) => p.name === productName) || null;
-    setSelectedProduct(product);
-    if (product && selectedBrand) {
-      fetchTypesForProduct(selectedBrand.id, selectedBrand.brand_name, product.name);
-    } else {
-      setTypesForProduct([]);
-      setSelectedType(null);
-      setProductInfo(null);
-      setBatchRows([]);
-    }
-  };
-
-  // Handle type selection
-  const handleTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const type = event.target.value;
-    const typeData = typesForProduct.find((t) => t.type === type) || null;
-    setSelectedType(typeData);
-    if (typeData) {
-      fetchBatchesForProduct(typeData.product_id);
-    } else {
-      setProductInfo(null);
-      setBatchRows([]);
-    }
-  };
 
   const handleQuantityChange = (batchId: string, value: string) => {
     // Only allow numeric input
@@ -666,8 +612,12 @@ const InventoryAdjustment: React.FC = () => {
     try {
       const username = user?.username || 'admin';
 
-      // Get all batches that have been modified (quantity or expiry date changed)
+      // Batches the user marked for deletion (handled separately via the delete-batch endpoint).
+      const deletionBatches = batchRows.filter((batch) => batch.markedForDeletion);
+
+      // Get all NON-deleted batches that have been modified (quantity / expiry / mrp / pack changed)
       const modifiedBatches = batchRows.filter((batch) => {
+        if (batch.markedForDeletion) return false;
         const quantityChanged = batch.quantity !== batch.oldQuantity;
         const expiryDateChanged = batch.expiryDate !== batch.oldExpiryDate;
         const mrpChanged = batch.mrp !== batch.oldMrp;
@@ -675,7 +625,7 @@ const InventoryAdjustment: React.FC = () => {
         return quantityChanged || expiryDateChanged || mrpChanged || packQtyChanged;
       });
 
-      if (modifiedBatches.length === 0) {
+      if (modifiedBatches.length === 0 && deletionBatches.length === 0) {
         setConfirmDialogOpen(false);
         showSnackbar('No changes to save.', 'error');
         return;
@@ -701,32 +651,82 @@ const InventoryAdjustment: React.FC = () => {
         };
       });
 
-      await adjustInventoryBatches({
-        username,
-        product_id: productId,
-        lines,
-      }).unwrap();
+      if (modifiedBatches.length > 0) {
+        await adjustInventoryBatches({
+          username,
+          product_id: productId,
+          lines,
+        }).unwrap();
 
-      // Update oldQuantity and oldExpiryDate for all modified batches to reflect the new values after successful save
-      setBatchRows((prev) =>
-        prev.map((b) => {
-          const modified = modifiedBatches.find(mb => mb.id === b.id);
-          return modified
-            ? {
-              ...b,
-              oldQuantity: b.quantity, // Update old quantity to current quantity
-              oldExpiryDate: b.expiryDate, // Update old expiry date to current expiry date
-              oldMrp: b.mrp,
-              oldPackQty: b.packQty,
-            }
-            : b;
-        })
-      );
+        // Update oldQuantity and oldExpiryDate for all modified batches to reflect the new values after successful save
+        setBatchRows((prev) =>
+          prev.map((b) => {
+            const modified = modifiedBatches.find(mb => mb.id === b.id);
+            return modified
+              ? {
+                ...b,
+                oldQuantity: b.quantity, // Update old quantity to current quantity
+                oldExpiryDate: b.expiryDate, // Update old expiry date to current expiry date
+                oldMrp: b.mrp,
+                oldPackQty: b.packQty,
+              }
+              : b;
+          })
+        );
+      }
+
+      // Process deletions sequentially so error handling stays simple. Collect successes and the
+      // batches the backend blocked (409 — sold) so we can explain why and list the invoice numbers.
+      const deletedIds: string[] = [];
+      const blocked: { batchId: number; batchNumber: string | number; invoiceNumbers: string[] }[] = [];
+      let otherDeleteError: unknown = null;
+
+      for (const batch of deletionBatches) {
+        try {
+          // Delete the single unique row by its PK — batch_number is NOT unique, so deleting by
+          // batch_number would remove every duplicate-numbered row.
+          await deleteBatch({ batch_id: batch.batch_id }).unwrap();
+          deletedIds.push(batch.id);
+        } catch (err) {
+          const status = (err as { status?: number })?.status;
+          const data = (err as { data?: DeleteBatchSoldError })?.data;
+          if (status === 409 && data && Array.isArray(data.invoice_numbers)) {
+            const invoiceNumbers = data.invoice_numbers.length
+              ? data.invoice_numbers
+              : (data.invoices || []).map((inv) => inv.invoice_number);
+            blocked.push({ batchId: batch.batch_id, batchNumber: batch.batchNumber, invoiceNumbers });
+          } else {
+            otherDeleteError = err;
+          }
+        }
+      }
 
       setConfirmDialogOpen(false);
-      showSnackbar('Inventory adjustment saved successfully.', 'success');
 
-      // Refresh batches to get latest data
+      // Drop successfully-deleted rows immediately so they disappear; blocked rows stay marked.
+      if (deletedIds.length > 0) {
+        setBatchRows((prev) => prev.filter((b) => !deletedIds.includes(b.id)));
+      }
+
+      // Surface a clear message modal for any blocked (sold) batches, listing the invoice numbers.
+      if (blocked.length > 0) {
+        setBlockedMessage(
+          <Box sx={{ textAlign: 'left' }}>
+            {blocked.map((b) => (
+              <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
+                Batch <strong>{String(b.batchNumber)}</strong> cannot be deleted because product
+                from it was sold on invoice(s): <strong>{b.invoiceNumbers.join(', ')}</strong>.
+              </Typography>
+            ))}
+          </Box>
+        );
+      } else if (otherDeleteError) {
+        showSnackbar(extractErrorMessage(otherDeleteError, 'Failed to delete batch.'), 'error');
+      } else {
+        showSnackbar('Inventory adjustment saved successfully.', 'success');
+      }
+
+      // Refresh batches to get latest data (deleted batches gone, balances updated)
       const productIdToRefresh = selectedType?.product_id || productInfo?.product_id;
       if (productIdToRefresh) {
         fetchBatchesForProduct(productIdToRefresh);
@@ -739,23 +739,29 @@ const InventoryAdjustment: React.FC = () => {
   };
 
 
+  // Toggle the batch's "marked for deletion" flag. The row stays in the table so the user can see
+  // what will be deleted on Save and can undo by clicking again. Actual deletion happens on Save.
   const handleRemoveRow = (batchId: string) => {
-    setBatchRows((prev) => prev.filter((batch) => batch.id !== batchId));
+    setBatchRows((prev) =>
+      prev.map((batch) =>
+        batch.id === batchId
+          ? { ...batch, markedForDeletion: !batch.markedForDeletion }
+          : batch
+      )
+    );
   };
 
   const handleReset = () => {
+    setSelectedProductName(null);
     setSelectedBrand(null);
-    setSelectedProduct(null);
     setSelectedType(null);
-    setProductsForBrand([]);
+    setBrandsForProduct([]);
     setTypesForProduct([]);
     setProductInfo(null);
     setBatchRows([]);
     setSelectedRows([]);
     setSearchTerm('');
     setSortConfig({ key: 'id', direction: 'asc' });
-    setProductIdSearch('');
-    setSelectedProductById(null);
   };
 
   const handleSave = () => {
@@ -766,7 +772,10 @@ const InventoryAdjustment: React.FC = () => {
       return;
     }
 
+    const hasDeletions = batchRows.some((batch) => batch.markedForDeletion);
+
     const modifiedBatches = batchRows.filter((batch) => {
+      if (batch.markedForDeletion) return false;
       const quantityChanged = batch.quantity !== batch.oldQuantity;
       const expiryDateChanged = batch.expiryDate !== batch.oldExpiryDate;
       const mrpChanged = batch.mrp !== batch.oldMrp;
@@ -774,7 +783,7 @@ const InventoryAdjustment: React.FC = () => {
       return quantityChanged || expiryDateChanged || mrpChanged || packQtyChanged;
     });
 
-    if (modifiedBatches.length === 0) {
+    if (modifiedBatches.length === 0 && !hasDeletions) {
       // No changes to save
       return;
     }
@@ -797,9 +806,23 @@ const InventoryAdjustment: React.FC = () => {
       header: 'Batch Number',
       sortable: true,
       render: (batch) => (
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {batch.id}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+              color: batch.markedForDeletion ? '#9CA3AF' : 'inherit',
+              textDecoration: batch.markedForDeletion ? 'line-through' : 'none',
+            }}
+          >
+            {batch.batchNumber}
+          </Typography>
+          {batch.markedForDeletion && (
+            <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 600 }}>
+              Will be deleted
+            </Typography>
+          )}
+        </Box>
       )
     },
     {
@@ -1012,6 +1035,22 @@ const InventoryAdjustment: React.FC = () => {
       render: (batch) => {
         const isEditing = editingRowId === batch.id;
 
+        // A row marked for deletion shows only an undo affordance (click again to un-mark).
+        if (batch.markedForDeletion) {
+          return (
+            <Box display="flex" justifyContent="center" gap={1}>
+              <StandardButton
+                variant="outline"
+                size="small"
+                onClick={() => handleRemoveRow(batch.id)}
+                title="Undo delete"
+              >
+                Undo
+              </StandardButton>
+            </Box>
+          );
+        }
+
         return (
           <Box display="flex" justifyContent="center" gap={1}>
             {isEditing ? (
@@ -1112,294 +1151,194 @@ const InventoryAdjustment: React.FC = () => {
                 Clear All
               </StandardButton>
             </Box>
-            <Box className="search-type-wrapper">
-              <FormControl component="fieldset">
-                <RadioGroup
-                  row
-                  value={searchType}
-                  onChange={(e) => {
-                    const newSearchType = e.target.value as SearchType;
-                    setSearchType(newSearchType);
-                    // Reset all state when switching search types
-                    setSelectedBrand(null);
-                    setSelectedProduct(null);
-                    setSelectedType(null);
-                    setProductsForBrand([]);
-                    setTypesForProduct([]);
-                    setProductInfo(null);
-                    setBatchRows([]);
-                    setSelectedProductById(null);
-                  }}
-                  className="search-type-radio-group"
-                >
-                  <FormControlLabel
-                    value="product"
-                    control={<Radio />}
-                    label="Search by Brand"
-                  />
-                  <FormControlLabel
-                    value="id"
-                    control={<Radio />}
-                    label="Search by Product ID"
-                  />
-                </RadioGroup>
-              </FormControl>
-            </Box>
             <Box className="product-selection-fields">
-              {searchType === 'product' ? (
-                <>
-                  <Box className="selection-field-group">
-                    <Typography variant="body2" className="field-label">
-                      Brand
-                    </Typography>
-                    <Autocomplete
-                      options={brands}
-                      getOptionLabel={(option) => option.brand_name}
-                      value={selectedBrand}
-                      onChange={(_, newValue) => {
-                        setSelectedBrand(newValue);
-                        if (newValue) {
-                          fetchProductsForBrand(newValue.id);
-                        } else {
-                          setProductsForBrand([]);
-                          setSelectedProduct(null);
-                          setSelectedType(null);
-                          setTypesForProduct([]);
-                          setProductInfo(null);
-                          setBatchRows([]);
-                        }
-                      }}
-                      disabled={isLoadingBrands}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          size="small"
-                          placeholder="Select Brand"
-                          sx={inputFieldStyles}
-                        />
-                      )}
-                      slotProps={{
-                        popper: {
-                          sx: {
-                            "& .MuiPaper-root": {
-                              borderRadius: "12px",
-                              marginTop: "4px",
-                              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                              border: "1px solid #E6ECF5",
-                              height: "auto !important",
-                              padding: "0px !important",
-                              overflow: "hidden",
-                              minHeight: "unset !important",
-                              "& .MuiAutocomplete-listbox": {
-                                padding: "0px !important",
-                                maxHeight: "300px !important",
-                                overflow: "auto",
-                                minHeight: "unset !important",
-                              },
-                            },
-                          },
-                        },
-                      }}
-                      ListboxProps={{
-                        sx: {
-                          padding: '0px !important',
-                          maxHeight: '300px !important',
-                          minHeight: 'unset !important',
-                          overflow: 'auto',
-                        }
-                      }}
-                      sx={{ width: '100%' }}
+              <Box className="selection-field-group">
+                <Typography variant="body2" className="field-label">
+                  Medicine Name
+                </Typography>
+                <Autocomplete
+                  options={productOptions}
+                  getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
+                  value={selectedProductName ? { name: selectedProductName } : null}
+                  isOptionEqualToValue={(option, value) => option.name === value.name}
+                  onChange={(_, newValue) => {
+                    const productName = newValue ? newValue.name : null;
+                    setSelectedProductName(productName);
+                    if (productName) {
+                      fetchBrandsForProductName(productName);
+                    } else {
+                      setSelectedBrand(null);
+                      setBrandsForProduct([]);
+                      setSelectedType(null);
+                      setTypesForProduct([]);
+                      setProductInfo(null);
+                      setBatchRows([]);
+                    }
+                  }}
+                  disabled={isLoadingProducts}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      size="small"
+                      placeholder="Select Medicine"
+                      sx={inputFieldStyles}
                     />
-                  </Box>
-                  <Box className="selection-field-group">
-                    <Typography variant="body2" className="field-label">
-                      Medicine Name
-                    </Typography>
-                    <Autocomplete
-                      options={productsForBrand}
-                      getOptionLabel={(option) => option.name}
-                      value={selectedProduct}
-                      onChange={(_, newValue) => {
-                        setSelectedProduct(newValue);
-                        if (newValue && selectedBrand) {
-                          fetchTypesForProduct(selectedBrand.id, selectedBrand.brand_name, newValue.name);
-                        } else {
-                          setTypesForProduct([]);
-                          setSelectedType(null);
-                          setProductInfo(null);
-                          setBatchRows([]);
-                        }
-                      }}
-                      disabled={!selectedBrand || isLoadingProducts}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          size="small"
-                          placeholder="Select Medicine"
-                          sx={inputFieldStyles}
-                        />
-                      )}
-                      slotProps={{
-                        popper: {
-                          sx: {
-                            "& .MuiPaper-root": {
-                              borderRadius: "12px",
-                              marginTop: "4px",
-                              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                              border: "1px solid #E6ECF5",
-                              height: "auto !important",
-                              padding: "0px !important",
-                              overflow: "hidden",
-                              minHeight: "unset !important",
-                              "& .MuiAutocomplete-listbox": {
-                                padding: "0px !important",
-                                maxHeight: "300px !important",
-                                overflow: "auto",
-                                minHeight: "unset !important",
-                              },
-                            },
-                          },
-                        },
-                      }}
-                      ListboxProps={{
-                        sx: {
-                          padding: '0px !important',
-                          maxHeight: '300px !important',
-                          minHeight: 'unset !important',
-                          overflow: 'auto',
-                        }
-                      }}
-                      sx={{ width: '100%' }}
-                    />
-                  </Box>
-                  <Box className="selection-field-group">
-                    <Typography variant="body2" className="field-label">
-                      Type
-                    </Typography>
-                    <Autocomplete
-                      options={typesForProduct}
-                      getOptionLabel={(option) => option.type}
-                      value={selectedType}
-                      onChange={(_, newValue) => {
-                        setSelectedType(newValue);
-                        if (newValue) {
-                          fetchBatchesForProduct(newValue.product_id);
-                        } else {
-                          setProductInfo(null);
-                          setBatchRows([]);
-                        }
-                      }}
-                      disabled={!selectedProduct || isLoadingTypes}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          size="small"
-                          placeholder="Select Type"
-                          sx={inputFieldStyles}
-                        />
-                      )}
-                      slotProps={{
-                        popper: {
-                          sx: {
-                            "& .MuiPaper-root": {
-                              borderRadius: "12px",
-                              marginTop: "4px",
-                              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                              border: "1px solid #E6ECF5",
-                              height: "auto !important",
-                              padding: "0px !important",
-                              overflow: "hidden",
-                              minHeight: "unset !important",
-                              "& .MuiAutocomplete-listbox": {
-                                padding: "0px !important",
-                                maxHeight: "300px !important",
-                                overflow: "auto",
-                                minHeight: "unset !important",
-                              },
-                            },
-                          },
-                        },
-                      }}
-                      ListboxProps={{
-                        sx: {
-                          padding: '0px !important',
-                          maxHeight: '300px !important',
-                          minHeight: 'unset !important',
-                          overflow: 'auto',
-                        }
-                      }}
-                      sx={{ width: '100%' }}
-                    />
-                  </Box>
-                </>
-              ) : (
-                <Box className="selection-field-group">
-                  <Typography variant="body2" className="field-label">
-                    Product ID
-                  </Typography>
-                  <Autocomplete
-                    options={productIdOptions}
-                    getOptionLabel={(option) => typeof option === 'string' ? option : option.id.toString()}
-                    value={selectedProductById}
-                    onChange={(_, newValue) => {
-                      setSelectedProductById(newValue);
-                      if (newValue) {
-                        fetchBatchesForProduct(newValue.id);
-                      } else {
-                        setProductInfo(null);
-                        setBatchRows([]);
-                      }
-                    }}
-                    loading={isLoadingProductIds}
-                    filterOptions={(options, params) => {
-                      const filtered = options.filter((option) => {
-                        const searchValue = params.inputValue.toLowerCase();
-                        return option.id.toString().includes(searchValue);
-                      });
-                      return filtered;
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        size="small"
-                        placeholder="Select Product ID"
-                        sx={inputFieldStyles}
-                      />
-                    )}
-                    slotProps={{
-                      popper: {
-                        sx: {
-                          "& .MuiPaper-root": {
-                            borderRadius: "12px",
-                            marginTop: "4px",
-                            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-                            border: "1px solid #E6ECF5",
-                            height: "auto !important",
-                            minHeight: "unset !important",
+                  )}
+                  slotProps={{
+                    popper: {
+                      sx: {
+                        "& .MuiPaper-root": {
+                          borderRadius: "12px",
+                          marginTop: "4px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                          border: "1px solid #E6ECF5",
+                          height: "auto !important",
+                          padding: "0px !important",
+                          overflow: "hidden",
+                          minHeight: "unset !important",
+                          "& .MuiAutocomplete-listbox": {
                             padding: "0px !important",
-                            overflow: "hidden",
-                            "& .MuiAutocomplete-listbox": {
-                              padding: "0px !important",
-                              maxHeight: "300px !important",
-                              minHeight: "unset !important",
-                              overflow: "auto",
-                            },
+                            maxHeight: "300px !important",
+                            overflow: "auto",
+                            minHeight: "unset !important",
                           },
                         },
                       },
-                    }}
-                    ListboxProps={{
+                    },
+                  }}
+                  ListboxProps={{
+                    sx: {
+                      padding: '0px !important',
+                      maxHeight: '300px !important',
+                      minHeight: 'unset !important',
+                      overflow: 'auto',
+                    }
+                  }}
+                  sx={{ width: '100%' }}
+                />
+              </Box>
+              <Box className="selection-field-group">
+                <Typography variant="body2" className="field-label">
+                  Brand
+                </Typography>
+                <Autocomplete
+                  options={brandsForProduct}
+                  getOptionLabel={(option) => option.brand_name}
+                  value={selectedBrand}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  onChange={(_, newValue) => {
+                    setSelectedBrand(newValue);
+                    if (newValue && selectedProductName) {
+                      fetchTypesForBrandAndProduct(newValue.id, selectedProductName);
+                    } else {
+                      setTypesForProduct([]);
+                      setSelectedType(null);
+                      setProductInfo(null);
+                      setBatchRows([]);
+                    }
+                  }}
+                  disabled={!selectedProductName || isLoadingBrands}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      size="small"
+                      placeholder="Select Brand"
+                      sx={inputFieldStyles}
+                    />
+                  )}
+                  slotProps={{
+                    popper: {
                       sx: {
-                        padding: '0px !important',
-                        maxHeight: '300px !important',
-                        minHeight: 'unset !important',
-                        overflow: 'auto',
-                      }
-                    }}
-                    sx={{ width: '100%' }}
-                  />
-                </Box>
-              )}
+                        "& .MuiPaper-root": {
+                          borderRadius: "12px",
+                          marginTop: "4px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                          border: "1px solid #E6ECF5",
+                          height: "auto !important",
+                          padding: "0px !important",
+                          overflow: "hidden",
+                          minHeight: "unset !important",
+                          "& .MuiAutocomplete-listbox": {
+                            padding: "0px !important",
+                            maxHeight: "300px !important",
+                            overflow: "auto",
+                            minHeight: "unset !important",
+                          },
+                        },
+                      },
+                    },
+                  }}
+                  ListboxProps={{
+                    sx: {
+                      padding: '0px !important',
+                      maxHeight: '300px !important',
+                      minHeight: 'unset !important',
+                      overflow: 'auto',
+                    }
+                  }}
+                  sx={{ width: '100%' }}
+                />
+              </Box>
+              <Box className="selection-field-group">
+                <Typography variant="body2" className="field-label">
+                  Type
+                </Typography>
+                <Autocomplete
+                  options={typesForProduct}
+                  getOptionLabel={(option) => option.type}
+                  value={selectedType}
+                  isOptionEqualToValue={(option, value) => option.product_id === value.product_id}
+                  onChange={(_, newValue) => {
+                    setSelectedType(newValue);
+                    if (newValue) {
+                      fetchBatchesForProduct(newValue.product_id);
+                    } else {
+                      setProductInfo(null);
+                      setBatchRows([]);
+                    }
+                  }}
+                  disabled={!selectedBrand || isLoadingTypes}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      size="small"
+                      placeholder="Select Type"
+                      sx={inputFieldStyles}
+                    />
+                  )}
+                  slotProps={{
+                    popper: {
+                      sx: {
+                        "& .MuiPaper-root": {
+                          borderRadius: "12px",
+                          marginTop: "4px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                          border: "1px solid #E6ECF5",
+                          height: "auto !important",
+                          padding: "0px !important",
+                          overflow: "hidden",
+                          minHeight: "unset !important",
+                          "& .MuiAutocomplete-listbox": {
+                            padding: "0px !important",
+                            maxHeight: "300px !important",
+                            overflow: "auto",
+                            minHeight: "unset !important",
+                          },
+                        },
+                      },
+                    },
+                  }}
+                  ListboxProps={{
+                    sx: {
+                      padding: '0px !important',
+                      maxHeight: '300px !important',
+                      minHeight: 'unset !important',
+                      overflow: 'auto',
+                    }
+                  }}
+                  sx={{ width: '100%' }}
+                />
+              </Box>
               <Box className="product-details-wrapper">
                 <Card variant="outlined" className="product-details-card">
                   <CardContent>
@@ -1426,7 +1365,7 @@ const InventoryAdjustment: React.FC = () => {
                           Brand Name
                         </Typography>
                         <Typography variant="body2" className="detail-value">
-                          {productInfo.brand_name || (brands.find(b => b.id.toString() === productInfo.brand_id)?.brand_name || productInfo.brand_id)}
+                          {productInfo.brand_name || selectedBrand?.brand_name || productInfo.brand_id}
                         </Typography>
 
                         <Typography variant="body2" className="detail-label">
@@ -1530,6 +1469,16 @@ const InventoryAdjustment: React.FC = () => {
         onConfirm={handleConfirmAdjustment}
         confirmLabel="Confirm"
         cancelLabel="Cancel"
+      />
+
+      <ConfirmationDialog
+        open={blockedMessage !== null}
+        title="Batch cannot be deleted"
+        message={blockedMessage}
+        onClose={() => setBlockedMessage(null)}
+        onConfirm={() => setBlockedMessage(null)}
+        confirmLabel="OK"
+        cancelLabel="Close"
       />
 
       <Snackbar

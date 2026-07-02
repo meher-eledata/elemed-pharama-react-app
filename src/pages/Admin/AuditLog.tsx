@@ -13,19 +13,28 @@ import { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useGetActivityLogQuery } from '../../redux/slices/adminSlice';
 import { extractErrorMessage } from '../../utils/errorUtils';
+import {
+  MODULE_FILTER_OPTIONS,
+  EVENT_TYPE_FILTER_OPTIONS,
+  ROLE_FILTER_OPTIONS,
+  mapModule,
+  mapEventType,
+  mapRole,
+} from '../../config/constants/auditLogCanonical.constants';
 
 interface AuditLogEntry {
   id: number;
   username: string;
   userAvatar: string;
-  accessLevel: string;
-  role: string;
+  // Canonical (mapped) display labels — used for BOTH rendering and filter matching so the
+  // visible values and the filters always agree.
   module: string;
   eventType: string;
+  role: string; // 'Admin' | 'Pharmacist' | 'System'
   eventTime: string;
   eventDetails: string;
   quantityChanged: string | number;
-  relatedId?: string | number;
+  relatedId: string | number;
 }
 
 const AuditLog: React.FC = () => {
@@ -43,8 +52,11 @@ const AuditLog: React.FC = () => {
     }
 
     return entries.map((entry, index) => {
-      const username = entry.username || '';
+      const username = String(entry.username ?? '');
       const safeUsername = username || 'NA';
+
+      const rawModule = entry.module ?? entry.module_name ?? '';
+      const rawEventType = entry.eventType ?? entry.event_type ?? '';
 
       return {
         id: entry.id ?? index,
@@ -52,12 +64,13 @@ const AuditLog: React.FC = () => {
         userAvatar:
           entry.userAvatar ||
           safeUsername.substring(0, 2).toUpperCase(),
-        accessLevel: entry.accessLevel || entry.role || '',
-        role: entry.role || entry.accessLevel || '',
-        module: entry.module || entry.module_name || 'N/A',
-        eventType: entry.eventType || entry.event_type || 'N/A',
-        eventTime: entry.eventTime || entry.event_time || '',
-        eventDetails: entry.eventDetails || entry.event_details || '',
+        // Map raw backend values through the canonical maps. `role` is an INTEGER
+        // (0=Admin, 1=Pharmacist) or null; mapRole handles all of those + string forms.
+        module: mapModule(rawModule),
+        eventType: mapEventType(rawEventType),
+        role: mapRole(entry.role),
+        eventTime: String(entry.eventTime ?? entry.event_time ?? ''),
+        eventDetails: String(entry.eventDetails ?? entry.event_details ?? ''),
         quantityChanged: entry.quantityChanged ?? entry.quantity_changed ?? '',
         relatedId: entry.relatedId ?? entry.related_id ?? '',
       };
@@ -83,21 +96,10 @@ const AuditLog: React.FC = () => {
   const [eventTime, setEventTime] = useState<Dayjs | null>(null);
   const [eventDetailsDialog, setEventDetailsDialog] = useState<{ open: boolean; details: string }>({ open: false, details: '' });
 
-  // Get unique values for dropdowns
+  // Username dropdown stays data-derived; Module / Event-type / Role dropdowns are FIXED
+  // canonical lists (see auditLogCanonical.constants).
   const getUniqueUsernames = useMemo(() => {
     return Array.from(new Set(sampleData.map(entry => entry.username))).sort();
-  }, [sampleData]);
-
-  const getUniqueAccessLevels = useMemo(() => {
-    return Array.from(new Set(sampleData.map(entry => entry.role || entry.accessLevel))).sort();
-  }, [sampleData]);
-
-  const getUniqueModules = useMemo(() => {
-    return Array.from(new Set(sampleData.map(entry => entry.module))).sort();
-  }, [sampleData]);
-
-  const getUniqueEventTypes = useMemo(() => {
-    return Array.from(new Set(sampleData.map(entry => entry.eventType))).sort();
   }, [sampleData]);
 
   const filteredData = useMemo(() => {
@@ -106,29 +108,28 @@ const AuditLog: React.FC = () => {
     // Username filter
     if (selectedUsername) {
       filtered = filtered.filter(entry =>
-        entry.username.toLowerCase().includes(selectedUsername.toLowerCase())
+        String(entry.username ?? '').toLowerCase().includes(selectedUsername.toLowerCase())
       );
     }
 
-    // Role filter
+    // Role filter — entry.role is already the canonical label ('Admin'/'Pharmacist'/'System').
     if (selectedAccessLevel) {
-      filtered = filtered.filter(entry => {
-        const roleValue = (entry.role || entry.accessLevel || '').toLowerCase();
-        return roleValue.includes(selectedAccessLevel.toLowerCase());
-      });
+      filtered = filtered.filter(entry =>
+        String(entry.role ?? '').toLowerCase().includes(selectedAccessLevel.toLowerCase())
+      );
     }
 
-    // Module filter
+    // Module filter — entry.module is the canonical (mapped) label.
     if (selectedModule) {
       filtered = filtered.filter(entry =>
-        entry.module.toLowerCase().includes(selectedModule.toLowerCase())
+        String(entry.module ?? '').toLowerCase().includes(selectedModule.toLowerCase())
       );
     }
 
-    // Event Type filter
+    // Event Type filter — entry.eventType is the canonical (mapped) label.
     if (selectedEventType) {
       filtered = filtered.filter(entry =>
-        entry.eventType.toLowerCase().includes(selectedEventType.toLowerCase())
+        String(entry.eventType ?? '').toLowerCase().includes(selectedEventType.toLowerCase())
       );
     }
 
@@ -140,12 +141,21 @@ const AuditLog: React.FC = () => {
     }
 
     if (currentSearchTerm) {
-      filtered = filtered.filter(entry =>
-        entry.username.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-        entry.module.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-        entry.eventType.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-        (entry.role || entry.accessLevel || '').toLowerCase().includes(currentSearchTerm.toLowerCase())
-      );
+      const term = String(currentSearchTerm).toLowerCase();
+      filtered = filtered.filter(entry => {
+        // Search across username, canonical module/event-type/role labels, AND event_details.
+        // Every field is String()-defaulted so no row/input can throw on .toLowerCase().
+        const haystack = [
+          entry.username,
+          entry.module,
+          entry.eventType,
+          entry.role,
+          entry.eventDetails,
+        ]
+          .map(v => String(v ?? '').toLowerCase())
+          .join(' ');
+        return haystack.includes(term);
+      });
     }
 
     return filtered;
@@ -167,20 +177,15 @@ const AuditLog: React.FC = () => {
     const activeSortDirection = sortConfig.direction || AUDIT_LOG_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION;
 
     return [...filteredData].sort((a, b) => {
-      const aValue = a[activeSortKey as keyof AuditLogEntry];
-      const bValue = b[activeSortKey as keyof AuditLogEntry];
+      // String-default both sides so a missing/undefined field can never throw on compare.
+      const aValue = String(a[activeSortKey as keyof AuditLogEntry] ?? '');
+      const bValue = String(b[activeSortKey as keyof AuditLogEntry] ?? '');
 
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        const compareResult = aValue.localeCompare(bValue, undefined, {
-          numeric: true,
-          sensitivity: 'base'
-        });
-        return activeSortDirection === 'asc' ? compareResult : -compareResult;
-      }
-      // Fallback: convert to string and compare
-      return activeSortDirection === 'asc'
-        ? String(aValue).localeCompare(String(bValue))
-        : String(bValue).localeCompare(String(aValue));
+      const compareResult = aValue.localeCompare(bValue, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      return activeSortDirection === 'asc' ? compareResult : -compareResult;
     });
   }, [filteredData, sortConfig]);
 
@@ -256,21 +261,22 @@ const AuditLog: React.FC = () => {
       sortable: false,
       render: (entry) => {
         const maxLength = 25;
-        const isLongText = entry.eventDetails.length > maxLength;
+        const details = String(entry.eventDetails ?? '');
+        const isLongText = details.length > maxLength;
         const truncatedText = isLongText
-          ? `${entry.eventDetails.substring(0, maxLength)}...`
-          : entry.eventDetails;
+          ? `${details.substring(0, maxLength)}...`
+          : details;
 
         return (
           <Tooltip
-            title={entry.eventDetails}
+            title={details}
             arrow
             placement="top"
             enterDelay={300}
             leaveDelay={100}
           >
             <Typography
-              onClick={() => isLongText && setEventDetailsDialog({ open: true, details: entry.eventDetails })}
+              onClick={() => isLongText && setEventDetailsDialog({ open: true, details })}
               sx={{
                 fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
                 color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY,
@@ -310,7 +316,7 @@ const AuditLog: React.FC = () => {
       header: AUDIT_LOG_LABELS.TABLE.ROLE,
       sortable: true,
       render: (entry) => {
-        const roleValue = entry.role || entry.accessLevel || 'N/A';
+        const roleValue = String(entry.role ?? '') || 'System';
         return (
           <Chip
             label={roleValue}
@@ -579,7 +585,7 @@ const AuditLog: React.FC = () => {
                   key={`accessLevel-${selectedAccessLevel}`}
                   value={selectedAccessLevel}
                   onChange={(event, newValue) => setSelectedAccessLevel(newValue)}
-                  options={getUniqueAccessLevels}
+                  options={ROLE_FILTER_OPTIONS}
                   freeSolo
                   forcePopupIcon
                   clearOnEscape
@@ -657,7 +663,7 @@ const AuditLog: React.FC = () => {
                   key={`module-${selectedModule}`}
                   value={selectedModule}
                   onChange={(event, newValue) => setSelectedModule(newValue)}
-                  options={getUniqueModules}
+                  options={MODULE_FILTER_OPTIONS}
                   freeSolo
                   forcePopupIcon
                   clearOnEscape
@@ -726,7 +732,7 @@ const AuditLog: React.FC = () => {
                   key={`eventType-${selectedEventType}`}
                   value={selectedEventType}
                   onChange={(event, newValue) => setSelectedEventType(newValue)}
-                  options={getUniqueEventTypes}
+                  options={EVENT_TYPE_FILTER_OPTIONS}
                   freeSolo
                   forcePopupIcon
                   clearOnEscape

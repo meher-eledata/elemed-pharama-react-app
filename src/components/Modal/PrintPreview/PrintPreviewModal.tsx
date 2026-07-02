@@ -40,11 +40,7 @@ interface PrintPreviewModalProps {
   taxAmount: string;
   totalPayableAmount: string;
   patientType?: string;
-  onCancel: () => void;
-  onPrint: () => void;
-  onSaveClick?: () => void; // Handler for Save button click
   onAfterSave?: () => void; // Optional callback after successful save
-  hideActionButtons?: boolean; // Hide the action buttons (for view-only mode)
   brandIcon?: string;
   pageSize?: 'A4' | 'A5';
   onPageSizeChange?: (size: 'A4' | 'A5') => void;
@@ -68,11 +64,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   taxAmount,
   totalPayableAmount,
   patientType,
-  onCancel,
-  onPrint,
-  onSaveClick,
   onAfterSave,
-  hideActionButtons = false,
   pageSize = 'A4',
   onPageSizeChange,
   brandIcon,
@@ -82,7 +74,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   const isA5 = pageSize.toUpperCase() === 'A5';
 
   // Adaptive styles based on page size
-  const containerMaxWidth = isA5 ? '481px' : '794px'; // A5 vs A4 width (approx at 96dpi)
+  const containerMaxWidth = '794px'; // A5 Landscape width is same as A4 Portrait width (210mm)
   const containerPadding = isA5 ? '16px' : '28px';
   const headerFontSize = isA5 ? '20px' : '24px';
   const sectionGap = isA5 ? '8px' : '14px';
@@ -178,14 +170,14 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         {/* Branded Receipt Header */}
         <Box sx={{
           display: 'flex',
-          justifyContent: isA5 ? 'center' : 'space-between',
+          justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: isA5 ? '8px' : '12px',
           paddingBottom: '6px',
           borderBottom: '2px solid #1A212B',
-          gap: isA5 ? '20px' : 0
+          gap: 0
         }}>
-          <Box sx={{ flex: isA5 ? 'none' : 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
             {brandIcon && (
               <Box
                 component="img"
@@ -200,7 +192,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               />
             )}
           </Box>
-          <Box sx={{ flex: isA5 ? 'none' : 3, textAlign: isA5 ? 'left' : 'center' }}>
+          <Box sx={{ flex: 3, textAlign: 'center' }}>
             <Typography sx={{ fontSize: isA5 ? '16px' : '20px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
               ELITE PHARMACY
             </Typography>
@@ -217,7 +209,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
             </Typography> */}
           </Box>
-          {!isA5 && <Box sx={{ flex: 1, textAlign: 'right' }}></Box>}
+          <Box sx={{ flex: 1, textAlign: 'right' }}></Box>
         </Box>
 
         {/* Four Section Layout - 1 Row */}

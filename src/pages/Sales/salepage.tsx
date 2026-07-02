@@ -197,6 +197,9 @@ export default function SalePage() {
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+  // Informational modal shown when the fetched batches contain duplicate batch numbers
+  // (data-migration dupes). Lists the offending batch number(s); dismissible — does NOT block the sale.
+  const [duplicateBatchNumbers, setDuplicateBatchNumbers] = useState<string[]>([]);
 
   // Toast State
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -552,6 +555,21 @@ export default function SalePage() {
         }
 
         console.log('📦 Final processed batch objects:', batchObjects);
+
+        // Detect duplicate batch numbers (same batch_number appearing more than once — a
+        // data-migration artifact). Surface an informational modal naming the duplicates; the
+        // user must contact an admin to delete one via the Inventory Adjustment workflow.
+        const batchNumberCounts = new Map<string, number>();
+        for (const b of batchObjects) {
+          const key = String(b.batch_number);
+          batchNumberCounts.set(key, (batchNumberCounts.get(key) || 0) + 1);
+        }
+        const duplicates = Array.from(batchNumberCounts.entries())
+          .filter(([, count]) => count > 1)
+          .map(([batchNumber]) => batchNumber);
+        if (duplicates.length > 0) {
+          setDuplicateBatchNumbers(duplicates);
+        }
 
         if (batchObjects.length > 0) {
           setAvailableBatches(batchObjects);
@@ -916,6 +934,21 @@ export default function SalePage() {
         })()}
         onClose={handleCancelDelete}
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* Duplicate batch-number warning (informational, dismissible — does not block the sale) */}
+      <ConfirmationDialog
+        open={duplicateBatchNumbers.length > 0}
+        title="Duplicate batch numbers found"
+        message={
+          `Duplicate batch number${duplicateBatchNumbers.length > 1 ? 's were' : ' was'} found for this product: ` +
+          `${duplicateBatchNumbers.join(', ')}. ` +
+          `Please contact an admin to delete one of the duplicate batches in the Inventory Adjustment workflow.`
+        }
+        onClose={() => setDuplicateBatchNumbers([])}
+        onConfirm={() => setDuplicateBatchNumbers([])}
+        confirmLabel="OK"
+        cancelLabel="Close"
       />
 
       {/* Toast Notifications */}

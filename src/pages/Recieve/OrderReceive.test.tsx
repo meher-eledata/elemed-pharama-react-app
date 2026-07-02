@@ -6,36 +6,30 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
-import OrderReceive, { OrderReceiveRow, PurchaseOrderRow } from './OrderReceive';
+import OrderReceive from './OrderReceive';
+import { OrderReceiveRow, PurchaseOrderRow } from './types';
 import {
   useGetReceiptsQuery,
   useEditReceiptMutation,
   useDeleteReceiptMutation,
   useGetCurrentPurchaseOrdersQuery,
   useGetReceiptLinesQuery,
+  useLazyGetReceiptLinesQuery,
+  useLazyGetReceiptFileLinkQuery,
   Receipt,
   PurchaseOrder,
 } from '../../redux/slices/receiveApi';
+import { useGetBatchesForProductMutation } from '../../redux/slices/inventoryApi';
 
 // Create a theme for testing
 const theme = createTheme();
 
 // Mock the Redux API hooks
 jest.mock('../../redux/slices/receiveApi');
+jest.mock('../../redux/slices/inventoryApi');
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
-}));
-jest.mock('../../components/Modal/ReceiveSupplier/ReceiveSupplierModal', () => ({
-  __esModule: true,
-  default: ({ open, onClose, onNext }: any) => (
-    open ? (
-      <div data-testid="receive-supplier-modal">
-        <button onClick={onClose}>Close</button>
-        <button onClick={onNext}>Next</button>
-      </div>
-    ) : null
-  ),
 }));
 jest.mock('../../components/DeleteDialogue/ConfirmationDialog', () => ({
   __esModule: true,
@@ -94,7 +88,7 @@ jest.mock('../../components/PharmaTable', () => ({
 }));
 
 // Mock data
-const mockReceipts: Receipt[] = [
+const mockReceipts = [
   {
     id: 1,
     po_id: 101,
@@ -118,7 +112,7 @@ const mockReceipts: Receipt[] = [
     receipt_status: 'received',
     total_amount: 7500,
   },
-];
+] as unknown as Receipt[];
 
 const mockPurchaseOrders: PurchaseOrder[] = [
   {
@@ -136,7 +130,9 @@ const mockReceiptLines = [
     product_name: 'Product 1',
     received_qty: 10,
     hsn_id: 'HSN001',
-    unit_price: '100',
+    mrp: '120.00',
+    purchase_price: '100.00',
+    batch_number: 'BATCH001',
     transaction_number: 'TXN001',
     payment_vendor: 'Bank A',
   },
@@ -202,15 +198,34 @@ describe('OrderReceive', () => {
   const mockUseEditReceiptMutation = useEditReceiptMutation as jest.MockedFunction<typeof useEditReceiptMutation>;
   const mockUseDeleteReceiptMutation = useDeleteReceiptMutation as jest.MockedFunction<typeof useDeleteReceiptMutation>;
   const mockUseGetReceiptLinesQuery = useGetReceiptLinesQuery as jest.MockedFunction<typeof useGetReceiptLinesQuery>;
+  const mockUseLazyGetReceiptLinesQuery = useLazyGetReceiptLinesQuery as jest.MockedFunction<typeof useLazyGetReceiptLinesQuery>;
+  const mockUseLazyGetReceiptFileLinkQuery = useLazyGetReceiptFileLinkQuery as jest.MockedFunction<typeof useLazyGetReceiptFileLinkQuery>;
+  const mockUseGetBatchesForProductMutation = useGetBatchesForProductMutation as jest.MockedFunction<typeof useGetBatchesForProductMutation>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockUseGetReceiptsQuery.mockReturnValue(createMockQueryResult(mockReceipts));
     mockUseGetCurrentPurchaseOrdersQuery.mockReturnValue(createMockQueryResult(mockPurchaseOrders));
     mockUseEditReceiptMutation.mockReturnValue([createMockMutation().mutateAsync, createMockMutation()] as any);
     mockUseDeleteReceiptMutation.mockReturnValue([createMockMutation().mutateAsync, createMockMutation()] as any);
     mockUseGetReceiptLinesQuery.mockReturnValue(createMockQueryResult(mockReceiptLines));
+    // Lazy query returns a tuple: [trigger, result, lastPromiseInfo]
+    const lazyTrigger = jest.fn().mockReturnValue({ unwrap: () => Promise.resolve(mockReceiptLines) });
+    mockUseLazyGetReceiptLinesQuery.mockReturnValue([lazyTrigger, createMockQueryResult(undefined), {} as any] as any);
+    // Lazy query returns a tuple: [trigger, result, lastPromiseInfo]
+    const lazyFileLinkTrigger = jest.fn().mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          receipt_id: 0,
+          url: null,
+          file_name: null,
+          file_type: null,
+          expires_in: null,
+        }),
+    });
+    mockUseLazyGetReceiptFileLinkQuery.mockReturnValue([lazyFileLinkTrigger, createMockQueryResult(undefined), {} as any] as any);
+    mockUseGetBatchesForProductMutation.mockReturnValue([createMockMutation().mutateAsync, createMockMutation()] as any);
   });
 
   describe('Component Rendering', () => {
@@ -316,7 +331,7 @@ describe('OrderReceive', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Supplier Name/i)).toBeInTheDocument();
-        expect(screen.getByText(/Received On/i)).toBeInTheDocument();
+        expect(screen.getByText(/Filter by Dates/i)).toBeInTheDocument();
       });
     });
 
@@ -441,7 +456,7 @@ describe('OrderReceive', () => {
 
       await waitFor(() => {
         // Date pickers should be visible
-        expect(screen.getByText(/Received On/i)).toBeInTheDocument();
+        expect(screen.getByText(/Filter by Dates/i)).toBeInTheDocument();
       });
     });
   });

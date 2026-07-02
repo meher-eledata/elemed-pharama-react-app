@@ -8,6 +8,9 @@ import { salesApi } from "./slices/salesApi";
 import { adminApi } from "./slices/adminSlice";
 import { masterApi } from "./slices/masterApi";
 import { reportsApi } from "./slices/reportsApi";
+import { historicalFilesApi } from "./slices/historicalFilesApi";
+import { activityApi } from "./slices/activityApi";
+import { profileApi } from "./slices/profileApi";
 import cartReducer from "./slices/cartSlice";
 
 export const store = configureStore({
@@ -22,6 +25,9 @@ export const store = configureStore({
     [adminApi.reducerPath]: adminApi.reducer,
     [masterApi.reducerPath]: masterApi.reducer,
     [reportsApi.reducerPath]: reportsApi.reducer,
+    [historicalFilesApi.reducerPath]: historicalFilesApi.reducer,
+    [activityApi.reducerPath]: activityApi.reducer,
+    [profileApi.reducerPath]: profileApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -33,6 +39,9 @@ export const store = configureStore({
       .concat(adminApi.middleware)
       .concat(masterApi.middleware)
       .concat(reportsApi.middleware)
+      .concat(historicalFilesApi.middleware)
+      .concat(activityApi.middleware)
+      .concat(profileApi.middleware)
 });
 
 export type RootState = ReturnType<typeof store.getState>;

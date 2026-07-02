@@ -5,12 +5,16 @@ import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { BrowserRouter } from 'react-router-dom';
 import InventoryModule from './InventoryModule';
 import {
   useGetLowStockQuery,
   useGetExcessStockQuery,
   useGetExpiredStockQuery,
+  useGetNearExpiryStockQuery,
+  useGetTotalStockQuery,
   useGetInventorySummaryQuery,
+  useUpdateMinQuantityMutation,
 } from '../../redux/slices/inventoryApi';
 
 // Create a theme for testing
@@ -44,9 +48,11 @@ jest.mock('../../components/PharmaTable', () => ({
     totalRows,
     rowsPerPage,
     currentPage,
-    sortConfig
+    sortConfig,
+    customSearchBarContent
   }: any) => (
     <div data-testid="reusable-table">
+      {customSearchBarContent}
       <input
         data-testid="search-input"
         value={currentSearchTerm}
@@ -56,23 +62,27 @@ jest.mock('../../components/PharmaTable', () => ({
       <button data-testid="filter-toggle" onClick={onShowFiltersToggle}>
         Toggle Filters
       </button>
-      {showFilters && (
-        <div data-testid="filter-options">
-          <select
-            data-testid="filter-select"
-            value={currentFilterKey}
-            onChange={(e) => onFilterSelect(e.target.value, '')}
-          >
-            <option value="name">Name</option>
-            <option value="currentQuantity">Current Quantity</option>
-            <option value="minQuantity">Min Quantity</option>
-            <option value="maxQuantity">Max Quantity</option>
-            <option value="batchNumber">Batch Number</option>
-            <option value="expiryDate">Expiry Date</option>
-            <option value="daysPastExpiry">Days Past Expiry</option>
-          </select>
-        </div>
-      )}
+      {/*
+        The component now hardcodes `showFilters={false}` (filter UI replaced by the
+        Autocomplete search bar), but `onFilterSelect` -> `setFilterType` remains wired.
+        Render the select unconditionally so the real filterType-driven filtering logic
+        can still be exercised through the surviving callback.
+      */}
+      <div data-testid="filter-options">
+        <select
+          data-testid="filter-select"
+          value={currentFilterKey}
+          onChange={(e) => onFilterSelect(e.target.value, '')}
+        >
+          <option value="name">Name</option>
+          <option value="currentQuantity">Current Quantity</option>
+          <option value="minQuantity">Min Quantity</option>
+          <option value="maxQuantity">Max Quantity</option>
+          <option value="batchNumber">Batch Number</option>
+          <option value="expiryDate">Expiry Date</option>
+          <option value="daysPastExpiry">Days Past Expiry</option>
+        </select>
+      </div>
       <div data-testid="table-data">
         {data.map((item: any, index: number) => (
           <div key={item.id || index} data-testid={`table-row-${index}`}>
@@ -172,6 +182,27 @@ const mockExpiredStockData = [
   },
 ];
 
+// Near-expiry list as returned at the default 3-month window: includes both the
+// within-1-month band (daysToExpiry <= 30) and the 1-3 month band (daysToExpiry > 30).
+const mockNearExpiryStockData = [
+  {
+    id: '7',
+    name: 'Soon Expiring 20d',
+    currentQuantity: 12,
+    batchNumber: 'NEAR020',
+    expiryDate: '2026-07-15',
+    daysToExpiry: 20,
+  },
+  {
+    id: '8',
+    name: 'Later Expiring 60d',
+    currentQuantity: 8,
+    batchNumber: 'NEAR060',
+    expiryDate: '2026-08-24',
+    daysToExpiry: 60,
+  },
+];
+
 const mockInventorySummary = {
   belowMinCount: 2,
   aboveMaxCount: 2,
@@ -192,6 +223,9 @@ describe('InventoryModule', () => {
   const mockUseGetExcessStockQuery = useGetExcessStockQuery as jest.MockedFunction<typeof useGetExcessStockQuery>;
   const mockUseGetExpiredStockQuery = useGetExpiredStockQuery as jest.MockedFunction<typeof useGetExpiredStockQuery>;
   const mockUseGetInventorySummaryQuery = useGetInventorySummaryQuery as jest.MockedFunction<typeof useGetInventorySummaryQuery>;
+  const mockUseGetNearExpiryStockQuery = useGetNearExpiryStockQuery as jest.MockedFunction<typeof useGetNearExpiryStockQuery>;
+  const mockUseGetTotalStockQuery = useGetTotalStockQuery as jest.MockedFunction<typeof useGetTotalStockQuery>;
+  const mockUseUpdateMinQuantityMutation = useUpdateMinQuantityMutation as jest.MockedFunction<typeof useUpdateMinQuantityMutation>;
 
   // Helper function to create complete mock return value
   const createMockQueryResult = (data: any, isLoading = false, error: any = null) => ({
@@ -215,7 +249,9 @@ describe('InventoryModule', () => {
     return render(
       <Provider store={store}>
         <ThemeProvider theme={theme}>
-          {component}
+          <BrowserRouter>
+            {component}
+          </BrowserRouter>
         </ThemeProvider>
       </Provider>
     );
@@ -229,6 +265,12 @@ describe('InventoryModule', () => {
     mockUseGetExcessStockQuery.mockReturnValue(createMockQueryResult(mockExcessStockData));
     mockUseGetExpiredStockQuery.mockReturnValue(createMockQueryResult(mockExpiredStockData));
     mockUseGetInventorySummaryQuery.mockReturnValue(createMockQueryResult(mockInventorySummary));
+    mockUseGetNearExpiryStockQuery.mockReturnValue(createMockQueryResult([]));
+    mockUseGetTotalStockQuery.mockReturnValue(createMockQueryResult([]));
+    mockUseUpdateMinQuantityMutation.mockReturnValue([
+      jest.fn().mockReturnValue({ unwrap: jest.fn().mockResolvedValue({}) }),
+      { reset: jest.fn(), isLoading: false, isSuccess: false, isError: false, isUninitialized: true } as any,
+    ] as any);
   });
 
   describe('Component Rendering', () => {
@@ -239,9 +281,9 @@ describe('InventoryModule', () => {
 
     it('renders all three tab buttons', () => {
       renderWithProviders(<InventoryModule />);
-      expect(screen.getByText('Low Stock')).toBeInTheDocument();
-      expect(screen.getByText('Excess Stock')).toBeInTheDocument();
-      expect(screen.getByText('Expired Stock')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Low Stock' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Excess Stock' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Expired Stock' })).toBeInTheDocument();
     });
 
     it('renders the Add Product button', () => {
@@ -270,7 +312,7 @@ describe('InventoryModule', () => {
 
       renderWithProviders(<InventoryModule />);
       // Switch to excess tab
-      fireEvent.click(screen.getByText('Excess Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Excess Stock' }));
       expect(screen.getByText('Loading data...')).toBeInTheDocument();
     });
 
@@ -279,7 +321,7 @@ describe('InventoryModule', () => {
 
       renderWithProviders(<InventoryModule />);
       // Switch to expired tab
-      fireEvent.click(screen.getByText('Expired Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Expired Stock' }));
       expect(screen.getByText('Loading data...')).toBeInTheDocument();
     });
   });
@@ -296,8 +338,9 @@ describe('InventoryModule', () => {
       mockUseGetExcessStockQuery.mockReturnValue(createMockQueryResult(undefined, false, { status: 404, data: 'Not Found' } as any));
 
       renderWithProviders(<InventoryModule />);
-      fireEvent.click(screen.getByText('Excess Stock'));
-      expect(screen.getByText(/Error/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Excess Stock' }));
+      // extractErrorMessage returns the string `data` payload verbatim
+      expect(screen.getByText('Not Found')).toBeInTheDocument();
     });
   });
 
@@ -305,11 +348,11 @@ describe('InventoryModule', () => {
     it('switches to excess stock tab and shows correct data', () => {
       renderWithProviders(<InventoryModule />);
       
-      fireEvent.click(screen.getByText('Excess Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Excess Stock' }));
       
       // Verify the tab is active (this would depend on your styling implementation)
-      expect(screen.getByText('Excess Stock')).toBeInTheDocument();
-      
+      expect(screen.getByRole('button', { name: 'Excess Stock' })).toBeInTheDocument();
+
       // Verify correct data is displayed
       expect(screen.getByText('Vitamin D3')).toBeInTheDocument();
       expect(screen.getByText('150')).toBeInTheDocument();
@@ -318,7 +361,7 @@ describe('InventoryModule', () => {
     it('switches to expired stock tab and shows correct data', () => {
       renderWithProviders(<InventoryModule />);
       
-      fireEvent.click(screen.getByText('Expired Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Expired Stock' }));
       
       expect(screen.getByText('Expired Medicine A')).toBeInTheDocument();
       expect(screen.getByText('BATCH001')).toBeInTheDocument();
@@ -333,10 +376,10 @@ describe('InventoryModule', () => {
       fireEvent.change(searchInput, { target: { value: 'Aspirin' } });
       
       // Switch to another tab
-      fireEvent.click(screen.getByText('Excess Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Excess Stock' }));
       
       // Switch back to low stock tab
-      fireEvent.click(screen.getByText('Low Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Low Stock' }));
       
       // Search input should be reset
       expect(searchInput).toHaveValue('');
@@ -376,7 +419,7 @@ describe('InventoryModule', () => {
       renderWithProviders(<InventoryModule />);
       
       // Switch to excess stock
-      fireEvent.click(screen.getByText('Excess Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Excess Stock' }));
       
       // Verify we can see both excess stock items initially
       expect(screen.getByText('Vitamin D3')).toBeInTheDocument();
@@ -503,11 +546,11 @@ describe('InventoryModule', () => {
       expect(screen.getByText('10')).toBeInTheDocument(); // min quantity
       
       // Switch to excess stock - should show max quantity
-      fireEvent.click(screen.getByText('Excess Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Excess Stock' }));
       expect(screen.getByText('100')).toBeInTheDocument(); // max quantity
       
       // Switch to expired stock - should show batch number and expiry date
-      fireEvent.click(screen.getByText('Expired Stock'));
+      fireEvent.click(screen.getByRole('button', { name: 'Expired Stock' }));
       expect(screen.getByText('BATCH001')).toBeInTheDocument();
       expect(screen.getByText('2023-12-01')).toBeInTheDocument();
     });
@@ -526,10 +569,63 @@ describe('InventoryModule', () => {
 
     it('displays correct counts in summary cards', () => {
       renderWithProviders(<InventoryModule />);
-      
+
       // Check that all three summary cards show the value "2"
       const summaryNumbers = screen.getAllByText('2');
       expect(summaryNumbers).toHaveLength(3);
+    });
+  });
+
+  describe('Near-expiry search selection', () => {
+    beforeEach(() => {
+      mockUseGetNearExpiryStockQuery.mockReturnValue(
+        createMockQueryResult(mockNearExpiryStockData)
+      );
+    });
+
+    // Picks an option from the Autocomplete by its visible product name.
+    const selectSearchOption = async (productName: string) => {
+      const autocompleteInput = screen.getByPlaceholderText(
+        'Search products across all tabs...'
+      );
+      fireEvent.mouseDown(autocompleteInput);
+      fireEvent.change(autocompleteInput, { target: { value: productName } });
+      const option = await screen.findByText(productName, {
+        selector: '.MuiAutocomplete-option *, .MuiAutocomplete-option',
+      });
+      fireEvent.click(option);
+    };
+
+    it('opens the 1-month range and shows a within-1-month (daysToExpiry <= 30) product', async () => {
+      renderWithProviders(<InventoryModule />);
+
+      await selectSearchOption('Soon Expiring 20d');
+
+      // 1-month range button is now active (filled purple), 3-month is not.
+      const oneMonthBtn = screen.getByRole('button', { name: '1 month' });
+      const threeMonthBtn = screen.getByRole('button', { name: '3 months' });
+      expect(oneMonthBtn).toHaveStyle('background-color: #5C17E5');
+      expect(threeMonthBtn).not.toHaveStyle('background-color: #5C17E5');
+
+      // The within-1-month product is visible in the table (it would be filtered
+      // out by the default 3-month band).
+      const table = screen.getByTestId('table-data');
+      expect(within(table).getByText('Soon Expiring 20d')).toBeInTheDocument();
+      expect(within(table).queryByText('Later Expiring 60d')).not.toBeInTheDocument();
+    });
+
+    it('opens the 3-month range for a 1-3 month (daysToExpiry > 30) product', async () => {
+      renderWithProviders(<InventoryModule />);
+
+      await selectSearchOption('Later Expiring 60d');
+
+      const oneMonthBtn = screen.getByRole('button', { name: '1 month' });
+      const threeMonthBtn = screen.getByRole('button', { name: '3 months' });
+      expect(threeMonthBtn).toHaveStyle('background-color: #5C17E5');
+      expect(oneMonthBtn).not.toHaveStyle('background-color: #5C17E5');
+
+      const table = screen.getByTestId('table-data');
+      expect(within(table).getByText('Later Expiring 60d')).toBeInTheDocument();
     });
   });
 });

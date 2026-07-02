@@ -43,6 +43,7 @@ import {
   useGetTotalStockQuery,
   useUpdateMinQuantityMutation,
 } from '../../redux/slices/inventoryApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { extractErrorMessage } from '../../utils/errorUtils';
 
 
@@ -122,6 +123,7 @@ const InventoryModule: React.FC = () => {
     useState<boolean>(false);
 
   const [updateMinQuantity] = useUpdateMinQuantityMutation();
+  const [logDownload] = useLogDownloadMutation();
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -146,13 +148,13 @@ const InventoryModule: React.FC = () => {
     useGetTotalStockQuery();
 
   const allSearchOptions = useMemo(() => {
-    const options: { name: string; category: StockType; id?: string }[] = [];
+    const options: { name: string; category: StockType; id?: string; daysToExpiry?: number }[] = [];
     const seen = new Set<string>();
 
     const addOption = (item: any, category: StockType) => {
       const key = `${item.name}-${category}`;
       if (!seen.has(key)) {
-        options.push({ name: item.name, category, id: item.id });
+        options.push({ name: item.name, category, id: item.id, daysToExpiry: item.daysToExpiry });
         seen.add(key);
       }
     };
@@ -320,6 +322,12 @@ const InventoryModule: React.FC = () => {
   const handleAutocompleteSelect = (event: any, value: any) => {
     if (value) {
       setSelectedStockType(value.category);
+      // For Near Expiry, the tab has two disjoint range bands (1-month: daysToExpiry <= 30,
+      // 3-month: daysToExpiry > 30). Open the range that actually contains the picked product
+      // so it is visible after the jump.
+      if (value.category === 'nearExpiry') {
+        setNearExpiryMonths(value.daysToExpiry != null && value.daysToExpiry <= 30 ? 1 : 3);
+      }
       setSearchQuery(value.name);
       setPage(1);
     } else {
@@ -563,6 +571,12 @@ const InventoryModule: React.FC = () => {
 
   const handleDownloadCSV = () => {
     csvLinkRef.current?.link?.click();
+    logDownload({
+      category: 'inventory',
+      name: getCategoryLabel(selectedStockType),
+      format: 'csv',
+      count: filteredData.length,
+    }).catch(() => {});
   };
 
   const renderHeaderCheckbox = () => (

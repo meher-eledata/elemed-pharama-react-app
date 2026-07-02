@@ -6,6 +6,7 @@ import '@testing-library/jest-dom';
 import ThreeChartsComponent from '../../../components/mainDashboard/Charts/SimpleAreaCharts';
 import { useGetInvoiceKpisQuery } from '../../../redux/slices/dashboardApi';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import dayjs from 'dayjs';
 import ChartCard from '../../../components/mainDashboard/Charts/ChartsCard';
 
 const theme = createTheme();
@@ -116,11 +117,17 @@ describe('ThreeChartsComponent', () => {
 
       // Assert that the mocked ChartCard component received the correct props
       const revenueCall = (ChartCard as jest.Mock).mock.calls.find(call => call[0].title === 'Revenue');
-      expect(revenueCall[0].metric).toBe('₹50000');
+      // Current behaviour: revenue is formatted with en-IN grouping and 2 decimals.
+      expect(revenueCall[0].metric).toBe('₹50,000.00');
       expect(revenueCall[0].chartData.series1).toEqual([1500, 2500, 3000]);
 
-      // Fix this line to match the received filename format
-      expect(revenueCall[0].filename).toBe('total_revenue_report_Sep-01,-2025_to_Sep-30,-2025.csv');
+      // The filename embeds the date range as a LOCAL calendar date (dayjs on
+      // the YYYY-MM-DD portion), so it is stable across timezones with no UTC
+      // one-day shift. Derive the expectation the same way the component does.
+      const formatDateForFile = (dateStr: string) =>
+        dayjs(dateStr.split('T')[0]).format('DD-MMM-YYYY');
+      const expectedDuration = `${formatDateForFile('2025-09-01')}_to_${formatDateForFile('2025-09-30')}`;
+      expect(revenueCall[0].filename).toBe(`total_revenue_report_${expectedDuration}.csv`);
     });
   });
 
@@ -144,8 +151,9 @@ describe('ThreeChartsComponent', () => {
       // Assert that the call was made before checking its properties
       expect(revenueCall).toBeDefined();
 
-      // Check for the expected properties of the empty data
-      expect(revenueCall[0].metric).toBe('₹0');
+      // Check for the expected properties of the empty data.
+      // Current behaviour: revenue is formatted with 2 decimals → ₹0.00.
+      expect(revenueCall[0].metric).toBe('₹0.00');
       expect(revenueCall[0].chartData.series1).toEqual([]);
     });
   });

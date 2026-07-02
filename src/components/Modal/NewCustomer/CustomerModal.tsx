@@ -34,6 +34,9 @@ interface CustomerData {
     other: boolean;
   };
   billingAddress: string;
+  city: string;
+  state: string;
+  postalCode: string;
   shippingAddress: string;
   shippingAddressSameAsBilling: boolean;
   gstin: string;
@@ -116,7 +119,9 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setCustomerData(prev => ({ ...prev, [name]: value }));
+    // Mobile number: digits only, capped at 10 (matches the add-customer contract).
+    const next = name === 'mobileNumber' ? value.replace(/\D/g, '').slice(0, 10) : value;
+    setCustomerData(prev => ({ ...prev, [name]: next }));
   };
 
   const handleGenderChange = (e: any) => {
@@ -286,6 +291,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                   name="mobileNumber"
                   value={customerData.mobileNumber}
                   onChange={handleInputChange}
+                  inputProps={{ inputMode: 'numeric', maxLength: 10 }}
                   sx={inputStyle}
                 />
 
@@ -390,6 +396,36 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                   placeholder={CUSTOMER_MODAL_LABELS.BILLING_ADDRESS_PLACEHOLDER}
                   name="billingAddress"
                   value={customerData.billingAddress}
+                  onChange={handleInputChange}
+                  sx={inputStyle}
+                />
+
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder={CUSTOMER_MODAL_LABELS.BILLING_CITY_PLACEHOLDER}
+                  name="city"
+                  value={customerData.city}
+                  onChange={handleInputChange}
+                  sx={inputStyle}
+                />
+
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder={CUSTOMER_MODAL_LABELS.STATE_PLACEHOLDER}
+                  name="state"
+                  value={customerData.state}
+                  onChange={handleInputChange}
+                  sx={inputStyle}
+                />
+
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder={CUSTOMER_MODAL_LABELS.POSTAL_CODE_PLACEHOLDER}
+                  name="postalCode"
+                  value={customerData.postalCode}
                   onChange={handleInputChange}
                   sx={inputStyle}
                 />

@@ -1,0 +1,284 @@
+import React, { useState, useMemo, useRef } from 'react';
+import { Box } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { CSVLink } from 'react-csv';
+import { Dayjs } from 'dayjs';
+import { ReusableTable, TableColumn } from '../../components/PharmaTable';
+import {
+  ReportHeader,
+  ReportLoading,
+  ReportError,
+  FilterSelect,
+  FilterSelectOption,
+  CellText,
+  TableShell,
+  SummaryBar,
+  BackLink,
+} from '../../components/AdminReports/ReportShared';
+import { ADMIN_REPORTS_CONSTANTS as C } from '../../config/constants/AdminReports.constants';
+import { PRODUCT_SALES_REPORT_LABELS as L } from '../../config/label/ProductSalesReport.labels';
+import {
+  useGetProductSalesReportQuery,
+  ProductSalesReportRow,
+} from '../../redux/slices/reportsApi';
+import { useGetProductsQuery } from '../../redux/slices/masterApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
+import {
+  toNum,
+  formatCurrency,
+  formatNumber,
+  formatCount,
+  formatPercent,
+  formatReportDate,
+  defaultDateRange,
+  csvString,
+} from '../../utils/reportFormat';
+
+const PATIENT_TYPE_DISPLAY: Record<string, string> = {
+  INPATIENT: 'In Patient',
+  OUTPATIENT: 'Out Patient',
+  UNKNOWN: 'Unknown',
+};
+
+interface SalesRow extends ProductSalesReportRow {
+  _id: number;
+  qtyN: number;
+  mrpN: number;
+  spN: number;
+  discPctN: number;
+  discAmtN: number;
+  cgstN: number;
+  sgstN: number;
+  igstN: number;
+  totalTaxN: number;
+  lineTotalN: number;
+  patientDisplay: string;
+}
+
+const ProductSalesReport: React.FC = () => {
+  const navigate = useNavigate();
+  const csvLinkRef = useRef<any>(null);
+  const [logDownload] = useLogDownloadMutation();
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
+  const [productId, setProductId] = useState<string>('');
+  const [patientType, setPatientType] = useState<string>(''); // '', '0', '1'
+
+  const [start, end] = dateRange;
+  const { data: products } = useGetProductsQuery();
+
+  const { data, isLoading, isError, refetch } = useGetProductSalesReportQuery(
+    {
+      start_date: start ? start.format('YYYY-MM-DD') : '',
+      end_date: end ? end.format('YYYY-MM-DD') : '',
+      ...(productId ? { product_id: Number(productId) } : {}),
+      ...(patientType !== '' ? { patient_type: Number(patientType) as 0 | 1 } : {}),
+    },
+    { skip: !start || !end, refetchOnMountOrArgChange: true }
+  );
+
+  const productOptions: FilterSelectOption[] = useMemo(
+    () => [
+      { value: '', label: L.FILTER.PRODUCT_ALL },
+      ...(products || []).map((p) => ({ value: String(p.product_id), label: p.name })),
+    ],
+    [products]
+  );
+  const patientOptions: FilterSelectOption[] = [
+    { value: '', label: L.FILTER.PATIENT_TYPE_ALL },
+    { value: '1', label: L.FILTER.PATIENT_TYPE_INPATIENT },
+    { value: '0', label: L.FILTER.PATIENT_TYPE_OUTPATIENT },
+  ];
+
+  const rows: SalesRow[] = useMemo(() => {
+    if (!data?.rows) return [];
+    return data.rows.map((r, i) => ({
+      ...r,
+      _id: i,
+      qtyN: toNum(r.quantity),
+      mrpN: toNum(r.mrp),
+      spN: toNum(r.selling_price),
+      discPctN: toNum(r.discount_pct),
+      discAmtN: toNum(r.discount_amount),
+      cgstN: toNum(r.cgst_amount),
+      sgstN: toNum(r.sgst_amount),
+      igstN: toNum(r.igst_amount),
+      totalTaxN: toNum(r.total_tax),
+      lineTotalN: toNum(r.line_total),
+      patientDisplay: PATIENT_TYPE_DISPLAY[r.patient_type] || r.patient_type,
+    }));
+  }, [data]);
+
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'sale_date',
+    direction: C.TABLE.DEFAULT_SORT_DIRECTION,
+  });
+
+  const sortedRows = useMemo(() => {
+    const { key, direction } = sortConfig;
+    return [...rows].sort((a, b) => {
+      const av = (a as any)[key];
+      const bv = (b as any)[key];
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return direction === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av ?? '').localeCompare(String(bv ?? ''), undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      return direction === 'asc' ? cmp : -cmp;
+    });
+  }, [rows, sortConfig]);
+
+  const handleSortRequest = (key: string) =>
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+
+  const columns: TableColumn<SalesRow>[] = [
+    { key: 'invoice_number', header: L.TABLE.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'sale_date', header: L.TABLE.SALE_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.sale_date)}</CellText> },
+    { key: 'product_name', header: L.TABLE.PRODUCT, sortable: true, render: (r) => <CellText>{r.product_name || '-'}</CellText> },
+    { key: 'product_code', header: L.TABLE.PRODUCT_CODE, sortable: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
+    { key: 'hsn_code', header: L.TABLE.HSN, sortable: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
+    { key: 'batch_number', header: L.TABLE.BATCH_NUMBER, sortable: true, render: (r) => <CellText>{r.batch_number || '-'}</CellText> },
+    { key: 'patientDisplay', header: L.TABLE.PATIENT_TYPE, sortable: true, render: (r) => <CellText>{r.patientDisplay}</CellText> },
+    { key: 'customer_name', header: L.TABLE.CUSTOMER, sortable: true, render: (r) => <CellText>{r.customer_name || '-'}</CellText> },
+    { key: 'qtyN', header: L.TABLE.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
+    { key: 'mrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
+    { key: 'spN', header: L.TABLE.SP, sortable: true, render: (r) => <CellText>{formatNumber(r.spN)}</CellText> },
+    { key: 'discPctN', header: L.TABLE.DISCOUNT_PCT, sortable: true, render: (r) => <CellText>{formatPercent(r.discPctN)}</CellText> },
+    { key: 'discAmtN', header: L.TABLE.DISCOUNT_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.discAmtN)}</CellText> },
+    { key: 'cgstN', header: L.TABLE.CGST_AMT, sortable: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
+    { key: 'sgstN', header: L.TABLE.SGST_AMT, sortable: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
+    { key: 'igstN', header: L.TABLE.IGST_AMT, sortable: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
+    { key: 'totalTaxN', header: L.TABLE.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
+    { key: 'lineTotalN', header: L.TABLE.LINE_TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.lineTotalN)}</CellText> },
+  ];
+
+  const summary = data?.summary;
+  const summaryStats = useMemo(
+    () => [
+      { label: L.SUMMARY.LINES, value: formatCount(summary?.line_count ?? 0) },
+      { label: L.SUMMARY.TOTAL_QTY, value: formatNumber(toNum(summary?.total_quantity)) },
+      { label: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
+      { label: L.SUMMARY.INVOICES, value: formatCount(summary?.invoice_count ?? 0) },
+      { label: L.SUMMARY.TOTAL_CGST, value: formatCurrency(toNum(summary?.total_cgst)) },
+      { label: L.SUMMARY.TOTAL_SGST, value: formatCurrency(toNum(summary?.total_sgst)) },
+      { label: L.SUMMARY.TOTAL_IGST, value: formatCurrency(toNum(summary?.total_igst)) },
+      { label: L.SUMMARY.TOTAL_TAX, value: formatCurrency(toNum(summary?.total_tax)) },
+      { label: L.SUMMARY.TOTAL_SALES, value: formatCurrency(toNum(summary?.total_sales)), highlight: true },
+    ],
+    [summary]
+  );
+
+  const csvData = useMemo(
+    () =>
+      sortedRows.map((r) => ({
+        [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
+        [L.TABLE.PRODUCT]: csvString(r.product_name),
+        [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
+        [L.TABLE.HSN]: csvString(r.hsn_code),
+        [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
+        [L.TABLE.PATIENT_TYPE]: r.patientDisplay,
+        [L.TABLE.CUSTOMER]: csvString(r.customer_name),
+        [L.TABLE.QTY]: r.qtyN.toFixed(2),
+        [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
+        [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),
+        [L.TABLE.DISCOUNT_PCT]: r.discPctN.toFixed(2),
+        [L.TABLE.DISCOUNT_AMT]: r.discAmtN.toFixed(2),
+        [L.TABLE.CGST_AMT]: r.cgstN.toFixed(2),
+        [L.TABLE.SGST_AMT]: r.sgstN.toFixed(2),
+        [L.TABLE.IGST_AMT]: r.igstN.toFixed(2),
+        [L.TABLE.TOTAL_TAX]: r.totalTaxN.toFixed(2),
+        [`${L.TABLE.LINE_TOTAL} (₹)`]: r.lineTotalN.toFixed(2),
+      })),
+    [sortedRows]
+  );
+  const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${start ? start.format('YYYY-MM-DD') : ''}_${
+    end ? end.format('YYYY-MM-DD') : ''
+  }.csv`;
+  const handleDownloadCsv = () => {
+    csvLinkRef.current?.link?.click();
+    logDownload({ category: 'report', name: 'Product Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
+  };
+
+  return (
+    <Box sx={{ padding: C.PAGE.PADDING, pb: C.PAGE.PADDING_BOTTOM }}>
+      <BackLink onClick={() => navigate(C.ROUTES.REPORTS, { state: { activeTab: 'detailed' } })} />
+
+      <ReportHeader
+        title={L.PAGE.TITLE}
+        subtitle={L.PAGE.SUBTITLE}
+        downloadLabel={L.PAGE.DOWNLOAD_CSV}
+        onDownloadCsv={handleDownloadCsv}
+        downloadDisabled={!rows.length}
+        dateRange={dateRange}
+        onDateRangeChange={(r) => {
+          setDateRange(r);
+          setCurrentPage(1);
+        }}
+      >
+        <FilterSelect
+          label={L.FILTER.PRODUCT_LABEL}
+          value={productId}
+          options={productOptions}
+          onChange={(v) => {
+            setProductId(v);
+            setCurrentPage(1);
+          }}
+          width={220}
+        />
+        <FilterSelect
+          label={L.FILTER.PATIENT_TYPE_LABEL}
+          value={patientType}
+          options={patientOptions}
+          onChange={(v) => {
+            setPatientType(v);
+            setCurrentPage(1);
+          }}
+          width={180}
+        />
+      </ReportHeader>
+
+      {isLoading ? (
+        <ReportLoading />
+      ) : isError ? (
+        <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
+      ) : (
+        <>
+          {rows.length > 0 && <SummaryBar stats={summaryStats} />}
+          <TableShell>
+            <ReusableTable
+              columns={columns}
+              data={sortedRows}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
+              emptyMessage={L.EMPTY_TABLE}
+              searchAndFilterConfig={{ filterOptions: [] }}
+              currentSearchTerm=""
+              onSearchChange={() => {}}
+              showFilters={false}
+              onShowFiltersToggle={() => {}}
+              currentFilterKey=""
+              onFilterSelect={() => {}}
+              totalRows={sortedRows.length}
+              rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              onSortRequest={handleSortRequest}
+              sortConfig={sortConfig}
+            />
+          </TableShell>
+        </>
+      )}
+
+      <CSVLink data={csvData} filename={csvFilename} ref={csvLinkRef} style={{ display: 'none' }} />
+    </Box>
+  );
+};
+
+export default ProductSalesReport;

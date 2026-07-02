@@ -2,23 +2,28 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SalePage from '../salepage';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
-import * as cartSlice from '../../../redux/slices/cartSlice';
+import * as inventoryApi from '../../../redux/slices/inventoryApi';
 
 // Mock dependencies
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/sales', state: null }),
 }));
 
 jest.mock('../../../redux/slices/salesApi');
 jest.mock('../../../redux/slices/receiveApi');
+jest.mock('../../../redux/slices/inventoryApi');
 jest.mock('../../../hooks/useDebounce', () => ({
   useDebounce: (value: any) => value,
 }));
+
+const theme = createTheme();
 
 const createMockStore = (initialState = {}) => {
   return configureStore({
@@ -76,9 +81,45 @@ describe('SalePage', () => {
     ]);
 
     (salesApi.useValidateSaleMutation as jest.Mock) = jest.fn(() => [
-      jest.fn().mockResolvedValue({
-        data: { mrp: 100, selling_price: 90 },
-      }),
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ mrp: 100, selling_price: 90 }),
+      })),
+      { isLoading: false },
+    ]);
+
+    // Doctor names used by both SalePage and ProductSelectionForm
+    (salesApi.useGetDoctorNamesQuery as jest.Mock) = jest.fn(() => ({
+      data: [{ id: '1', name: 'Dr. Smith' }],
+      isLoading: false,
+    }));
+
+    // Mutation used by SalePage when a product type is selected
+    (salesApi.useGetBatchNumbersByProductIdMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ batches: [] }),
+      })),
+      { isLoading: false },
+    ]);
+
+    // inventoryApi mutations used by SalePage cascade (brand -> type -> batch)
+    (inventoryApi.useGetBrandsFromProductNameMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([]),
+      })),
+      { isLoading: false },
+    ]);
+
+    (inventoryApi.useGetTypesForBrandAndProductMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([]),
+      })),
+      { isLoading: false },
+    ]);
+
+    (inventoryApi.useGetBatchesForProductMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([]),
+      })),
       { isLoading: false },
     ]);
   });
@@ -86,9 +127,11 @@ describe('SalePage', () => {
   const renderComponent = (store = createMockStore()) => {
     return render(
       <Provider store={store}>
-        <BrowserRouter>
-          <SalePage />
-        </BrowserRouter>
+        <ThemeProvider theme={theme}>
+          <BrowserRouter>
+            <SalePage />
+          </BrowserRouter>
+        </ThemeProvider>
       </Provider>
     );
   };
@@ -103,7 +146,8 @@ describe('SalePage', () => {
     renderComponent();
     
     expect(screen.getByText(/find product/i)).toBeInTheDocument();
-    expect(screen.getByText(/quantity/i)).toBeInTheDocument();
+    // Quantity field label renders as "Units" (also appears as a table header)
+    expect(screen.getAllByText(/units/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/discount/i)).toBeInTheDocument();
   });
 
@@ -163,7 +207,7 @@ describe('SalePage', () => {
       expect(qtyInput).toHaveValue('5');
     } else {
       // If input is not found, at least verify the quantity label exists
-      expect(screen.getByText(/quantity/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/units/i).length).toBeGreaterThan(0);
     }
   });
 
@@ -255,12 +299,56 @@ describe('SalePage', () => {
 
   it('shows warning when trying to proceed with empty cart', () => {
     renderComponent();
-    
+
     const nextButton = screen.getByText(/next/i);
     fireEvent.click(nextButton);
-    
+
     // Should show warning toast
     expect(nextButton).toBeInTheDocument();
+  });
+
+  it('shows the duplicate-batch admin warning modal when batches contain duplicate batch numbers', async () => {
+    // Cascade auto-resolves: one brand for the product → one type → batches with a dupe.
+    (inventoryApi.useGetBrandsFromProductNameMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([{ id: 1, brand_name: 'BrandA', currentQuantity: 100 }]),
+      })),
+      { isLoading: false },
+    ]);
+    (inventoryApi.useGetTypesForBrandAndProductMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue([{ type: 'Capsule', product_id: 42, currentQuantity: 100 }]),
+      })),
+      { isLoading: false },
+    ]);
+    (salesApi.useGetBatchNumbersByProductIdMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({
+          batches: [
+            { batch_number: 'DUP-1', current_qty: 5 },
+            { batch_number: 'DUP-1', current_qty: 3 },
+            { batch_number: 'UNIQUE-2', current_qty: 7 },
+          ],
+        }),
+      })),
+      { isLoading: false },
+    ]);
+
+    renderComponent();
+
+    const productInput = screen.getByPlaceholderText(/search for a product/i);
+    productInput.focus();
+    fireEvent.change(productInput, { target: { value: 'Product A' } });
+    const option = await screen.findByRole('option', { name: /Product A/i });
+    fireEvent.click(option);
+
+    // Informational modal names the duplicated batch number and points to the admin/Inventory flow.
+    await waitFor(() =>
+      expect(screen.getByText(/Duplicate batch numbers found/i)).toBeInTheDocument()
+    );
+    expect(screen.getByText(/DUP-1/)).toBeInTheDocument();
+    expect(screen.getByText(/Inventory Adjustment/i)).toBeInTheDocument();
+    expect(screen.queryByText(/UNIQUE-2/)).not.toBeInTheDocument();
   });
 });
 

@@ -3,7 +3,9 @@ export interface ProductItem {
   type: string;
   quantity: number;
   hsnCode: string;
-  amount: number;
+  batchNumber: string;
+  mrp: number;
+  purchasePrice: number;
   lineId?: number;
   transaction_number?: string;
   payment_vendor?: string;

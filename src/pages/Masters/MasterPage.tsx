@@ -11,13 +11,28 @@ import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModa
 import NewDoctorModal from "../../components/Modal/NewDoctor/NewDoctorModal";
 import { MASTER_DATA_CONSTANTS } from "../../config/constants/MasterData.constants";
 import { MASTER_DATA_LABELS } from "../../config/label/MasterData.labels";
+import { MASTER_VIEW_LABELS } from "../../config/label/MasterView.labels";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../redux/store";
+import { getMasterViewConfig, type MasterCategory } from "../../config/constants/MasterView.constants";
+import { extractErrorMessage } from "../../utils/errorUtils";
+import MasterViewModal from "./components/MasterViewModal";
 import {
   useAddCustomerMutation
 } from "../../redux/slices/salesApi";
 import {
   useGetMasterCountsQuery,
   useAddSupplierMutation,
-  useAddDoctorMutation
+  useAddDoctorMutation,
+  useGetCustomersQuery,
+  useGetSuppliersQuery,
+  useGetProductsQuery,
+  useGetDoctorsQuery,
+  useUpdateCustomerMutation,
+  useUpdateSupplierMutation,
+  useUpdateProductMutation,
+  useUpdateDoctorMutation,
+  type AddDoctorRequest,
 } from "../../redux/slices/masterApi";
 
 interface CardProps {
@@ -26,12 +41,13 @@ interface CardProps {
   desc: string;
   action: string;
   onAction: () => void;
+  onView: () => void;
   iconBgColor: string;
   count: number;
   badgeLabel: string;
 }
 
-const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBgColor, count, badgeLabel }) => (
+const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, onView, iconBgColor, count, badgeLabel }) => (
   <Box
     sx={{
       borderRadius: MASTER_DATA_CONSTANTS.CARDS.RADIUS,
@@ -107,7 +123,7 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
       {desc}
     </Typography>
 
-    <Box sx={{ mt: 'auto', pt: 1 }}>
+    <Box sx={{ mt: 'auto', pt: 1, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
       <StandardButton
         onClick={onAction}
         variant="primary"
@@ -125,11 +141,30 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
       >
         {action}
       </StandardButton>
+      <StandardButton
+        onClick={onView}
+        variant="secondary"
+        size="medium"
+        sx={{
+          height: MASTER_DATA_CONSTANTS.ACTION_BUTTON.HEIGHT,
+          minWidth: MASTER_DATA_CONSTANTS.ACTION_BUTTON.MIN_WIDTH,
+          borderRadius: MASTER_DATA_CONSTANTS.ACTION_BUTTON.RADIUS,
+          fontWeight: MASTER_DATA_CONSTANTS.ACTION_BUTTON.FONT_WEIGHT,
+          fontSize: MASTER_DATA_CONSTANTS.ACTION_BUTTON.FONT_SIZE,
+        }}
+      >
+        {MASTER_VIEW_LABELS.VIEW_ACTION}
+      </StandardButton>
     </Box>
   </Box>
 );
 
-const Masterpage: React.FC = () => {
+interface MasterpageProps {
+  // Admin-only: enables the per-view .xlsx download button. Set only by the admin route.
+  enableDownload?: boolean;
+}
+
+const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
@@ -139,10 +174,31 @@ const Masterpage: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
 
+  // Which category's view/edit table is open (null = none).
+  const [viewCategory, setViewCategory] = useState<MasterCategory | null>(null);
+
+  // Same role detection RoleGuard uses (ROLE_MAP { 0: 'admin', 1: 'pharmacist' };
+  // string roles 'admin'/'Admin' also count as admin). The backend strips PII from
+  // customers/doctors for non-admins, so only admins see the full columns/fields.
+  const role = useSelector((state: RootState) => state.auth.user?.role);
+  const isAdmin = role === 0 || role === 'admin' || role === 'Admin';
+
   const { data: masterCounts, isLoading: loadingCounts } = useGetMasterCountsQuery();
   const [addCustomer] = useAddCustomerMutation();
   const [addSupplier] = useAddSupplierMutation();
   const [addDoctor] = useAddDoctorMutation();
+
+  // List queries — only fetch when that category's view modal is open.
+  const customersQuery = useGetCustomersQuery(undefined, { skip: viewCategory !== 'customer' });
+  const suppliersQuery = useGetSuppliersQuery(undefined, { skip: viewCategory !== 'supplier' });
+  const productsQuery = useGetProductsQuery(undefined, { skip: viewCategory !== 'product' });
+  const doctorsQuery = useGetDoctorsQuery(undefined, { skip: viewCategory !== 'doctor' });
+
+  // Update mutations.
+  const [updateCustomer] = useUpdateCustomerMutation();
+  const [updateSupplier] = useUpdateSupplierMutation();
+  const [updateProduct] = useUpdateProductMutation();
+  const [updateDoctor] = useUpdateDoctorMutation();
 
   const productCount = masterCounts?.products ?? 0;
   const customerCount = masterCounts?.customers ?? 0;
@@ -160,18 +216,32 @@ const Masterpage: React.FC = () => {
         gstin: customerData.gstin || null,
         pancard_num: customerData.pancardNum || null,
         drug_license: customerData.drugLicense || null,
-        gender: customerData.gender === 'Male' ? 0 : customerData.gender === 'Female' ? 1 : null,
+        // Optional billing-location fields — only sent when filled.
+        ...(customerData.city?.trim() ? { city: customerData.city.trim() } : {}),
+        ...(customerData.state?.trim() ? { state: customerData.state.trim() } : {}),
+        ...(customerData.postalCode?.trim() ? { postal_code: customerData.postalCode.trim() } : {}),
+        // CustomerModal.gender is a { male, female, other } booleans object.
+        // Map to canonical ints (1=Male, 2=Female, 3=Other); none selected => null.
+        gender: customerData.gender?.male
+          ? 1
+          : customerData.gender?.female
+            ? 2
+            : customerData.gender?.other
+              ? 3
+              : null,
       }).unwrap();
       setCustomerModalOpen(false);
       setSnackbarMessage(`Customer "${customerData.customerName}" created successfully!`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error adding customer:', error);
-      setSnackbarMessage('Failed to add customer. Please try again.');
+      // Surface the backend message (e.g. 409 "phone already in use", 400 validation)
+      // to the modal: rethrow an Error so CustomerModal's catch shows error.message.
+      const message = extractErrorMessage(error, 'Failed to add customer. Please try again.');
+      setSnackbarMessage(message);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
-      throw error;
+      throw new Error(message);
     }
   }, [addCustomer]);
 
@@ -189,7 +259,9 @@ const Masterpage: React.FC = () => {
         phone_number: supplierData.phoneNumber,
         gst_number: supplierData.gstin || '',
         cst_number: supplierData.cstNumber || '',
-        notes: supplierData.tinNumber || '',
+        notes: supplierData.notes?.trim() || null,
+        // Persist the entered email under the model column `email_id` so it round-trips to edit.
+        email_id: supplierData.emailId?.trim() || null,
       }).unwrap();
       setSupplierModalOpen(false);
       setSnackbarMessage(`Supplier "${supplierData.supplierName}" added successfully!`);
@@ -206,36 +278,35 @@ const Masterpage: React.FC = () => {
 
   const handleDoctorSubmit = useCallback(async (doctorData: any) => {
     try {
-      const doctorPayload: any = {
-        doctor_name: doctorData.doctorName,
-        contact_name: doctorData.doctorName, // Using doctor name as contact name
-        address: doctorData.branch || '',
-        city: '',
-        state: '',
-        pin: '',
-        country: '',
-        phone_number: doctorData.mobileNumber || '',
-        gst_number: '',
-        cst_number: '',
-        notes: doctorData.role || '',
-      };
-
-      // Only include email if it has a value
-      if (doctorData.email && doctorData.email.trim()) {
-        doctorPayload.email = doctorData.email.trim();
+      // Send only provided values; gender is the canonical int (1/2/3) or null.
+      const payload: AddDoctorRequest = { name: doctorData.name.trim() };
+      const optionalFields: Array<keyof AddDoctorRequest> = [
+        'email', 'phone', 'branch', 'address', 'city', 'state',
+        'pin', 'country', 'drug_license',
+      ];
+      optionalFields.forEach((key) => {
+        const value = doctorData[key];
+        if (typeof value === 'string' && value.trim()) {
+          (payload as any)[key] = value.trim();
+        }
+      });
+      if (doctorData.gender !== null && doctorData.gender !== undefined) {
+        payload.gender = Number(doctorData.gender);
       }
 
-      await addDoctor(doctorPayload).unwrap();
+      await addDoctor(payload).unwrap();
       setDoctorModalOpen(false);
-      setSnackbarMessage(`Doctor "${doctorData.doctorName}" added successfully!`);
+      setSnackbarMessage(`Doctor "${doctorData.name}" added successfully!`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error adding doctor:', error);
-      setSnackbarMessage('Failed to add doctor. Please try again.');
+      // Surface the backend message (e.g. 409 "email or phone already in use",
+      // 400 "name is required") to the modal via a rethrown Error.
+      const message = extractErrorMessage(error, 'Failed to add doctor. Please try again.');
+      setSnackbarMessage(message);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
-      throw error;
+      throw new Error(message);
     }
   }, [addDoctor]);
 
@@ -297,6 +368,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.PRODUCT.DESC}
           action={MASTER_DATA_LABELS.CARDS.PRODUCT.ACTION}
           onAction={() => setProductModalOpen(true)}
+          onView={() => setViewCategory('product')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.PRODUCT}
           count={loadingCounts ? 0 : productCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.PRODUCT.BADGE_LABEL}
@@ -308,6 +380,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.CUSTOMER.DESC}
           action={MASTER_DATA_LABELS.CARDS.CUSTOMER.ACTION}
           onAction={() => setCustomerModalOpen(true)}
+          onView={() => setViewCategory('customer')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.CUSTOMER}
           count={loadingCounts ? 0 : customerCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.CUSTOMER.BADGE_LABEL}
@@ -319,6 +392,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.SUPPLIER.DESC}
           action={MASTER_DATA_LABELS.CARDS.SUPPLIER.ACTION}
           onAction={() => setSupplierModalOpen(true)}
+          onView={() => setViewCategory('supplier')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.SUPPLIER}
           count={loadingCounts ? 0 : supplierCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.SUPPLIER.BADGE_LABEL}
@@ -330,6 +404,7 @@ const Masterpage: React.FC = () => {
           desc={MASTER_DATA_LABELS.CARDS.DOCTOR.DESC}
           action={MASTER_DATA_LABELS.CARDS.DOCTOR.ACTION}
           onAction={() => setDoctorModalOpen(true)}
+          onView={() => setViewCategory('doctor')}
           iconBgColor={MASTER_DATA_CONSTANTS.ICON_COLORS.DOCTOR}
           count={loadingCounts ? 0 : doctorCount}
           badgeLabel={MASTER_DATA_LABELS.CARDS.DOCTOR.BADGE_LABEL}
@@ -363,6 +438,52 @@ const Masterpage: React.FC = () => {
         isOpen={doctorModalOpen}
         onClose={() => setDoctorModalOpen(false)}
         onSubmit={handleDoctorSubmit}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'customer'}
+        category="customer"
+        rows={(customersQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={customersQuery.isLoading || customersQuery.isFetching}
+        isError={customersQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateCustomer(body as any).unwrap()}
+        showDownload={enableDownload}
+        config={getMasterViewConfig('customer', isAdmin)}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'supplier'}
+        category="supplier"
+        rows={(suppliersQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={suppliersQuery.isLoading || suppliersQuery.isFetching}
+        isError={suppliersQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateSupplier(body as any).unwrap()}
+        showDownload={enableDownload}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'product'}
+        category="product"
+        rows={(productsQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={productsQuery.isLoading || productsQuery.isFetching}
+        isError={productsQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateProduct(body as any).unwrap()}
+        showDownload={enableDownload}
+      />
+
+      <MasterViewModal
+        open={viewCategory === 'doctor'}
+        category="doctor"
+        rows={(doctorsQuery.data ?? []) as unknown as Record<string, unknown>[]}
+        isLoading={doctorsQuery.isLoading || doctorsQuery.isFetching}
+        isError={doctorsQuery.isError}
+        onClose={() => setViewCategory(null)}
+        onUpdate={(body) => updateDoctor(body as any).unwrap()}
+        showDownload={enableDownload}
+        config={getMasterViewConfig('doctor', isAdmin)}
       />
 
       <Snackbar

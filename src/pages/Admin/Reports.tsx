@@ -7,11 +7,18 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
 import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
+import { ADMIN_REPORTS_CONSTANTS } from '../../config/constants/AdminReports.constants';
+import { SUPPLIER_RECEIPT_REPORT_LABELS } from '../../config/label/SupplierReceiptReport.labels';
+import { SUPPLIER_PAYMENT_REPORT_LABELS } from '../../config/label/SupplierPaymentReport.labels';
+import { PRODUCT_SALES_REPORT_LABELS } from '../../config/label/ProductSalesReport.labels';
+import { SALES_TAX_REPORT_LABELS } from '../../config/label/SalesTaxReport.labels';
+import { SUPPLIER_TAX_REPORT_LABELS } from '../../config/label/SupplierTaxReport.labels';
 import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
 const PaymentTypePieChart = lazy(() => import('../../components/Charts/PaymentTypePieChart'));
@@ -78,17 +85,61 @@ const Reports: React.FC = () => {
 
 const DetailedReportsView: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedReport, setSelectedReport] = useState<string | null>(
     (location.state as any)?.selectedReport || null
   );
 
-  const reportCards = [
+  const reportCards: {
+    id: string;
+    title: string;
+    description: string;
+    route?: string;
+  }[] = [
     {
       id: 'daily-sales',
       title: 'Daily Sales Report',
       description: 'View detailed daily sales information including payment methods, taxes, and trends',
     },
+    {
+      id: 'supplier-receipt',
+      title: SUPPLIER_RECEIPT_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SUPPLIER_RECEIPT_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_RECEIPT,
+    },
+    {
+      id: 'supplier-payments',
+      title: SUPPLIER_PAYMENT_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SUPPLIER_PAYMENT_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_PAYMENTS,
+    },
+    {
+      id: 'product-sales',
+      title: PRODUCT_SALES_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: PRODUCT_SALES_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.PRODUCT_SALES,
+    },
+    {
+      id: 'sales-tax',
+      title: SALES_TAX_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SALES_TAX_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SALES_TAX,
+    },
+    {
+      id: 'supplier-tax',
+      title: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_TAX,
+    },
   ];
+
+  const handleCardClick = (report: { id: string; route?: string }) => {
+    if (report.route) {
+      navigate(report.route);
+    } else {
+      setSelectedReport(report.id);
+    }
+  };
 
   if (selectedReport === 'daily-sales') {
     return (
@@ -127,7 +178,7 @@ const DetailedReportsView: React.FC = () => {
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 },
               }}
-              onClick={() => setSelectedReport(report.id)}
+              onClick={() => handleCardClick(report)}
             >
               <Typography
                 sx={{
@@ -173,6 +224,7 @@ const DailySalesReport: React.FC = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const csvLinkRef = useRef<any>(null);
+  const [logDownload] = useLogDownloadMutation();
 
   const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
     { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
@@ -375,6 +427,7 @@ const DailySalesReport: React.FC = () => {
 
   const handleDownloadCSV = () => {
     csvLinkRef.current?.link?.click();
+    logDownload({ category: 'report', name: 'Daily Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
   if (isLoading) {

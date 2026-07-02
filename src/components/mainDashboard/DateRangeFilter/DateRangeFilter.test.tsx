@@ -87,8 +87,11 @@ describe('DateRangeFilter Component', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(DATE_RANGE_LABELS.START_PLACEHOLDER)).toBeInTheDocument();
-      expect(screen.getByText(DATE_RANGE_LABELS.END_PLACEHOLDER)).toBeInTheDocument();
+      // Current behaviour: START_PLACEHOLDER and END_PLACEHOLDER share the
+      // same text ("DD/MM/YYYY"), so both the start and end slots render it.
+      const placeholders = screen.getAllByText(DATE_RANGE_LABELS.START_PLACEHOLDER);
+      expect(placeholders).toHaveLength(2);
+      expect(DATE_RANGE_LABELS.END_PLACEHOLDER).toBe(DATE_RANGE_LABELS.START_PLACEHOLDER);
     });
 
     it('displays only start date when end date is null', () => {
@@ -327,8 +330,8 @@ describe('DateRangeFilter Component', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(DATE_RANGE_LABELS.START_PLACEHOLDER)).toBeInTheDocument();
-      expect(screen.getByText(DATE_RANGE_LABELS.END_PLACEHOLDER)).toBeInTheDocument();
+      // Both placeholders share the same "DD/MM/YYYY" text, so two render.
+      expect(screen.getAllByText(DATE_RANGE_LABELS.START_PLACEHOLDER)).toHaveLength(2);
     });
 
     it('handles same start and end date', () => {

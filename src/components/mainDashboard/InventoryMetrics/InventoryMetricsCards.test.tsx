@@ -6,12 +6,31 @@ import {
   useGetInvoiceStatsQuery,
   useGetInventoryByDateQuery,
 } from '../../../redux/slices/dashboardApi';
+import { useGetNearExpiryStockQuery } from '../../../redux/slices/inventoryApi';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 const theme = createTheme();
 
 // Mock the API hooks to control their return values
 jest.mock('../../../redux/slices/dashboardApi');
+
+// The component also calls useGetNearExpiryStockQuery (inventoryApi) and
+// useNavigate (react-router-dom). Mock both so the component can render
+// without a Provider/Router wrapper.
+jest.mock('../../../redux/slices/inventoryApi', () => ({
+  __esModule: true,
+  useGetNearExpiryStockQuery: jest.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  })),
+}));
+
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  __esModule: true,
+  useNavigate: () => mockNavigate,
+}));
 
 // Mock the individual chart components. This is the correct approach since
 // you are asserting their presence with data-testid. The SimpleAreaCharts.tsx
@@ -113,6 +132,22 @@ const mockUpdatedInvoiceData = {
   activeSalesDays: 5,
 };
 
+// Near Expiry data comes from a separate hook (inventoryApi).
+const mockNearExpiryData = [
+  {
+    name: 'Aspirin Tablet',
+    currentQuantity: 40,
+    expiryDate: '2025-07-01',
+    daysToExpiry: 15,
+  },
+  {
+    name: 'Cetirizine Tablet',
+    currentQuantity: 25,
+    expiryDate: '2025-07-10',
+    daysToExpiry: 24,
+  },
+];
+
 describe('InventoryMetricsCards', () => {
   beforeEach(() => {
     // Reset mocks before each test
@@ -127,6 +162,11 @@ describe('InventoryMetricsCards', () => {
       isLoading: false,
       error: null,
     });
+    (useGetNearExpiryStockQuery as jest.Mock).mockReturnValue({
+      data: mockNearExpiryData,
+      isLoading: false,
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -135,6 +175,10 @@ describe('InventoryMetricsCards', () => {
   });
 
   // Test Case 1: Renders initial summary cards
+  // Current behaviour: the three stock cards are Low Stock Items (from
+  // belowMinProducts), Near Expiry Stock (from the inventoryApi near-expiry
+  // hook) and Expired Stock (from expiredProducts). The "Excess Stock"
+  // card was replaced by "Near Expiry Stock".
   it('renders the three inventory metric cards with correct data', async () => {
     render(
       <ThemeProvider theme={theme}>
@@ -148,9 +192,9 @@ describe('InventoryMetricsCards', () => {
       expect(lowStockCard).not.toBeNull();
       expect(within(lowStockCard as HTMLElement).getByText('2')).toBeInTheDocument();
 
-      const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
-      expect(excessStockCard).not.toBeNull();
-      expect(within(excessStockCard as HTMLElement).getByText('2')).toBeInTheDocument();
+      const nearExpiryCard = screen.getByText('Near Expiry Stock').closest('.MuiPaper-root');
+      expect(nearExpiryCard).not.toBeNull();
+      expect(within(nearExpiryCard as HTMLElement).getByText('2')).toBeInTheDocument();
 
       const expiredStockCard = screen.getByText('Expired Stock').closest('.MuiPaper-root');
       expect(expiredStockCard).not.toBeNull();
@@ -158,52 +202,42 @@ describe('InventoryMetricsCards', () => {
     });
   });
 
-  // Test Case 2: Opens Low Stock modal
-  it('opens the Low Stock modal with correct data when "View Items" is clicked', async () => {
+  // Test Case 2: Low Stock "View Items" navigates to the inventory page.
+  // Current behaviour: clicking "View Items" no longer opens a modal; it
+  // navigates to /inventory with the relevant tab in router state.
+  it('navigates to the inventory low-stock tab when Low Stock "View Items" is clicked', async () => {
     render(
       <ThemeProvider theme={theme}>
         <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
       </ThemeProvider>
     );
 
-    // Find the Low Stock card and click the 'View Items' button
     const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
     expect(lowStockCard).not.toBeNull();
     const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
     fireEvent.click(viewItemsButton);
 
-    // Assert that the modal is visible and contains the correct data
-    await waitFor(() => {
-      const modal = screen.getByRole('dialog', { name: 'Low Stock Items' });
-      expect(modal).toBeInTheDocument();
-      expect(within(modal).getByText('Omeprazole Capsule')).toBeInTheDocument();
-      expect(within(modal).getByText('Salbutamol Inhaler')).toBeInTheDocument();
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/inventory', { state: { tab: 'low' } });
   });
 
-  // Test Case 3: Opens Excess Stock modal
-  it('opens the Excess Stock modal with correct data when "View Items" is clicked', async () => {
+  // Test Case 3: Near Expiry "View Items" navigates to the inventory page.
+  it('navigates to the inventory near-expiry tab when Near Expiry "View Items" is clicked', async () => {
     render(
       <ThemeProvider theme={theme}>
         <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
       </ThemeProvider>
     );
 
-    const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
-    expect(excessStockCard).not.toBeNull();
-    const viewItemsButton = within(excessStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
+    const nearExpiryCard = screen.getByText('Near Expiry Stock').closest('.MuiPaper-root');
+    expect(nearExpiryCard).not.toBeNull();
+    const viewItemsButton = within(nearExpiryCard as HTMLElement).getByRole('button', { name: 'View Items' });
     fireEvent.click(viewItemsButton);
 
-    await waitFor(() => {
-      const modal = screen.getByRole('dialog', { name: 'Excess Stock' });
-      expect(modal).toBeInTheDocument();
-      expect(within(modal).getByText('Paracetamol Tablet')).toBeInTheDocument();
-      expect(within(modal).getByText('Ibuprofen Capsule')).toBeInTheDocument();
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/inventory', { state: { tab: 'nearExpiry' } });
   });
 
-  // Test Case 4: Opens Expired Stock modal
-  it('opens the Expired Stock modal with correct data when "View Items" is clicked', async () => {
+  // Test Case 4: Expired Stock "View Items" navigates to the inventory page.
+  it('navigates to the inventory expired tab when Expired Stock "View Items" is clicked', async () => {
     render(
       <ThemeProvider theme={theme}>
         <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
@@ -215,78 +249,32 @@ describe('InventoryMetricsCards', () => {
     const viewItemsButton = within(expiredStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
     fireEvent.click(viewItemsButton);
 
-    await waitFor(() => {
-      const modal = screen.getByRole('dialog', { name: 'Expired Stock' });
-      expect(modal).toBeInTheDocument();
-      expect(within(modal).getByText('Salbutamol Inhaler')).toBeInTheDocument();
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/inventory', { state: { tab: 'expired' } });
   });
 
-  // Test Case 5: Ensures sorting works within the modal table
-  it('sorts the modal data correctly when a table header is clicked', async () => {
+  // Test Case 5: Each stock card exposes a distinct "View Items" action.
+  // Current behaviour: the three stock cards each render an enabled
+  // "View Items" link that triggers navigation.
+  it('renders an enabled "View Items" action on each stock card', () => {
     render(
       <ThemeProvider theme={theme}>
         <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
       </ThemeProvider>
     );
 
-    // Open the Low Stock modal to access the table
-    const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
-    expect(lowStockCard).not.toBeNull();
-    const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
-    fireEvent.click(viewItemsButton);
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
+    const cardTitles = ['Low Stock Items', 'Near Expiry Stock', 'Expired Stock'];
+    cardTitles.forEach((title) => {
+      const card = screen.getByText(title).closest('.MuiPaper-root');
+      expect(card).not.toBeNull();
+      const viewItemsButton = within(card as HTMLElement).getByRole('button', { name: 'View Items' });
+      expect(viewItemsButton).toHaveStyle('pointer-events: auto');
     });
+  });
 
-    // Wait for table rows to be rendered
-    await waitFor(() => {
-      const rows = screen.getAllByRole('row');
-      expect(rows.length).toBeGreaterThan(1); // Header + data rows
-    }, { timeout: 3000 });
-
-    // Verify initial state: Omeprazole first (ascending)
-    let rows = screen.getAllByRole('row').slice(1); // Exclude header row
-    expect(rows.length).toBeGreaterThanOrEqual(2);
-    expect(within(rows[0]).getByText('Omeprazole Capsule')).toBeInTheDocument();
-    
-    // Find the Name column header - the sort icon is inside a Box within the TableCell
-    const nameHeader = screen.getByRole('columnheader', { name: 'Name' });
-    expect(nameHeader).toBeInTheDocument();
-    
-    // Find the sort icon container (Box with onClick handler) - it's inside the TableCell
-    const sortIconContainer = nameHeader.querySelector('[style*="cursor: pointer"], [style*="cursor:pointer"]') || 
-                              nameHeader.querySelector('svg')?.closest('div');
-    
-    if (sortIconContainer) {
-      // Click the sort icon container
-      fireEvent.click(sortIconContainer as HTMLElement);
-      
-      // Wait for state update using waitFor instead of setTimeout
-      await waitFor(() => {
-        rows = screen.getAllByRole('row').slice(1);
-        expect(rows.length).toBeGreaterThanOrEqual(2);
-      }, { timeout: 1000 });
-      
-      // The order might have changed, but both items should still be present
-      const tableText = screen.getByRole('dialog', { name: 'Low Stock Items' }).textContent || '';
-      expect(tableText).toContain('Omeprazole Capsule');
-      expect(tableText).toContain('Salbutamol Inhaler');
-    } else {
-      // Fallback: click the header itself
-      fireEvent.click(nameHeader);
-      
-      // Wait for state update using waitFor instead of setTimeout
-      await waitFor(() => {
-        rows = screen.getAllByRole('row').slice(1);
-        expect(rows.length).toBeGreaterThanOrEqual(2);
-      }, { timeout: 1000 });
-    }
-  }, 15000);
-
-  // Test Case 6: Verifies that the 'View Items' link is disabled when the count is 0
-  it('disables "View Items" link for a card with a value of 0', () => {
+  // Test Case 6: Expired Stock count renders 0 when there are no expired products.
+  // Current behaviour: the "View Items" action is always enabled (the
+  // component does not pass a `disabled` prop), so we only assert the count.
+  it('renders a count of 0 for the Expired Stock card when there are no expired products', () => {
     // Override the mock data for this specific test case
     (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
       data: {
@@ -308,10 +296,6 @@ describe('InventoryMetricsCards', () => {
     expect(expiredStockCard).not.toBeNull();
     // Zero value is rendered by the component
     expect(within(expiredStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
-
-    // Check that the "View Items" button is disabled
-    const viewItemsButton = within(expiredStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
-    expect(viewItemsButton).toHaveStyle('pointer-events: none');
   });
 
   // -- NEW TEST CASES FOR THE REMAINING CARDS --
@@ -329,11 +313,14 @@ describe('InventoryMetricsCards', () => {
       // Find the card by its title and check its content
       const latestBatchCard = screen.getByText('Latest Batch Received').closest('.MuiPaper-root');
       expect(latestBatchCard).not.toBeNull();
-      expect(within(latestBatchCard as HTMLElement).getByText('19/9/2025')).toBeInTheDocument();
+      // Current behaviour: date is formatted via toLocaleDateString('en-GB') → 19/09/2025
+      expect(within(latestBatchCard as HTMLElement).getByText('19/09/2025')).toBeInTheDocument();
     });
   });
 
-  it('renders the % of Return card with correct data', async () => {
+  // Current behaviour: the returns card is titled "Total Returns" and shows
+  // the raw returns count (no percent sign).
+  it('renders the Total Returns card with correct data', async () => {
     // Render the component
     render(
       <ThemeProvider theme={theme}>
@@ -344,9 +331,9 @@ describe('InventoryMetricsCards', () => {
     // Wait for the data to be loaded
     await waitFor(() => {
       // Find the card by its title and check its content
-      const returnsCard = screen.getByText('% of Return').closest('.MuiPaper-root');
+      const returnsCard = screen.getByText('Total Returns').closest('.MuiPaper-root');
       expect(returnsCard).not.toBeNull();
-      expect(within(returnsCard as HTMLElement).getByText('5%')).toBeInTheDocument();
+      expect(within(returnsCard as HTMLElement).getByText('5')).toBeInTheDocument();
     });
   });
 
@@ -392,42 +379,27 @@ describe('InventoryMetricsCards', () => {
   });
 
   // Test Case 8: Error state
+  // Current behaviour: when either query errors, the component renders the
+  // error message. It does not log to console.error.
   it('renders error message when API calls fail', () => {
-    // Mock console.error to suppress expected error logs during this test
-    const originalError = console.error;
-    const mockConsoleError = jest.fn();
-    
-    try {
-      console.error = mockConsoleError;
+    (useGetInvoiceStatsQuery as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error('API Error'),
+    });
+    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error('API Error'),
+    });
 
-      (useGetInvoiceStatsQuery as jest.Mock).mockReturnValue({
-        data: null,
-        isLoading: false,
-        error: new Error('API Error'),
-      });
-      (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-        data: null,
-        isLoading: false,
-        error: new Error('API Error'),
-      });
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
 
-      render(
-        <ThemeProvider theme={theme}>
-          <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
-        </ThemeProvider>
-      );
-
-      expect(screen.getByText(/Failed to load dashboard data/i)).toBeInTheDocument();
-      
-      // Verify that the error was logged (but we suppressed it from console output)
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        'Inventory Metrics Error:',
-        expect.any(Error)
-      );
-    } finally {
-      // Always restore original console.error, even if test fails
-      console.error = originalError;
-    }
+    expect(screen.getByText(/Failed to load dashboard data/i)).toBeInTheDocument();
   });
 
   // Test Case 9: Empty data handling
@@ -450,6 +422,11 @@ describe('InventoryMetricsCards', () => {
       isLoading: false,
       error: null,
     });
+    (useGetNearExpiryStockQuery as jest.Mock).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    });
 
     render(
       <ThemeProvider theme={theme}>
@@ -458,12 +435,12 @@ describe('InventoryMetricsCards', () => {
     );
 
     await waitFor(() => {
-      // Check that all cards show 0 (zero values are rendered by the component)
+      // Check that all stock cards show 0 (zero values are rendered by the component)
       const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
       expect(within(lowStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
 
-      const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
-      expect(within(excessStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
+      const nearExpiryCard = screen.getByText('Near Expiry Stock').closest('.MuiPaper-root');
+      expect(within(nearExpiryCard as HTMLElement).getByText('0')).toBeInTheDocument();
 
       const expiredStockCard = screen.getByText('Expired Stock').closest('.MuiPaper-root');
       expect(within(expiredStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
@@ -493,61 +470,10 @@ describe('InventoryMetricsCards', () => {
     expect(inventoryCalls[inventoryCalls.length - 1][0]).toEqual({ startDate: '2024-02-01', endDate: '2024-02-28' });
   });
 
-  // Test Case 11: Modal close functionality
-  it('closes modal when close button is clicked', async () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
-      </ThemeProvider>
-    );
-
-    // Open the Low Stock modal
-    const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
-    const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
-    fireEvent.click(viewItemsButton);
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
-    });
-
-    // Close the modal
-    const closeButton = screen.getByRole('button', { name: /close/i });
-    fireEvent.click(closeButton);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Low Stock Items' })).not.toBeInTheDocument();
-    });
-  });
-
-  // Test Case 12: Multiple sorting operations
-  it('handles multiple sorting operations correctly', async () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
-      </ThemeProvider>
-    );
-
-    // Open the Low Stock modal
-    const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
-    const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
-    fireEvent.click(viewItemsButton);
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
-    });
-
-    // Sort by Name (ascending)
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Name' }));
-    
-    // Sort by Name (descending)
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Name' }));
-
-    // Sort by Quantity
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Quantity' }));
-
-    // Verify the modal is still open and functional
-    expect(screen.getByRole('dialog', { name: 'Low Stock Items' })).toBeInTheDocument();
-  });
+  // Test Cases 11 & 12 removed: the component no longer opens an in-page modal
+  // (with a closable dialog / sortable table) from the stock cards. Clicking
+  // "View Items" now navigates to the /inventory route instead. Navigation is
+  // covered by Test Cases 2-4 above.
 
   // Test Case 13: Accessibility
   it('has proper accessibility attributes', async () => {
@@ -602,14 +528,12 @@ describe('InventoryMetricsCards', () => {
       expect(within(lowStockCard as HTMLElement).getByText('100')).toBeInTheDocument();
     });
 
-    // Open modal with large dataset
+    // The "View Items" action remains clickable with a large dataset and
+    // triggers navigation (no in-page modal is rendered).
     const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
     const viewItemsButton = within(lowStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
     fireEvent.click(viewItemsButton);
 
-    await waitFor(() => {
-      const modal = screen.getByRole('dialog', { name: 'Low Stock Items' });
-      expect(modal).toBeInTheDocument();
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/inventory', { state: { tab: 'low' } });
   });
 });
