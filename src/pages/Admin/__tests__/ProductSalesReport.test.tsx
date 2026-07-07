@@ -56,6 +56,8 @@ const FIXTURE: reportsApi.ProductSalesReportResponse = {
       customer_name: 'John Patient',
       quantity: '10.00',
       mrp: '120.00',
+      pack_qty: 10,
+      unit_mrp: '12.00',
       selling_price: '100.00',
       discount_pct: '5.00',
       discount_amount: '50.00',

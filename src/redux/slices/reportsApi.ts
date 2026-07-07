@@ -202,6 +202,8 @@ export interface ProductSalesReportRow {
   customer_name: string | null;
   quantity: Num;
   mrp: Num | null;
+  pack_qty: number | null;
+  unit_mrp: Num;
   selling_price: Num;
   discount_pct: Num;
   discount_amount: Num;
