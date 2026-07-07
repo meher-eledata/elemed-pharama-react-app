@@ -280,6 +280,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return form.supplierName.trim() !== '' && table.pharmaTableData.length > 0;
   };
 
+  // Invoice number is required before a receipt can be submitted (mirrors backend rule).
+  const validateInvoiceNumber = () => {
+    if (!form.invoiceNumber.trim()) {
+      form.setInvoiceNumberError('Invoice number is required');
+      return false;
+    }
+    form.setInvoiceNumberError('');
+    return true;
+  };
+
   const handleConfirmDelete = () => {
     if (form.rowToDeleteId) {
       table.deleteRow(form.rowToDeleteId);
@@ -313,6 +323,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const handleProceedToPaymentClick = () => {
+    if (!validateInvoiceNumber()) {
+      return;
+    }
     if (!form.invoiceFile && !form.invoiceAttachmentUrl) {
       form.setIsUploadConfirmationDialogOpen(true);
       return;
@@ -320,7 +333,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     form.setIsProceedToPaymentDialogOpen(true);
   };
 
+  const handleSaveAndPayLaterClick = () => {
+    if (!validateInvoiceNumber()) {
+      return;
+    }
+    submit.handleSaveAndPayLater();
+  };
+
   const handleSubmitReceipt = async () => {
+    if (!validateInvoiceNumber()) {
+      return;
+    }
+
     if (form.isEditMode) {
       await submit.proceedWithSave();
       return;
@@ -386,7 +410,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         invoiceDate={form.invoiceDate}
         setInvoiceDate={form.setInvoiceDate}
         invoiceNumber={form.invoiceNumber}
-        setInvoiceNumber={form.setInvoiceNumber}
+        setInvoiceNumber={(val: string) => {
+          form.setInvoiceNumber(val);
+          if (form.invoiceNumberError) form.setInvoiceNumberError('');
+        }}
+        invoiceNumberError={form.invoiceNumberError}
       />
 
       <Divider sx={{ marginTop: "10px", border: "0.3px solid #CBD4E14D" }} />
@@ -509,7 +537,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               variant="secondary"
               size="large"
               disabled={!validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
-              onClick={submit.handleSaveAndPayLater}
+              onClick={handleSaveAndPayLaterClick}
               sx={{ height: "48px", width: "160px", fontSize: "12px", marginLeft: "10px" }}
             >
               {form.isSaving ? "Processing..." : "Save & Pay Later"}

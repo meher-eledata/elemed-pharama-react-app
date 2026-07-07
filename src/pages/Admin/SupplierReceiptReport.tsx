@@ -11,7 +11,6 @@ import {
   ReportSwitcher,
   ReportLoading,
   ReportError,
-  ReportEmpty,
   FilterSelect,
   FilterSelectOption,
   CellText,
@@ -42,7 +41,7 @@ type Tab = 'overview' | 'detailed';
 interface ReceiptRow extends SupplierReceiptReportRow {
   _id: number;
   mrpN: number;
-  spN: number;
+  purchasePriceN: number;
   qtyN: number;
   cgstN: number;
   sgstN: number;
@@ -86,7 +85,7 @@ const SupplierReceiptReport: React.FC = () => {
       ...r,
       _id: i,
       mrpN: toNum(r.mrp),
-      spN: toNum(r.sp),
+      purchasePriceN: toNum(r.purchase_price),
       qtyN: toNum(r.received_qty),
       cgstN: toNum(r.cgst),
       sgstN: toNum(r.sgst),
@@ -131,13 +130,14 @@ const SupplierReceiptReport: React.FC = () => {
     { key: 'receipt_id', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_id}</CellText> },
     { key: 'receipt_date', header: L.TABLE.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
     { key: 'invoice_number', header: L.TABLE.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'po_number', header: L.TABLE.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
     { key: 'supplier_name', header: L.TABLE.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name}</CellText> },
     { key: 'supplier_gst', header: L.TABLE.GSTIN, sortable: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
     { key: 'product_name', header: L.TABLE.PRODUCT, sortable: true, render: (r) => <CellText>{r.product_name}</CellText> },
     { key: 'product_code', header: L.TABLE.PRODUCT_CODE, sortable: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
     { key: 'hsn_code', header: L.TABLE.HSN, sortable: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
     { key: 'mrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
-    { key: 'spN', header: L.TABLE.SP, sortable: true, render: (r) => <CellText>{formatNumber(r.spN)}</CellText> },
+    { key: 'purchasePriceN', header: L.TABLE.PURCHASE_PRICE, sortable: true, render: (r) => <CellText>{formatCurrency(r.purchasePriceN)}</CellText> },
     { key: 'qtyN', header: L.TABLE.RECEIVED_QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
     { key: 'cgstN', header: L.TABLE.CGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
     { key: 'sgstN', header: L.TABLE.SGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
@@ -156,16 +156,14 @@ const SupplierReceiptReport: React.FC = () => {
     const c = data?.charts.qty_by_date || [];
     return { categories: c.map((d) => formatReportDate(d.date)), values: c.map((d) => toNum(d.qty)) };
   }, [data]);
-  const topProducts = useMemo(
-    () =>
-      (data?.charts.top_products_by_value || []).map((p) => ({
-        name: p.product_name,
-        value: toNum(p.value),
-        qty: toNum(p.qty),
-      })),
-    [data]
-  );
-  const topProductsMax = useMemo(() => Math.max(...topProducts.map((p) => p.value), 0), [topProducts]);
+  const topSuppliers = useMemo(() => {
+    const c = data?.charts.top_suppliers_by_value || [];
+    return { categories: c.map((s) => s.supplier_name), values: c.map((s) => toNum(s.value)) };
+  }, [data]);
+  const topProducts = useMemo(() => {
+    const c = data?.charts.top_products_by_value || [];
+    return { categories: c.map((p) => p.product_name), values: c.map((p) => toNum(p.value)) };
+  }, [data]);
 
   // CSV
   const csvData = useMemo(
@@ -174,13 +172,14 @@ const SupplierReceiptReport: React.FC = () => {
         [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_id),
         [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
         [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE.PO_NUMBER]: csvString(r.po_number),
         [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
         [L.TABLE.GSTIN]: csvString(r.supplier_gst),
         [L.TABLE.PRODUCT]: csvString(r.product_name),
         [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
         [L.TABLE.HSN]: csvString(r.hsn_code),
         [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
-        [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),
+        [`${L.TABLE.PURCHASE_PRICE} (₹)`]: r.purchasePriceN.toFixed(2),
         [L.TABLE.RECEIVED_QTY]: r.qtyN.toFixed(2),
         [L.TABLE.CGST]: r.cgstN.toFixed(2),
         [L.TABLE.SGST]: r.sgstN.toFixed(2),
@@ -209,7 +208,7 @@ const SupplierReceiptReport: React.FC = () => {
         title={L.PAGE.TITLE}
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
-        onDownloadCsv={handleDownloadCsv}
+        onDownloadCsv={tab === 'detailed' ? handleDownloadCsv : undefined}
         downloadDisabled={!rows.length}
         dateRange={dateRange}
         onDateRangeChange={(r) => {
@@ -270,6 +269,8 @@ const SupplierReceiptReport: React.FC = () => {
                 values={spendByDate.values}
                 seriesLabel={L.CHART_SERIES.SPEND}
                 emptyMessage={L.EMPTY_CHART}
+                xAxisLabel={L.AXIS.DATE}
+                yAxisLabel={L.AXIS.SPEND}
                 currency
               />
             </Grid>
@@ -281,43 +282,39 @@ const SupplierReceiptReport: React.FC = () => {
                 seriesLabel={L.CHART_SERIES.QTY}
                 color={C.COLORS.BLUE}
                 emptyMessage={L.EMPTY_CHART}
+                xAxisLabel={L.AXIS.DATE}
+                yAxisLabel={L.AXIS.QTY}
               />
             </Grid>
           </Grid>
 
-          <SectionTitle>{L.SECTIONS.TOP_PRODUCTS}</SectionTitle>
-          {topProducts.length ? (
-            <Box
-              sx={{
-                p: 2.5,
-                borderRadius: C.CARD.BORDER_RADIUS,
-                border: C.CARD.BORDER,
-                backgroundColor: C.COLORS.WHITE,
-                boxShadow: C.CARD.BOX_SHADOW,
-              }}
-            >
-              {topProducts.map((p, i) => (
-                <Box key={i} sx={{ mb: i === topProducts.length - 1 ? 0 : 1.5 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <CellText weight={500}>{p.name}</CellText>
-                    <CellText weight={600}>{formatCurrency(p.value)}</CellText>
-                  </Box>
-                  <Box sx={{ height: 8, borderRadius: 4, backgroundColor: '#EEF2F7', overflow: 'hidden' }}>
-                    <Box
-                      sx={{
-                        height: '100%',
-                        width: `${topProductsMax > 0 ? (p.value / topProductsMax) * 100 : 0}%`,
-                        backgroundColor: C.CHART_PALETTE[i % C.CHART_PALETTE.length],
-                        borderRadius: 4,
-                      }}
-                    />
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          ) : (
-            <ReportEmpty message={L.EMPTY_CHART} />
-          )}
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <SectionTitle>{L.SECTIONS.TOP_SUPPLIERS}</SectionTitle>
+              <ReportBarChart
+                categories={topSuppliers.categories}
+                values={topSuppliers.values}
+                seriesLabel={L.CHART_SERIES.VALUE}
+                emptyMessage={L.EMPTY_CHART}
+                xAxisLabel={L.AXIS.SUPPLIER}
+                yAxisLabel={L.AXIS.VALUE}
+                currency
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <SectionTitle>{L.SECTIONS.TOP_PRODUCTS}</SectionTitle>
+              <ReportBarChart
+                categories={topProducts.categories}
+                values={topProducts.values}
+                seriesLabel={L.CHART_SERIES.VALUE}
+                color={C.COLORS.BLUE}
+                emptyMessage={L.EMPTY_CHART}
+                xAxisLabel={L.AXIS.PRODUCT}
+                yAxisLabel={L.AXIS.VALUE}
+                currency
+              />
+            </Grid>
+          </Grid>
         </Box>
       ) : (
         <TableShell>

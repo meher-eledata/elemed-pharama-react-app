@@ -13,7 +13,7 @@ export const ADMIN_LABELS = {
       ACTION: 'Manage Users',
     },
     REPORTS: {
-      TITLE: 'System Performance Reports',
+      TITLE: 'Reports',
       DESC: 'Access detailed analytics on system usage, p e metrics, and activity trends.',
       ACTION: 'View Reports',
     },

@@ -44,6 +44,7 @@ export const SUPPLIER_TAX_REPORT_LABELS = {
     SGST: 'SGST',
     IGST: 'IGST',
     TOTAL_TAX: 'Total Tax',
+    GST_PERCENT: 'GST %',
     RECEIPT_TOTAL: 'Receipt Total',
   },
   TABLE_SUPPLIER: {
@@ -56,6 +57,7 @@ export const SUPPLIER_TAX_REPORT_LABELS = {
     SGST: 'SGST',
     IGST: 'IGST',
     TOTAL_TAX: 'Total Tax',
+    GST_PERCENT: 'GST %',
     TOTAL_WITH_TAX: 'Total (incl tax)',
   },
   EMPTY_TABLE: 'No supplier tax data for the selected period.',

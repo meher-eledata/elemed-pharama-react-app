@@ -44,6 +44,7 @@ export const useOrderDetailsForm = () => {
   );
   const [invoiceDate, setInvoiceDate] = useState<string>("");
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
+  const [invoiceNumberError, setInvoiceNumberError] = useState<string>("");
   const [transactionNumber, setTransactionNumber] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
   const [paymentVendor, setPaymentVendor] = useState<string>("");
@@ -135,6 +136,7 @@ export const useOrderDetailsForm = () => {
     setPoNumber("");
     setInvoiceDate("");
     setInvoiceNumber("");
+    setInvoiceNumberError("");
     setTransactionNumber("");
     setPaymentVendor("");
     setInvoiceFile(null);
@@ -169,6 +171,8 @@ export const useOrderDetailsForm = () => {
     setInvoiceDate,
     invoiceNumber,
     setInvoiceNumber,
+    invoiceNumberError,
+    setInvoiceNumberError,
     transactionNumber,
     setTransactionNumber,
     paymentMethod,

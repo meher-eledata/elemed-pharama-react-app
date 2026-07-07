@@ -201,7 +201,7 @@ const SupplierPaymentReport: React.FC = () => {
         title={L.PAGE.TITLE}
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
-        onDownloadCsv={handleDownloadCsv}
+        onDownloadCsv={tab === 'detailed' ? handleDownloadCsv : undefined}
         downloadDisabled={!rows.length}
         dateRange={dateRange}
         onDateRangeChange={(r) => {
@@ -263,6 +263,8 @@ const SupplierPaymentReport: React.FC = () => {
                 values={paidByDate.values}
                 seriesLabel={L.CHART_SERIES.PAID}
                 emptyMessage={L.EMPTY_CHART}
+                xAxisLabel={L.AXIS.DATE}
+                yAxisLabel={L.AXIS.PAID}
                 currency
               />
             </Grid>

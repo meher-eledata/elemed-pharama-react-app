@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Box } from '@mui/material';
+import { Box, TableRow, TableCell } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
@@ -8,6 +8,7 @@ import {
   ReportHeader,
   ReportLoading,
   ReportError,
+  ReportSwitcher,
   FilterSelect,
   FilterSelectOption,
   CellText,
@@ -20,7 +21,9 @@ import { ADMIN_REPORTS_CONSTANTS as C } from '../../config/constants/AdminReport
 import { SALES_TAX_REPORT_LABELS as L } from '../../config/label/SalesTaxReport.labels';
 import {
   useGetSalesTaxReportQuery,
+  SalesTaxLevel,
   SalesTaxReportRow,
+  SalesTaxHsnRow,
 } from '../../redux/slices/reportsApi';
 import { useGetProductsQuery } from '../../redux/slices/masterApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
@@ -41,9 +44,22 @@ interface TaxRow extends SalesTaxReportRow {
   mrpN: number;
   spN: number;
   taxableN: number;
+  discountN: number;
   cgstRateN: number;
   sgstRateN: number;
   igstRateN: number;
+  cgstN: number;
+  sgstN: number;
+  igstN: number;
+  totalTaxN: number;
+  lineTotalN: number;
+}
+
+interface HsnRow extends SalesTaxHsnRow {
+  _id: number;
+  quantityN: number;
+  taxableN: number;
+  discountN: number;
   cgstN: number;
   sgstN: number;
   igstN: number;
@@ -55,20 +71,40 @@ const SalesTaxReport: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
+  const [level, setLevel] = useState<SalesTaxLevel>('product');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [productId, setProductId] = useState<string>('');
   const [patientType, setPatientType] = useState<string>('');
+  const [hsnCode, setHsnCode] = useState<string>('');
 
   const [start, end] = dateRange;
   const { data: products } = useGetProductsQuery();
 
-  const { data, isLoading, isError, refetch } = useGetSalesTaxReportQuery(
-    {
+  // Shared filters (date / product / patient) applied to both the main table and
+  // the HSN-options lookup. `hsn_code` is added only to the main query.
+  const sharedFilters = useMemo(
+    () => ({
       start_date: start ? start.format('YYYY-MM-DD') : '',
       end_date: end ? end.format('YYYY-MM-DD') : '',
       ...(productId ? { product_id: Number(productId) } : {}),
       ...(patientType !== '' ? { patient_type: Number(patientType) as 0 | 1 } : {}),
+    }),
+    [start, end, productId, patientType]
+  );
+
+  const { data, isLoading, isError, refetch } = useGetSalesTaxReportQuery(
+    {
+      ...sharedFilters,
+      level,
+      ...(hsnCode ? { hsn_code: hsnCode } : {}),
     },
+    { skip: !start || !end, refetchOnMountOrArgChange: true }
+  );
+
+  // Dedicated `level:"hsn"` fetch (no hsn_code) enumerates every HSN in range to
+  // populate the HSN dropdown, independent of the current hsn_code selection.
+  const { data: hsnListData } = useGetSalesTaxReportQuery(
+    { ...sharedFilters, level: 'hsn' },
     { skip: !start || !end, refetchOnMountOrArgChange: true }
   );
 
@@ -84,9 +120,21 @@ const SalesTaxReport: React.FC = () => {
     { value: '1', label: L.FILTER.PATIENT_TYPE_INPATIENT },
     { value: '0', label: L.FILTER.PATIENT_TYPE_OUTPATIENT },
   ];
+  const hsnOptions: FilterSelectOption[] = useMemo(() => {
+    const codes =
+      hsnListData && hsnListData.level === 'hsn'
+        ? hsnListData.rows
+            .map((r) => r.hsn_code)
+            .filter((c): c is string => !!c && c.trim() !== '')
+        : [];
+    return [
+      { value: '', label: L.FILTER.HSN_ALL },
+      ...codes.map((c) => ({ value: c, label: c })),
+    ];
+  }, [hsnListData]);
 
   const rows: TaxRow[] = useMemo(() => {
-    if (!data?.rows) return [];
+    if (!data || data.level !== 'product') return [];
     return data.rows.map((r, i) => ({
       ...r,
       _id: i,
@@ -94,9 +142,26 @@ const SalesTaxReport: React.FC = () => {
       mrpN: toNum(r.mrp),
       spN: toNum(r.selling_price),
       taxableN: toNum(r.taxable_value),
+      discountN: toNum(r.discount_amount),
       cgstRateN: toNum(r.cgst_rate),
       sgstRateN: toNum(r.sgst_rate),
       igstRateN: toNum(r.igst_rate),
+      cgstN: toNum(r.cgst_amount),
+      sgstN: toNum(r.sgst_amount),
+      igstN: toNum(r.igst_amount),
+      totalTaxN: toNum(r.total_tax),
+      lineTotalN: toNum(r.line_total),
+    }));
+  }, [data]);
+
+  const hsnRows: HsnRow[] = useMemo(() => {
+    if (!data || data.level !== 'hsn') return [];
+    return data.rows.map((r, i) => ({
+      ...r,
+      _id: i,
+      quantityN: toNum(r.quantity),
+      taxableN: toNum(r.taxable_value),
+      discountN: toNum(r.discount_amount),
       cgstN: toNum(r.cgst_amount),
       sgstN: toNum(r.sgst_amount),
       igstN: toNum(r.igst_amount),
@@ -112,9 +177,9 @@ const SalesTaxReport: React.FC = () => {
     direction: C.TABLE.DEFAULT_SORT_DIRECTION,
   });
 
-  const sortedRows = useMemo(() => {
+  const sortRows = <T,>(arr: T[]) => {
     const { key, direction } = sortConfig;
-    return [...rows].sort((a, b) => {
+    return [...arr].sort((a, b) => {
       const av = (a as any)[key];
       const bv = (b as any)[key];
       if (typeof av === 'number' && typeof bv === 'number') {
@@ -126,7 +191,10 @@ const SalesTaxReport: React.FC = () => {
       });
       return direction === 'asc' ? cmp : -cmp;
     });
-  }, [rows, sortConfig]);
+  };
+
+  const sortedRows = useMemo(() => sortRows(rows), [rows, sortConfig]);
+  const sortedHsnRows = useMemo(() => sortRows(hsnRows), [hsnRows, sortConfig]);
 
   const handleSortRequest = (key: string) =>
     setSortConfig((prev) => ({
@@ -145,6 +213,7 @@ const SalesTaxReport: React.FC = () => {
     { key: 'mrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
     { key: 'spN', header: L.TABLE.SP, sortable: true, render: (r) => <CellText>{formatNumber(r.spN)}</CellText> },
     { key: 'taxableN', header: L.TABLE.TAXABLE_VALUE, sortable: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
+    { key: 'discountN', header: L.TABLE.DISCOUNT, sortable: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
     { key: 'cgstRateN', header: L.TABLE.CGST_RATE, sortable: true, render: (r) => <CellText>{formatPercent(r.cgstRateN)}</CellText> },
     { key: 'sgstRateN', header: L.TABLE.SGST_RATE, sortable: true, render: (r) => <CellText>{formatPercent(r.sgstRateN)}</CellText> },
     { key: 'igstRateN', header: L.TABLE.IGST_RATE, sortable: true, render: (r) => <CellText>{formatPercent(r.igstRateN)}</CellText> },
@@ -153,6 +222,20 @@ const SalesTaxReport: React.FC = () => {
     { key: 'igstN', header: L.TABLE.IGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.igstN)}</CellText> },
     { key: 'totalTaxN', header: L.TABLE.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatNumber(r.totalTaxN)}</CellText> },
     { key: 'lineTotalN', header: L.TABLE.LINE_TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.lineTotalN)}</CellText> },
+  ];
+
+  const hsnColumns: TableColumn<HsnRow>[] = [
+    { key: 'hsn_code', header: L.TABLE_HSN.HSN, sortable: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
+    { key: 'line_count', header: L.TABLE_HSN.LINES, sortable: true, render: (r) => <CellText>{formatCount(r.line_count)}</CellText> },
+    { key: 'product_count', header: L.TABLE_HSN.PRODUCTS, sortable: true, render: (r) => <CellText>{formatCount(r.product_count)}</CellText> },
+    { key: 'quantityN', header: L.TABLE_HSN.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.quantityN)}</CellText> },
+    { key: 'taxableN', header: L.TABLE_HSN.TAXABLE_VALUE, sortable: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
+    { key: 'discountN', header: L.TABLE_HSN.DISCOUNT, sortable: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
+    { key: 'cgstN', header: L.TABLE_HSN.CGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.cgstN)}</CellText> },
+    { key: 'sgstN', header: L.TABLE_HSN.SGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.sgstN)}</CellText> },
+    { key: 'igstN', header: L.TABLE_HSN.IGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.igstN)}</CellText> },
+    { key: 'totalTaxN', header: L.TABLE_HSN.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatNumber(r.totalTaxN)}</CellText> },
+    { key: 'lineTotalN', header: L.TABLE_HSN.TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.lineTotalN)}</CellText> },
   ];
 
   const summary = data?.summary;
@@ -168,41 +251,108 @@ const SalesTaxReport: React.FC = () => {
       { title: L.SUMMARY.LINES, value: formatCount(summary?.line_count ?? 0) },
       { title: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
       { title: L.SUMMARY.INVOICES, value: formatCount(summary?.invoice_count ?? 0) },
+      { title: L.SUMMARY.UNIQUE_HSN, value: formatCount(summary?.hsn_count ?? 0) },
     ],
     [summary]
   );
 
-  const csvData = useMemo(
-    () =>
-      sortedRows.map((r) => ({
-        [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
-        [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
-        [L.TABLE.PRODUCT]: csvString(r.product_name),
-        [L.TABLE.CODE]: csvString(r.product_code),
-        [L.TABLE.HSN]: csvString(r.hsn_code),
-        [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
-        [L.TABLE.QTY]: r.qtyN.toFixed(2),
-        [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
-        [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),
-        [`${L.TABLE.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
-        [L.TABLE.CGST_RATE]: r.cgstRateN.toFixed(2),
-        [L.TABLE.SGST_RATE]: r.sgstRateN.toFixed(2),
-        [L.TABLE.IGST_RATE]: r.igstRateN.toFixed(2),
+  // Totals footer values keyed by column key; driven by backend summary (not the
+  // visible page) so they stay correct under filters and pagination.
+  const productTotals: Record<string, string> = {
+    qtyN: formatNumber(toNum(summary?.total_quantity)),
+    taxableN: formatNumber(toNum(summary?.total_taxable)),
+    discountN: formatNumber(toNum(summary?.total_discount)),
+    cgstN: formatNumber(toNum(summary?.total_cgst)),
+    sgstN: formatNumber(toNum(summary?.total_sgst)),
+    igstN: formatNumber(toNum(summary?.total_igst)),
+    totalTaxN: formatNumber(toNum(summary?.total_tax)),
+    lineTotalN: formatCurrency(toNum(summary?.total_sales)),
+  };
+  const hsnTotals: Record<string, string> = {
+    line_count: formatCount(summary?.line_count ?? 0),
+    product_count: formatCount(summary?.product_count ?? 0),
+    quantityN: formatNumber(toNum(summary?.total_quantity)),
+    taxableN: formatNumber(toNum(summary?.total_taxable)),
+    discountN: formatNumber(toNum(summary?.total_discount)),
+    cgstN: formatNumber(toNum(summary?.total_cgst)),
+    sgstN: formatNumber(toNum(summary?.total_sgst)),
+    igstN: formatNumber(toNum(summary?.total_igst)),
+    totalTaxN: formatNumber(toNum(summary?.total_tax)),
+    lineTotalN: formatCurrency(toNum(summary?.total_sales)),
+  };
+
+  const renderTotalsRow = (cols: TableColumn<any>[], totals: Record<string, string>) => (
+    <TableRow sx={{ backgroundColor: '#F9FAFB' }}>
+      {cols.map((c, i) => (
+        <TableCell key={String(c.key)} sx={{ padding: '12px 16px' }}>
+          {i === 0 ? (
+            <CellText weight={700}>{L.TOTALS_ROW_LABEL}</CellText>
+          ) : totals[String(c.key)] !== undefined ? (
+            <CellText weight={600}>{totals[String(c.key)]}</CellText>
+          ) : null}
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+
+  const csvData = useMemo(() => {
+    if (level === 'hsn') {
+      return sortedHsnRows.map((r) => ({
+        [L.TABLE_HSN.HSN]: csvString(r.hsn_code),
+        [L.TABLE_HSN.LINES]: csvString(r.line_count),
+        [L.TABLE_HSN.PRODUCTS]: csvString(r.product_count),
+        [L.TABLE_HSN.QTY]: r.quantityN.toFixed(2),
+        [`${L.TABLE_HSN.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
+        [`${L.TABLE_HSN.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
         ['CGST (₹)']: r.cgstN.toFixed(2),
         ['SGST (₹)']: r.sgstN.toFixed(2),
         ['IGST (₹)']: r.igstN.toFixed(2),
-        [`${L.TABLE.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
-        [`${L.TABLE.LINE_TOTAL} (₹)`]: r.lineTotalN.toFixed(2),
-      })),
-    [sortedRows]
-  );
-  const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${start ? start.format('YYYY-MM-DD') : ''}_${
+        [`${L.TABLE_HSN.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
+        [`${L.TABLE_HSN.TOTAL} (₹)`]: r.lineTotalN.toFixed(2),
+      }));
+    }
+    return sortedRows.map((r) => ({
+      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
+      [L.TABLE.PRODUCT]: csvString(r.product_name),
+      [L.TABLE.CODE]: csvString(r.product_code),
+      [L.TABLE.HSN]: csvString(r.hsn_code),
+      [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
+      [L.TABLE.QTY]: r.qtyN.toFixed(2),
+      [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
+      [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),
+      [`${L.TABLE.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
+      [`${L.TABLE.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
+      [L.TABLE.CGST_RATE]: r.cgstRateN.toFixed(2),
+      [L.TABLE.SGST_RATE]: r.sgstRateN.toFixed(2),
+      [L.TABLE.IGST_RATE]: r.igstRateN.toFixed(2),
+      ['CGST (₹)']: r.cgstN.toFixed(2),
+      ['SGST (₹)']: r.sgstN.toFixed(2),
+      ['IGST (₹)']: r.igstN.toFixed(2),
+      [`${L.TABLE.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
+      [`${L.TABLE.LINE_TOTAL} (₹)`]: r.lineTotalN.toFixed(2),
+    }));
+  }, [level, sortedRows, sortedHsnRows]);
+
+  const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${level}_${start ? start.format('YYYY-MM-DD') : ''}_${
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
     csvLinkRef.current?.link?.click();
     logDownload({ category: 'report', name: 'Sales Tax Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
+
+  const handleLevelChange = (newLevel: SalesTaxLevel) => {
+    setLevel(newLevel);
+    setCurrentPage(1);
+    setSortConfig({
+      key: newLevel === 'product' ? 'sale_date' : 'lineTotalN',
+      direction: C.TABLE.DEFAULT_SORT_DIRECTION,
+    });
+  };
+
+  const hasRows = level === 'product' ? rows.length > 0 : hsnRows.length > 0;
+  const totalRows = level === 'product' ? sortedRows.length : sortedHsnRows.length;
 
   return (
     <Box sx={{ padding: C.PAGE.PADDING, pb: C.PAGE.PADDING_BOTTOM }}>
@@ -213,7 +363,7 @@ const SalesTaxReport: React.FC = () => {
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
         onDownloadCsv={handleDownloadCsv}
-        downloadDisabled={!rows.length}
+        downloadDisabled={!hasRows}
         dateRange={dateRange}
         onDateRangeChange={(r) => {
           setDateRange(r);
@@ -240,7 +390,26 @@ const SalesTaxReport: React.FC = () => {
           }}
           width={180}
         />
+        <FilterSelect
+          label={L.FILTER.HSN_LABEL}
+          value={hsnCode}
+          options={hsnOptions}
+          onChange={(v) => {
+            setHsnCode(v);
+            setCurrentPage(1);
+          }}
+          width={180}
+        />
       </ReportHeader>
+
+      <ReportSwitcher
+        active={level}
+        onChange={handleLevelChange}
+        options={[
+          { value: 'product', label: L.LEVEL_TOGGLE.PRODUCT },
+          { value: 'hsn', label: L.LEVEL_TOGGLE.HSN },
+        ]}
+      />
 
       {isLoading ? (
         <ReportLoading />
@@ -248,33 +417,60 @@ const SalesTaxReport: React.FC = () => {
         <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
       ) : (
         <>
-          {rows.length > 0 && (
+          {hasRows && (
             <>
               <SectionTitle>{L.SUMMARY.TITLE}</SectionTitle>
               <MetricCardGrid cards={summaryCards} />
             </>
           )}
           <TableShell>
-            <ReusableTable
-              columns={columns}
-              data={sortedRows}
-              selectedRows={selectedRows}
-              setSelectedRows={setSelectedRows}
-              emptyMessage={L.EMPTY_TABLE}
-              searchAndFilterConfig={{ filterOptions: [] }}
-              currentSearchTerm=""
-              onSearchChange={() => {}}
-              showFilters={false}
-              onShowFiltersToggle={() => {}}
-              currentFilterKey=""
-              onFilterSelect={() => {}}
-              totalRows={sortedRows.length}
-              rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-              onSortRequest={handleSortRequest}
-              sortConfig={sortConfig}
-            />
+            {level === 'product' ? (
+              <ReusableTable
+                columns={columns}
+                data={sortedRows}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+                emptyMessage={L.EMPTY_TABLE}
+                searchAndFilterConfig={{ filterOptions: [] }}
+                currentSearchTerm=""
+                onSearchChange={() => {}}
+                showFilters={false}
+                onShowFiltersToggle={() => {}}
+                currentFilterKey=""
+                onFilterSelect={() => {}}
+                totalRows={totalRows}
+                rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onSortRequest={handleSortRequest}
+                sortConfig={sortConfig}
+                disableFooterWrapper
+                footerContent={hasRows ? renderTotalsRow(columns, productTotals) : undefined}
+              />
+            ) : (
+              <ReusableTable
+                columns={hsnColumns}
+                data={sortedHsnRows}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+                emptyMessage={L.EMPTY_TABLE}
+                searchAndFilterConfig={{ filterOptions: [] }}
+                currentSearchTerm=""
+                onSearchChange={() => {}}
+                showFilters={false}
+                onShowFiltersToggle={() => {}}
+                currentFilterKey=""
+                onFilterSelect={() => {}}
+                totalRows={totalRows}
+                rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onSortRequest={handleSortRequest}
+                sortConfig={sortConfig}
+                disableFooterWrapper
+                footerContent={hasRows ? renderTotalsRow(hsnColumns, hsnTotals) : undefined}
+              />
+            )}
           </TableShell>
         </>
       )}

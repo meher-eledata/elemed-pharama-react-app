@@ -106,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const adminItems: SidebarItem[] = useMemo(() => [
     { id: 'admin-home', icon: <WhiteIcon><LocalPharmacyOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Pharmacist access', label: 'Pharmacist access', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard', isComponent: true },
     { id: 'admin-users', icon: <WhiteIcon><PeopleAltIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Account Management', label: 'User Account Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/users', isComponent: true },
-    { id: 'admin-reports', icon: <WhiteIcon><BarChartIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'System Performance Reports', label: 'System Performance Reports', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/reports', isComponent: true },
+    { id: 'admin-reports', icon: <WhiteIcon><BarChartIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Reports', label: 'Reports', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/reports', isComponent: true },
     { id: 'admin-master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: 'Master', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/master', isComponent: true },
     { id: 'admin-inventory-adjustment', icon: <WhiteIcon><InventoryIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Inventory Adjustment', label: 'Inventory Adjustment', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/inventory-adjustment', isComponent: true },
     { id: 'admin-historical-data', icon: <WhiteIcon><FolderOpenOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Historical Data', label: 'Historical Data', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/historical-data', isComponent: true },
@@ -285,10 +285,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
                   primaryTypographyProps={{
                     fontSize: "14px",
                     fontWeight: 400,
+                    lineHeight: 1.25,
                   }}
                   sx={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden'
+                    my: 0,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
                   }}
                 />
               )}

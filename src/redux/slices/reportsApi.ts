@@ -103,6 +103,7 @@ export interface SupplierReceiptReportRow {
   receipt_id: number;
   receipt_date: string;
   invoice_number: string | null;
+  po_number: string | null;
   supplier_id: number;
   supplier_name: string;
   supplier_gst: string | null;
@@ -113,7 +114,7 @@ export interface SupplierReceiptReportRow {
   product_code: string | null;
   hsn_code: string | null;
   mrp: Num;
-  sp: Num;
+  purchase_price: Num;
   received_qty: Num;
   cgst: Num;
   sgst: Num;
@@ -138,6 +139,7 @@ export interface SupplierReceiptReportResponse {
     spend_by_date: { date: string; spend: Num }[];
     qty_by_date: { date: string; qty: Num }[];
     top_products_by_value: { product_name: string; value: Num; qty: Num }[];
+    top_suppliers_by_value: { supplier_name: string; value: Num; qty: Num }[];
   };
 }
 
@@ -229,11 +231,15 @@ export interface ProductSalesReportResponse {
 
 // ---- (D) Sales Tax Report -------------------------------------------------
 
+export type SalesTaxLevel = "product" | "hsn";
+
 export interface SalesTaxReportRequest {
   start_date: string;
   end_date: string;
   product_id?: number;
   patient_type?: 0 | 1;
+  level?: SalesTaxLevel;
+  hsn_code?: string;
 }
 
 export interface SalesTaxReportRow {
@@ -250,9 +256,24 @@ export interface SalesTaxReportRow {
   mrp: Num | null;
   selling_price: Num;
   taxable_value: Num;
+  discount_amount: Num;
   cgst_rate: Num;
   sgst_rate: Num;
   igst_rate: Num;
+  cgst_amount: Num;
+  sgst_amount: Num;
+  igst_amount: Num;
+  total_tax: Num;
+  line_total: Num;
+}
+
+export interface SalesTaxHsnRow {
+  hsn_code: string | null;
+  line_count: number;
+  product_count: number;
+  quantity: Num;
+  taxable_value: Num;
+  discount_amount: Num;
   cgst_amount: Num;
   sgst_amount: Num;
   igst_amount: Num;
@@ -264,6 +285,7 @@ export interface SalesTaxReportSummary {
   line_count: number;
   total_quantity: Num;
   total_taxable: Num;
+  total_discount: Num;
   total_cgst: Num;
   total_sgst: Num;
   total_igst: Num;
@@ -272,12 +294,24 @@ export interface SalesTaxReportSummary {
   total_mrp_value: Num;
   product_count: number;
   invoice_count: number;
+  hsn_count: number;
 }
 
-export interface SalesTaxReportResponse {
+export interface SalesTaxProductResponse {
+  level: "product";
   rows: SalesTaxReportRow[];
   summary: SalesTaxReportSummary;
 }
+
+export interface SalesTaxHsnResponse {
+  level: "hsn";
+  rows: SalesTaxHsnRow[];
+  summary: SalesTaxReportSummary;
+}
+
+export type SalesTaxReportResponse =
+  | SalesTaxProductResponse
+  | SalesTaxHsnResponse;
 
 // ---- (E) Supplier Tax Report (two modes via `level` discriminant) ----------
 
@@ -303,6 +337,7 @@ export interface SupplierTaxReceiptRow {
   sgst: Num;
   igst: Num;
   total_tax: Num;
+  gst_rate: Num | null;
   receipt_total: Num;
 }
 
@@ -317,6 +352,7 @@ export interface SupplierTaxSupplierRow {
   sgst: Num;
   igst: Num;
   total_tax: Num;
+  gst_rate: Num | null;
   total_with_tax: Num;
 }
 
@@ -329,6 +365,7 @@ export interface SupplierTaxReportSummary {
   total_sgst: Num;
   total_igst: Num;
   total_tax: Num;
+  gst_rate: Num | null;
   total_with_tax: Num;
 }
 
