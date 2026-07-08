@@ -139,6 +139,7 @@ const SupplierPaymentReport: React.FC = () => {
     { key: 'paidN', header: L.TABLE.PAYMENT_DONE, sortable: true, render: (r) => <CellText weight={600} color={C.COLORS.POSITIVE}>{formatCurrency(r.paidN)}</CellText> },
     { key: 'transaction_date', header: L.TABLE.TRANSACTION_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.transaction_date)}</CellText> },
     { key: 'payment_method', header: L.TABLE.PAYMENT_METHOD, sortable: true, render: (r) => <CellText>{r.payment_method || '-'}</CellText> },
+    { key: 'details', header: L.TABLE.DETAILS, sortable: true, render: (r) => <CellText>{r.details || '-'}</CellText> },
     { key: 'pendingN', header: L.TABLE.PENDING_DUE, sortable: true, render: (r) => <CellText color={r.pendingN > 0 ? C.COLORS.NEGATIVE : C.COLORS.TEXT_PRIMARY}>{formatCurrency(r.pendingN)}</CellText> },
   ];
 
@@ -179,6 +180,7 @@ const SupplierPaymentReport: React.FC = () => {
         [`${L.TABLE.PAYMENT_DONE} (₹)`]: r.paidN.toFixed(2),
         [L.TABLE.TRANSACTION_DATE]: formatReportDate(r.transaction_date),
         [L.TABLE.PAYMENT_METHOD]: csvString(r.payment_method),
+        [L.TABLE.DETAILS]: csvString(r.details),
         [`${L.TABLE.PENDING_DUE} (₹)`]: r.pendingN.toFixed(2),
       })),
     [sortedRows]

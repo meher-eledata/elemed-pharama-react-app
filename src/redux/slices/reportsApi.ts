@@ -160,6 +160,7 @@ export interface SupplierPaymentReportRow {
   payment_done: Num;
   transaction_date: string;
   payment_method: string | null;
+  details: string | null;
   pending_due_supplier: Num;
 }
 

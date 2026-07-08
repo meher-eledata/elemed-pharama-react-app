@@ -68,6 +68,7 @@ const FIXTURE: reportsApi.SupplierPaymentReportResponse = {
       payment_done: '4800.00',
       transaction_date: '2026-06-12',
       payment_method: 'BANK_TRANSFER',
+      details: 'Part payment for PO 501',
       pending_due_supplier: '200.00',
     },
   ],

@@ -50,6 +50,7 @@ export const SUPPLIER_PAYMENT_REPORT_LABELS = {
     PAYMENT_DONE: 'Payment Done',
     TRANSACTION_DATE: 'Transaction Date',
     PAYMENT_METHOD: 'Payment Method',
+    DETAILS: 'Details',
     PENDING_DUE: 'Pending Due',
   },
   EMPTY_TABLE: 'No payments for the selected period.',

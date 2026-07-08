@@ -126,14 +126,15 @@ export const generatePrintHTML = (data: {
   const isA5 = pageSize === 'A5';
 
   return `
+    <!DOCTYPE html>
     <html>
       <head>
         <title>${labels.CUSTOMER_RECEIPT_TITLE}</title>
         <style>
           @media print {
-            @page { 
-              margin: ${isA5 ? '10mm' : '15mm'} !important;
-              size: ${pageSize} landscape !important;
+            @page {
+              margin: ${isA5 ? '10mm' : '15mm'};
+              size: ${pageSize} landscape;
             }
             html, body {
               margin: 0;

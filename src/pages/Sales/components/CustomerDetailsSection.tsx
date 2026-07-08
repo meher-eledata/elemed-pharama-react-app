@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Typography, Autocomplete, TextField, InputAdornment, IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -58,6 +58,15 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
 }) => {
   const [patientTypeOpen, setPatientTypeOpen] = useState(false);
 
+  // The customer NAME picker must only suggest actual names. Guard against
+  // malformed records whose `name` is really a phone number (all digits, no
+  // letters) so bare mobile numbers never appear as name options. A genuine
+  // person/business name always contains at least one letter.
+  const nameOptions = useMemo(
+    () => customerNames.filter((n) => /[A-Za-z]/.test(n || '')),
+    [customerNames]
+  );
+
   return (
     <CustomerDetailsColumn>
       <Box sx={{
@@ -96,7 +105,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
       <SectionRow>
         <Autocomplete<string, false, boolean, true>
           freeSolo
-          options={customerNames} // Customer names from /sales/get-all-customer-names endpoint
+          options={nameOptions} // Customer names from /sales/get-all-customer-names endpoint (phone-only records filtered out)
           getOptionLabel={(option: string | { name: string } | null) => {
             // Handle both string and object formats
             if (typeof option === 'string') return option;
