@@ -24,7 +24,7 @@ jest.mock('../../../redux/slices/activityApi', () => ({
 // The returned data is driven by a mutable ref so individual tests can seed alerts.
 let mockAlertsData: { count: number; alerts: any[] } = { count: 0, alerts: [] };
 jest.mock('../../../redux/slices/alertsApi', () => ({
-  useGetAlertsQuery: () => ({ data: mockAlertsData }),
+  useGetAlertsQuery: () => ({ data: mockAlertsData, refetch: jest.fn() }),
 }));
 
 import { TopBar } from '../TopBar';

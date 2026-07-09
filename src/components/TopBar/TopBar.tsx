@@ -121,11 +121,11 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   const navigate = useNavigate();
   const [logoutRequest] = useLogoutMutation();
 
-  // Near-expiry alerts feed for the notification bell. Poll every 5 min and
-  // refetch on window focus so the badge count stays fresh.
-  const { data: alertsData } = useGetAlertsQuery(undefined, {
-    pollingInterval: 300000,
-    refetchOnFocus: true,
+  // Near-expiry alerts feed for the notification bell. Near-expiry is measured
+  // in days, so an hourly poll is plenty; it's also recalculated on demand each
+  // time the bell is opened (see handleAlertsOpen).
+  const { data: alertsData, refetch: refetchAlerts } = useGetAlertsQuery(undefined, {
+    pollingInterval: 3600000,
   });
   const alertCount = alertsData?.count ?? 0;
   const alerts = alertsData?.alerts ?? [];
@@ -155,6 +155,8 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
 
   const handleAlertsOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAlertsAnchorEl(event.currentTarget);
+    // Recalculate the alerts fresh whenever the bell is opened.
+    refetchAlerts();
   };
 
   const handleAlertsClose = () => {

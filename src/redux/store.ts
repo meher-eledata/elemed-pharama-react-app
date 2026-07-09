@@ -1,6 +1,5 @@
 
 import { configureStore } from "@reduxjs/toolkit";
-import { setupListeners } from "@reduxjs/toolkit/query";
 import authReducer, { authApi } from "./slices/authSlice";
 import { inventoryApi } from "./slices/inventoryApi"; 
 import { dashboardApi } from "./slices/dashboardApi";
@@ -47,9 +46,6 @@ export const store = configureStore({
       .concat(profileApi.middleware)
       .concat(alertsApi.middleware)
 });
-
-// Enables refetchOnFocus / refetchOnReconnect for any query that opts in.
-setupListeners(store.dispatch);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
