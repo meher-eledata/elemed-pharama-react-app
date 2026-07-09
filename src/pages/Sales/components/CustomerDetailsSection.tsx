@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Typography, Autocomplete, TextField, InputAdornment, IconButton } from '@mui/material';
+import { Box, Typography, Autocomplete, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import ClearIcon from '@mui/icons-material/Clear';
 import { StandardButton } from '../../../components/Common';
 import { Customer } from '../../../redux/slices/salesApi';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
@@ -373,35 +372,71 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
       </SectionRow>
 
       <SectionRow>
-        <PhoneNoField
-          className="phone-no-field"
-          label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
-          variant="outlined"
-          placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
-          value={customerMobile}
-          onChange={(e) => {
-            const newMobile = e.target.value;
-            onCustomerMobileChange(newMobile);
-            if (selectedCustomer && newMobile !== selectedCustomer.mobile) {
+        <Autocomplete<string, false, boolean, true>
+          freeSolo
+          options={availablePhones}
+          value={customerMobile || null}
+          isOptionEqualToValue={(option, value) => option === (value || '')}
+          onChange={(_, newValue) => {
+            const v = typeof newValue === 'string' ? newValue : '';
+            onCustomerMobileChange(v);
+            // Picking a specific number identifies WHICH same-named customer this
+            // is; drop any stale selection so the id is re-resolved from the phone.
+            if (selectedCustomer && v !== selectedCustomer.mobile) {
               onCustomerSelect(null);
             }
           }}
-          InputProps={{
-            endAdornment: customerMobile && (
-              <InputAdornment position="end">
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    onCustomerMobileChange('');
-                    if (selectedCustomer) onCustomerSelect(null);
-                  }}
-                  sx={{ padding: '2px', marginRight: '-8px' }}
-                >
-                  <ClearIcon sx={{ fontSize: '18px', color: '#6B7280' }} />
-                </IconButton>
-              </InputAdornment>
-            )
+          onInputChange={(_, newInputValue, reason) => {
+            if (reason === 'input') {
+              onCustomerMobileChange(newInputValue);
+              if (selectedCustomer && newInputValue !== selectedCustomer.mobile) {
+                onCustomerSelect(null);
+              }
+            }
           }}
+          disableClearable={!customerMobile}
+          forcePopupIcon={availablePhones.length > 1}
+          popupIcon={<ArrowDropDownIcon sx={{ color: '#6B7280', fontSize: '24px' }} />}
+          slotProps={{
+            popper: {
+              sx: {
+                "& .MuiPaper-root": {
+                  borderRadius: "12px",
+                  marginTop: "4px",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid #E6ECF5",
+                  height: "auto !important",
+                  minHeight: "unset !important",
+                  padding: "0px !important",
+                  overflow: "hidden",
+                  "& .MuiAutocomplete-listbox": {
+                    padding: "0px !important",
+                    maxHeight: "300px !important",
+                    minHeight: "unset !important",
+                    overflow: "auto",
+                  },
+                },
+              },
+            },
+          }}
+          ListboxProps={{
+            sx: {
+              padding: "0px !important",
+              maxHeight: "300px !important",
+              minHeight: "unset !important",
+              overflow: "auto",
+            },
+          }}
+          sx={{ width: '165px' }}
+          renderInput={(params) => (
+            <PhoneNoField
+              {...params}
+              className="phone-no-field"
+              label={SALES_RECEIPT_LABELS.MOBILE_NUMBER_LABEL}
+              variant="outlined"
+              placeholder={SALES_RECEIPT_LABELS.MOBILE_NUMBER_PLACEHOLDER}
+            />
+          )}
         />
         <Autocomplete
           options={cityOptions}
