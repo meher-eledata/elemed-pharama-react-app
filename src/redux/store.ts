@@ -1,5 +1,6 @@
 
 import { configureStore } from "@reduxjs/toolkit";
+import { setupListeners } from "@reduxjs/toolkit/query";
 import authReducer, { authApi } from "./slices/authSlice";
 import { inventoryApi } from "./slices/inventoryApi"; 
 import { dashboardApi } from "./slices/dashboardApi";
@@ -11,6 +12,7 @@ import { reportsApi } from "./slices/reportsApi";
 import { historicalFilesApi } from "./slices/historicalFilesApi";
 import { activityApi } from "./slices/activityApi";
 import { profileApi } from "./slices/profileApi";
+import { alertsApi } from "./slices/alertsApi";
 import cartReducer from "./slices/cartSlice";
 
 export const store = configureStore({
@@ -28,6 +30,7 @@ export const store = configureStore({
     [historicalFilesApi.reducerPath]: historicalFilesApi.reducer,
     [activityApi.reducerPath]: activityApi.reducer,
     [profileApi.reducerPath]: profileApi.reducer,
+    [alertsApi.reducerPath]: alertsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -42,7 +45,11 @@ export const store = configureStore({
       .concat(historicalFilesApi.middleware)
       .concat(activityApi.middleware)
       .concat(profileApi.middleware)
+      .concat(alertsApi.middleware)
 });
+
+// Enables refetchOnFocus / refetchOnReconnect for any query that opts in.
+setupListeners(store.dispatch);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

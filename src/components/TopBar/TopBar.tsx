@@ -89,15 +89,20 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Badge,
+  ListItemText,
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 // import dropdownIcon from "../../assets/DropDown.svg"; // Removed for standardization
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { useLogoutMutation } from "../../redux/slices/activityApi";
+import { useGetAlertsQuery } from "../../redux/slices/alertsApi";
 import { RootState } from "../../redux/store";
 import { useNavigate } from "react-router-dom";
 import { getInitials } from "../../config/helpers/initials";
+import { NOTIFICATION_LABELS } from "../../config/label/Notifications.labels";
 
 import "./TopBar.scss";
 
@@ -110,9 +115,20 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onToggleSidebar }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const [alertsAnchorEl, setAlertsAnchorEl] = React.useState<null | HTMLElement>(null);
+  const alertsOpen = Boolean(alertsAnchorEl);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [logoutRequest] = useLogoutMutation();
+
+  // Near-expiry alerts feed for the notification bell. Poll every 5 min and
+  // refetch on window focus so the badge count stays fresh.
+  const { data: alertsData } = useGetAlertsQuery(undefined, {
+    pollingInterval: 300000,
+    refetchOnFocus: true,
+  });
+  const alertCount = alertsData?.count ?? 0;
+  const alerts = alertsData?.alerts ?? [];
 
   // Get user info from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -135,6 +151,21 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleAlertsOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAlertsAnchorEl(event.currentTarget);
+  };
+
+  const handleAlertsClose = () => {
+    setAlertsAnchorEl(null);
+  };
+
+  const handleAlertClick = (window: '1month' | '3month') => {
+    setAlertsAnchorEl(null);
+    navigate('/inventory', {
+      state: { tab: 'nearExpiry', nearExpiryMonths: window === '1month' ? 1 : 3 },
+    });
   };
 
   const handleAdminAccess = () => {
@@ -163,7 +194,51 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
       <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center' }}>
       </Box>
       <Box className="right-controls" sx={{ marginLeft: "auto" }}>
-        {/* Notification bell hidden pending a notifications feature. */}
+        <IconButton
+          className="notification-icon-button"
+          aria-label={NOTIFICATION_LABELS.ARIA_LABEL}
+          aria-controls={alertsOpen ? "notifications-menu" : undefined}
+          aria-haspopup="true"
+          aria-expanded={alertsOpen ? "true" : undefined}
+          onClick={handleAlertsOpen}
+        >
+          <Badge badgeContent={alertCount} color="error" overlap="circular">
+            <NotificationsNoneOutlinedIcon className="notification-icon" />
+          </Badge>
+        </IconButton>
+        <Menu
+          id="notifications-menu"
+          anchorEl={alertsAnchorEl}
+          open={alertsOpen}
+          onClose={handleAlertsClose}
+          MenuListProps={{ "aria-labelledby": "notifications-menu" }}
+          slotProps={{ paper: { sx: { maxWidth: 360, maxHeight: 420 } } }}
+        >
+          <MenuItem disabled sx={{ opacity: 1, fontWeight: 600, fontSize: 14 }}>
+            {NOTIFICATION_LABELS.TITLE}
+          </MenuItem>
+          {alerts.length === 0 ? (
+            <MenuItem disabled>{NOTIFICATION_LABELS.EMPTY}</MenuItem>
+          ) : (
+            alerts.map((alert) => (
+              <MenuItem
+                key={alert.id}
+                onClick={() => handleAlertClick(alert.window)}
+                sx={{ display: 'block', whiteSpace: 'normal' }}
+              >
+                <ListItemText
+                  primary={`${alert.name} · ${alert.batchNumber}`}
+                  secondary={NOTIFICATION_LABELS.expiresIn(alert.daysUntilExpiry)}
+                  primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }}
+                  secondaryTypographyProps={{
+                    fontSize: 12,
+                    sx: { color: NOTIFICATION_LABELS.SEVERITY_COLOR[alert.window] },
+                  }}
+                />
+              </MenuItem>
+            ))
+          )}
+        </Menu>
 
         <Box
           className="user-profile"
