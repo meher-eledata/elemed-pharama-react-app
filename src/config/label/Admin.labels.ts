@@ -27,6 +27,11 @@ export const ADMIN_LABELS = {
       DESC: 'Configure application-wide parameters, default preferences, and operational controls.',
       ACTION: 'Adjust Settings',
     },
+    SUPPLIER_CREDIT: {
+      TITLE: 'Supplier Credit',
+      DESC: 'Review supplier credit transactions and post manual adjustments.',
+      ACTION: 'Manage Supplier Credit',
+    },
   },
 } as const;
 
