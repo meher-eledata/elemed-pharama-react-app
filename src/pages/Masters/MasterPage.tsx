@@ -235,8 +235,9 @@ const Masterpage: React.FC<MasterpageProps> = ({ enableDownload = false }) => {
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      // Surface the backend message (e.g. 409 "phone already in use", 400 validation)
-      // to the modal: rethrow an Error so CustomerModal's catch shows error.message.
+      // Surface the backend message (e.g. a 400 validation error) to the modal:
+      // rethrow an Error so CustomerModal's catch shows error.message. Note: a
+      // customer's phone is not unique, so no "phone already in use" conflict here.
       const message = extractErrorMessage(error, 'Failed to add customer. Please try again.');
       setSnackbarMessage(message);
       setSnackbarSeverity('error');
