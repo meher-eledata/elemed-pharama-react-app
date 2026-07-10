@@ -10,6 +10,11 @@ export const validateCustomerData = (customerData: any): { isValid: boolean; err
   if (!customerData.customerName || !customerData.customerName.trim()) {
     return { isValid: false, error: 'Customer name is required' };
   }
+  // A name must contain at least one letter — rejects an all-digit / no-letter value,
+  // which is how a phone number gets wrongly entered into the name field.
+  if (!/[A-Za-z]/.test(customerData.customerName.trim())) {
+    return { isValid: false, error: 'Enter a valid customer name' };
+  }
   if (!customerData.mobileNumber || !customerData.mobileNumber.trim()) {
     return { isValid: false, error: 'Phone number is required' };
   }
