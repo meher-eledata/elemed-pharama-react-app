@@ -207,29 +207,27 @@ export default function SaleHistory() {
   const savedHistory = useMemo(() => getSalesHistoryFromStorage(), [refreshKey]);
 
   const salesHistoryData: SalesHistoryItem[] = useMemo(() => {
-    const formatToDDMMYYYY = (dateStr: string) => {
+    const formatInvoiceDate = (dateStr: string) => {
       if (!dateStr) return '';
-      // Quick check if already roughly DD/MM/YYYY format
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+      // Already in the canonical "DD MMM YYYY" display format
+      if (/^\d{2}\s[A-Za-z]{3}\s\d{4}$/.test(dateStr)) return dateStr;
 
-      const stdTime = Date.parse(dateStr);
-      if (!isNaN(stdTime)) {
-        const d = new Date(stdTime);
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}/${d.getFullYear()}`;
+      // Legacy "DD/MM/YYYY" values (e.g. from older saved history) -> normalize
+      const dmy = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (dmy) {
+        const [, dd, mm, yyyy] = dmy;
+        const d = dayjs(`${yyyy}-${mm}-${dd}`);
+        return d.isValid() ? d.format('DD MMM YYYY') : dateStr;
       }
 
       const d = dayjs(dateStr);
-      if (d.isValid()) return d.format('DD/MM/YYYY');
-
-      return dateStr;
+      return d.isValid() ? d.format('DD MMM YYYY') : dateStr;
     };
 
     const savedItems: SalesHistoryItem[] = savedHistory.map((item: any, index: number) => ({
       id: item.id || `saved_${index}`,
       invoiceNumber: item.invoiceNumber || '',
-      invoiceDate: formatToDDMMYYYY(item.invoiceDate || ''),
+      invoiceDate: formatInvoiceDate(item.invoiceDate || ''),
       customerId: Number(item.customerId) || 0,
       customerName: item.customerName || '',
       customerMobile: item.customerMobile || '',

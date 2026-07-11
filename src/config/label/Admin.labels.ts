@@ -13,7 +13,7 @@ export const ADMIN_LABELS = {
       ACTION: 'Manage Users',
     },
     REPORTS: {
-      TITLE: 'System Performance Reports',
+      TITLE: 'Reports',
       DESC: 'Access detailed analytics on system usage, p e metrics, and activity trends.',
       ACTION: 'View Reports',
     },
@@ -26,6 +26,11 @@ export const ADMIN_LABELS = {
       TITLE: 'System Settings',
       DESC: 'Configure application-wide parameters, default preferences, and operational controls.',
       ACTION: 'Adjust Settings',
+    },
+    SUPPLIER_CREDIT: {
+      TITLE: 'Supplier Credit',
+      DESC: 'Review supplier credit transactions and post manual adjustments.',
+      ACTION: 'Manage Supplier Credit',
     },
   },
 } as const;

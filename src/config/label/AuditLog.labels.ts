@@ -13,7 +13,7 @@ export const AUDIT_LOG_LABELS = {
     RESET: 'Reset filters',
   },
   TABLE: {
-    TIME: 'Time',
+    TIME: 'Time (IST)',
     MODULE: 'Module',
     EVENT_TYPE: 'Event Type',
     RELATED_ID: 'Related ID',
@@ -21,6 +21,7 @@ export const AUDIT_LOG_LABELS = {
     DETAILS: 'Details',
     USERNAME: 'Username',
     ROLE: 'Role',
+    IP_ADDRESS: 'IP Address',
   },
   MESSAGES: {
     LOADING: 'Loading activity log...',

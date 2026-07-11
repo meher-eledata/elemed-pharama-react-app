@@ -1,15 +1,15 @@
-name: Deploy Dev (frontend, serverless)
+name: Deploy QA (frontend, serverless)
 
-# Auto-deploys the frontend SPA to the DEV serverless env (S3 + CloudFront) on push/merge to `dev`.
-# Keyless OIDC; the assumed role is trusted ONLY from refs/heads/dev of this repo and grants
+# Auto-deploys the frontend SPA to the QA serverless env (S3 + CloudFront) on push/merge to `qa`.
+# Keyless OIDC; the assumed role is trusted ONLY from refs/heads/qa of this repo and grants
 # nothing on prod.
 on:
   push:
-    branches: [dev]
+    branches: [qa]
   workflow_dispatch:
 
 concurrency:
-  group: deploy-dev-frontend
+  group: deploy-qa-frontend
   cancel-in-progress: false
 
 permissions:
@@ -18,10 +18,10 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  S3_BUCKET: elemed-sdev-frontend
-  CLOUDFRONT_DIST_ID: E2NS044CHKDC5Z
-  VITE_API_BASE_URL: https://dev.elemed.co/api/
-  AWS_ROLE_ARN: arn:aws:iam::187691954418:role/elemed-github-actions-dev
+  S3_BUCKET: elemed-qa-frontend
+  CLOUDFRONT_DIST_ID: E1FOQS1ATURUIO
+  VITE_API_BASE_URL: https://qa.elemed.co/api/
+  AWS_ROLE_ARN: arn:aws:iam::187691954418:role/elemed-github-actions-qa
 
 jobs:
   deploy:

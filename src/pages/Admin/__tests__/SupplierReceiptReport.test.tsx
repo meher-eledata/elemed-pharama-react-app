@@ -59,6 +59,7 @@ const FIXTURE: reportsApi.SupplierReceiptReportResponse = {
       receipt_id: 501,
       receipt_date: '2026-06-10',
       invoice_number: 'SUP-INV-1',
+      po_number: 'PO-9001',
       supplier_id: 1,
       supplier_name: 'Acme Pharma',
       supplier_gst: 'GST123',
@@ -69,7 +70,7 @@ const FIXTURE: reportsApi.SupplierReceiptReportResponse = {
       product_code: 'AMX-500',
       hsn_code: '3004',
       mrp: '120.00',
-      sp: '100.00',
+      purchase_price: '100.00',
       received_qty: '50.00',
       cgst: '6.00',
       sgst: '6.00',
@@ -90,6 +91,7 @@ const FIXTURE: reportsApi.SupplierReceiptReportResponse = {
     spend_by_date: [{ date: '2026-06-10', spend: '1234.50' }],
     qty_by_date: [{ date: '2026-06-10', qty: '50.00' }],
     top_products_by_value: [{ product_name: 'Amoxicillin 500mg', value: '1234.50', qty: '50.00' }],
+    top_suppliers_by_value: [{ supplier_name: 'Acme Pharma', value: '1234.50', qty: '50.00' }],
   },
 };
 

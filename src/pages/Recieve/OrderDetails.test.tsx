@@ -637,6 +637,79 @@ describe('OrderDetails', () => {
     });
   });
 
+  describe('Invoice number required (#20)', () => {
+    it('shows an inline error and blocks submit when the invoice number is blank', async () => {
+      const user = userEvent.setup();
+      // Spy on the edit mutation so we can prove a blank invoice never reaches the API.
+      const mockEdit = jest.fn().mockResolvedValue({ message: 'Success', receiptId: 1 });
+      mockUseEditReceiptMutation.mockReturnValue(createMockMutation(mockEdit));
+
+      // Edit mode: supplier + a product row load from the receipt, so the primary
+      // ("Save") button is enabled. The loaded line carries NO invoice_number, so the
+      // Invoice Number field stays blank — the case under test.
+      mockLocation.state = {
+        isEditMode: true,
+        receiptId: 1,
+        receiptNumber: 'RA1',
+        selectedOrder: {
+          receiptId: 1,
+          reNo: 'RA1',
+          poNo: 'PO001',
+          supplier: 'Supplier A',
+          received: 'Jan 15, 2024',
+          status: 'received',
+          reBy: 'John Doe',
+          amt: 5000,
+          products: [],
+        },
+      };
+
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('receipt-lines')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [
+              {
+                receipt_line_id: 1,
+                product_name: 'Product 1',
+                received_qty: 10,
+                free_qty: 0,
+                expiry_date: '2024-12-31',
+                purchase_price: '100',
+                // no invoice_number → invoice field remains blank
+              },
+            ],
+          });
+        }
+        if (url.includes('unique-supplier-names')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [{ supplier_name: 'Supplier A', supplier_id: 1 }],
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+
+      // Wait for the edit-mode load to populate the row + supplier so Save is enabled.
+      const saveButton = await screen.findByText('Save');
+      await waitFor(() => {
+        expect(saveButton.closest('button')).not.toBeDisabled();
+      });
+
+      // The invoice number field is blank.
+      const invoiceInput = screen.getByPlaceholderText('Enter Invoice Number') as HTMLInputElement;
+      expect(invoiceInput.value).toBe('');
+
+      await user.click(saveButton.closest('button')!);
+
+      // Inline required error surfaces; the edit mutation is never invoked.
+      expect(await screen.findByText('Invoice number is required')).toBeInTheDocument();
+      expect(mockEdit).not.toHaveBeenCalled();
+    }, 20000);
+  });
+
   describe('Error Handling', () => {
     it('should display error message on save failure', async () => {
       const mockSubmit = jest.fn().mockRejectedValue({

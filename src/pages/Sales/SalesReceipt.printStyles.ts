@@ -80,8 +80,8 @@ export const getPrintStyles = (pageSize: 'A4' | 'A5' = 'A4') => `
     .MuiTable-root .MuiTableCell-root:nth-child(11) { width: 13% !important; min-width: 80px !important; display: none !important; }
     
     @page {
-      size: ${pageSize} landscape !important;
-      margin: 0 !important;
+      size: ${pageSize} landscape;
+      margin: 0;
     }
     
     [class*="MuiTable"],
