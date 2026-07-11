@@ -1,0 +1,51 @@
+name: Deploy Prod (frontend, serverless)
+
+# Auto-deploys the frontend SPA to the PRODUCTION serverless env (S3 + CloudFront) on push/merge to `prod`.
+# Keyless OIDC; the assumed role is trusted ONLY from refs/heads/prod of this repo and grants
+# nothing outside the prod serverless resources.
+#
+# VITE_API_BASE_URL currently targets the sprod.elemed.co staging alias; the elemed.co
+# cutover flips it to https://elemed.co/api/ (that one-line change IS the cutover rebuild).
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod-frontend
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: elemed-prod-frontend
+  CLOUDFRONT_DIST_ID: E2FWFFXWS3YHHM
+  VITE_API_BASE_URL: https://sprod.elemed.co/api/
+  AWS_ROLE_ARN: arn:aws:iam::187691954418:role/elemed-github-actions-prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Sync build to S3
+        run: aws s3 sync dist/ "s3://$S3_BUCKET" --delete
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DIST_ID" --paths "/*"

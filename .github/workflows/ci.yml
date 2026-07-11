@@ -4,7 +4,7 @@ name: CI
 # NO AWS credentials and NO deploy. The real deploy runs on push/merge (deploy-*.yml).
 on:
   pull_request:
-    branches: [dev, qa]
+    branches: [dev, qa, prod]
 
 concurrency:
   group: ci-${{ github.ref }}
