@@ -23,7 +23,7 @@ env:
   AWS_REGION: us-east-1
   S3_BUCKET: elemed-prod-frontend
   CLOUDFRONT_DIST_ID: E2FWFFXWS3YHHM
-  VITE_API_BASE_URL: https://sprod.elemed.co/api/
+  VITE_API_BASE_URL: https://elemed.co/api/
   AWS_ROLE_ARN: arn:aws:iam::187691954418:role/elemed-github-actions-prod
 
 jobs:
