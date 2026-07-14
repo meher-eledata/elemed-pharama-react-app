@@ -32,8 +32,8 @@ export const useDoctorPhonesAndEmails = ({
           onInfoFetched(info);
           
           const normalizedDoctorName = doctorName.trim().toLowerCase();
-          const isExactMatch = doctorNames.length > 0 && doctorNames.some((name: string) => 
-            name.toLowerCase() === normalizedDoctorName
+          const isExactMatch = doctorNames.length > 0 && doctorNames.some((name: string) =>
+            (name || '').toLowerCase() === normalizedDoctorName
           );
           
           if (info.length === 1) {
@@ -58,8 +58,8 @@ export const useDoctorPhonesAndEmails = ({
     };
 
     const normalizedDoctorName = doctorName.trim().toLowerCase();
-    const isExactMatch = doctorNames.length > 0 && doctorNames.some((name: string) => 
-      name.toLowerCase() === normalizedDoctorName
+    const isExactMatch = doctorNames.length > 0 && doctorNames.some((name: string) =>
+      (name || '').toLowerCase() === normalizedDoctorName
     );
     const shouldFetchImmediately = shouldFetchImmediatelyRef.current || isExactMatch;
 

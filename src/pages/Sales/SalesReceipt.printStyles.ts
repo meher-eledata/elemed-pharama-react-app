@@ -1,6 +1,9 @@
 // Print and Field Styles for SalesReceipt
 
-export const getPrintStyles = (pageSize: 'A4' | 'A5' = 'A4') => `
+export const getPrintStyles = (
+  pageSize: 'A4' | 'A5' = 'A4',
+  orientation: 'landscape' | 'portrait' = 'landscape'
+) => `
   @media print {
     * {
       -webkit-print-color-adjust: exact !important;
@@ -80,7 +83,7 @@ export const getPrintStyles = (pageSize: 'A4' | 'A5' = 'A4') => `
     .MuiTable-root .MuiTableCell-root:nth-child(11) { width: 13% !important; min-width: 80px !important; display: none !important; }
     
     @page {
-      size: ${pageSize} landscape;
+      size: ${pageSize} ${orientation};
       margin: 0;
     }
     

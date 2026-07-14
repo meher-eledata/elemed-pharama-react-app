@@ -35,7 +35,7 @@ export const useCustomerPhones = ({
       if (customerName && customerName.trim()) {
         try {
           const normalizedCustomerName = customerName.trim().toLowerCase();
-          const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedCustomerName);
+          const isExactMatch = customerNames.length > 0 && customerNames.some(name => (name || '').toLowerCase() === normalizedCustomerName);
 
           // Fetch phone numbers (backend returns `phones` and an aligned `ids` array).
           const result = await getCustomerPhones({ name: customerName.trim() }).unwrap();
@@ -83,7 +83,7 @@ export const useCustomerPhones = ({
     };
 
     const normalizedCustomerName = customerName.trim().toLowerCase();
-    const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedCustomerName);
+    const isExactMatch = customerNames.length > 0 && customerNames.some(name => (name || '').toLowerCase() === normalizedCustomerName);
     const shouldFetchImmediately = shouldFetchImmediatelyRef.current || isExactMatch;
 
     shouldFetchImmediatelyRef.current = false;

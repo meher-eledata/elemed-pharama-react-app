@@ -193,6 +193,7 @@ export default function SaleHistory() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
   const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
   // Force refresh of saved history when location changes (e.g., after edit or return)
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1232,6 +1233,7 @@ export default function SaleHistory() {
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
+        orientation: orientation,
       });
 
       printWindow.document.write(htmlContent);
@@ -1881,6 +1883,8 @@ export default function SaleHistory() {
               brandIcon={bgWhiteIcon}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
+              orientation={orientation}
+              onOrientationChange={setOrientation}
               splitPayments={invoiceDetails.splitPayments || []}
             />
           }

@@ -3,6 +3,7 @@ import { Box, Typography, Autocomplete, TextField, CircularProgress, InputAdornm
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ClearIcon from '@mui/icons-material/Clear';
 import { DoctorPhoneEmailInfo } from '../../../redux/slices/salesApi';
+import { filterRanked } from '../utils/customerSearch';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../../config/constants/SalesReceipt.constants';
 import {
@@ -83,6 +84,10 @@ const DoctorDetailsSection: React.FC<DoctorDetailsSectionProps> = ({
           value={selectedDoctor || null}
           inputValue={doctorName}
           loading={isLoadingDoctorNames}
+          // Ranked, case-insensitive filtering: prefix > word-start > substring
+          filterOptions={(options, state) =>
+            filterRanked(options, state.inputValue, { getName: (o) => o })
+          }
           getOptionLabel={(option: string | { name: string } | null) => {
             // Handle both string and object formats
             if (typeof option === 'string') return option;

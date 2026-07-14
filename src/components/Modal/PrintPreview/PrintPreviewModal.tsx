@@ -44,6 +44,8 @@ interface PrintPreviewModalProps {
   brandIcon?: string;
   pageSize?: 'A4' | 'A5';
   onPageSizeChange?: (size: 'A4' | 'A5') => void;
+  orientation?: 'landscape' | 'portrait';
+  onOrientationChange?: (orientation: 'landscape' | 'portrait') => void;
   splitPayments?: any[];
 }
 
@@ -67,6 +69,8 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   onAfterSave,
   pageSize = 'A4',
   onPageSizeChange,
+  orientation = 'landscape',
+  onOrientationChange,
   brandIcon,
   splitPayments = [],
 }) => {
@@ -103,8 +107,8 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         },
         jsPDF: {
           unit: 'mm',
-          format: 'a4',
-          orientation: 'portrait' as const
+          format: pageSize.toLowerCase(),
+          orientation: orientation
         }
       };
 
@@ -153,6 +157,34 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               }}
             >
               {size}
+            </Box>
+          ))}
+        </Box>
+        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#616161', ml: '12px' }}>{SALES_RECEIPT_LABELS.ORIENTATION_LABEL}</Typography>
+        <Box sx={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '2px' }}>
+          {([
+            { value: 'landscape', label: SALES_RECEIPT_LABELS.ORIENTATION_LANDSCAPE },
+            { value: 'portrait', label: SALES_RECEIPT_LABELS.ORIENTATION_PORTRAIT },
+          ] as const).map((option) => (
+            <Box
+              key={option.value}
+              onClick={() => onOrientationChange?.(option.value)}
+              sx={{
+                padding: '6px 16px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: orientation === option.value ? '#FFFFFF' : 'transparent',
+                color: orientation === option.value ? '#5C17E5' : '#6B7280',
+                boxShadow: orientation === option.value ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  backgroundColor: orientation === option.value ? '#FFFFFF' : '#E5E7EB',
+                }
+              }}
+            >
+              {option.label}
             </Box>
           ))}
         </Box>
@@ -205,12 +237,21 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               GSTIN No: 37AAQCS3213C2ZH<br />
               (M): 0891-2554040, 8096655050
             </Typography>
-            {/* <Typography sx={{ fontSize: isA5 ? '8px' : '10px', fontWeight: 600, color: '#666', marginTop: '2px' }}>
-              {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
-            </Typography> */}
           </Box>
           <Box sx={{ flex: 1, textAlign: 'right' }}></Box>
         </Box>
+
+        {/* Centered in-document receipt title (matches the printed output) */}
+        <Typography sx={{
+          textAlign: 'center',
+          fontSize: isA5 ? '11px' : '15px',
+          fontWeight: 700,
+          letterSpacing: '0.5px',
+          color: '#1A212B',
+          marginBottom: isA5 ? '6px' : '10px',
+        }}>
+          {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
+        </Typography>
 
         {/* Four Section Layout - 1 Row */}
         <Box sx={{
