@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import CustomerDetailsSection from '../CustomerDetailsSection';
-import { Customer } from '../../../../redux/slices/salesApi';
+import { Customer, CustomerOption } from '../../../../redux/slices/salesApi';
 
 // Mock Redux store
 const createMockStore = () => {
@@ -22,10 +22,15 @@ describe('CustomerDetailsSection', () => {
     customerCity: '',
     patientType: 'Out Patient',
     selectedCustomer: null,
-    customerNames: ['John Doe', 'Jane Smith', 'Bob Johnson'],
+    customerOptions: [
+      { id: '1', name: 'John Doe', phone: '1234567890' },
+      { id: '2', name: 'Jane Smith', phone: '9876543210' },
+      { id: '3', name: 'Bob Johnson', phone: null },
+    ] as CustomerOption[],
     availablePhones: ['1234567890', '9876543210'],
     onCustomerNameChange: jest.fn(),
     onCustomerSelect: jest.fn(),
+    onCustomerOptionSelect: jest.fn(),
     onCustomerMobileChange: jest.fn(),
     onCustomerCityChange: jest.fn(),
     onPatientTypeChange: jest.fn(),

@@ -65,6 +65,11 @@ export const SALES_RECEIPT_LABELS = {
   PRINT_BUTTON: "Save and Print",
   PRINT_ONLY_BUTTON: "Print",
 
+  // Print Options
+  ORIENTATION_LABEL: "Orientation:",
+  ORIENTATION_LANDSCAPE: "Landscape",
+  ORIENTATION_PORTRAIT: "Portrait",
+
   // Print Preview
   PRINT_PREVIEW_TITLE: "Print Preview - Sales Receipt",
   CUSTOMER_RECEIPT_TITLE: "Customer receipt",

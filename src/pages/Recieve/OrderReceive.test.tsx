@@ -20,6 +20,7 @@ import {
   PurchaseOrder,
 } from '../../redux/slices/receiveApi';
 import { useGetBatchesForProductMutation } from '../../redux/slices/inventoryApi';
+import { ORDER_RECEIVE_TITLE, ADD_RECEIVE_BUTTON } from '../../config/label/OrderReceive.labels';
 
 // Create a theme for testing
 const theme = createTheme();
@@ -231,12 +232,12 @@ describe('OrderReceive', () => {
   describe('Component Rendering', () => {
     it('should render the component with title', () => {
       renderWithProviders(<OrderReceive />);
-      expect(screen.getByText('Order Receive')).toBeInTheDocument();
+      expect(screen.getByText(ORDER_RECEIVE_TITLE)).toBeInTheDocument();
     });
 
     it('should render Add Receive button', () => {
       renderWithProviders(<OrderReceive />);
-      expect(screen.getByText('Add Receive')).toBeInTheDocument();
+      expect(screen.getByText(ADD_RECEIVE_BUTTON)).toBeInTheDocument();
     });
 
     it('should render search field', () => {

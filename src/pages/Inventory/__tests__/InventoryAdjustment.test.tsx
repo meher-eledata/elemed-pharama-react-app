@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -191,6 +191,9 @@ describe('InventoryAdjustment - batch deletion', () => {
     // Mark ONLY the first duplicate row for deletion.
     fireEvent.click(screen.getAllByAltText('Delete')[0]);
     fireEvent.click(screen.getByText('Save'));
+
+    // A survivor remains in the duplicate group, so the pre-submit guard does NOT block.
+    expect(screen.queryByText(/must remain because it appears on invoices/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Confirm'));
 
     await waitFor(() => expect(deleteBatchTrigger).toHaveBeenCalledTimes(1));
@@ -199,7 +202,28 @@ describe('InventoryAdjustment - batch deletion', () => {
     expect(deleteBatchTrigger).not.toHaveBeenCalledWith({ batch_id: 102 });
   });
 
+  it('blocks Save when every row of a duplicate batch-number group is marked for deletion', async () => {
+    await loadBatches();
+
+    // Mark BOTH duplicate rows (after the first is marked, its trash icon becomes Undo, so the
+    // remaining Delete icon is index 0 again).
+    fireEvent.click(screen.getAllByAltText('Delete')[0]);
+    fireEvent.click(screen.getAllByAltText('Delete')[0]);
+    fireEvent.click(screen.getByText('Save'));
+
+    // Guard snackbar fires; the confirm dialog never opens and nothing is submitted.
+    expect(
+      await screen.findByText(
+        'At least one batch with number AMX-DUP must remain because it appears on invoices — unmark one of them before saving.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('dialog-Confirm Inventory Adjustment')).not.toBeInTheDocument();
+    expect(deleteBatchTrigger).not.toHaveBeenCalled();
+    expect(adjustTrigger).not.toHaveBeenCalled();
+  });
+
   it('shows the message modal listing invoice numbers on a 409 (sold) response', async () => {
+    // Old response shape WITHOUT last_remaining → falls back to the pre-2026-07-15 wording.
     deleteBatchTrigger.mockReturnValue({
       unwrap: () =>
         Promise.reject({
@@ -225,6 +249,40 @@ describe('InventoryAdjustment - batch deletion', () => {
     const message = screen.getByTestId('dialog-message');
     expect(message).toHaveTextContent('AMX-DUP');
     expect(message).toHaveTextContent('INV-001, INV-002');
+    expect(message).toHaveTextContent('cannot be deleted because product from it was sold on invoice(s)');
+    expect(message).not.toHaveTextContent('last batch with this number');
+  });
+
+  it('renders the last-remaining wording when the 409 carries last_remaining: true', async () => {
+    deleteBatchTrigger.mockReturnValue({
+      unwrap: () =>
+        Promise.reject({
+          status: 409,
+          data: {
+            error:
+              'Batch AMX-DUP cannot be deleted because it was sold on invoice(s): INV-001. It is the last batch with this number — at least one must remain.',
+            last_remaining: true,
+            invoice_numbers: ['INV-001'],
+            invoices: [{ invoice_id: 1, invoice_number: 'INV-001' }],
+          },
+        }),
+    });
+
+    await loadBatches();
+    // Mark only ONE of the two duplicates so the client-side guard does not block first.
+    fireEvent.click(screen.getAllByAltText('Delete')[0]);
+    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByText('Confirm'));
+
+    const modal = await screen.findByTestId('dialog-Batch cannot be deleted');
+    expect(modal).toBeInTheDocument();
+    const message = screen.getByTestId('dialog-message');
+    expect(message).toHaveTextContent('AMX-DUP');
+    expect(message).toHaveTextContent('was sold on invoice(s): INV-001');
+    expect(message).toHaveTextContent('this is the last batch with this number');
+    expect(message).toHaveTextContent('at least one batch with this number must remain');
+    expect(message).toHaveTextContent('Delete the other duplicate batches instead, or keep this one');
+    expect(message).not.toHaveTextContent('cannot be deleted because product from it');
   });
 
   it('refreshes the batch list after a successful deletion', async () => {
@@ -238,5 +296,110 @@ describe('InventoryAdjustment - batch deletion', () => {
     await waitFor(() => expect(deleteBatchTrigger).toHaveBeenCalled());
     // fetchBatchesForProduct is called again to refresh.
     await waitFor(() => expect(getBatchesTrigger).toHaveBeenCalled());
+  });
+});
+
+// pg serializes DECIMAL columns as JSON strings (e.g. current_qty: "73.00"). The page must
+// normalize them to numbers at load time so the edit field seeds as "73", and mid-string edits
+// must not produce artifacts like "7100" (the old integer sanitizer stripped the "." from "71.00").
+describe('InventoryAdjustment - number editing UX (pg string decimals)', () => {
+  beforeEach(() => {
+    getBatchesTrigger.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          product: { ...mockProductInfo, total_quantity: '73.00' },
+          batches: [
+            { batch_id: 101, batch_number: 'AMX-001', current_qty: '73.00', expiry_date: '2027-01-01', mrp: '45.50', pack_qty: '1.00' },
+          ],
+        }),
+    });
+  });
+
+  const quantityInput = () => within(screen.getByTestId('cell-quantity-0')).getByRole('textbox') as HTMLInputElement;
+  const mrpInput = () => within(screen.getByTestId('cell-mrp-0')).getByRole('textbox') as HTMLInputElement;
+
+  it('displays string "73.00" from the API as "73" (and total quantity as 73)', async () => {
+    await loadBatches();
+    expect(quantityInput().value).toBe('73');
+    expect(mrpInput().value).toBe('45.5');
+    expect(screen.getByText('73')).toBeInTheDocument(); // Product Details total quantity
+    expect(screen.queryByText('73.00')).not.toBeInTheDocument();
+  });
+
+  it('sends each row\'s batch_id (unique PK) so duplicate batch_numbers resolve correctly', async () => {
+    // Two rows share a batch_number but have distinct batch_ids — the payload must carry the PK.
+    getBatchesTrigger.mockReturnValue({
+      unwrap: () => Promise.resolve({ product: mockProductInfo, batches: mockBatches }),
+    });
+    await loadBatches();
+
+    for (const row of [0, 1]) {
+      fireEvent.click(screen.getAllByTestId('EditIcon')[row]);
+      const input = within(screen.getByTestId(`cell-quantity-${row}`)).getByRole('textbox');
+      fireEvent.change(input, { target: { value: '40' } });
+      // Only the row being edited shows a CheckIcon, so it is always the first match.
+      fireEvent.click(screen.getAllByTestId('CheckIcon')[0]);
+    }
+    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByText('Confirm'));
+
+    await waitFor(() => expect(adjustTrigger).toHaveBeenCalledTimes(1));
+    expect(adjustTrigger).toHaveBeenCalledWith({
+      username: 'admin',
+      product_id: 42,
+      lines: [
+        expect.objectContaining({ batch_id: 101, batch_number: 'AMX-DUP', old_qty: 50, new_qty: 40 }),
+        expect.objectContaining({ batch_id: 102, batch_number: 'AMX-DUP', old_qty: 50, new_qty: 40 }),
+      ],
+    });
+  });
+
+  it('edits 73 → 71 mid-string without artifacts and saves numeric old_qty/new_qty', async () => {
+    await loadBatches();
+
+    fireEvent.click(screen.getAllByTestId('EditIcon')[0]);
+    // Edit seed is "73", not "73.00".
+    expect(quantityInput().value).toBe('73');
+
+    // User replaces the "3" with "1" (mid-string edit) — value is exactly "71", no "7100".
+    fireEvent.change(quantityInput(), { target: { value: '71' } });
+    expect(quantityInput().value).toBe('71');
+
+    fireEvent.click(screen.getAllByTestId('CheckIcon')[0]); // confirm row edit
+    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByText('Confirm'));
+
+    await waitFor(() => expect(adjustTrigger).toHaveBeenCalledTimes(1));
+    expect(adjustTrigger).toHaveBeenCalledWith({
+      username: 'admin',
+      product_id: 42,
+      lines: [
+        expect.objectContaining({ batch_id: 101, batch_number: 'AMX-001', old_qty: 73, new_qty: 71 }),
+      ],
+    });
+  });
+
+  it('keeps a typed "." in the decimal-allowed MRP field while editing', async () => {
+    await loadBatches();
+
+    fireEvent.click(screen.getAllByTestId('EditIcon')[0]);
+    fireEvent.change(mrpInput(), { target: { value: '46.' } });
+    // The trailing dot is preserved mid-edit (raw string kept while editing).
+    expect(mrpInput().value).toBe('46.');
+    fireEvent.change(mrpInput(), { target: { value: '46.75' } });
+    expect(mrpInput().value).toBe('46.75');
+  });
+
+  it('does not treat an unchanged string-decimal row as modified', async () => {
+    await loadBatches();
+
+    // Enter and confirm edit without changing anything — numeric comparison must see no diff.
+    fireEvent.click(screen.getAllByTestId('EditIcon')[0]);
+    fireEvent.click(screen.getAllByTestId('CheckIcon')[0]);
+    fireEvent.click(screen.getByText('Save'));
+
+    // No changes → confirmation dialog never opens, nothing is sent.
+    expect(screen.queryByTestId('dialog-Confirm Inventory Adjustment')).not.toBeInTheDocument();
+    expect(adjustTrigger).not.toHaveBeenCalled();
   });
 });

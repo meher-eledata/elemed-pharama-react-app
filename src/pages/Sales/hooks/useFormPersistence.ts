@@ -77,9 +77,14 @@ export const useFormPersistence = ({
         patientType: initialPatientType,
       });
 
-      if (formData.customerName && formData.customerMobile) {
+      // Only restore a customer that has a REAL id. Restoring an id-0 "selection"
+      // for free-typed name/mobile text used to create a fresh Customer object on
+      // every save→load cycle, re-triggering the save effect in an infinite loop
+      // ("Maximum update depth exceeded" — whole-page crash while typing a mobile
+      // number after a free-text customer name).
+      if (formData.customerName && formData.customerMobile && (formData.customerId || 0) > 0) {
         const restoredCustomer: Customer = {
-          id: formData.customerId || 0,
+          id: formData.customerId as number,
           name: formData.customerName,
           mobile: formData.customerMobile,
           city: formData.customerCity || '',
@@ -94,6 +99,11 @@ export const useFormPersistence = ({
 
   // Debounce insuranceCompany to prevent lag while typing
   const debouncedInsuranceCompany = useDebounce(insuranceCompany, 500);
+
+  // Only the id is persisted, so depend on it (a primitive) rather than the
+  // selectedCustomer object — its identity can change without any real change,
+  // which would re-run this save and feed the load effect in a loop.
+  const selectedCustomerId = selectedCustomer?.id || 0;
 
   // Save form data to Redux (skip in edit mode)
   useEffect(() => {
@@ -110,12 +120,12 @@ export const useFormPersistence = ({
         insuranceCompany: debouncedInsuranceCompany,
         invoiceNumber,
         invoiceDate,
-        customerId: selectedCustomer?.id || 0,
+        customerId: selectedCustomerId,
       };
 
       dispatch(saveFormData(formDataToSave));
     }
-  }, [isDataLoaded, isEditMode, customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, debouncedInsuranceCompany, invoiceNumber, invoiceDate, selectedCustomer, dispatch]);
+  }, [isDataLoaded, isEditMode, customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, debouncedInsuranceCompany, invoiceNumber, invoiceDate, selectedCustomerId, dispatch]);
 
   return { isDataLoaded };
 };

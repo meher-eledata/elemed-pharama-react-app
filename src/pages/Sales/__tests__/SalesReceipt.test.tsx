@@ -88,6 +88,14 @@ describe('SalesReceipt', () => {
       refetch: jest.fn(),
     }));
 
+    (salesApi.useGetCustomerOptionsQuery as jest.Mock) = jest.fn(() => ({
+      data: [
+        { id: '1', name: 'John Doe', phone: '1234567890' },
+        { id: '2', name: 'Jane Smith', phone: '9876543210' },
+      ],
+      isLoading: false,
+    }));
+
     (salesApi.useSubmitSaleMutation as jest.Mock) = jest.fn(() => [
       jest.fn().mockResolvedValue({ data: { success: true } }),
       { isLoading: false },

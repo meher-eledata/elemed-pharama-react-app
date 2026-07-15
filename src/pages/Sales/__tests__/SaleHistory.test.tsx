@@ -122,7 +122,7 @@ describe('SaleHistory', () => {
   it('renders sale history page with title', () => {
     renderComponent();
     
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   it('renders Start new sale button', () => {
@@ -355,7 +355,7 @@ describe('SaleHistory', () => {
     // SaleConfirmationDialog should be in the component tree (even if not visible)
     // We can verify it exists by checking if it can be found when open=true
     // This is a structural test to ensure the dialog is properly integrated
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   it('handles Start new sale button click', () => {
@@ -372,7 +372,7 @@ describe('SaleHistory', () => {
     renderComponent();
     
     // Should show empty state or table
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   it('handles sorting', () => {
@@ -386,7 +386,7 @@ describe('SaleHistory', () => {
       expect(invoiceHeaders[0]).toBeInTheDocument();
     } else {
       // At least verify the table exists
-      expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+      expect(screen.getByText(/sales history/i)).toBeInTheDocument();
     }
   });
 
@@ -395,7 +395,7 @@ describe('SaleHistory', () => {
 
     // Pagination controls should be present
     // This depends on table implementation
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   // Helper: re-point the mocked getInvoices query at a custom dataset for one test.

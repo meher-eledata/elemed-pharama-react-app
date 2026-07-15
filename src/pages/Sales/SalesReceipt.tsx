@@ -28,8 +28,10 @@ import {
 
 
   useGetCustomerPhonesMutation,
+  useGetCustomerOptionsQuery,
   useLazyGetInvoicesQuery,
   Customer,
+  CustomerOption,
   DoctorPhoneEmailInfo
 } from '../../redux/slices/salesApi';
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
@@ -105,6 +107,8 @@ const SalesReceipt: React.FC = () => {
     );
   }, [doctorNamesData]);
   const { data: customerNames = [], refetch: refetchCustomerNames } = useGetAllCustomerNamesQuery();
+  // id + name + raw phone for the customer autocomplete (search by name OR mobile).
+  const { data: customerOptions = [] } = useGetCustomerOptionsQuery();
   // const { data: customersData = [] } = useGetCustomersQuery(); // Endpoint 404s
 
   const {
@@ -172,6 +176,7 @@ const SalesReceipt: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
   const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
   // Check if we're in edit mode or return details mode from location state
   const editModeData = (location.state as any) || null;
@@ -717,7 +722,7 @@ const SalesReceipt: React.FC = () => {
     setCustomerMobile(customer.mobile);
     // Protect newly added customer with ID from being overwritten by id: 0 auto-fill during refetch
     setSelectedCustomer(prev => {
-      if (prev && prev.id > 0 && prev.name.toLowerCase() === customer.name.toLowerCase()) {
+      if (prev && prev.id > 0 && (prev.name || '').toLowerCase() === (customer.name || '').toLowerCase()) {
         console.log('🛡️ State Protection: Preserving valid customer ID:', prev.id);
         return prev;
       }
@@ -744,13 +749,13 @@ const SalesReceipt: React.FC = () => {
 
   const handleCustomerNameChange = async (newName: string) => {
     const normalizedNewName = newName.trim().toLowerCase();
-    const isExactMatch = customerNames.length > 0 && customerNames.some(name => name.toLowerCase() === normalizedNewName);
+    const isExactMatch = customerNames.length > 0 && customerNames.some(name => (name || '').toLowerCase() === normalizedNewName);
 
     if (isExactMatch && newName.trim()) {
       shouldFetchImmediatelyRef.current = true;
     } else {
       // FIX: Only clear if the name actually changed from what we have and we don't have a valid ID for current name
-      setSelectedCustomer(prev => (prev && prev.id > 0 && prev.name.toLowerCase() === normalizedNewName) ? prev : null);
+      setSelectedCustomer(prev => (prev && prev.id > 0 && (prev.name || '').toLowerCase() === normalizedNewName) ? prev : null);
     }
 
 
@@ -780,7 +785,7 @@ const SalesReceipt: React.FC = () => {
 
   const handleDoctorNameChange = (value: string) => {
     const normalizedNewName = value.trim().toLowerCase();
-    const isExactMatch = doctorNames.length > 0 && doctorNames.some(name => name.toLowerCase() === normalizedNewName);
+    const isExactMatch = doctorNames.length > 0 && doctorNames.some(name => (name || '').toLowerCase() === normalizedNewName);
 
     if (isExactMatch && value.trim()) {
       shouldFetchDoctorInfoRef.current = true;
@@ -824,8 +829,14 @@ const SalesReceipt: React.FC = () => {
     }, []),
     onCustomerRestored: useCallback((customer) => {
       if (!customer) return;
-      // Protect from restoring a stale ID:0 object if we already have a valid one
-      setSelectedCustomer(prev => (prev && prev.id > 0 && prev.name.toLowerCase() === customer.name.toLowerCase()) ? prev : customer);
+      setSelectedCustomer(prev => {
+        // Protect from restoring a stale ID:0 object if we already have a valid one
+        if (prev && prev.id > 0 && (prev.name || '').toLowerCase() === (customer.name || '').toLowerCase()) return prev;
+        // Keep identity stable for an equivalent restore — a fresh object here re-runs
+        // the persistence save effect and loops until React aborts (page crash).
+        if (prev && prev.id === customer.id && prev.name === customer.name && prev.mobile === customer.mobile) return prev;
+        return customer;
+      });
     }, [])
   });
 
@@ -885,11 +896,30 @@ const SalesReceipt: React.FC = () => {
       setCustomerMobile(customer.mobile);
       setCustomerCity(customer.city || '');
     } else {
+      // Only drop the selection. The fields the user is typing into must survive —
+      // clearing them here used to wipe keystrokes (the child clears the selection
+      // whenever the typed text diverges from it). Explicit field clearing is done
+      // by the callers that actually mean it (e.g. the name field's clear button).
       setSelectedCustomer(null);
-      setCustomerName('');
-      setCustomerMobile('');
-      setCustomerCity('');
     }
+  };
+
+  // A concrete customer picked from the autocomplete (by name or by mobile number):
+  // auto-fill name + mobile + id. City intentionally untouched (the options endpoint
+  // carries no city; matches the existing get-customer-phones auto-fill semantics).
+  const handleCustomerOptionSelect = (option: CustomerOption) => {
+    const numericId = Number(option.id);
+    setSelectedCustomer({
+      id: Number.isFinite(numericId) ? numericId : 0,
+      name: option.name,
+      mobile: option.phone ?? '',
+      city: customerCity || '',
+    });
+    setCustomerName(option.name);
+    setCustomerMobile(option.phone ?? '');
+    // Preserve the existing duplicate-name flow: fetch this name's phones so the
+    // mobile field still offers them as a picker.
+    shouldFetchImmediatelyRef.current = true;
   };
 
   const handleDoctorSelect = (doctorName: string | null) => {
@@ -1088,6 +1118,7 @@ const SalesReceipt: React.FC = () => {
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
+        orientation: orientation,
         splitPayments: splitPayments,
       });
 
@@ -1510,7 +1541,7 @@ const SalesReceipt: React.FC = () => {
 
   return (
     <>
-      <style>{getPrintStyles(pageSize)}</style>
+      <style>{getPrintStyles(pageSize, orientation)}</style>
       <style>{fieldStyles}</style>
       <SalesReceiptContainer id="sales-receipt-content">
         <SalesReceiptHeader>
@@ -1530,10 +1561,11 @@ const SalesReceipt: React.FC = () => {
             customerCity={customerCity}
             patientType={patientType}
             selectedCustomer={selectedCustomer}
-            customerNames={customerNames}
+            customerOptions={customerOptions}
             availablePhones={availablePhones}
             onCustomerNameChange={isReturnDetailsMode ? () => { } : handleCustomerNameChange}
             onCustomerSelect={isReturnDetailsMode ? () => { } : handleCustomerSelect}
+            onCustomerOptionSelect={isReturnDetailsMode ? () => { } : handleCustomerOptionSelect}
             onCustomerMobileChange={isReturnDetailsMode ? () => { } : setCustomerMobile}
             onCustomerCityChange={isReturnDetailsMode ? () => { } : setCustomerCity}
             onPatientTypeChange={isReturnDetailsMode ? () => { } : setPatientType}
@@ -1684,6 +1716,34 @@ const SalesReceipt: React.FC = () => {
                     </Box>
                   ))}
                 </Box>
+                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#616161', ml: '8px' }}>{SALES_RECEIPT_LABELS.ORIENTATION_LABEL}</Typography>
+                <Box sx={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '2px' }}>
+                  {([
+                    { value: 'landscape', label: SALES_RECEIPT_LABELS.ORIENTATION_LANDSCAPE },
+                    { value: 'portrait', label: SALES_RECEIPT_LABELS.ORIENTATION_PORTRAIT },
+                  ] as const).map((option) => (
+                    <Box
+                      key={option.value}
+                      onClick={() => setOrientation(option.value)}
+                      sx={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        backgroundColor: orientation === option.value ? '#FFFFFF' : 'transparent',
+                        color: orientation === option.value ? '#5C17E5' : '#6B7280',
+                        boxShadow: orientation === option.value ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          backgroundColor: orientation === option.value ? '#FFFFFF' : '#E5E7EB',
+                        },
+                      }}
+                    >
+                      {option.label}
+                    </Box>
+                  ))}
+                </Box>
               </Box>
               {isEditMode && resolvedInvoiceId > 0 && (
                 <Typography
@@ -1721,6 +1781,8 @@ const SalesReceipt: React.FC = () => {
               hidePrintButton={isEditMode}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
+              orientation={orientation}
+              onOrientationChange={setOrientation}
               hidePageSize
             />
           </Box>
@@ -1778,6 +1840,8 @@ const SalesReceipt: React.FC = () => {
               brandIcon={bgWhiteIcon}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
+              orientation={orientation}
+              onOrientationChange={setOrientation}
             />
           }
           onClose={handleClosePrintModal}

@@ -40,6 +40,7 @@ import {
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
 import { processProductOptions } from '../Sales/SalesPage.utils';
 import { extractErrorMessage } from '../../utils/errorUtils';
+import { INVENTORY_ADJUSTMENT_LABELS as ADJ_LABELS } from '../../config/label/InventoryAdjustment.labels';
 
 type BatchRow = {
   id: string; // stable unique row id derived from batch_id (batch_number is NOT unique)
@@ -302,23 +303,30 @@ const InventoryAdjustment: React.FC = () => {
         // (duplicates allowed). batch_id is the unique PK — use it as the stable row identity.
         const batchNumber = batch.batch_number || batch.batchNumber;
 
+        // pg serializes DECIMAL columns as JSON strings (e.g. "73.00"); normalize to numbers at
+        // load time so edit seeds/display render "73" and change detection compares numerically.
+        const quantity = Number(batch.current_qty) || 0;
+        const mrp = Number(batch.mrp) || 0;
+        const packQty = Number(batch.pack_qty) || 1;
+
         return {
           id: String(batch.batch_id), // Unique row id (batch_number is NOT unique)
           batch_id: batch.batch_id, // Unique PK — the delete identity
           batchNumber: batchNumber, // Display value only (may be duplicated across rows)
-          quantity: batch.current_qty,
-          oldQuantity: batch.current_qty, // Store original quantity
+          quantity,
+          oldQuantity: quantity, // Store original quantity
           expiryDate: expiryDateStr,
           oldExpiryDate: expiryDateStr, // Store original expiry date
-          mrp: batch.mrp || 0,
-          oldMrp: batch.mrp || 0,
-          packQty: batch.pack_qty || 1,
-          oldPackQty: batch.pack_qty || 1,
+          mrp,
+          oldMrp: mrp,
+          packQty,
+          oldPackQty: packQty,
         };
       });
 
       startTransition(() => {
-        setProductInfo(result.product);
+        // total_quantity is a SUM() → also a JSON string from pg; normalize for display.
+        setProductInfo({ ...result.product, total_quantity: Number(result.product.total_quantity) || 0 });
         setBatchRows(transformedBatches);
       });
     } catch (error) {
@@ -632,9 +640,7 @@ const InventoryAdjustment: React.FC = () => {
       }
 
       const lines = modifiedBatches.map((batch) => {
-        // Use batch.batchNumber (the original batch_number from API) for the API call
-        // The backend expects batch_number, not batch_id
-        const batchNumber = batch.batchNumber; // This is the batch_number (string or number) like "AMX-2026-02-A"
+        const batchNumber = batch.batchNumber; // The original batch_number (string or number) like "AMX-2026-02-A"
 
         if (batchNumber === undefined || batchNumber === null) {
           console.error('Invalid batchNumber for batch:', batch);
@@ -642,7 +648,10 @@ const InventoryAdjustment: React.FC = () => {
         }
 
         return {
-          batch_number: batchNumber, // Use batch_number (string or number) for API as backend expects
+          // batch_id is the unique PK — batch_number is NOT unique (duplicates exist), so the
+          // backend resolves the row by batch_id; batch_number stays as a legacy fallback.
+          batch_id: batch.batch_id,
+          batch_number: batchNumber,
           old_qty: batch.oldQuantity,
           new_qty: batch.quantity,
           expiry_date: batch.expiryDate || dayjs().format('YYYY-MM-DD'),
@@ -678,7 +687,12 @@ const InventoryAdjustment: React.FC = () => {
       // Process deletions sequentially so error handling stays simple. Collect successes and the
       // batches the backend blocked (409 — sold) so we can explain why and list the invoice numbers.
       const deletedIds: string[] = [];
-      const blocked: { batchId: number; batchNumber: string | number; invoiceNumbers: string[] }[] = [];
+      const blocked: {
+        batchId: number;
+        batchNumber: string | number;
+        invoiceNumbers: string[];
+        lastRemaining: boolean;
+      }[] = [];
       let otherDeleteError: unknown = null;
 
       for (const batch of deletionBatches) {
@@ -694,7 +708,14 @@ const InventoryAdjustment: React.FC = () => {
             const invoiceNumbers = data.invoice_numbers.length
               ? data.invoice_numbers
               : (data.invoices || []).map((inv) => inv.invoice_number);
-            blocked.push({ batchId: batch.batch_id, batchNumber: batch.batchNumber, invoiceNumbers });
+            blocked.push({
+              batchId: batch.batch_id,
+              batchNumber: batch.batchNumber,
+              invoiceNumbers,
+              // NEW machine-readable marker (2026-07-15): the row is the LAST remaining row of a
+              // sold batch_number. Missing flag (old response shape) → old-wording fallback.
+              lastRemaining: data.last_remaining === true,
+            });
           } else {
             otherDeleteError = err;
           }
@@ -712,12 +733,20 @@ const InventoryAdjustment: React.FC = () => {
       if (blocked.length > 0) {
         setBlockedMessage(
           <Box sx={{ textAlign: 'left' }}>
-            {blocked.map((b) => (
-              <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
-                Batch <strong>{String(b.batchNumber)}</strong> cannot be deleted because product
-                from it was sold on invoice(s): <strong>{b.invoiceNumbers.join(', ')}</strong>.
-              </Typography>
-            ))}
+            {blocked.map((b) =>
+              b.lastRemaining ? (
+                <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
+                  {ADJ_LABELS.batchWord} <strong>{String(b.batchNumber)}</strong>{' '}
+                  {ADJ_LABELS.lastRemainingSoldOn} <strong>{b.invoiceNumbers.join(', ')}</strong>
+                  {ADJ_LABELS.lastRemainingRule}
+                </Typography>
+              ) : (
+                <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
+                  {ADJ_LABELS.batchWord} <strong>{String(b.batchNumber)}</strong>{' '}
+                  {ADJ_LABELS.soldFallback} <strong>{b.invoiceNumbers.join(', ')}</strong>.
+                </Typography>
+              )
+            )}
           </Box>
         );
       } else if (otherDeleteError) {
@@ -773,6 +802,25 @@ const InventoryAdjustment: React.FC = () => {
     }
 
     const hasDeletions = batchRows.some((batch) => batch.markedForDeletion);
+
+    // Pre-submit guard: if EVERY row of a duplicate batch-number group is marked for deletion,
+    // block before submitting. Deletes run sequentially, so the earlier duplicates would succeed
+    // and the LAST one would 409 (server keeps at least one row of a sold batch_number). The
+    // client can't know invoice association, so this is scoped to duplicate groups only —
+    // single-row deletions still rely on the server 409.
+    if (hasDeletions) {
+      const groups = new Map<string, BatchRow[]>();
+      batchRows.forEach((batch) => {
+        const key = String(batch.batchNumber);
+        groups.set(key, [...(groups.get(key) || []), batch]);
+      });
+      for (const [batchNumber, group] of groups) {
+        if (group.length > 1 && group.every((b) => b.markedForDeletion)) {
+          showSnackbar(ADJ_LABELS.allDuplicatesMarkedForDeletion(batchNumber), 'error');
+          return;
+        }
+      }
+    }
 
     const modifiedBatches = batchRows.filter((batch) => {
       if (batch.markedForDeletion) return false;
@@ -1473,7 +1521,7 @@ const InventoryAdjustment: React.FC = () => {
 
       <ConfirmationDialog
         open={blockedMessage !== null}
-        title="Batch cannot be deleted"
+        title={ADJ_LABELS.blockedModalTitle}
         message={blockedMessage}
         onClose={() => setBlockedMessage(null)}
         onConfirm={() => setBlockedMessage(null)}
