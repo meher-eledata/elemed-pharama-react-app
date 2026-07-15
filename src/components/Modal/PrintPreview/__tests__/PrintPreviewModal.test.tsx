@@ -57,12 +57,12 @@ describe('PrintPreviewModal', () => {
     jest.clearAllMocks();
   });
 
-  it('renders print preview with branded header and customer details', () => {
+  it('renders print preview with branded header, receipt title and customer details', () => {
     render(<PrintPreviewModal {...mockProps} />);
 
-    // The receipt renders the pharmacy branded header rather than a
-    // "Customer receipt" title.
     expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    // Centered in-document receipt title (matches the printed output).
+    expect(screen.getByText(/customer receipt/i)).toBeInTheDocument();
     expect(screen.getByText(/john doe/i)).toBeInTheDocument();
     expect(screen.getByText(/1234567890/i)).toBeInTheDocument();
   });
@@ -135,6 +135,22 @@ describe('PrintPreviewModal', () => {
 
     fireEvent.click(screen.getByText(/^A5$/));
     expect(onPageSizeChange).toHaveBeenCalledWith('A5');
+  });
+
+  it('renders an orientation selector with Landscape and Portrait options', () => {
+    render(<PrintPreviewModal {...mockProps} />);
+
+    expect(screen.getByText(/orientation/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Landscape$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Portrait$/)).toBeInTheDocument();
+  });
+
+  it('calls onOrientationChange when an orientation option is clicked', () => {
+    const onOrientationChange = jest.fn();
+    render(<PrintPreviewModal {...mockProps} onOrientationChange={onOrientationChange} />);
+
+    fireEvent.click(screen.getByText(/^Portrait$/));
+    expect(onOrientationChange).toHaveBeenCalledWith('portrait');
   });
 
   it('does not render action buttons (this is a view-only preview body)', () => {

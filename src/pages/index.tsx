@@ -27,6 +27,7 @@ import ProductSalesReport from "./Admin/ProductSalesReport";
 import SalesTaxReport from "./Admin/SalesTaxReport";
 import SupplierTaxReport from "./Admin/SupplierTaxReport";
 import HistoricalData from "./Admin/HistoricalData";
+import SupplierCredit from "./Admin/SupplierCredit";
 import UserProfile from "./Profile/UserProfile";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
@@ -92,6 +93,7 @@ export const Pages = () => {
             <Route path="reports/supplier-tax" element={<SupplierTaxReport />} />
             <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
             <Route path="historical-data" element={<HistoricalData />} />
+            <Route path="supplier-credit" element={<SupplierCredit />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="audit" element={<AuditLog />} />
           </Route>

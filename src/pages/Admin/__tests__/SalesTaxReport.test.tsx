@@ -41,6 +41,7 @@ const mockedMaster = masterApi as unknown as { useGetProductsQuery: jest.Mock };
 
 // taxable_value + cgst/sgst/igst amounts + totals as STRINGS (pg numeric serialization).
 const FIXTURE: reportsApi.SalesTaxReportResponse = {
+  level: 'product',
   rows: [
     {
       invoice_line_id: 7001,
@@ -56,6 +57,7 @@ const FIXTURE: reportsApi.SalesTaxReportResponse = {
       mrp: '120.00',
       selling_price: '100.00',
       taxable_value: '847.46',
+      discount_amount: '15.00',
       cgst_rate: '6.00',
       sgst_rate: '6.00',
       igst_rate: '0.00',
@@ -70,6 +72,7 @@ const FIXTURE: reportsApi.SalesTaxReportResponse = {
     line_count: 1,
     total_quantity: '10.00',
     total_taxable: '847.46',
+    total_discount: '15.00',
     total_cgst: '50.85',
     total_sgst: '50.85',
     total_igst: '0.00',
@@ -78,6 +81,7 @@ const FIXTURE: reportsApi.SalesTaxReportResponse = {
     total_mrp_value: '1200.00',
     product_count: 1,
     invoice_count: 1,
+    hsn_count: 1,
   },
 };
 

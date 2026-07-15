@@ -24,6 +24,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import { ADMIN_LABELS } from '../../config/label/Admin.labels';
 interface SidebarItem {
   id: string;
   icon: string | React.ReactNode;
@@ -106,10 +108,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const adminItems: SidebarItem[] = useMemo(() => [
     { id: 'admin-home', icon: <WhiteIcon><LocalPharmacyOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Pharmacist access', label: 'Pharmacist access', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard', isComponent: true },
     { id: 'admin-users', icon: <WhiteIcon><PeopleAltIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Account Management', label: 'User Account Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/users', isComponent: true },
-    { id: 'admin-reports', icon: <WhiteIcon><BarChartIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'System Performance Reports', label: 'System Performance Reports', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/reports', isComponent: true },
+    { id: 'admin-reports', icon: <WhiteIcon><BarChartIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Reports', label: 'Reports', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/reports', isComponent: true },
     { id: 'admin-master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: 'Master', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/master', isComponent: true },
     { id: 'admin-inventory-adjustment', icon: <WhiteIcon><InventoryIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Inventory Adjustment', label: 'Inventory Adjustment', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/inventory-adjustment', isComponent: true },
     { id: 'admin-historical-data', icon: <WhiteIcon><FolderOpenOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Historical Data', label: 'Historical Data', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/historical-data', isComponent: true },
+    { id: 'admin-credit', icon: <WhiteIcon><AccountBalanceWalletOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.TITLE, label: ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.TITLE, iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/supplier-credit', isComponent: true },
     { id: 'admin-audit', icon: <WhiteIcon><DescriptionIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Activity Log', label: 'User Activity Log', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/audit', isComponent: true },
     { id: 'admin-settings', icon: <WhiteIcon><SettingsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'System Settings', label: 'System Settings', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/settings', isComponent: true },
   ], []);
@@ -285,10 +288,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
                   primaryTypographyProps={{
                     fontSize: "14px",
                     fontWeight: 400,
+                    lineHeight: 1.25,
                   }}
                   sx={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden'
+                    my: 0,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
                   }}
                 />
               )}

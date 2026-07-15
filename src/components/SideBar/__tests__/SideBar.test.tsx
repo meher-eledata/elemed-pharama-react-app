@@ -68,6 +68,20 @@ describe('Sidebar', () => {
 
       expect(screen.getAllByText('Master')).toHaveLength(1);
     });
+
+    it('renders the "Supplier Credit" admin entry (label from Admin.labels.ts)', () => {
+      renderSidebar('/admin/users');
+
+      expect(screen.getByText('Supplier Credit')).toBeInTheDocument();
+    });
+
+    it('navigates to /admin/supplier-credit when the "Supplier Credit" entry is clicked', () => {
+      renderSidebar('/admin/users');
+
+      fireEvent.click(screen.getByText('Supplier Credit'));
+
+      expect(navigateSpy).toHaveBeenCalledWith('/admin/supplier-credit');
+    });
   });
 
   describe('base (pharmacist) sidebar (on a non-admin path)', () => {

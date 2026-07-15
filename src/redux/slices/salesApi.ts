@@ -122,6 +122,18 @@ export interface SearchCustomerRequest {
   searchTerm: string; // Can be name or mobile number
 }
 
+// GET /api/sales/get-customer-options — Sales-page customer autocomplete.
+// `id` is a STRING (pg BIGINT serialization); `phone` is RAW/unmasked and may be null.
+export interface CustomerOption {
+  id: string;
+  name: string;
+  phone: string | null;
+}
+
+export interface GetCustomerOptionsResponse {
+  customers: CustomerOption[];
+}
+
 export interface GetCustomerPhonesRequest {
   name: string;
 }
@@ -535,6 +547,15 @@ export const salesApi = createApi({
       providesTags: ["Sales"],
     }),
 
+    // Customer options (id + name + raw phone) for the Sales-page autocomplete —
+    // supports search by name OR mobile number with auto-fill.
+    getCustomerOptions: builder.query<CustomerOption[], void>({
+      query: () => "sales/get-customer-options",
+      providesTags: ["Sales"],
+      transformResponse: (response: GetCustomerOptionsResponse): CustomerOption[] =>
+        response?.customers ?? [],
+    }),
+
     getCustomers: builder.query<Customer[], void>({
       query: () => "sales/get-customers",
       providesTags: ["Sales"],
@@ -680,6 +701,7 @@ export const {
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
   useLazyGetAllCustomerNamesQuery,
+  useGetCustomerOptionsQuery,
   useGetCustomersQuery,
   useLazyGetCustomersQuery,
   useGetCustomerPhonesMutation,

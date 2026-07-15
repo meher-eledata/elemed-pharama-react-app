@@ -563,6 +563,7 @@ describe('Inventory API Endpoints', () => {
       product_id: 3,
       lines: [
         {
+          batch_id: 11,
           batch_number: 'BN1',
           old_qty: 5,
           new_qty: 10,
@@ -577,7 +578,7 @@ describe('Inventory API Endpoints', () => {
       const mockResponse = {
         message: 'ok',
         product_id: 3,
-        total_delta: 5,
+        total_unit_delta: 5,
         new_balance_quantity: 10,
       };
       mockBaseQuery.mockResolvedValueOnce({

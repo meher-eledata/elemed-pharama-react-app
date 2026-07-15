@@ -27,6 +27,7 @@ const RAW_ROWS = [
     event_details: 'Created a new doctor named Strangelove',
     quantity_changed: '',
     related_id: 42,
+    ip_address: '10.0.0.1',
   },
   {
     id: 2,
@@ -38,6 +39,7 @@ const RAW_ROWS = [
     event_details: 'Submitted invoice INV-001',
     quantity_changed: 3,
     related_id: 7,
+    ip_address: '192.168.1.5',
   },
   {
     id: 3,
@@ -49,6 +51,7 @@ const RAW_ROWS = [
     event_details: 'test-zebra-detail', // only matchable via details search (has "test" & "zebra")
     quantity_changed: '',
     related_id: '',
+    ip_address: null, // historical row — renders as '-'
   },
 ];
 
@@ -161,5 +164,76 @@ describe('AuditLog — search', () => {
     }).not.toThrow();
     // "test" appears in the detail token row.
     expect(screen.getByText('test-zebra-detail')).toBeInTheDocument();
+  });
+});
+
+describe('AuditLog — time zone + IP column (#1/#4)', () => {
+  // Locate the table row whose event_details text identifies it, then scope queries to it.
+  const rowFor = (detail: string): HTMLElement => {
+    const row = screen.getByText(detail).closest('tr');
+    if (!row) throw new Error(`row for "${detail}" not found`);
+    return row as HTMLElement;
+  };
+
+  it('renders a UTC event_time in IST (Asia/Kolkata), crossing to the next calendar day', () => {
+    // 2026-06-20 20:00 UTC + 05:30 (IST) = 2026-06-21 01:30 IST — the DATE and HOUR
+    // both differ from the UTC value, proving the offset is actually applied.
+    renderPage([
+      {
+        id: 10,
+        username: 'alice',
+        role: 0,
+        module: 'Sale',
+        event_type: 'Submit',
+        event_time: '2026-06-20 20:00:00',
+        event_details: 'ist-offset-row',
+        quantity_changed: '',
+        related_id: 1,
+        ip_address: '203.0.113.9',
+      },
+    ]);
+
+    // Format is 'DD MMM YYYY, hh:mm A' in IST.
+    expect(screen.getByText('21 Jun 2026, 01:30 AM')).toBeInTheDocument();
+    // The raw UTC calendar day must NOT be shown.
+    expect(screen.queryByText(/20 Jun 2026/)).not.toBeInTheDocument();
+  });
+
+  it('shows the IP address for a row that has one, and "-" for a null-ip row', () => {
+    renderPage([
+      {
+        id: 20,
+        username: 'alice',
+        role: 0,
+        module: 'Sale',
+        event_type: 'Submit',
+        event_time: '2026-06-20 10:00:00',
+        event_details: 'has-ip-row',
+        quantity_changed: '',
+        related_id: 1,
+        ip_address: '198.51.100.23',
+      },
+      {
+        id: 21,
+        username: 'system',
+        role: null,
+        module: 'Authentication',
+        event_type: 'Logout',
+        event_time: '2026-06-20 11:00:00',
+        event_details: 'null-ip-row',
+        quantity_changed: '',
+        related_id: '',
+        ip_address: null, // historical row — must render as '-'
+      },
+    ]);
+
+    // The populated row shows its IP.
+    expect(within(rowFor('has-ip-row')).getByText('198.51.100.23')).toBeInTheDocument();
+
+    // The null-ip row shows a dash (scoped to that row so we don't match other '-' cells
+    // in the populated row).
+    const nullRow = rowFor('null-ip-row');
+    expect(within(nullRow).queryByText('198.51.100.23')).not.toBeInTheDocument();
+    expect(within(nullRow).getAllByText('-').length).toBeGreaterThan(0);
   });
 });

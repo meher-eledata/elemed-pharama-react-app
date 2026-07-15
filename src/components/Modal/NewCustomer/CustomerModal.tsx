@@ -108,12 +108,14 @@ const inputStyle = {
 const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [customerData, setCustomerData] = useState<CustomerData>(initialCustomerState);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [nameError, setNameError] = useState<string>('');
 
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setCustomerData(initialCustomerState);
       setErrorMessage('');
+      setNameError('');
     }
   }, [isOpen]);
 
@@ -122,6 +124,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
     // Mobile number: digits only, capped at 10 (matches the add-customer contract).
     const next = name === 'mobileNumber' ? value.replace(/\D/g, '').slice(0, 10) : value;
     setCustomerData(prev => ({ ...prev, [name]: next }));
+    if (name === 'customerName' && nameError) setNameError('');
   };
 
   const handleGenderChange = (e: any) => {
@@ -150,6 +153,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setNameError('');
 
     // Validate all required fields before submitting
     const missingFields: string[] = [];
@@ -163,6 +167,12 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
 
     if (missingFields.length > 0) {
       setErrorMessage(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Name must contain at least one letter — blocks a phone number typed into the name field.
+    if (!/[A-Za-z]/.test(customerData.customerName.trim())) {
+      setNameError('Enter a valid customer name');
       return;
     }
 
@@ -281,6 +291,8 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onSubmit
                   name="customerName"
                   value={customerData.customerName}
                   onChange={handleInputChange}
+                  error={!!nameError}
+                  helperText={nameError}
                   sx={inputStyle}
                 />
 

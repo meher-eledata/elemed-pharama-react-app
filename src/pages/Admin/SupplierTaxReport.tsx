@@ -30,6 +30,7 @@ import {
   toNum,
   formatCurrency,
   formatNumber,
+  formatPercent,
   formatCount,
   formatReportDate,
   defaultDateRange,
@@ -45,6 +46,7 @@ interface ReceiptViewRow extends SupplierTaxReceiptRow {
   sgstN: number;
   igstN: number;
   totalTaxN: number;
+  gstRateN: number | null;
   receiptTotalN: number;
 }
 interface SupplierViewRow extends SupplierTaxSupplierRow {
@@ -55,6 +57,7 @@ interface SupplierViewRow extends SupplierTaxSupplierRow {
   sgstN: number;
   igstN: number;
   totalTaxN: number;
+  gstRateN: number | null;
   totalWithTaxN: number;
 }
 
@@ -106,6 +109,7 @@ const SupplierTaxReport: React.FC = () => {
       sgstN: toNum(r.sgst),
       igstN: toNum(r.igst),
       totalTaxN: toNum(r.total_tax),
+      gstRateN: r.gst_rate == null ? null : toNum(r.gst_rate),
       receiptTotalN: toNum(r.receipt_total),
     }));
   }, [data]);
@@ -121,6 +125,7 @@ const SupplierTaxReport: React.FC = () => {
       sgstN: toNum(r.sgst),
       igstN: toNum(r.igst),
       totalTaxN: toNum(r.total_tax),
+      gstRateN: r.gst_rate == null ? null : toNum(r.gst_rate),
       totalWithTaxN: toNum(r.total_with_tax),
     }));
   }, [data]);
@@ -162,6 +167,7 @@ const SupplierTaxReport: React.FC = () => {
     { key: 'sgstN', header: L.TABLE_RECEIPT.SGST, sortable: true, render: (r) => <CellText>{formatNumber(r.sgstN)}</CellText> },
     { key: 'igstN', header: L.TABLE_RECEIPT.IGST, sortable: true, render: (r) => <CellText>{formatNumber(r.igstN)}</CellText> },
     { key: 'totalTaxN', header: L.TABLE_RECEIPT.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatNumber(r.totalTaxN)}</CellText> },
+    { key: 'gstRateN', header: L.TABLE_RECEIPT.GST_PERCENT, sortable: true, render: (r) => <CellText>{r.gstRateN == null ? '-' : formatPercent(r.gstRateN)}</CellText> },
     { key: 'receiptTotalN', header: L.TABLE_RECEIPT.RECEIPT_TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.receiptTotalN)}</CellText> },
   ];
 
@@ -175,6 +181,7 @@ const SupplierTaxReport: React.FC = () => {
     { key: 'sgstN', header: L.TABLE_SUPPLIER.SGST, sortable: true, render: (r) => <CellText>{formatNumber(r.sgstN)}</CellText> },
     { key: 'igstN', header: L.TABLE_SUPPLIER.IGST, sortable: true, render: (r) => <CellText>{formatNumber(r.igstN)}</CellText> },
     { key: 'totalTaxN', header: L.TABLE_SUPPLIER.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatNumber(r.totalTaxN)}</CellText> },
+    { key: 'gstRateN', header: L.TABLE_SUPPLIER.GST_PERCENT, sortable: true, render: (r) => <CellText>{r.gstRateN == null ? '-' : formatPercent(r.gstRateN)}</CellText> },
     { key: 'totalWithTaxN', header: L.TABLE_SUPPLIER.TOTAL_WITH_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalWithTaxN)}</CellText> },
   ];
 
@@ -211,6 +218,7 @@ const SupplierTaxReport: React.FC = () => {
         ['SGST (₹)']: r.sgstN.toFixed(2),
         ['IGST (₹)']: r.igstN.toFixed(2),
         [`${L.TABLE_RECEIPT.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
+        [L.TABLE_RECEIPT.GST_PERCENT]: r.gstRateN == null ? '-' : formatPercent(r.gstRateN),
         [`${L.TABLE_RECEIPT.RECEIPT_TOTAL} (₹)`]: r.receiptTotalN.toFixed(2),
       }));
     }
@@ -224,6 +232,7 @@ const SupplierTaxReport: React.FC = () => {
       ['SGST (₹)']: r.sgstN.toFixed(2),
       ['IGST (₹)']: r.igstN.toFixed(2),
       [`${L.TABLE_SUPPLIER.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
+      [L.TABLE_SUPPLIER.GST_PERCENT]: r.gstRateN == null ? '-' : formatPercent(r.gstRateN),
       [`${L.TABLE_SUPPLIER.TOTAL_WITH_TAX} (₹)`]: r.totalWithTaxN.toFixed(2),
     }));
   }, [level, sortedReceiptRows, sortedSupplierRows]);

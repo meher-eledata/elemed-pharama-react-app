@@ -8,6 +8,7 @@ import {
   Alert,
   Button,
   TextField,
+  MenuItem,
   Snackbar,
   Table,
   TableBody,
@@ -21,8 +22,12 @@ import {
   useGetProfileQuery,
   useGetProfileActivityQuery,
   useUpdateProfileMutation,
+  useUploadProfileDocumentsMutation,
+  useLazyGetProfileDocumentDownloadLinkQuery,
+  useLazyGetProfileDocumentBlobQuery,
   type Profile,
   type UpdateProfileRequest,
+  type ProfileDocumentType,
 } from '../../redux/slices/profileApi';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
 import { USER_PROFILE_LABELS } from '../../config/label/UserProfile.labels';
@@ -55,10 +60,17 @@ const formatDateTime = (value: string | null | undefined): string =>
 const dash = (value: string | null | undefined): string =>
   value && value.trim() !== '' ? value : L.DASH;
 
-const Field: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const Field: React.FC<{ label: string; value: string; hint?: string }> = ({
+  label,
+  value,
+  hint,
+}) => (
   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
     <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>{label}</Typography>
     <Typography sx={{ fontSize: '15px', color: '#1A212B', fontWeight: 500 }}>{value}</Typography>
+    {hint && (
+      <Typography sx={{ fontSize: '12px', color: '#9CA3AF' }}>{hint}</Typography>
+    )}
   </Box>
 );
 
@@ -111,8 +123,14 @@ const Header: React.FC<{ profile: Profile }> = ({ profile }) => {
   );
 };
 
-// Editable contact whitelist (matches PUT /api/profile). Keys map 1:1 to UpdateProfileRequest.
-const EDIT_FIELDS: Array<{ key: keyof UpdateProfileRequest; label: string }> = [
+// Editable contact whitelist (matches PUT /api/profile). Keys map 1:1 to
+// UpdateProfileRequest string fields; the two identity fields render separately.
+type ContactFieldKey = Exclude<
+  keyof UpdateProfileRequest,
+  'identity_document' | 'identity_document_number'
+>;
+
+const EDIT_FIELDS: Array<{ key: ContactFieldKey; label: string }> = [
   { key: 'first_name', label: L.EDIT.FIRST_NAME },
   { key: 'last_name', label: L.EDIT.LAST_NAME },
   { key: 'mobile', label: L.EDIT.MOBILE },
@@ -124,7 +142,34 @@ const EDIT_FIELDS: Array<{ key: keyof UpdateProfileRequest; label: string }> = [
   { key: 'country', label: L.SECTIONS.CONTACT.COUNTRY },
 ];
 
-const toFormState = (profile: Profile): Required<UpdateProfileRequest> => ({
+type EditFormState = Record<ContactFieldKey, string> & {
+  identity_document: '' | 0 | 1; // '' = never set
+  // Always starts blank; the masked current value ("••••1234") is shown as a
+  // placeholder and NEVER round-tripped — sent only when the user types anew.
+  identity_document_number: string;
+};
+
+// Same 0/1 mapping as the admin create-user form; GET returns the mapped label.
+const IDENTITY_LABEL_TO_CODE: Record<string, 0 | 1> = {
+  Aadhaar: 0,
+  "Driver's License": 1,
+};
+
+const EMPTY_FORM: EditFormState = {
+  first_name: '',
+  last_name: '',
+  mobile: '',
+  address_line1: '',
+  address_line2: '',
+  city: '',
+  state: '',
+  postal_code: '',
+  country: '',
+  identity_document: '',
+  identity_document_number: '',
+};
+
+const toFormState = (profile: Profile): EditFormState => ({
   first_name: profile.first_name ?? '',
   last_name: profile.last_name ?? '',
   mobile: profile.mobile ?? '',
@@ -134,7 +179,40 @@ const toFormState = (profile: Profile): Required<UpdateProfileRequest> => ({
   state: profile.state ?? '',
   postal_code: profile.postal_code ?? '',
   country: profile.country ?? '',
+  identity_document:
+    IDENTITY_LABEL_TO_CODE[profile.identity_document_type ?? ''] ?? '',
+  identity_document_number: '',
 });
+
+// Client-side pre-checks mirroring POST /api/profile/documents (server stays
+// authoritative): PNG/JPEG/PDF, max 50MB.
+const ALLOWED_DOC_EXTENSIONS = ['png', 'jpg', 'jpeg', 'pdf'];
+const DOC_ACCEPT = '.png,.jpg,.jpeg,.pdf';
+const MAX_DOC_BYTES = 50 * 1024 * 1024;
+
+const DOC_TYPES: Array<{ type: ProfileDocumentType; label: string }> = [
+  { type: 'id_document', label: L.SECTIONS.DOCUMENTS.ID_DOCUMENT },
+  { type: 'pharmacist_certificate', label: L.SECTIONS.DOCUMENTS.PHARMACIST_CERTIFICATE },
+];
+
+// Strip path separators / control chars so a malicious filename can't influence
+// the saved download path (mirrors HistoricalData.tsx).
+const sanitizeFileName = (name: string): string => {
+  const base = (name || 'download').split(/[\\/]/).pop() || 'download';
+  // eslint-disable-next-line no-control-regex
+  return base.replace(/[\u0000-\u001f<>:"|?*]/g, '_').trim() || 'download';
+};
+
+const triggerBlobDownload = (blob: Blob, fileName: string): void => {
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = sanitizeFileName(fileName);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+};
 
 const UserProfile: React.FC = () => {
   const {
@@ -149,19 +227,16 @@ const UserProfile: React.FC = () => {
   } = useGetProfileActivityQuery();
 
   const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
+  const [uploadDocuments] = useUploadProfileDocumentsMutation();
+  const [triggerDocumentLink] = useLazyGetProfileDocumentDownloadLinkQuery();
+  const [triggerDocumentBlob] = useLazyGetProfileDocumentBlobQuery();
 
   const [isEditing, setIsEditing] = React.useState(false);
-  const [form, setForm] = React.useState<Required<UpdateProfileRequest>>({
-    first_name: '',
-    last_name: '',
-    mobile: '',
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    state: '',
-    postal_code: '',
-    country: '',
-  });
+  const [form, setForm] = React.useState<EditFormState>(EMPTY_FORM);
+  const [uploadingDoc, setUploadingDoc] = React.useState<ProfileDocumentType | null>(null);
+  const [downloadingDoc, setDownloadingDoc] = React.useState<ProfileDocumentType | null>(null);
+  const docInputRef = React.useRef<HTMLInputElement>(null);
+  const pendingDocRef = React.useRef<ProfileDocumentType | null>(null);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -175,13 +250,42 @@ const UserProfile: React.FC = () => {
     }
   };
 
-  const handleFieldChange = (key: keyof UpdateProfileRequest) =>
+  const handleFieldChange = (key: ContactFieldKey | 'identity_document_number') =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
+  const handleIdentityTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      identity_document: raw === '' ? '' : (Number(raw) as 0 | 1),
+    }));
+  };
+
   const handleSave = async () => {
+    // Send ONLY the PUT whitelist: the contact fields, plus the identity fields
+    // when actually set. email/username/role/status are never sent, and the
+    // masked identity number is never round-tripped (only a newly typed value).
+    const body: UpdateProfileRequest = {
+      first_name: form.first_name,
+      last_name: form.last_name,
+      mobile: form.mobile,
+      address_line1: form.address_line1,
+      address_line2: form.address_line2,
+      city: form.city,
+      state: form.state,
+      postal_code: form.postal_code,
+      country: form.country,
+    };
+    if (form.identity_document !== '') {
+      body.identity_document = form.identity_document;
+    }
+    const newIdentityNumber = form.identity_document_number.trim();
+    if (newIdentityNumber) {
+      body.identity_document_number = newIdentityNumber;
+    }
     try {
-      await updateProfile(form).unwrap();
+      await updateProfile(body).unwrap();
       setIsEditing(false);
       setSnackbar({ open: true, message: L.EDIT.SUCCESS, severity: 'success' });
     } catch (error: unknown) {
@@ -191,6 +295,86 @@ const UserProfile: React.FC = () => {
         message: extractErrorMessage(error, L.EDIT.ERROR),
         severity: 'error',
       });
+    }
+  };
+
+  const handlePickDocument = (docType: ProfileDocumentType) => {
+    pendingDocRef.current = docType;
+    docInputRef.current?.click();
+  };
+
+  const handleDocumentSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so selecting the same file again re-triggers onChange.
+    e.target.value = '';
+    const docType = pendingDocRef.current;
+    pendingDocRef.current = null;
+    if (!file || !docType) return;
+
+    // Friendly client-side pre-checks; the server remains authoritative.
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_DOC_EXTENSIONS.includes(ext)) {
+      setSnackbar({
+        open: true,
+        message: L.SECTIONS.DOCUMENTS.UNSUPPORTED_TYPE,
+        severity: 'error',
+      });
+      return;
+    }
+    if (file.size > MAX_DOC_BYTES) {
+      setSnackbar({
+        open: true,
+        message: L.SECTIONS.DOCUMENTS.FILE_TOO_LARGE,
+        severity: 'error',
+      });
+      return;
+    }
+
+    setUploadingDoc(docType);
+    try {
+      // Response carries the updated profile; invalidating 'Profile' refreshes
+      // the cached profile (documents presence) and the activity list.
+      await uploadDocuments({ [docType]: file }).unwrap();
+      setSnackbar({
+        open: true,
+        message: L.SECTIONS.DOCUMENTS.UPLOAD_SUCCESS,
+        severity: 'success',
+      });
+    } catch (error: unknown) {
+      logError(error, 'UserProfile.uploadDocuments');
+      setSnackbar({
+        open: true,
+        message: extractErrorMessage(error, L.SECTIONS.DOCUMENTS.UPLOAD_ERROR),
+        severity: 'error',
+      });
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
+  const handleDocumentDownload = async (docType: ProfileDocumentType) => {
+    setDownloadingDoc(docType);
+    try {
+      // 1. Resolve a (presigned) link first.
+      const link = await triggerDocumentLink(docType).unwrap();
+      if (link?.url) {
+        // Presigned S3 URL — self-authenticating, safe to open directly.
+        window.open(link.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      // 2. Disk-driver fallback (url null) → authenticated blob fetch of
+      // GET profile/documents/:type (Bearer header via baseQueryWithReauth).
+      const blob = await triggerDocumentBlob(docType).unwrap();
+      triggerBlobDownload(blob, link?.file_name || docType);
+    } catch (error: unknown) {
+      logError(error, 'UserProfile.downloadDocument');
+      setSnackbar({
+        open: true,
+        message: extractErrorMessage(error, L.SECTIONS.DOCUMENTS.DOWNLOAD_ERROR),
+        severity: 'error',
+      });
+    } finally {
+      setDownloadingDoc(null);
     }
   };
 
@@ -219,7 +403,11 @@ const UserProfile: React.FC = () => {
           <Box sx={sectionSx}>
             <Typography sx={sectionTitleSx}>{L.SECTIONS.ACCOUNT.TITLE}</Typography>
             <Box sx={fieldGridSx}>
-              <Field label={L.SECTIONS.ACCOUNT.EMAIL} value={dash(profile.email)} />
+              <Field
+                label={L.SECTIONS.ACCOUNT.EMAIL}
+                value={dash(profile.email)}
+                hint={L.SECTIONS.ACCOUNT.EMAIL_HINT}
+              />
               <Field label={L.SECTIONS.ACCOUNT.MEMBER_SINCE} value={formatDate(profile.created_at)} />
               <Field label={L.SECTIONS.ACCOUNT.LAST_LOGIN} value={formatDateTime(profile.last_login)} />
             </Box>
@@ -300,21 +488,144 @@ const UserProfile: React.FC = () => {
           {/* d) Identity document */}
           <Box sx={sectionSx}>
             <Typography sx={sectionTitleSx}>{L.SECTIONS.IDENTITY.TITLE}</Typography>
-            <Box sx={fieldGridSx}>
-              <Field
-                label={L.SECTIONS.IDENTITY.DOCUMENT_TYPE}
-                value={dash(profile.identity_document_type)}
-              />
-              <Field
-                label={L.SECTIONS.IDENTITY.DOCUMENT_NUMBER}
-                value={dash(profile.identity_document_number_masked)}
-              />
+            {isEditing ? (
+              <Box sx={fieldGridSx}>
+                <TextField
+                  select
+                  label={L.SECTIONS.IDENTITY.DOCUMENT_TYPE}
+                  value={String(form.identity_document)}
+                  onChange={handleIdentityTypeChange}
+                  size="small"
+                  fullWidth
+                  disabled={isSaving}
+                >
+                  {form.identity_document === '' && (
+                    <MenuItem value="" disabled>
+                      <em>{L.EDIT.IDENTITY_SELECT_PLACEHOLDER}</em>
+                    </MenuItem>
+                  )}
+                  <MenuItem value="0">{L.EDIT.IDENTITY_OPTION_AADHAAR}</MenuItem>
+                  <MenuItem value="1">{L.EDIT.IDENTITY_OPTION_DRIVING_LICENCE}</MenuItem>
+                </TextField>
+                <TextField
+                  label={L.SECTIONS.IDENTITY.DOCUMENT_NUMBER}
+                  value={form.identity_document_number}
+                  onChange={handleFieldChange('identity_document_number')}
+                  placeholder={profile.identity_document_number_masked ?? ''}
+                  helperText={L.EDIT.IDENTITY_NUMBER_HINT}
+                  size="small"
+                  fullWidth
+                  disabled={isSaving}
+                />
+              </Box>
+            ) : (
+              <Box sx={fieldGridSx}>
+                <Field
+                  label={L.SECTIONS.IDENTITY.DOCUMENT_TYPE}
+                  value={dash(profile.identity_document_type)}
+                />
+                <Field
+                  label={L.SECTIONS.IDENTITY.DOCUMENT_NUMBER}
+                  value={dash(profile.identity_document_number_masked)}
+                />
+              </Box>
+            )}
+          </Box>
+
+          {/* e) Documents */}
+          <Box sx={sectionSx}>
+            <Box sx={{ mb: 2 }}>
+              <Typography sx={{ ...sectionTitleSx, mb: 0.5 }}>
+                {L.SECTIONS.DOCUMENTS.TITLE}
+              </Typography>
+              <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
+                {L.SECTIONS.DOCUMENTS.ALLOWED_HINT}
+              </Typography>
+            </Box>
+            {/* Hidden native file input — shared by both upload controls. */}
+            <input
+              ref={docInputRef}
+              type="file"
+              accept={DOC_ACCEPT}
+              style={{ display: 'none' }}
+              onChange={handleDocumentSelected}
+            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {DOC_TYPES.map(({ type, label }) => {
+                const info = profile.documents?.[type];
+                const uploaded = info?.uploaded ?? false;
+                return (
+                  <Box
+                    key={type}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      flexWrap: 'wrap',
+                      backgroundColor: 'white',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      p: 2,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
+                        {label}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: '15px',
+                          fontWeight: 500,
+                          color: uploaded ? '#1A212B' : '#9CA3AF',
+                        }}
+                      >
+                        {uploaded
+                          ? info?.filename ?? L.DASH
+                          : L.SECTIONS.DOCUMENTS.NOT_UPLOADED}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {uploaded && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleDocumentDownload(type)}
+                          disabled={downloadingDoc === type}
+                          startIcon={
+                            downloadingDoc === type ? <CircularProgress size={14} /> : undefined
+                          }
+                          sx={{ textTransform: 'none', borderColor: PRIMARY, color: PRIMARY }}
+                        >
+                          {L.SECTIONS.DOCUMENTS.VIEW}
+                        </Button>
+                      )}
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handlePickDocument(type)}
+                        disabled={uploadingDoc !== null}
+                        startIcon={
+                          uploadingDoc === type ? <CircularProgress size={14} /> : undefined
+                        }
+                        sx={{ textTransform: 'none', borderColor: PRIMARY, color: PRIMARY }}
+                      >
+                        {uploadingDoc === type
+                          ? L.SECTIONS.DOCUMENTS.UPLOADING
+                          : uploaded
+                            ? L.SECTIONS.DOCUMENTS.REPLACE
+                            : L.SECTIONS.DOCUMENTS.UPLOAD}
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })}
             </Box>
           </Box>
         </>
       )}
 
-      {/* e) Recent activity */}
+      {/* f) Recent activity */}
       <Box sx={sectionSx}>
         <Typography sx={sectionTitleSx}>{L.SECTIONS.RECENT_ACTIVITY.TITLE}</Typography>
 

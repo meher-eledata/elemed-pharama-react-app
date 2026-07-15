@@ -97,6 +97,7 @@ export const generatePrintHTML = (data: {
   labels: any;
   patientType?: string;
   pageSize?: 'A4' | 'A5';
+  orientation?: 'landscape' | 'portrait';
   brandIcon?: string;
   splitPayments?: any[];
 }): string => {
@@ -119,6 +120,7 @@ export const generatePrintHTML = (data: {
     labels,
     patientType,
     pageSize = 'A4',
+    orientation = 'landscape',
     brandIcon,
     splitPayments,
   } = data;
@@ -126,20 +128,21 @@ export const generatePrintHTML = (data: {
   const isA5 = pageSize === 'A5';
 
   return `
+    <!DOCTYPE html>
     <html>
       <head>
         <title>${labels.CUSTOMER_RECEIPT_TITLE}</title>
         <style>
           @media print {
-            @page { 
-              margin: ${isA5 ? '10mm' : '15mm'} !important;
-              size: ${pageSize} landscape !important;
+            /* Zero page margins suppress the browser's header/footer band
+               (title, URL, date); the visual margin comes from body padding. */
+            @page {
+              margin: 0;
+              size: ${pageSize} ${orientation};
             }
             html, body {
               margin: 0;
-              padding: 0;
               width: 100%;
-              height: 100%;
               overflow: visible;
             }
             * {
@@ -154,40 +157,43 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          body { 
-            font-family: 'Lexend', sans-serif; 
+          body {
+            font-family: 'Lexend', sans-serif;
             margin: 0;
-            padding: 0;
+            padding: ${isA5 ? '5mm' : '15mm'};
+            background-color: #FFFFFF;
             color: #1A212B;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
             font-size: ${isA5 ? '10px' : '13px'};
           }
-          .receipt-header { 
-            text-align: left; 
-            margin-bottom: ${isA5 ? '15px' : '30px'}; 
+          .receipt-header {
+            text-align: left;
+            margin-bottom: ${isA5 ? '6px' : '12px'};
           }
-          .receipt-title { 
-            font-size: ${isA5 ? '20px' : '28px'}; 
-            font-weight: bold; 
-            margin-bottom: ${isA5 ? '10px' : '20px'}; 
+          .doc-title {
+            text-align: center;
+            font-size: ${isA5 ? '11px' : '15px'};
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: 0 0 ${isA5 ? '6px' : '10px'};
             color: #1A212B;
           }
-          .receipt-details { 
-            display: flex; 
+          .receipt-details {
+            display: flex;
             flex-direction: row;
-            gap: 0px; 
-            margin-bottom: ${isA5 ? '10px' : '15px'}; 
-            border: 1px solid #E5E7EB; 
-            border-radius: 8px; 
+            gap: 0px;
+            margin-bottom: ${isA5 ? '6px' : '15px'};
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
             overflow: hidden;
             page-break-inside: avoid;
           }
-          .detail-section { 
-            flex: 1; 
-            background-color: #F9FAFB !important; 
-            padding: ${isA5 ? '6px' : '10px'}; 
+          .detail-section {
+            flex: 1;
+            background-color: #F9FAFB !important;
+            padding: ${isA5 ? '4px 6px' : '10px'};
             border-right: 2px solid #9CA3AF; 
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
@@ -197,17 +203,17 @@ export const generatePrintHTML = (data: {
           .detail-section:last-child {
             border-right: none;
           }
-          .detail-title { 
-            font-weight: bold; 
-            margin-bottom: ${isA5 ? '6px' : '12px'}; 
-            font-size: ${isA5 ? '11px' : '16px'};
+          .detail-title {
+            font-weight: bold;
+            margin-bottom: ${isA5 ? '3px' : '12px'};
+            font-size: ${isA5 ? '10px' : '16px'};
             color: #1A212B;
           }
-          .detail-item { 
-            font-size: ${isA5 ? '9px' : '13px'}; 
-            margin-bottom: ${isA5 ? '3px' : '6px'};
+          .detail-item {
+            font-size: ${isA5 ? '9px' : '13px'};
+            margin-bottom: ${isA5 ? '2px' : '6px'};
             color: #374151;
-            line-height: 1.4;
+            line-height: ${isA5 ? '1.3' : '1.4'};
           }
           .detail-item.email-item {
             font-size: ${isA5 ? '8px' : '11px'};
@@ -215,10 +221,10 @@ export const generatePrintHTML = (data: {
           .items-section { 
             margin-bottom: 0px;
           }
-          .items-title { 
-            font-weight: bold; 
-            margin-bottom: ${isA5 ? '4px' : '8px'}; 
-            font-size: ${isA5 ? '12px' : '14px'};
+          .items-title {
+            font-weight: bold;
+            margin-bottom: ${isA5 ? '3px' : '8px'};
+            font-size: ${isA5 ? '10px' : '14px'};
             color: #1A212B;
           }
           .items-table { 
@@ -232,9 +238,9 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          .items-table th { 
-            background-color: #C7D2FE !important; 
-            padding: ${isA5 ? '4px 4px' : '10px 8px'}; 
+          .items-table th {
+            background-color: #C7D2FE !important;
+            padding: ${isA5 ? '3px 4px' : '10px 8px'};
             font-weight: bold; 
             font-size: ${isA5 ? '9px' : '13px'}; 
             text-align: left;
@@ -259,13 +265,13 @@ export const generatePrintHTML = (data: {
               color-adjust: exact !important;
             }
           }
-          .items-table td { 
-            padding: ${isA5 ? '4px 4px' : '10px 8px'}; 
-            font-size: ${isA5 ? '9px' : '13px'}; 
-            background-color: #FFFFFF !important; 
+          .items-table td {
+            padding: ${isA5 ? '2px 4px' : '10px 8px'};
+            font-size: ${isA5 ? '9px' : '13px'};
+            background-color: #FFFFFF !important;
             color: #374151 !important;
             border-top: 1px solid #E5E7EB;
-            line-height: 1.4;
+            line-height: ${isA5 ? '1.3' : '1.4'};
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
@@ -282,9 +288,9 @@ export const generatePrintHTML = (data: {
           .items-table td:not(:last-child) {
             border-right: 1px solid #E5E7EB;
           }
-          .summary { 
-            background-color: #C7D2FE !important; 
-            padding: ${isA5 ? '8px 12px' : '12px 20px'}; 
+          .summary {
+            background-color: #C7D2FE !important;
+            padding: ${isA5 ? '5px 10px' : '12px 20px'};
             display: flex; 
             justify-content: space-between; 
             align-items: flex-start;
@@ -310,16 +316,16 @@ export const generatePrintHTML = (data: {
               border: 2px solid #A5B4FC !important;
             }
           }
-          .summary-left { 
-            display: flex; 
-            gap: ${isA5 ? '30px' : '60px'}; 
-            font-size: ${isA5 ? '10px' : '14px'};
+          .summary-left {
+            display: flex;
+            gap: ${isA5 ? '24px' : '60px'};
+            font-size: ${isA5 ? '9px' : '14px'};
             color: #1A212B;
           }
           .summary-item {
             display: flex;
             flex-direction: column;
-            gap: ${isA5 ? '3px' : '6px'};
+            gap: ${isA5 ? '2px' : '6px'};
           }
           .summary-label {
             font-weight: 500;
@@ -327,37 +333,37 @@ export const generatePrintHTML = (data: {
           }
           .summary-value {
             font-weight: 700;
-            font-size: ${isA5 ? '12px' : '14px'};
+            font-size: ${isA5 ? '11px' : '14px'};
             color: #1A212B;
           }
-          .summary-right { 
+          .summary-right {
             display: flex;
             flex-direction: column;
-            gap: ${isA5 ? '3px' : '6px'};
+            gap: ${isA5 ? '2px' : '6px'};
             align-items: flex-end;
             text-align: right;
           }
           .summary-right-label {
-            font-size: ${isA5 ? '12px' : '16px'};
+            font-size: ${isA5 ? '10px' : '16px'};
             font-weight: 500;
             color: #1A212B;
           }
           .summary-right-value {
-            font-size: ${isA5 ? '16px' : '22px'};
+            font-size: ${isA5 ? '14px' : '22px'};
             font-weight: 700;
             color: #1A212B;
           }
         </style>
       </head>
       <body>
-        <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: 6px; margin-bottom: 12px; gap: 0;">
+        <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: ${isA5 ? '4px' : '6px'}; gap: 0;">
           <div style="flex: 1; display: flex; justify-content: flex-start;">
-            ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${isA5 ? '70px' : '90px'}; height: auto;" />` : ''}
+            ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${isA5 ? '55px' : '90px'}; height: auto;" />` : ''}
           </div>
           <div style="flex: 3; text-align: center;">
-            <div style="font-size: ${isA5 ? '16px' : '20px'}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
+            <div style="font-size: ${isA5 ? '14px' : '20px'}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
             <div style="font-size: ${isA5 ? '8px' : '9px'}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
-            <div style="font-size: ${isA5 ? '7px' : '8px'}; margin: 4px 0; line-height: 1.2; color: #4B5563;">
+            <div style="font-size: ${isA5 ? '7px' : '8px'}; margin: ${isA5 ? '2px 0' : '4px 0'}; line-height: 1.2; color: #4B5563;">
               PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
               DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
               GSTIN No: 37AAQCS3213C2ZH<br />
@@ -366,7 +372,8 @@ export const generatePrintHTML = (data: {
           </div>
           <div style="flex: 1;"></div>
         </div>
-        
+        <div class="doc-title">${labels.CUSTOMER_RECEIPT_TITLE}</div>
+
         <div class="receipt-details">
           <!-- 1 Row Layout -->
           <div class="detail-section">

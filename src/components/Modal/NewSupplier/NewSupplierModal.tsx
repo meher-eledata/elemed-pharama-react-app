@@ -105,25 +105,36 @@ const inputStyle = {
   },
 };
 
+// Standard 15-character GSTIN pattern (mirrors backend validation).
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
 const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [supplierData, setSupplierData] = useState<SupplierData>(initialSupplierState);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [gstinError, setGstinError] = useState<string>('');
 
   useEffect(() => {
     if (!isOpen) {
       setSupplierData(initialSupplierState);
       setErrorMessage('');
+      setGstinError('');
     }
   }, [isOpen]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setSupplierData(prev => ({ ...prev, [name]: value }));
+    // Auto-uppercase GSTIN to match the backend's trim + uppercase normalisation.
+    const nextValue = name === 'gstin' ? value.toUpperCase() : value;
+    setSupplierData(prev => ({ ...prev, [name]: nextValue }));
+    if (name === 'gstin' && gstinError) {
+      setGstinError('');
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setGstinError('');
 
     const missingFields: string[] = [];
 
@@ -142,17 +153,28 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
     if (!supplierData.supplierCode || !supplierData.supplierCode.trim()) {
       missingFields.push('Supplier code');
     }
-    if (!supplierData.gstin || !supplierData.gstin.trim()) {
-      missingFields.push('GSTIN');
+
+    // GSTIN: required + 15-character format (inline field-level error).
+    const normalizedGstin = supplierData.gstin.trim().toUpperCase();
+    let gstinValidationError = '';
+    if (!normalizedGstin) {
+      gstinValidationError = 'GSTIN is required';
+    } else if (!GSTIN_REGEX.test(normalizedGstin)) {
+      gstinValidationError = 'Enter a valid 15-character GSTIN';
     }
 
     if (missingFields.length > 0) {
       setErrorMessage(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+    }
+    if (gstinValidationError) {
+      setGstinError(gstinValidationError);
+    }
+    if (missingFields.length > 0 || gstinValidationError) {
       return;
     }
 
     try {
-      await onSubmit(supplierData);
+      await onSubmit({ ...supplierData, gstin: normalizedGstin });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to add supplier. Please try again.');
     }
@@ -362,6 +384,8 @@ const NewSupplierModal: React.FC<NewSupplierModalProps> = ({ isOpen, onClose, on
                   name="gstin"
                   value={supplierData.gstin}
                   onChange={handleInputChange}
+                  error={!!gstinError}
+                  helperText={gstinError || ''}
                   sx={inputStyle}
                 />
                 <TextField

@@ -302,23 +302,30 @@ const InventoryAdjustment: React.FC = () => {
         // (duplicates allowed). batch_id is the unique PK — use it as the stable row identity.
         const batchNumber = batch.batch_number || batch.batchNumber;
 
+        // pg serializes DECIMAL columns as JSON strings (e.g. "73.00"); normalize to numbers at
+        // load time so edit seeds/display render "73" and change detection compares numerically.
+        const quantity = Number(batch.current_qty) || 0;
+        const mrp = Number(batch.mrp) || 0;
+        const packQty = Number(batch.pack_qty) || 1;
+
         return {
           id: String(batch.batch_id), // Unique row id (batch_number is NOT unique)
           batch_id: batch.batch_id, // Unique PK — the delete identity
           batchNumber: batchNumber, // Display value only (may be duplicated across rows)
-          quantity: batch.current_qty,
-          oldQuantity: batch.current_qty, // Store original quantity
+          quantity,
+          oldQuantity: quantity, // Store original quantity
           expiryDate: expiryDateStr,
           oldExpiryDate: expiryDateStr, // Store original expiry date
-          mrp: batch.mrp || 0,
-          oldMrp: batch.mrp || 0,
-          packQty: batch.pack_qty || 1,
-          oldPackQty: batch.pack_qty || 1,
+          mrp,
+          oldMrp: mrp,
+          packQty,
+          oldPackQty: packQty,
         };
       });
 
       startTransition(() => {
-        setProductInfo(result.product);
+        // total_quantity is a SUM() → also a JSON string from pg; normalize for display.
+        setProductInfo({ ...result.product, total_quantity: Number(result.product.total_quantity) || 0 });
         setBatchRows(transformedBatches);
       });
     } catch (error) {
@@ -632,9 +639,7 @@ const InventoryAdjustment: React.FC = () => {
       }
 
       const lines = modifiedBatches.map((batch) => {
-        // Use batch.batchNumber (the original batch_number from API) for the API call
-        // The backend expects batch_number, not batch_id
-        const batchNumber = batch.batchNumber; // This is the batch_number (string or number) like "AMX-2026-02-A"
+        const batchNumber = batch.batchNumber; // The original batch_number (string or number) like "AMX-2026-02-A"
 
         if (batchNumber === undefined || batchNumber === null) {
           console.error('Invalid batchNumber for batch:', batch);
@@ -642,7 +647,10 @@ const InventoryAdjustment: React.FC = () => {
         }
 
         return {
-          batch_number: batchNumber, // Use batch_number (string or number) for API as backend expects
+          // batch_id is the unique PK — batch_number is NOT unique (duplicates exist), so the
+          // backend resolves the row by batch_id; batch_number stays as a legacy fallback.
+          batch_id: batch.batch_id,
+          batch_number: batchNumber,
           old_qty: batch.oldQuantity,
           new_qty: batch.quantity,
           expiry_date: batch.expiryDate || dayjs().format('YYYY-MM-DD'),

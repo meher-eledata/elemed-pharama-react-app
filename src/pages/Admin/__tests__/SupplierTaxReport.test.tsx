@@ -57,6 +57,7 @@ const RECEIPT_FIXTURE: reportsApi.SupplierTaxReceiptResponse = {
       sgst: '300.00',
       igst: '0.00',
       total_tax: '600.00',
+      gst_rate: '12.00',
       receipt_total: '1234.50',
     },
   ],
@@ -69,6 +70,7 @@ const RECEIPT_FIXTURE: reportsApi.SupplierTaxReceiptResponse = {
     total_sgst: '300.00',
     total_igst: '0.00',
     total_tax: '600.00',
+    gst_rate: '12.00',
     total_with_tax: '5600.00',
   },
 };

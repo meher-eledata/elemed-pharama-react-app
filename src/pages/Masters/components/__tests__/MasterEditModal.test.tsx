@@ -251,13 +251,15 @@ describe('MasterEditModal — submit payload contains only PK + editable whiteli
     // Type is editable now (backend accepts it) — its current stored value is shown.
     expect(within(typeCombo).getByText('tablet')).toBeInTheDocument();
 
-    // Change Type to another option and confirm it's emitted as a plain string.
+    // Change Type to another option and confirm it's emitted as a plain string. The
+    // dropdown now shows the predefined dosage-form list (merged with distinct DB values),
+    // so pick a predefined option ('Capsule'); the lowercase distinct 'capsule' is deduped.
     fireEvent.mouseDown(typeCombo);
-    fireEvent.click(within(screen.getByRole('listbox')).getByText('capsule'));
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('Capsule'));
 
     submit();
     const body = onSave.mock.calls[0][0] as Record<string, unknown>;
-    expect(body.type).toBe('capsule');
+    expect(body.type).toBe('Capsule');
     // Unit of measure (untouched) keeps its stored value.
     expect(body.unit_of_measure).toBe('strip');
   });

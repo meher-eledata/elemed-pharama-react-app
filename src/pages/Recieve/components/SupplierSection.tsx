@@ -31,6 +31,7 @@ interface SupplierSectionProps {
   setInvoiceDate: (val: string) => void;
   invoiceNumber: string;
   setInvoiceNumber: (val: string) => void;
+  invoiceNumberError?: string;
 }
 
 const SupplierSection: React.FC<SupplierSectionProps> = ({
@@ -49,6 +50,7 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
   setInvoiceDate,
   invoiceNumber,
   setInvoiceNumber,
+  invoiceNumberError,
 }) => {
   return (
     <Box sx={{ display: "flex", gap: "32px", marginTop: "10px" }}>
@@ -256,6 +258,8 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
           value={invoiceNumber}
           onChange={(e) => setInvoiceNumber(e.target.value)}
           placeholder="Enter Invoice Number"
+          error={!!invoiceNumberError}
+          helperText={invoiceNumberError || ''}
           sx={orderDetailsStyles.formField}
         />
       </Box>

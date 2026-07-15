@@ -165,6 +165,7 @@ import styled from '@mui/system/styled';
 import { useSelector } from 'react-redux';
 import { useAddProductMutation } from '../../../redux/slices/inventoryApi';
 import { useGetProductFieldOptionsQuery } from '../../../redux/slices/masterApi';
+import { PRODUCT_TYPES, PRODUCT_UNITS, mergeProductOptions } from '../../../config/constants/product.constants';
 import { extractErrorMessage } from '../../../utils/errorUtils';
 import { RootState } from '../../../redux/store';
 
@@ -562,11 +563,12 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
               {NEW_PRODUCT_MODAL_LABELS.FIELDS.map((field, idx) => {
                 const isMultiline = field.type === 'multiline';
                 const isSelect = field.type === 'select';
-                // Dropdown source: `type` → distinct types, `unit_of_measure` → distinct units.
+                // Dropdown source: predefined list first, then any legacy distinct DB value
+                // not already present (`type` → types, `unit_of_measure` → units).
                 const selectOptions = isSelect
                   ? field.key === 'type'
-                    ? typeOptions
-                    : unitOptions
+                    ? mergeProductOptions(PRODUCT_TYPES, typeOptions)
+                    : mergeProductOptions(PRODUCT_UNITS, unitOptions)
                   : [];
                 return (
                 <Grid key={idx} item xs={12} sm={isMultiline ? 12 : 6} component="div">

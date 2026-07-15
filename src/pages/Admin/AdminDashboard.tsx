@@ -8,6 +8,7 @@ import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import StorageIcon from '@mui/icons-material/Storage';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
@@ -179,6 +180,14 @@ const AdminDashboard: React.FC = () => {
           action="Manage Files"
           onAction={() => navigate('/admin/historical-data')}
           iconBgColor="#E0F2F1"
+        />
+        <Card
+          icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title={ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.TITLE}
+          desc={ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.DESC}
+          action={ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.ACTION}
+          onAction={() => navigate('/admin/supplier-credit')}
+          iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.SUPPLIER_CREDIT}
         />
         <Card
           icon={<AssignmentOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}

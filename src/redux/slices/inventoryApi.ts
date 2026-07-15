@@ -159,7 +159,8 @@ export interface GetBrandsFromProductNameResponse {
 }
 
 export interface AdjustInventoryBatchLine {
-  batch_number: string | number;
+  batch_id?: number; // Preferred identifier — unique inventory_batch PK (batch_number is NOT unique)
+  batch_number: string | number; // Legacy fallback lookup when batch_id is absent
   old_qty: number;
   new_qty: number;
   expiry_date: string;
@@ -176,7 +177,7 @@ export interface AdjustInventoryBatchesRequest {
 export interface AdjustInventoryBatchesResponse {
   message: string;
   product_id: number;
-  total_delta: number;
+  total_unit_delta: number;
   new_balance_quantity: number;
 }
 
