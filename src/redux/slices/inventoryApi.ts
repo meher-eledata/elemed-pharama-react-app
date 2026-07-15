@@ -193,9 +193,13 @@ export interface DeleteBatchResponse {
   new_balance_quantity: number;
 }
 
-// 409 error body when a batch has been sold and cannot be deleted.
+// 409 error body when a sold batch cannot be deleted. Since 2026-07-15 the 409 fires only for
+// the LAST remaining row of a sold batch_number (deleting a duplicate with a survivor succeeds).
 export interface DeleteBatchSoldError {
   error: string;
+  // NEW 2026-07-15 machine-readable marker (do NOT match on the error string). Optional so
+  // clients degrade gracefully against older response shapes that omit it.
+  last_remaining?: boolean;
   invoice_numbers: string[];
   invoices: { invoice_id: number; invoice_number: string }[];
 }

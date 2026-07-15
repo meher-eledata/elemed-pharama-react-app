@@ -191,6 +191,9 @@ describe('InventoryAdjustment - batch deletion', () => {
     // Mark ONLY the first duplicate row for deletion.
     fireEvent.click(screen.getAllByAltText('Delete')[0]);
     fireEvent.click(screen.getByText('Save'));
+
+    // A survivor remains in the duplicate group, so the pre-submit guard does NOT block.
+    expect(screen.queryByText(/must remain because it appears on invoices/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Confirm'));
 
     await waitFor(() => expect(deleteBatchTrigger).toHaveBeenCalledTimes(1));
@@ -199,7 +202,28 @@ describe('InventoryAdjustment - batch deletion', () => {
     expect(deleteBatchTrigger).not.toHaveBeenCalledWith({ batch_id: 102 });
   });
 
+  it('blocks Save when every row of a duplicate batch-number group is marked for deletion', async () => {
+    await loadBatches();
+
+    // Mark BOTH duplicate rows (after the first is marked, its trash icon becomes Undo, so the
+    // remaining Delete icon is index 0 again).
+    fireEvent.click(screen.getAllByAltText('Delete')[0]);
+    fireEvent.click(screen.getAllByAltText('Delete')[0]);
+    fireEvent.click(screen.getByText('Save'));
+
+    // Guard snackbar fires; the confirm dialog never opens and nothing is submitted.
+    expect(
+      await screen.findByText(
+        'At least one batch with number AMX-DUP must remain because it appears on invoices — unmark one of them before saving.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('dialog-Confirm Inventory Adjustment')).not.toBeInTheDocument();
+    expect(deleteBatchTrigger).not.toHaveBeenCalled();
+    expect(adjustTrigger).not.toHaveBeenCalled();
+  });
+
   it('shows the message modal listing invoice numbers on a 409 (sold) response', async () => {
+    // Old response shape WITHOUT last_remaining → falls back to the pre-2026-07-15 wording.
     deleteBatchTrigger.mockReturnValue({
       unwrap: () =>
         Promise.reject({
@@ -225,6 +249,40 @@ describe('InventoryAdjustment - batch deletion', () => {
     const message = screen.getByTestId('dialog-message');
     expect(message).toHaveTextContent('AMX-DUP');
     expect(message).toHaveTextContent('INV-001, INV-002');
+    expect(message).toHaveTextContent('cannot be deleted because product from it was sold on invoice(s)');
+    expect(message).not.toHaveTextContent('last batch with this number');
+  });
+
+  it('renders the last-remaining wording when the 409 carries last_remaining: true', async () => {
+    deleteBatchTrigger.mockReturnValue({
+      unwrap: () =>
+        Promise.reject({
+          status: 409,
+          data: {
+            error:
+              'Batch AMX-DUP cannot be deleted because it was sold on invoice(s): INV-001. It is the last batch with this number — at least one must remain.',
+            last_remaining: true,
+            invoice_numbers: ['INV-001'],
+            invoices: [{ invoice_id: 1, invoice_number: 'INV-001' }],
+          },
+        }),
+    });
+
+    await loadBatches();
+    // Mark only ONE of the two duplicates so the client-side guard does not block first.
+    fireEvent.click(screen.getAllByAltText('Delete')[0]);
+    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByText('Confirm'));
+
+    const modal = await screen.findByTestId('dialog-Batch cannot be deleted');
+    expect(modal).toBeInTheDocument();
+    const message = screen.getByTestId('dialog-message');
+    expect(message).toHaveTextContent('AMX-DUP');
+    expect(message).toHaveTextContent('was sold on invoice(s): INV-001');
+    expect(message).toHaveTextContent('this is the last batch with this number');
+    expect(message).toHaveTextContent('at least one batch with this number must remain');
+    expect(message).toHaveTextContent('Delete the other duplicate batches instead, or keep this one');
+    expect(message).not.toHaveTextContent('cannot be deleted because product from it');
   });
 
   it('refreshes the batch list after a successful deletion', async () => {

@@ -40,6 +40,7 @@ import {
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
 import { processProductOptions } from '../Sales/SalesPage.utils';
 import { extractErrorMessage } from '../../utils/errorUtils';
+import { INVENTORY_ADJUSTMENT_LABELS as ADJ_LABELS } from '../../config/label/InventoryAdjustment.labels';
 
 type BatchRow = {
   id: string; // stable unique row id derived from batch_id (batch_number is NOT unique)
@@ -686,7 +687,12 @@ const InventoryAdjustment: React.FC = () => {
       // Process deletions sequentially so error handling stays simple. Collect successes and the
       // batches the backend blocked (409 — sold) so we can explain why and list the invoice numbers.
       const deletedIds: string[] = [];
-      const blocked: { batchId: number; batchNumber: string | number; invoiceNumbers: string[] }[] = [];
+      const blocked: {
+        batchId: number;
+        batchNumber: string | number;
+        invoiceNumbers: string[];
+        lastRemaining: boolean;
+      }[] = [];
       let otherDeleteError: unknown = null;
 
       for (const batch of deletionBatches) {
@@ -702,7 +708,14 @@ const InventoryAdjustment: React.FC = () => {
             const invoiceNumbers = data.invoice_numbers.length
               ? data.invoice_numbers
               : (data.invoices || []).map((inv) => inv.invoice_number);
-            blocked.push({ batchId: batch.batch_id, batchNumber: batch.batchNumber, invoiceNumbers });
+            blocked.push({
+              batchId: batch.batch_id,
+              batchNumber: batch.batchNumber,
+              invoiceNumbers,
+              // NEW machine-readable marker (2026-07-15): the row is the LAST remaining row of a
+              // sold batch_number. Missing flag (old response shape) → old-wording fallback.
+              lastRemaining: data.last_remaining === true,
+            });
           } else {
             otherDeleteError = err;
           }
@@ -720,12 +733,20 @@ const InventoryAdjustment: React.FC = () => {
       if (blocked.length > 0) {
         setBlockedMessage(
           <Box sx={{ textAlign: 'left' }}>
-            {blocked.map((b) => (
-              <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
-                Batch <strong>{String(b.batchNumber)}</strong> cannot be deleted because product
-                from it was sold on invoice(s): <strong>{b.invoiceNumbers.join(', ')}</strong>.
-              </Typography>
-            ))}
+            {blocked.map((b) =>
+              b.lastRemaining ? (
+                <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
+                  {ADJ_LABELS.batchWord} <strong>{String(b.batchNumber)}</strong>{' '}
+                  {ADJ_LABELS.lastRemainingSoldOn} <strong>{b.invoiceNumbers.join(', ')}</strong>
+                  {ADJ_LABELS.lastRemainingRule}
+                </Typography>
+              ) : (
+                <Typography key={b.batchId} variant="body2" sx={{ mb: 1 }}>
+                  {ADJ_LABELS.batchWord} <strong>{String(b.batchNumber)}</strong>{' '}
+                  {ADJ_LABELS.soldFallback} <strong>{b.invoiceNumbers.join(', ')}</strong>.
+                </Typography>
+              )
+            )}
           </Box>
         );
       } else if (otherDeleteError) {
@@ -781,6 +802,25 @@ const InventoryAdjustment: React.FC = () => {
     }
 
     const hasDeletions = batchRows.some((batch) => batch.markedForDeletion);
+
+    // Pre-submit guard: if EVERY row of a duplicate batch-number group is marked for deletion,
+    // block before submitting. Deletes run sequentially, so the earlier duplicates would succeed
+    // and the LAST one would 409 (server keeps at least one row of a sold batch_number). The
+    // client can't know invoice association, so this is scoped to duplicate groups only —
+    // single-row deletions still rely on the server 409.
+    if (hasDeletions) {
+      const groups = new Map<string, BatchRow[]>();
+      batchRows.forEach((batch) => {
+        const key = String(batch.batchNumber);
+        groups.set(key, [...(groups.get(key) || []), batch]);
+      });
+      for (const [batchNumber, group] of groups) {
+        if (group.length > 1 && group.every((b) => b.markedForDeletion)) {
+          showSnackbar(ADJ_LABELS.allDuplicatesMarkedForDeletion(batchNumber), 'error');
+          return;
+        }
+      }
+    }
 
     const modifiedBatches = batchRows.filter((batch) => {
       if (batch.markedForDeletion) return false;
@@ -1481,7 +1521,7 @@ const InventoryAdjustment: React.FC = () => {
 
       <ConfirmationDialog
         open={blockedMessage !== null}
-        title="Batch cannot be deleted"
+        title={ADJ_LABELS.blockedModalTitle}
         message={blockedMessage}
         onClose={() => setBlockedMessage(null)}
         onConfirm={() => setBlockedMessage(null)}
