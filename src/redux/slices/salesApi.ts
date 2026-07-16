@@ -243,6 +243,7 @@ export interface SubmitSaleRequest {
   customer_mobile?: string; // Send mobile if ID not available
   customer_city?: string; // Send city if ID not available
   customer_phone?: string; // Snapshotted onto the invoice (with customer_id)
+  customer_details?: string; // Free-text "Details" (≤150 chars trimmed; blank stored as NULL)
   doctor_id?: number; // ID of the doctor
   doctor_name?: string; // Name of the doctor
   doctor_mobile?: string; // Mobile of the doctor
@@ -311,6 +312,7 @@ export interface EditSaleRequest {
   customer_mobile?: string;
   customer_city?: string;
   customer_phone?: string; // Snapshotted onto the invoice (with customer_id)
+  customer_details?: string; // Free-text "Details"; re-saved on every edit (≤150 chars trimmed; blank → NULL)
   doctor_id?: number;
   doctor_name?: string;
   doctor_mobile?: string;
@@ -326,6 +328,21 @@ export interface EditSaleResponse {
   invoice_id: number;
   invoice_number: string;
   total_amount: number;
+}
+
+// GET sales/get-invoices row (raw SQL row — legacy loose shape; only explicitly
+// contracted fields are typed). customer_details is always present on read
+// (null when never set / blank).
+export interface Invoice {
+  customer_details: string | null;
+  [key: string]: any;
+}
+
+// POST sales/get-invoice-details/ response (legacy loose shape). The invoice
+// object carries the stored free-text detail as customer_details: string | null.
+export interface InvoiceDetailsResponse {
+  invoice: { customer_details: string | null; [key: string]: any };
+  [key: string]: any;
 }
 
 
@@ -371,7 +388,7 @@ export const salesApi = createApi({
     }),
 
     // Get invoices
-    getInvoices: builder.query<any[], void>({
+    getInvoices: builder.query<Invoice[], void>({
       query: () => "sales/get-invoices",
       providesTags: ["Sales"],
     }),
@@ -588,7 +605,7 @@ export const salesApi = createApi({
 
     // Get invoice details for editing invoices
     // Backend accepts either invoice_id (database id) or invoice_number (string like "INV-1234")
-    getInvoiceDetails: builder.mutation<any, { invoice_id?: number; invoice_number?: string }>({
+    getInvoiceDetails: builder.mutation<InvoiceDetailsResponse, { invoice_id?: number; invoice_number?: string }>({
       query: (body) => ({
         url: "sales/get-invoice-details/",
         method: "POST",

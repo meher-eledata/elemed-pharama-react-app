@@ -31,6 +31,7 @@ export interface SalesFormData {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  customerDetails?: string;
   patientType: string;
   doctorName: string;
   doctorMobile: string;

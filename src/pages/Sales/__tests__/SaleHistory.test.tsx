@@ -411,6 +411,34 @@ describe('SaleHistory', () => {
     }));
   };
 
+  it('renders the Customer Details column with the invoice value', async () => {
+    useInvoices([
+      { ...mockInvoices[0], customer_details: 'Ward 4 follow-up' },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Customer Details')).toBeInTheDocument();
+    expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
+  });
+
+  it('renders a dash in Customer Details when the invoice has none', async () => {
+    useInvoices([
+      { ...mockInvoices[0], customer_details: null },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const row = screen.getByText(/inv7896/i).closest('tr')!;
+    expect(row).toHaveTextContent('-');
+  });
+
   it('enables the Edit icon for an invoice with no return', async () => {
     useInvoices([
       { ...mockInvoices[0], return_status: 'No Return', has_return: false },

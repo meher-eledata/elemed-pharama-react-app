@@ -20,6 +20,7 @@ describe('CustomerDetailsSection', () => {
     customerName: '',
     customerMobile: '',
     customerCity: '',
+    customerDetails: '',
     patientType: 'Out Patient',
     selectedCustomer: null,
     customerOptions: [
@@ -33,6 +34,7 @@ describe('CustomerDetailsSection', () => {
     onCustomerOptionSelect: jest.fn(),
     onCustomerMobileChange: jest.fn(),
     onCustomerCityChange: jest.fn(),
+    onCustomerDetailsChange: jest.fn(),
     onPatientTypeChange: jest.fn(),
     onAddNewCustomer: jest.fn(),
   };
@@ -57,7 +59,32 @@ describe('CustomerDetailsSection', () => {
     expect(screen.getByLabelText(/customer name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/mobile number/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/city/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Details')).toBeInTheDocument();
     expect(screen.getByText(/add new customer/i)).toBeInTheDocument();
+  });
+
+  it('renders the Details field capped at 150 characters', () => {
+    renderComponent();
+
+    const detailsInput = screen.getByLabelText('Details');
+    expect(detailsInput).toBeInTheDocument();
+    expect(detailsInput).toHaveAttribute('maxlength', '150');
+  });
+
+  it('displays customer details when provided', () => {
+    renderComponent({ customerDetails: 'Regular customer' });
+
+    const detailsInput = screen.getByLabelText('Details');
+    expect(detailsInput).toHaveValue('Regular customer');
+  });
+
+  it('calls onCustomerDetailsChange when the Details input changes', () => {
+    renderComponent();
+
+    const detailsInput = screen.getByLabelText('Details');
+    fireEvent.change(detailsInput, { target: { value: 'Needs follow-up' } });
+
+    expect(mockProps.onCustomerDetailsChange).toHaveBeenCalledWith('Needs follow-up');
   });
 
   it('displays customer name when provided', () => {

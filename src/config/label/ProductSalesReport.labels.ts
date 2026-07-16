@@ -40,6 +40,7 @@ export const PRODUCT_SALES_REPORT_LABELS = {
     BATCH_NUMBER: 'Batch #',
     PATIENT_TYPE: 'Patient Type',
     CUSTOMER: 'Customer',
+    CUSTOMER_DETAILS: 'Customer Details',
     QTY: 'Qty',
     MRP: 'Unit MRP',
     SP: 'SP',
