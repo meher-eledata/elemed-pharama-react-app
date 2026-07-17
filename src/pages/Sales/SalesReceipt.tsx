@@ -143,6 +143,7 @@ const SalesReceipt: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [customerCity, setCustomerCity] = useState('');
+  const [customerDetails, setCustomerDetails] = useState('');
   const [patientType, setPatientType] = useState<string>('Out Patient'); // Default to 'Out Patient'
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [availablePhones, setAvailablePhones] = useState<string[]>([]);
@@ -194,6 +195,7 @@ const SalesReceipt: React.FC = () => {
     customerName: string;
     customerMobile: string;
     customerCity: string;
+    customerDetails: string;
     doctorName: string;
     doctorMobile: string;
     doctorEmail: string;
@@ -444,6 +446,8 @@ const SalesReceipt: React.FC = () => {
                 customerName: result.customer_name || result.invoice?.customer_name || editModeData.customerName || '',
                 customerMobile: result.customer_phone || result.invoice?.customer_phone || result.customer_mobile || result.invoice?.customer_mobile || editModeData.customerMobile || '',
                 customerCity: result.customer_city || result.invoice?.customer_city || editModeData.customerCity || '',
+                // Per the API contract the free-text detail lives on invoice.customer_details (string | null)
+                customerDetails: result.invoice?.customer_details || '',
                 doctorName: result.doctor_name || result.invoice?.doctor_name || editModeData.doctorName || '',
                 doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || editModeData.doctorMobile || '',
                 doctorEmail: result.doctor_email || result.invoice?.doctor_email || editModeData.doctorEmail || '',
@@ -566,6 +570,7 @@ const SalesReceipt: React.FC = () => {
               if (finalCustomerName) setCustomerName(finalCustomerName);
               if (invoiceData.customerMobile) setCustomerMobile(invoiceData.customerMobile);
               if (invoiceData.customerCity) setCustomerCity(invoiceData.customerCity);
+              setCustomerDetails(invoiceData.customerDetails ?? '');
               if (finalDoctorName) {
                 setDoctorName(finalDoctorName);
                 setSelectedDoctor(finalDoctorName);
@@ -629,6 +634,7 @@ const SalesReceipt: React.FC = () => {
                 customerName: invoiceData.customerName || '',
                 customerMobile: invoiceData.customerMobile || '',
                 customerCity: invoiceData.customerCity || '',
+                customerDetails: invoiceData.customerDetails || '',
                 doctorName: invoiceData.doctorName || '',
                 doctorMobile: invoiceData.doctorMobile || '',
                 doctorEmail: invoiceData.doctorEmail || '',
@@ -803,6 +809,7 @@ const SalesReceipt: React.FC = () => {
     customerName,
     customerMobile,
     customerCity,
+    customerDetails,
     patientType,
     doctorName,
     doctorMobile,
@@ -817,6 +824,7 @@ const SalesReceipt: React.FC = () => {
       setCustomerName(formData.customerName);
       setCustomerMobile(formData.customerMobile);
       setCustomerCity(formData.customerCity);
+      setCustomerDetails(formData.customerDetails || '');
       setPatientType(formData.patientType || 'Out Patient');
       setDoctorName(formData.doctorName);
       setDoctorMobile(formData.doctorMobile);
@@ -1228,6 +1236,7 @@ const SalesReceipt: React.FC = () => {
     setCustomerName('');
     setCustomerMobile('');
     setCustomerCity('');
+    setCustomerDetails('');
     setPatientType('Out Patient');
     setSelectedCustomer(null);
     setDoctorName('');
@@ -1285,6 +1294,7 @@ const SalesReceipt: React.FC = () => {
       safeTrim(customerName) !== safeTrim(originalInvoiceData.customerName) ||
       safeTrim(customerMobile) !== safeTrim(originalInvoiceData.customerMobile) ||
       safeTrim(customerCity) !== safeTrim(originalInvoiceData.customerCity) ||
+      safeTrim(customerDetails) !== safeTrim(originalInvoiceData.customerDetails) ||
       safeTrim(doctorName) !== safeTrim(originalInvoiceData.doctorName) ||
       safeTrim(doctorMobile) !== safeTrim(originalInvoiceData.doctorMobile) ||
       safeTrim(doctorEmail) !== safeTrim(originalInvoiceData.doctorEmail) ||
@@ -1347,6 +1357,7 @@ const SalesReceipt: React.FC = () => {
     customerName,
     customerMobile,
     customerCity,
+    customerDetails,
     doctorName,
     doctorMobile,
     doctorEmail,
@@ -1447,6 +1458,7 @@ const SalesReceipt: React.FC = () => {
       customerName,
       customerMobile,
       customerCity,
+      customerDetails,
       patientType,
       doctorName,
       doctorId,
@@ -1483,7 +1495,7 @@ const SalesReceipt: React.FC = () => {
       splitPayments: effectiveSplitPayments,
       upsertInvoicePayments,
     });
-  }, [customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones]);
+  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {
@@ -1559,6 +1571,7 @@ const SalesReceipt: React.FC = () => {
             customerName={customerName}
             customerMobile={customerMobile}
             customerCity={customerCity}
+            customerDetails={customerDetails}
             patientType={patientType}
             selectedCustomer={selectedCustomer}
             customerOptions={customerOptions}
@@ -1568,6 +1581,7 @@ const SalesReceipt: React.FC = () => {
             onCustomerOptionSelect={isReturnDetailsMode ? () => { } : handleCustomerOptionSelect}
             onCustomerMobileChange={isReturnDetailsMode ? () => { } : setCustomerMobile}
             onCustomerCityChange={isReturnDetailsMode ? () => { } : setCustomerCity}
+            onCustomerDetailsChange={isReturnDetailsMode ? () => { } : setCustomerDetails}
             onPatientTypeChange={isReturnDetailsMode ? () => { } : setPatientType}
             onAddNewCustomer={isReturnDetailsMode ? () => { } : handleOpenCustomerModal}
           />

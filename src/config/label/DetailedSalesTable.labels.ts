@@ -6,6 +6,7 @@ export const DETAILED_SALES_TABLE_LABELS = {
     TRANSACTION_TYPE: 'Transaction type',
     INVOICE_NUMBER: 'Invoice #',
     CUSTOMER_NAME: 'Customer name',
+    CUSTOMER_DETAILS: 'Customer Details',
     PAYMENT_TYPE: 'Payment type',
     SALE_AMOUNT: 'Amount (₹)',
     DISCOUNT: 'Discount (₹)',

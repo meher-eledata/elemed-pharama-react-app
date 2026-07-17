@@ -13,6 +13,7 @@ export const SALES_HISTORY_LABELS = {
     INVOICE_DATE: 'Invoice date',
     CUSTOMER_NAME: 'Customer name',
     MOBILE_NUMBER: 'Mobile number',
+    CUSTOMER_DETAILS: 'Customer Details',
     DOCTOR: 'Doctor',
     USERNAME: 'Username',
     TOTAL_AMOUNT: 'Total amount (₹)',

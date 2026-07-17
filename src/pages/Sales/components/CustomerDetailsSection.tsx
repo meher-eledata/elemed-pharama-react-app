@@ -29,6 +29,7 @@ interface CustomerDetailsSectionProps {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  customerDetails: string;
   patientType: string;
   selectedCustomer: Customer | null;
   customerOptions: CustomerOption[]; // { id, name, phone } from /sales/get-customer-options
@@ -38,6 +39,7 @@ interface CustomerDetailsSectionProps {
   onCustomerOptionSelect: (option: CustomerOption) => void;
   onCustomerMobileChange: (value: string) => void;
   onCustomerCityChange: (value: string) => void;
+  onCustomerDetailsChange: (value: string) => void;
   onPatientTypeChange: (value: string) => void;
   onAddNewCustomer: () => void;
 }
@@ -46,6 +48,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   customerName,
   customerMobile,
   customerCity,
+  customerDetails,
   patientType,
   selectedCustomer,
   customerOptions,
@@ -55,6 +58,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   onCustomerOptionSelect,
   onCustomerMobileChange,
   onCustomerCityChange,
+  onCustomerDetailsChange,
   onPatientTypeChange,
   onAddNewCustomer,
 }) => {
@@ -168,6 +172,7 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
               onCustomerSelect(null);
               onCustomerMobileChange('');
               onCustomerCityChange('');
+              onCustomerDetailsChange('');
             }
           }}
           onInputChange={(_, newInputValue, reason) => {
@@ -608,6 +613,58 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
               }}
             />
           )}
+        />
+      </SectionRow>
+
+      <SectionRow>
+        <TextField
+          label={SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_FIELD_LABEL}
+          variant="outlined"
+          placeholder={SALES_RECEIPT_LABELS.CUSTOMER_DETAILS_FIELD_PLACEHOLDER}
+          value={customerDetails}
+          onChange={(e) => onCustomerDetailsChange(e.target.value)}
+          inputProps={{ maxLength: 150 }}
+          sx={{
+            width: '350px',
+            '& .MuiOutlinedInput-root': {
+              height: '48px',
+              borderRadius: '8px',
+              backgroundColor: '#FFFFFF',
+              '& fieldset': {
+                borderColor: '#9AA8BC',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9AA8BC',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#5C17E5',
+              },
+            },
+            '& .MuiOutlinedInput-input': {
+              padding: '12px 16px',
+              fontFamily: "'Lexend', sans-serif",
+              fontSize: '16px',
+              color: '#1A212B',
+              '&::placeholder': {
+                color: '#728197',
+                fontSize: '16px',
+                fontFamily: "'Lexend', sans-serif",
+                opacity: 1,
+              },
+            },
+            '& .MuiInputLabel-root': {
+              fontFamily: "'Lexend', sans-serif",
+              fontSize: '16px',
+              color: '#1A212B',
+              transform: 'translate(14px, 12px) scale(1)',
+              '&.Mui-focused': {
+                color: '#5C17E5',
+              },
+              '&.MuiInputLabel-shrink': {
+                transform: 'translate(14px, -9px) scale(0.75)',
+              },
+            },
+          }}
         />
       </SectionRow>
     </CustomerDetailsColumn>

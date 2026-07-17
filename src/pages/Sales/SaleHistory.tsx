@@ -109,6 +109,7 @@ export interface SalesHistoryItem {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  customerDetails: string;
   doctorName: string;
   doctorMobile: string;
   doctorEmail: string;
@@ -233,6 +234,7 @@ export default function SaleHistory() {
       customerName: item.customerName || '',
       customerMobile: item.customerMobile || '',
       customerCity: item.customerCity || '',
+      customerDetails: item.customerDetails || '',
       doctorName: item.doctorName || '',
       doctorMobile: item.doctorMobile || '',
       doctorEmail: item.doctorEmail || '',
@@ -322,6 +324,7 @@ export default function SaleHistory() {
         customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
         customerMobile: invoice.customer_phone || invoice.customer_mobile || 'N/A',
         customerCity: invoice.customer_city || 'N/A',
+        customerDetails: invoice.customer_details || '',
         doctorName: invoice.doctor_name || (invoice.doctor_id ? `Doctor ${invoice.doctor_id}` : 'N/A'),
         doctorMobile: invoice.doctor_mobile || 'N/A',
         doctorEmail: invoice.doctor_email || 'N/A',
@@ -364,6 +367,7 @@ export default function SaleHistory() {
             customerName: isFallbackValue(item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
             customerMobile: (item.customerMobile === 'N/A' || !item.customerMobile) ? (savedItem.customerMobile || item.customerMobile) : item.customerMobile,
             customerCity: (item.customerCity === 'N/A' || !item.customerCity) ? (savedItem.customerCity || item.customerCity) : item.customerCity,
+            customerDetails: item.customerDetails || savedItem.customerDetails || '',
             doctorName: isFallbackValue(item.doctorName) ? (savedItem.doctorName || item.doctorName) : item.doctorName,
             doctorMobile: (item.doctorMobile === 'N/A' || !item.doctorMobile) ? (savedItem.doctorMobile || item.doctorMobile) : item.doctorMobile,
             doctorEmail: (item.doctorEmail === 'N/A' || !item.doctorEmail) ? (savedItem.doctorEmail || item.doctorEmail) : item.doctorEmail,
@@ -994,6 +998,12 @@ export default function SaleHistory() {
       key: 'customerMobile',
       header: SALES_HISTORY_LABELS.TABLE.MOBILE_NUMBER,
       sortable: true,
+    },
+    {
+      key: 'customerDetails',
+      header: SALES_HISTORY_LABELS.TABLE.CUSTOMER_DETAILS,
+      sortable: true,
+      render: (item) => item.customerDetails || '-',
     },
     {
       key: 'doctorName',

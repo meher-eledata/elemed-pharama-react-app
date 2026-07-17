@@ -15,6 +15,8 @@ export const SALES_RECEIPT_LABELS = {
   MOBILE_NUMBER_PLACEHOLDER: "mobile number",
   CITY_LABEL: "City",
   CITY_PLACEHOLDER: "City",
+  CUSTOMER_DETAILS_FIELD_LABEL: "Details",
+  CUSTOMER_DETAILS_FIELD_PLACEHOLDER: "Details",
   ADD_NEW_CUSTOMER_BUTTON: "Add new customer",
 
   // Doctor Details

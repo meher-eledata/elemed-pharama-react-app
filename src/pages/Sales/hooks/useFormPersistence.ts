@@ -9,6 +9,7 @@ interface FormData {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  customerDetails?: string;
   patientType: string;
   doctorName: string;
   doctorMobile: string;
@@ -24,6 +25,7 @@ interface UseFormPersistenceParams {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  customerDetails: string;
   patientType: string;
   doctorName: string;
   doctorMobile: string;
@@ -42,6 +44,7 @@ export const useFormPersistence = ({
   customerName,
   customerMobile,
   customerCity,
+  customerDetails,
   patientType,
   doctorName,
   doctorMobile,
@@ -112,6 +115,7 @@ export const useFormPersistence = ({
         customerName,
         customerMobile,
         customerCity,
+        customerDetails,
         patientType,
         doctorName,
         doctorMobile,
@@ -125,7 +129,7 @@ export const useFormPersistence = ({
 
       dispatch(saveFormData(formDataToSave));
     }
-  }, [isDataLoaded, isEditMode, customerName, customerMobile, customerCity, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, debouncedInsuranceCompany, invoiceNumber, invoiceDate, selectedCustomerId, dispatch]);
+  }, [isDataLoaded, isEditMode, customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, debouncedInsuranceCompany, invoiceNumber, invoiceDate, selectedCustomerId, dispatch]);
 
   return { isDataLoaded };
 };
