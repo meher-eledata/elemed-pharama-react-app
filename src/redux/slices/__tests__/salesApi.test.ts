@@ -238,6 +238,19 @@ describe('Sales API Endpoints', () => {
       );
     });
 
+    it('forwards customer_details (re-saved on every edit) when provided', async () => {
+      mockOk({ message: 'ok', invoice_id: 1, invoice_number: 'INV-1', total_amount: 100 });
+      const store = makeStore();
+      const bodyWithDetails = { ...body, customer_details: 'Ward 4 follow-up' };
+      await store.dispatch(salesApi.endpoints.editSale.initiate(bodyWithDetails));
+
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'sales/edit-sale', method: 'POST', body: bodyWithDetails },
+        expectExtraArgs,
+        undefined
+      );
+    });
+
     it('handles error', async () => {
       mockErr(422);
       const store = makeStore();
@@ -457,6 +470,19 @@ describe('Sales API Endpoints', () => {
 
       expect(mockBaseQuery).toHaveBeenCalledWith(
         { url: 'sales/submit-sale', method: 'POST', body: bodyWithPhone },
+        expectExtraArgs,
+        undefined
+      );
+    });
+
+    it('forwards customer_details (persisted onto the invoice) when provided', async () => {
+      mockOk({ message: 'ok', invoice_number: 1, lines: [] });
+      const store = makeStore();
+      const bodyWithDetails = { ...body, customer_id: 2, customer_details: 'Ward 4 follow-up' };
+      await store.dispatch(salesApi.endpoints.submitSale.initiate(bodyWithDetails));
+
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'sales/submit-sale', method: 'POST', body: bodyWithDetails },
         expectExtraArgs,
         undefined
       );

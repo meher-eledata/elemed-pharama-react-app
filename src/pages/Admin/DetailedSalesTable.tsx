@@ -21,6 +21,7 @@ interface SalesData {
   transactionType: string;
   invoiceNumber: string;
   customerName: string;
+  customerDetails: string;
   doctorName: string;
   paymentType: string;
   saleAmount: number;
@@ -74,6 +75,7 @@ const DetailedSalesTable: React.FC = () => {
         transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
         invoiceNumber: item.invoice_number,
         customerName: resolvedCustomerName,
+        customerDetails: (item.customer_details && String(item.customer_details).trim()) ? item.customer_details : '',
         doctorName: (item.doctor_name && String(item.doctor_name).trim()) ? item.doctor_name : 'N/A',
         paymentType: (() => {
           const raw = (item.payment_type || '').trim().toUpperCase();
@@ -261,6 +263,20 @@ const DetailedSalesTable: React.FC = () => {
       ),
     },
     {
+      key: 'customerDetails',
+      header: DETAILED_SALES_TABLE_LABELS.TABLE.CUSTOMER_DETAILS,
+      sortable: true,
+      render: (item) => (
+        <Typography sx={{
+          fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+          fontSize: '14px',
+          color: '#1A212B',
+        }}>
+          {item.customerDetails || '-'}
+        </Typography>
+      ),
+    },
+    {
       key: 'doctorName',
       header: "Doctor Name",
       sortable: true,
@@ -416,6 +432,7 @@ const DetailedSalesTable: React.FC = () => {
       'Transaction Type': item.transactionType,
       'Invoice Number': item.invoiceNumber,
       'Customer Name': item.customerName,
+      'Customer Details': item.customerDetails,
       'Doctor Name': item.doctorName,
       'Payment Type': item.paymentType,
       'Sale Amount (₹)': item.saleAmount.toFixed(2),

@@ -1,7 +1,7 @@
 global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -66,6 +66,7 @@ const FIXTURE: reportsApi.SalesTaxReportResponse = {
       igst_amount: '0.00',
       total_tax: '101.70',
       line_total: '1234.50',
+      customer_details: 'Ward 4 follow-up',
     },
   ],
   summary: {
@@ -83,6 +84,30 @@ const FIXTURE: reportsApi.SalesTaxReportResponse = {
     invoice_count: 1,
     hsn_count: 1,
   },
+};
+
+// HSN rows are grouped by (hsn_code, cgst_rate, sgst_rate, igst_rate); rates are numeric-strings.
+const HSN_FIXTURE: reportsApi.SalesTaxReportResponse = {
+  level: 'hsn',
+  rows: [
+    {
+      hsn_code: '3004',
+      cgst_rate: '6.00',
+      sgst_rate: '6.00',
+      igst_rate: '0.00',
+      line_count: 1,
+      product_count: 1,
+      quantity: '10.00',
+      taxable_value: '847.46',
+      discount_amount: '15.00',
+      cgst_amount: '50.85',
+      sgst_amount: '50.85',
+      igst_amount: '0.00',
+      total_tax: '101.70',
+      line_total: '1234.50',
+    },
+  ],
+  summary: FIXTURE.summary,
 };
 
 const createStore = () =>
@@ -110,12 +135,14 @@ const renderPage = () =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockedMaster.useGetProductsQuery.mockReturnValue({ data: [], isLoading: false, error: undefined });
-  mockedReports.useGetSalesTaxReportQuery.mockReturnValue({
-    data: FIXTURE,
+  // The page issues two queries: the main one (current level) and a level:"hsn"
+  // lookup for the HSN dropdown — resolve each by the requested level.
+  mockedReports.useGetSalesTaxReportQuery.mockImplementation((args: { level?: string }) => ({
+    data: args?.level === 'hsn' ? HSN_FIXTURE : FIXTURE,
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
-  });
+  }));
 });
 
 describe('SalesTaxReport page', () => {
@@ -129,6 +156,28 @@ describe('SalesTaxReport page', () => {
     expect(screen.getByText('Taxable Value')).toBeInTheDocument();
     expect(screen.getAllByText('Total Tax').length).toBeGreaterThan(0);
     expect(screen.getByText('Amoxicillin 500mg')).toBeInTheDocument();
+  });
+
+  it('shows the Customer Details column on the product-wise tab only', () => {
+    renderPage();
+    // Product-wise (default) tab carries the per-invoice detail.
+    expect(screen.getByText('Customer Details')).toBeInTheDocument();
+    expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
+    // HSN-wise rows are aggregated and must NOT show the column.
+    fireEvent.click(screen.getByText('HSN-code-wise'));
+    expect(screen.queryByText('Customer Details')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ward 4 follow-up')).not.toBeInTheDocument();
+  });
+
+  it('shows CGST/SGST/IGST rate columns and values in the HSN-level table', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('HSN-code-wise'));
+    expect(screen.getByText('CGST%')).toBeInTheDocument();
+    expect(screen.getByText('SGST%')).toBeInTheDocument();
+    expect(screen.getByText('IGST%')).toBeInTheDocument();
+    // cgst_rate/sgst_rate "6.00" -> 6.00% via formatPercent; igst_rate "0.00" -> 0.00%.
+    expect(screen.getAllByText('6.00%').length).toBe(2);
+    expect(screen.getByText('0.00%')).toBeInTheDocument();
   });
 
   it('formats the line total as ₹ and never renders NaN', () => {

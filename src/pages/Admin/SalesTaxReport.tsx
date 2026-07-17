@@ -60,6 +60,9 @@ interface HsnRow extends SalesTaxHsnRow {
   quantityN: number;
   taxableN: number;
   discountN: number;
+  cgstRateN: number;
+  sgstRateN: number;
+  igstRateN: number;
   cgstN: number;
   sgstN: number;
   igstN: number;
@@ -127,9 +130,10 @@ const SalesTaxReport: React.FC = () => {
             .map((r) => r.hsn_code)
             .filter((c): c is string => !!c && c.trim() !== '')
         : [];
+    // Rows are grouped by (hsn_code, rates), so a code can repeat — dedupe for the dropdown.
     return [
       { value: '', label: L.FILTER.HSN_ALL },
-      ...codes.map((c) => ({ value: c, label: c })),
+      ...Array.from(new Set(codes)).map((c) => ({ value: c, label: c })),
     ];
   }, [hsnListData]);
 
@@ -162,6 +166,9 @@ const SalesTaxReport: React.FC = () => {
       quantityN: toNum(r.quantity),
       taxableN: toNum(r.taxable_value),
       discountN: toNum(r.discount_amount),
+      cgstRateN: toNum(r.cgst_rate),
+      sgstRateN: toNum(r.sgst_rate),
+      igstRateN: toNum(r.igst_rate),
       cgstN: toNum(r.cgst_amount),
       sgstN: toNum(r.sgst_amount),
       igstN: toNum(r.igst_amount),
@@ -209,6 +216,7 @@ const SalesTaxReport: React.FC = () => {
     { key: 'product_code', header: L.TABLE.CODE, sortable: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
     { key: 'hsn_code', header: L.TABLE.HSN, sortable: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
     { key: 'batch_number', header: L.TABLE.BATCH_NUMBER, sortable: true, render: (r) => <CellText>{r.batch_number || '-'}</CellText> },
+    { key: 'customer_details', header: L.TABLE.CUSTOMER_DETAILS, sortable: true, render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
     { key: 'qtyN', header: L.TABLE.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
     { key: 'mrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
     { key: 'spN', header: L.TABLE.SP, sortable: true, render: (r) => <CellText>{formatNumber(r.spN)}</CellText> },
@@ -231,6 +239,9 @@ const SalesTaxReport: React.FC = () => {
     { key: 'quantityN', header: L.TABLE_HSN.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.quantityN)}</CellText> },
     { key: 'taxableN', header: L.TABLE_HSN.TAXABLE_VALUE, sortable: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
     { key: 'discountN', header: L.TABLE_HSN.DISCOUNT, sortable: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
+    { key: 'cgstRateN', header: L.TABLE_HSN.CGST_RATE, sortable: true, render: (r) => <CellText>{formatPercent(r.cgstRateN)}</CellText> },
+    { key: 'sgstRateN', header: L.TABLE_HSN.SGST_RATE, sortable: true, render: (r) => <CellText>{formatPercent(r.sgstRateN)}</CellText> },
+    { key: 'igstRateN', header: L.TABLE_HSN.IGST_RATE, sortable: true, render: (r) => <CellText>{formatPercent(r.igstRateN)}</CellText> },
     { key: 'cgstN', header: L.TABLE_HSN.CGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.cgstN)}</CellText> },
     { key: 'sgstN', header: L.TABLE_HSN.SGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.sgstN)}</CellText> },
     { key: 'igstN', header: L.TABLE_HSN.IGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.igstN)}</CellText> },
@@ -304,6 +315,9 @@ const SalesTaxReport: React.FC = () => {
         [L.TABLE_HSN.QTY]: r.quantityN.toFixed(2),
         [`${L.TABLE_HSN.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
         [`${L.TABLE_HSN.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
+        [L.TABLE_HSN.CGST_RATE]: r.cgstRateN.toFixed(2),
+        [L.TABLE_HSN.SGST_RATE]: r.sgstRateN.toFixed(2),
+        [L.TABLE_HSN.IGST_RATE]: r.igstRateN.toFixed(2),
         ['CGST (₹)']: r.cgstN.toFixed(2),
         ['SGST (₹)']: r.sgstN.toFixed(2),
         ['IGST (₹)']: r.igstN.toFixed(2),
@@ -318,6 +332,7 @@ const SalesTaxReport: React.FC = () => {
       [L.TABLE.CODE]: csvString(r.product_code),
       [L.TABLE.HSN]: csvString(r.hsn_code),
       [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
+      [L.TABLE.CUSTOMER_DETAILS]: csvString(r.customer_details),
       [L.TABLE.QTY]: r.qtyN.toFixed(2),
       [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
       [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),

@@ -27,6 +27,8 @@ export interface DailySalesTableItem {
   igst: string;
   total_amount: string;
   patient_type: string;
+  // Invoice-level free-text detail (Sale + Refund rows; null where not applicable)
+  customer_details: string | null;
 }
 
 export interface WeeklyBillCountItem {
@@ -213,6 +215,8 @@ export interface ProductSalesReportRow {
   igst_amount: Num;
   total_tax: Num;
   line_total: Num;
+  // Invoice-level free-text detail repeated on each of that invoice's lines
+  customer_details: string | null;
 }
 
 export interface ProductSalesReportSummary {
@@ -268,10 +272,15 @@ export interface SalesTaxReportRow {
   igst_amount: Num;
   total_tax: Num;
   line_total: Num;
+  // Invoice-level free-text detail (product level ONLY — hsn rows are aggregated)
+  customer_details: string | null;
 }
 
 export interface SalesTaxHsnRow {
   hsn_code: string | null;
+  cgst_rate: Num;
+  sgst_rate: Num;
+  igst_rate: Num;
   line_count: number;
   product_count: number;
   quantity: Num;
