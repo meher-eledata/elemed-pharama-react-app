@@ -44,10 +44,19 @@ jest.mock('react-router-dom', () => ({
 
 // Mock the Redux API hooks
 jest.mock('../../redux/slices/receiveApi');
+// Schedule attribution popup persists via this mutation (RTK-hook gotcha: register
+// every hook the component uses). Lazy reference so jest.mock hoisting is safe.
+const mockUpdateProductFn = jest.fn(() => ({
+  unwrap: () => Promise.resolve({ message: 'updated' }),
+}));
 jest.mock('../../redux/slices/masterApi', () => ({
   ...jest.requireActual('../../redux/slices/masterApi'),
   useAddSupplierMutation: () => [
     jest.fn().mockReturnValue({ unwrap: () => Promise.resolve({}) }),
+    { isLoading: false, isError: false, isSuccess: false, error: null, data: null, reset: jest.fn() },
+  ],
+  useUpdateProductMutation: () => [
+    mockUpdateProductFn,
     { isLoading: false, isError: false, isSuccess: false, error: null, data: null, reset: jest.fn() },
   ],
 }));
@@ -206,6 +215,12 @@ describe('OrderDetails', () => {
       });
     });
     
+    // Cross-slice cache invalidation used by the schedule popup: the auto-mocked api
+    // object must hand dispatch() a plain action.
+    (receiveApi as any).util = {
+      invalidateTags: jest.fn(() => ({ type: 'test/invalidateTags' })),
+    };
+
     mockUseSubmitReceiptMutation.mockReturnValue(createMockMutation());
     mockUseEditReceiptMutation.mockReturnValue(createMockMutation());
     mockUseUploadReceiptFileMutation.mockReturnValue(createMockMutation());
@@ -343,6 +358,113 @@ describe('OrderDetails', () => {
       expect(
         await screen.findByPlaceholderText(orderLabels.searchByProductName)
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('schedule attribution popup (receive flow)', () => {
+    const ok = (body: any) =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+
+    const mockProductsFetch = (products: any[]) => {
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('unique-supplier-names')) return ok([]);
+        if (url.includes('get-products')) return ok(products);
+        return ok({});
+      });
+    };
+
+    const selectProduct = async (name: string) => {
+      const input = await screen.findByPlaceholderText(orderLabels.searchByProductName);
+      input.focus();
+      fireEvent.change(input, { target: { value: name } });
+      // Option accessible name includes the stock count (e.g. "Product N 3").
+      const option = await screen.findByRole('option', { name: new RegExp(name, 'i') });
+      fireEvent.click(option);
+    };
+
+    it('fires for a NULL-schedule product, persists + invalidates, then adds the line', async () => {
+      mockProductsFetch([{ name: 'Product N', product_id: 5, currentQuantity: 3, schedule: null }]);
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+      await selectProduct('Product N');
+
+      expect(await screen.findByText('Assign Drug Schedule')).toBeInTheDocument();
+      // The line is NOT added while the popup awaits a choice.
+      expect(screen.getByTestId('table-data-count')).toHaveTextContent('0');
+
+      fireEvent.mouseDown(screen.getByLabelText('Schedule'));
+      const listbox = await screen.findByRole('listbox');
+      fireEvent.click(within(listbox).getByText('H1'));
+      fireEvent.click(screen.getByText('Save & Add'));
+
+      await waitFor(() =>
+        expect(mockUpdateProductFn).toHaveBeenCalledWith({ product_id: 5, schedule: 'H1' })
+      );
+      await waitFor(() =>
+        expect((receiveApi as any).util.invalidateTags).toHaveBeenCalledWith(['Receive'])
+      );
+      await waitFor(() => expect(screen.getByTestId('table-data-count')).toHaveTextContent('1'));
+    });
+
+    it("does NOT fire for 'NONE' or an already-valued schedule", async () => {
+      mockProductsFetch([
+        { name: 'Product Z', product_id: 7, currentQuantity: 3, schedule: 'NONE' },
+        { name: 'Product X', product_id: 6, currentQuantity: 3, schedule: 'H' },
+      ]);
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+
+      await selectProduct('Product Z');
+      await waitFor(() => expect(screen.getByTestId('table-data-count')).toHaveTextContent('1'));
+      expect(screen.queryByText('Assign Drug Schedule')).not.toBeInTheDocument();
+
+      await selectProduct('Product X');
+      await waitFor(() => expect(screen.getByTestId('table-data-count')).toHaveTextContent('2'));
+      expect(screen.queryByText('Assign Drug Schedule')).not.toBeInTheDocument();
+      expect(mockUpdateProductFn).not.toHaveBeenCalled();
+    });
+
+    it('cancel ("Skip for now") adds the line unblocked without persisting', async () => {
+      mockProductsFetch([{ name: 'Product N', product_id: 5, currentQuantity: 3, schedule: null }]);
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+      await selectProduct('Product N');
+
+      expect(await screen.findByText('Assign Drug Schedule')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Skip for now'));
+
+      await waitFor(() => expect(screen.getByTestId('table-data-count')).toHaveTextContent('1'));
+      expect(mockUpdateProductFn).not.toHaveBeenCalled();
+    });
+
+    it('does not re-prompt a product just created via NewProductModal with a chosen schedule', async () => {
+      // First get-products load: product absent. After the NewProductModal
+      // onProductAdded refetch, it arrives WITH its chosen schedule — selecting it
+      // must add straight to the table (no popup).
+      let productCalls = 0;
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('unique-supplier-names')) return ok([]);
+        if (url.includes('get-products')) {
+          productCalls += 1;
+          return ok(
+            productCalls === 1
+              ? []
+              : [{ name: 'Fresh Product', product_id: 9, currentQuantity: 0, schedule: 'X' }]
+          );
+        }
+        return ok({});
+      });
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+
+      // Open the (mocked) NewProductModal via the "Add Products" option and finish creating.
+      const input = await screen.findByPlaceholderText(orderLabels.searchByProductName);
+      input.focus();
+      fireEvent.change(input, { target: { value: 'zzz' } });
+      const addOption = await screen.findByRole('option', { name: /Add Products/i });
+      fireEvent.click(addOption);
+      fireEvent.click(await screen.findByText('Add Product')); // mocked modal -> onProductAdded (refetch)
+
+      await selectProduct('Fresh Product');
+      await waitFor(() => expect(screen.getByTestId('table-data-count')).toHaveTextContent('1'));
+      expect(screen.queryByText('Assign Drug Schedule')).not.toBeInTheDocument();
+      expect(mockUpdateProductFn).not.toHaveBeenCalled();
     });
   });
 

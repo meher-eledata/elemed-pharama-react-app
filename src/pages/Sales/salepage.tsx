@@ -19,7 +19,7 @@ import {
 import { useGetDoctorNamesQuery } from "../../redux/slices/salesApi";
 import { useGetProductsQuery, receiveApi } from "../../redux/slices/receiveApi";
 import { useUpdateProductMutation } from "../../redux/slices/masterApi";
-import ScheduleAttributionModal from "./components/ScheduleAttributionModal";
+import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
 import {
   addToCart,
   removeFromCart,
