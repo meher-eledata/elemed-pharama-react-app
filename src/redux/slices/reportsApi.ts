@@ -312,6 +312,8 @@ export interface SalesTaxInvoiceRow {
   total_tax: Num;
   line_total: Num;
   invoice_total: Num;
+  // SIGNED 2dp string (e.g. "0.10" / "-0.40"): invoice_total − exact stored total
+  round_off: Num;
 }
 
 export interface SalesTaxReportSummary {
@@ -324,6 +326,9 @@ export interface SalesTaxReportSummary {
   total_igst: Num;
   total_tax: Num;
   total_sales: Num;
+  // SIGNED 2dp string, ALL levels: SUM over distinct invoices of (rounded − exact
+  // invoice total); positive = collected more than exact. exact sum + round_off = total_sales.
+  round_off: Num;
   total_mrp_value: Num;
   product_count: number;
   invoice_count: number;

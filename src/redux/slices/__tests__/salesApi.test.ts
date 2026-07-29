@@ -444,6 +444,8 @@ describe('Sales API Endpoints', () => {
       payment_method: 'Cash',
       payment_amount: 100,
       created_by: 'me',
+      // REQUIRED (2026-07-29): backend 400s without it, 409s on a duplicate.
+      invoice_number: 'INV-1',
       lines: [{ product_id: 1, quantity: 1, mrp: 10, sp: 9, discount: 0 }],
     };
 

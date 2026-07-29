@@ -248,7 +248,9 @@ export interface SubmitSaleRequest {
   doctor_name?: string; // Name of the doctor
   doctor_mobile?: string; // Mobile of the doctor
   doctor_email?: string; // Email of the doctor
-  invoice_number?: string | null; // Invoice number entered by user (for return flow - invoice already stored in DB)
+  // REQUIRED (2026-07-29): backend 400s when missing/blank and 409s on a duplicate
+  // ("invoice_number <n> already exists"). Always generated client-side (cartStorage).
+  invoice_number: string;
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   patient_type?: number; // 1 for "In Patient", 0 for "Out Patient"
   lines: SubmitSaleLine[];
