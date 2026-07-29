@@ -1,5 +1,6 @@
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
+import { formatSchedule } from '../../config/constants/product.constants';
 
 /**
  * Transform cart items from Sales Page to SalesReceiptItem format
@@ -41,6 +42,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       igstPercent: item.igstPercent || '0',
       pack_qty: item.pack_qty,
       amount: amount,
+      schedule: item.schedule ?? null,
     };
   });
 };
@@ -421,6 +423,7 @@ export const generatePrintHTML = (data: {
                 <th>Product Name</th>
                 <th>MFG</th>
                 <th>HSN</th>
+                <th>Sch</th>
                 <th>Batch</th>
                 <th>Pack</th>
                 <th>Exp</th>
@@ -434,6 +437,7 @@ export const generatePrintHTML = (data: {
               ${salesItems.length > 1 ? salesItems.slice(0, -1).map((item, index) => {
                 const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
                 const hsn = (item as any).hsn || '';
+                const schedule = formatSchedule(item.schedule);
                 const pack = (item as any).pack || 'N/A';
                 const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
                 let formattedExp = 'N/A';
@@ -451,6 +455,7 @@ export const generatePrintHTML = (data: {
                     <td>${item.productName}</td>
                     <td>${mfg}</td>
                     <td>${hsn}</td>
+                    <td>${schedule}</td>
                     <td>${item.batch}</td>
                     <td>${pack}</td>
                     <td>${formattedExp}</td>
@@ -468,6 +473,7 @@ export const generatePrintHTML = (data: {
                 const index = salesItems.length - 1;
                 const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
                 const hsn = (item as any).hsn || '';
+                const schedule = formatSchedule(item.schedule);
                 const pack = (item as any).pack || 'N/A';
                 const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
                 let formattedExp = 'N/A';
@@ -485,6 +491,7 @@ export const generatePrintHTML = (data: {
                     <td>${item.productName}</td>
                     <td>${mfg}</td>
                     <td>${hsn}</td>
+                    <td>${schedule}</td>
                     <td>${item.batch}</td>
                     <td>${pack}</td>
                     <td>${formattedExp}</td>
@@ -496,7 +503,7 @@ export const generatePrintHTML = (data: {
                 `;
               })() : ''}
               <tr>
-                <td colspan="11" class="summary-td">
+                <td colspan="12" class="summary-td">
                   <div class="summary">
                     <div class="summary-left">
                       <div class="summary-item">

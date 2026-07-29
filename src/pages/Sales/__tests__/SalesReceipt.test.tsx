@@ -297,6 +297,11 @@ describe('SalesReceipt', () => {
     expect(screen.getByText(/sale details/i)).toBeInTheDocument();
   });
 
+  it('renders a Schedule column in the items table', () => {
+    renderComponent();
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
+  });
+
   describe('executeSave payloads (customer_details)', () => {
     // Minimal, valid save inputs shared by the submit and edit payload assertions.
     const baseSaveParams = {

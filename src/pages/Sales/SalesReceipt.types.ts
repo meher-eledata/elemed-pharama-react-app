@@ -12,6 +12,8 @@ export interface SalesReceiptItem {
   unitPrice: string;
   mrp?: string;
   hsn?: string;
+  // Drug schedule from the product master (null/'NONE' display blank via formatSchedule)
+  schedule?: string | null;
   pack?: string;
   pack_qty?: number;
   discount: string;

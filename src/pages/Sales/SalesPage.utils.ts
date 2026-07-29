@@ -160,7 +160,8 @@ export const createCartItem = (
   productId?: string | number,
   discountAuthorizedBy?: string,
   batch?: string,
-  discountAuthorizedById?: number
+  discountAuthorizedById?: number,
+  schedule?: string | null
 ): Product => {
   const typesArray = Array.isArray(availableTypes) && availableTypes.length > 0
     ? (typeof availableTypes[0] === 'string' ? availableTypes : availableTypes.map(t => (t as any).type))
@@ -203,6 +204,7 @@ export const createCartItem = (
     sgstPercent: validatedData?.sgst_percent?.toString() || '2.5',
     igstPercent: validatedData?.igst_percent?.toString() || '0',
     pack_qty: validatedData?.pack_qty || 1,
+    schedule: schedule ?? undefined,
   };
 };
 

@@ -397,13 +397,13 @@ describe('Receive API Endpoints', () => {
 
   describe('GET receive/get-products/ (getProducts query)', () => {
     it('calls baseQuery with the string url and transforms object rows', async () => {
-      mockOk([{ name: 'P', product_id: 3, currentQuantity: '12' }]);
+      mockOk([{ name: 'P', product_id: 3, currentQuantity: '12', schedule: 'H1' }]);
       const store = makeStore();
       const result = await store.dispatch(
         receiveApi.endpoints.getProducts.initiate()
       );
 
-      expect(result.data).toEqual([{ name: 'P', id: 3, currentQuantity: 12 }]);
+      expect(result.data).toEqual([{ name: 'P', id: 3, currentQuantity: 12, schedule: 'H1' }]);
       expect(mockBaseQuery).toHaveBeenCalledWith(
         'receive/get-products/',
         expectExtraArgs,
@@ -417,7 +417,16 @@ describe('Receive API Endpoints', () => {
       const result = await store.dispatch(
         receiveApi.endpoints.getProducts.initiate()
       );
-      expect(result.data).toEqual([{ name: 'P2', id: 4, currentQuantity: 7 }]);
+      expect(result.data).toEqual([{ name: 'P2', id: 4, currentQuantity: 7, schedule: null }]);
+    });
+
+    it('carries schedule null through (not yet attributed — popup semantics)', async () => {
+      mockOk([{ name: 'P3', product_id: 6, currentQuantity: '0', schedule: null }]);
+      const store = makeStore();
+      const result = await store.dispatch(
+        receiveApi.endpoints.getProducts.initiate()
+      );
+      expect(result.data).toEqual([{ name: 'P3', id: 6, currentQuantity: 0, schedule: null }]);
     });
   });
 

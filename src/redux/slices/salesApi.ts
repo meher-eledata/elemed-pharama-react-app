@@ -344,6 +344,9 @@ export interface Invoice {
 // object carries the stored free-text detail as customer_details: string | null.
 export interface InvoiceDetailsResponse {
   invoice: { customer_details: string | null; [key: string]: any };
+  // Each line carries the product master's drug schedule, joined read-time
+  // (NULL = not yet attributed, 'NONE' = explicitly none — both display blank).
+  lines?: Array<{ schedule: "G" | "H" | "H1" | "X" | "C" | "C1" | "K" | "NONE" | null; [key: string]: any }>;
   [key: string]: any;
 }
 

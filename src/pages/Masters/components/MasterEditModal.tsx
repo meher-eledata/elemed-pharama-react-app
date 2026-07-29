@@ -109,9 +109,9 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
   // present (prepended if missing) so editing other fields never drops an off-list value.
   const selectOptionsFor = (key: string, current: string): string[] => {
     if (key === 'schedule') {
-      // Fixed statutory list — never merged with the dynamic field-options endpoint.
-      // The empty "No Schedule" choice is the select's own blank MenuItem.
-      const list = PRODUCT_SCHEDULE_OPTIONS.filter((o) => o.value !== '').map((o) => o.value);
+      // Fixed statutory list (incl. explicit 'NONE') — never merged with the dynamic
+      // field-options endpoint. The select's own blank MenuItem clears to NULL.
+      const list = PRODUCT_SCHEDULE_OPTIONS.map((o) => o.value);
       if (current !== '' && !list.includes(current)) return [current, ...list];
       return list;
     }
