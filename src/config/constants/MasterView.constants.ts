@@ -130,6 +130,7 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       { key: 'description', header: 'Description' },
       { key: 'unit_of_measure', header: 'Unit' },
       { key: 'hsn_id', header: 'HSN Code' },
+      { key: 'schedule', header: 'Schedule' },
     ],
     fields: [
       // LOCKED
@@ -142,6 +143,8 @@ export const MASTER_VIEW_CONFIG: Record<MasterCategory, MasterCategoryConfig> = 
       { key: 'hsn_id', label: 'HSN Code', type: 'text', editable: true },
       { key: 'description', label: 'Description', type: 'multiline', editable: true },
       { key: 'unit_of_measure', label: 'Unit of Measure', type: 'select', editable: true },
+      // Fixed statutory list (PRODUCT_SCHEDULE_OPTIONS) — NOT fed by get-product-field-options.
+      { key: 'schedule', label: 'Schedule', type: 'select', editable: true },
       { key: 'min_qty', label: 'Min Qty', type: 'number', editable: true },
       { key: 'max_qty', label: 'Max Qty', type: 'number', editable: true },
     ],

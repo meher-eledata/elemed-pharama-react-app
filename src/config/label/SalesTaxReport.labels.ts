@@ -15,6 +15,7 @@ export const SALES_TAX_REPORT_LABELS = {
   LEVEL_TOGGLE: {
     PRODUCT: 'Product-wise',
     HSN: 'HSN-code-wise',
+    INVOICE: 'Invoice-wise',
   },
   FILTER: {
     PRODUCT_LABEL: 'Product',
@@ -77,6 +78,20 @@ export const SALES_TAX_REPORT_LABELS = {
     IGST_AMT: 'IGST ₹',
     TOTAL_TAX: 'Total Tax',
     TOTAL: 'Total',
+  },
+  TABLE_INVOICE: {
+    INVOICE_NUMBER: 'Invoice No',
+    SALE_DATE: 'Date',
+    CUSTOMER: 'Customer',
+    LINES: 'Lines',
+    QTY: 'Qty',
+    TAXABLE_VALUE: 'Taxable Value',
+    DISCOUNT: 'Discount',
+    CGST_AMT: 'CGST',
+    SGST_AMT: 'SGST',
+    IGST_AMT: 'IGST',
+    TOTAL_TAX: 'Total Tax',
+    INVOICE_TOTAL: 'Invoice Total',
   },
   TOTALS_ROW_LABEL: 'Total',
   EMPTY_TABLE: 'No sales for the selected period.',

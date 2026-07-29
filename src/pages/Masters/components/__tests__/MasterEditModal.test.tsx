@@ -87,6 +87,7 @@ const ROWS: Record<MasterCategory, Record<string, unknown>> = {
     current_qty: 500,
     description: 'Old description',
     unit_of_measure: 'strip',
+    schedule: 'H',
     min_qty: 10,
     max_qty: 100,
     mrp: 50,
@@ -262,6 +263,39 @@ describe('MasterEditModal — submit payload contains only PK + editable whiteli
     expect(body.type).toBe('Capsule');
     // Unit of measure (untouched) keeps its stored value.
     expect(body.unit_of_measure).toBe('strip');
+  });
+
+  it('product: Schedule is a dropdown of the FIXED statutory list; a pick is sent, blank clears to null', () => {
+    const { onSave } = renderModal('product');
+
+    const scheduleCombo = screen.getByLabelText('Schedule');
+    expect(scheduleCombo).toHaveAttribute('role', 'combobox');
+    // Stored value prefilled.
+    expect(within(scheduleCombo).getByText('H')).toBeInTheDocument();
+
+    // The fixed statutory codes are offered; dynamic field-options values are NOT.
+    fireEvent.mouseDown(scheduleCombo);
+    const listbox = screen.getByRole('listbox');
+    for (const code of ['G', 'H', 'H1', 'X', 'C', 'C1', 'K']) {
+      expect(within(listbox).getByText(code)).toBeInTheDocument();
+    }
+    expect(within(listbox).queryByText('capsule')).not.toBeInTheDocument();
+
+    fireEvent.click(within(listbox).getByText('X'));
+    submit();
+    expect((onSave.mock.calls[0][0] as Record<string, unknown>).schedule).toBe('X');
+  });
+
+  it('product: clearing Schedule (blank option) submits schedule: null', () => {
+    const { onSave } = renderModal('product');
+
+    const scheduleCombo = screen.getByLabelText('Schedule');
+    fireEvent.mouseDown(scheduleCombo);
+    // The blank "—" MenuItem clears the value.
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('—'));
+
+    submit();
+    expect((onSave.mock.calls[0][0] as Record<string, unknown>).schedule).toBeNull();
   });
 
   it('product: a stored value not in the options list is still shown/selected', () => {

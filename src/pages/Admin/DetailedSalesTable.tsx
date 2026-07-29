@@ -14,6 +14,7 @@ import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
+import { formatWholeCurrency } from '../../utils/reportFormat';
 
 interface SalesData {
   id: number;
@@ -384,7 +385,8 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatCurrency(item.totalAmount)}
+          {/* Whole-rupee: backend rounds invoice/refund grand totals */}
+          {formatWholeCurrency(item.totalAmount)}
         </Typography>
       ),
     },
@@ -440,7 +442,7 @@ const DetailedSalesTable: React.FC = () => {
       'CGST (₹)': item.cgst.toFixed(2),
       'SGST (₹)': item.sgst.toFixed(2),
       'IGST (₹)': item.igst.toFixed(2),
-      'Total Amount (₹)': item.totalAmount.toFixed(2),
+      'Total Amount (₹)': item.totalAmount.toFixed(0),
       'Patient Type': item.patientType,
     }));
   }, [sortedData]);
@@ -755,7 +757,7 @@ const DetailedSalesTable: React.FC = () => {
             </Box>
             <Box sx={{ borderLeft: '2px solid #E5E7EB', pl: 3 }}>
               <Typography sx={{ fontSize: '12px', color: '#5C17E5', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>Grand Total</Typography>
-              <Typography sx={{ fontSize: '18px', color: '#1A212B', fontWeight: 700, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.totalAmount)}</Typography>
+              <Typography sx={{ fontSize: '18px', color: '#1A212B', fontWeight: 700, fontFamily: "'Lexend', sans-serif" }}>{formatWholeCurrency(grandTotals.totalAmount)}</Typography>
             </Box>
           </Box>
         </Box>

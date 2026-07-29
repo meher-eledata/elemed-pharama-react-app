@@ -110,6 +110,32 @@ const HSN_FIXTURE: reportsApi.SalesTaxReportResponse = {
   summary: FIXTURE.summary,
 };
 
+// One row per invoice; invoice_total is the WHOLE-RUPEE stored grand total ("457.00"
+// is the 2dp pg cast of a whole-rupee value) and must render with no paise tail.
+const INVOICE_FIXTURE: reportsApi.SalesTaxReportResponse = {
+  level: 'invoice',
+  rows: [
+    {
+      invoice_id: 300,
+      invoice_number: 'INV-300',
+      sale_date: '2026-06-15',
+      customer_details: 'Ward 4 follow-up',
+      line_count: 2,
+      product_count: 2,
+      quantity: '10.00',
+      taxable_value: '847.46',
+      discount_amount: '15.00',
+      cgst_amount: '50.85',
+      sgst_amount: '50.85',
+      igst_amount: '0.00',
+      total_tax: '101.70',
+      line_total: '1234.50',
+      invoice_total: '457.00',
+    },
+  ],
+  summary: FIXTURE.summary,
+};
+
 const createStore = () =>
   configureStore({
     reducer: {
@@ -138,7 +164,12 @@ beforeEach(() => {
   // The page issues two queries: the main one (current level) and a level:"hsn"
   // lookup for the HSN dropdown — resolve each by the requested level.
   mockedReports.useGetSalesTaxReportQuery.mockImplementation((args: { level?: string }) => ({
-    data: args?.level === 'hsn' ? HSN_FIXTURE : FIXTURE,
+    data:
+      args?.level === 'hsn'
+        ? HSN_FIXTURE
+        : args?.level === 'invoice'
+          ? INVOICE_FIXTURE
+          : FIXTURE,
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
@@ -178,6 +209,26 @@ describe('SalesTaxReport page', () => {
     // cgst_rate/sgst_rate "6.00" -> 6.00% via formatPercent; igst_rate "0.00" -> 0.00%.
     expect(screen.getAllByText('6.00%').length).toBe(2);
     expect(screen.getByText('0.00%')).toBeInTheDocument();
+  });
+
+  it('offers an Invoice-wise switcher option rendering the invoice-level table', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Invoice-wise'));
+    expect(screen.getByText('Invoice No')).toBeInTheDocument();
+    expect(screen.getByText('Customer')).toBeInTheDocument();
+    // 'Lines' appears both as a summary card title and the invoice table header.
+    expect(screen.getAllByText('Lines').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Invoice Total')).toBeInTheDocument();
+    expect(screen.getByText('INV-300')).toBeInTheDocument();
+    expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
+  });
+
+  it('renders invoice_total as a WHOLE-RUPEE amount (no ".00" paise tail)', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Invoice-wise'));
+    // invoice_total "457.00" (whole-rupee value, 2dp pg cast) -> ₹457.
+    expect(screen.getByText('₹457')).toBeInTheDocument();
+    expect(screen.queryByText('₹457.00')).not.toBeInTheDocument();
   });
 
   it('formats the line total as ₹ and never renders NaN', () => {

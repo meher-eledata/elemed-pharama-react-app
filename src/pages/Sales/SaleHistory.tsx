@@ -653,7 +653,8 @@ export default function SaleHistory() {
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
-            totalPayableAmount: Math.round(finalPayable).toFixed(2),
+            // Whole-rupee invoice grand total (backend rounds total_amount) — no fake ".00" tail.
+            totalPayableAmount: String(Math.round(finalPayable)),
             splitPayments: (() => {
               const apiPayments = Array.from(new Map(payments.map((p: any) => [
                 `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
