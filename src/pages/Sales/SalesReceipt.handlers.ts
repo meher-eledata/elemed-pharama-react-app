@@ -143,6 +143,7 @@ export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]): CartI
     igstPercent: item.igstPercent,
     pack_qty: item.pack_qty,
     amount: item.amount,
+    schedule: item.schedule,
   }));
 };
 
@@ -177,6 +178,7 @@ const cartToSalesItem = (c: CartItem): SalesReceiptItem => {
   igst: c.igst || '0',
   igstPercent: c.igstPercent || '0',
   amount: c.amount || String(c.totalPrice ?? 0),
+  schedule: c.schedule,
   };
 };
 
@@ -206,6 +208,8 @@ export const mergeCartWithApiItems = (
         manufacturer: match.manufacturer,
         hsn: match.hsn,
         pack: match.pack,
+        // Cart value wins; fall back to the DB line's schedule for edited sales.
+        schedule: base.schedule ?? match.schedule,
         returned_quantity: match.returned_quantity,
         original_quantity: match.original_quantity,
       };

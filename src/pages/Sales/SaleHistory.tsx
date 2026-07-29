@@ -547,6 +547,7 @@ export default function SaleHistory() {
             manufacturer: item.manufacturer || 'N/A',
             expiryDate: item.expiryDate || '',
             hsn: item.hsn || '',
+            schedule: item.schedule ?? null,
             pack: item.pack || '',
           };
         }) : []
@@ -630,6 +631,7 @@ export default function SaleHistory() {
               discountPercent: disc.toString(),
               // Use exactly what backend sends, without treating '0' or '0000' as invalid
               hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
+              schedule: line.schedule ?? null,
               pack: line.pack_qty?.toString() || 'N/A',
               expiryDate: line.expiry_date || '',
             };
@@ -653,7 +655,8 @@ export default function SaleHistory() {
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
-            totalPayableAmount: Math.round(finalPayable).toFixed(2),
+            // Whole-rupee invoice grand total (backend rounds total_amount) — no fake ".00" tail.
+            totalPayableAmount: String(Math.round(finalPayable)),
             splitPayments: (() => {
               const apiPayments = Array.from(new Map(payments.map((p: any) => [
                 `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p

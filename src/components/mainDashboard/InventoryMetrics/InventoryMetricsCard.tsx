@@ -1,25 +1,17 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Grid, Typography, Box, Skeleton } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import SummaryCard from "./SummaryCard";
+import { useGetInvoiceStatsQuery } from "../../../redux/slices/dashboardApi";
 import {
-  useGetInvoiceStatsQuery,
-  useGetInventoryByDateQuery,
-} from "../../../redux/slices/dashboardApi";
-import { useGetNearExpiryStockQuery } from "../../../redux/slices/inventoryApi";
+  useGetLowStockQuery,
+  useGetExcessStockQuery,
+  useGetExpiredStockQuery,
+  useGetNearExpiryStockQuery,
+} from "../../../redux/slices/inventoryApi";
 import { INVENTORY_METRICS_CONSTANTS } from "../../../config/constants/InventoryMetric.constants";
 import { INVENTORY_METRICS_LABELS } from "../../../config/label/InventoryMetric.label";
 
-interface ModalItem {
-  name: string;
-  currentQuantity: number;
-  minQuantity?: number;
-  maxQuantity?: number;
-  batchNumber?: string;
-  expiryDate?: string;
-  daysPastExpiry?: number;
-  daysToExpiry?: number;
-}
 interface InventoryMetricsCardProps {
   dateRange: {
     startDate: string | null;
@@ -47,52 +39,37 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
     }
   );
 
+  // Stock cards consume the SAME live inventory endpoints the inventory page uses
+  // (inventory_balance + per-batch expiry), so the numbers match the /inventory tabs
+  // by construction. These are live-state queries — intentionally NOT wired to the
+  // dashboard date picker (stock state has no date range). The legacy
+  // dashboard/inventory-by-date endpoint (dead product.current_qty column) is no
+  // longer consumed here.
   const {
-    data: inventoryStats,
-    isLoading: isInventoryStatsLoading,
-    error: inventoryStatsError,
-  } = useGetInventoryByDateQuery(
-    {
-      startDate: dateRange.startDate || '',
-      endDate: dateRange.endDate || '',
-    },
-    {
-      skip: !shouldFetchData,
-      refetchOnMountOrArgChange: true,
-    }
-  );
+    data: lowStockItems = [],
+    isLoading: isLowStockLoading,
+    error: lowStockError,
+  } = useGetLowStockQuery();
+
+  const {
+    data: excessStockItems = [],
+    isLoading: isExcessStockLoading,
+    error: excessStockError,
+  } = useGetExcessStockQuery();
+
+  const {
+    data: expiredStockItems = [],
+    isLoading: isExpiredStockLoading,
+    error: expiredStockError,
+  } = useGetExpiredStockQuery();
 
   const {
     data: nearExpiryItems = [],
   } = useGetNearExpiryStockQuery({ months: 1 });
 
-  const transformProduct = (product: any): ModalItem => {
-    return {
-      name: product.name,
-      currentQuantity: product.currentQuantity ?? product.current_qty ?? 0,
-      minQuantity: product.minQty ?? product.min_qty,
-      maxQuantity: product.maxQty ?? product.max_qty,
-      batchNumber: product.batchNumber ?? product.batch_number,
-      expiryDate: product.expiryDate ?? product.expiry_date,
-      daysPastExpiry: product.daysPastExpiry ?? product.days_past_expiry,
-      daysToExpiry: product.daysToExpiry ?? product.days_to_expiry ?? product.daysUntilExpiry,
-    };
-  };
-
-  const lowStockData = useMemo(() => {
-    return (inventoryStats?.belowMinProducts || []).map((p: any) => transformProduct(p));
-  }, [inventoryStats?.belowMinProducts]);
-
-  const nearExpiryStockData = useMemo(() => {
-    return nearExpiryItems.map(transformProduct);
-  }, [nearExpiryItems]);
-
-  const expiredStockData = useMemo(() => {
-    return (inventoryStats?.expiredProducts || []).map((p: any) => transformProduct(p));
-  }, [inventoryStats?.expiredProducts]);
-
-  const isLoading = isInvoiceStatsLoading || isInventoryStatsLoading;
-  const error = invoiceStatsError || inventoryStatsError;
+  const isLoading =
+    isInvoiceStatsLoading || isLowStockLoading || isExcessStockLoading || isExpiredStockLoading;
+  const error = invoiceStatsError || lowStockError || excessStockError || expiredStockError;
 
   if (isLoading) {
     return (
@@ -126,19 +103,25 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
   const cards = [
     {
       title: INVENTORY_METRICS_LABELS.CARDS.LOW_STOCK.TITLE,
-      value: lowStockData?.length ?? 0,
+      value: lowStockItems.length,
       actionText: INVENTORY_METRICS_LABELS.CARDS.LOW_STOCK.ACTION_TEXT,
       onActionClick: () => navigate('/inventory', { state: { tab: 'low' } }),
     },
     {
+      title: INVENTORY_METRICS_LABELS.CARDS.EXCESS_STOCK.TITLE,
+      value: excessStockItems.length,
+      actionText: INVENTORY_METRICS_LABELS.CARDS.EXCESS_STOCK.ACTION_TEXT,
+      onActionClick: () => navigate('/inventory', { state: { tab: 'excess' } }),
+    },
+    {
       title: "Near Expiry Stock",
-      value: nearExpiryStockData?.length ?? 0,
+      value: nearExpiryItems.length,
       actionText: INVENTORY_METRICS_LABELS.CARDS.LOW_STOCK.ACTION_TEXT,
       onActionClick: () => navigate('/inventory', { state: { tab: 'nearExpiry' } }),
     },
     {
       title: INVENTORY_METRICS_LABELS.CARDS.EXPIRED_STOCK.TITLE,
-      value: expiredStockData?.length ?? 0,
+      value: expiredStockItems.length,
       actionText: INVENTORY_METRICS_LABELS.CARDS.EXPIRED_STOCK.ACTION_TEXT,
       onActionClick: () => navigate('/inventory', { state: { tab: 'expired' } }),
     },

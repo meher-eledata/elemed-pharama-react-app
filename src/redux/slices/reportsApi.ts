@@ -238,7 +238,7 @@ export interface ProductSalesReportResponse {
 
 // ---- (D) Sales Tax Report -------------------------------------------------
 
-export type SalesTaxLevel = "product" | "hsn";
+export type SalesTaxLevel = "product" | "hsn" | "invoice";
 
 export interface SalesTaxReportRequest {
   start_date: string;
@@ -293,6 +293,29 @@ export interface SalesTaxHsnRow {
   line_total: Num;
 }
 
+// One row per invoice (level "invoice"). `invoice_total` is the WHOLE-RUPEE
+// stored invoice grand total (ROUND(invoice.total_amount, 0)); other money
+// fields are 2dp line-derived aggregates. All money fields are pg numeric-strings.
+export interface SalesTaxInvoiceRow {
+  invoice_id: number;
+  invoice_number: string | null;
+  sale_date: string;
+  customer_details: string | null;
+  line_count: number;
+  product_count: number;
+  quantity: Num;
+  taxable_value: Num;
+  discount_amount: Num;
+  cgst_amount: Num;
+  sgst_amount: Num;
+  igst_amount: Num;
+  total_tax: Num;
+  line_total: Num;
+  invoice_total: Num;
+  // SIGNED 2dp string (e.g. "0.10" / "-0.40"): invoice_total − exact stored total
+  round_off: Num;
+}
+
 export interface SalesTaxReportSummary {
   line_count: number;
   total_quantity: Num;
@@ -303,6 +326,9 @@ export interface SalesTaxReportSummary {
   total_igst: Num;
   total_tax: Num;
   total_sales: Num;
+  // SIGNED 2dp string, ALL levels: SUM over distinct invoices of (rounded − exact
+  // invoice total); positive = collected more than exact. exact sum + round_off = total_sales.
+  round_off: Num;
   total_mrp_value: Num;
   product_count: number;
   invoice_count: number;
@@ -321,9 +347,16 @@ export interface SalesTaxHsnResponse {
   summary: SalesTaxReportSummary;
 }
 
+export interface SalesTaxInvoiceResponse {
+  level: "invoice";
+  rows: SalesTaxInvoiceRow[];
+  summary: SalesTaxReportSummary;
+}
+
 export type SalesTaxReportResponse =
   | SalesTaxProductResponse
-  | SalesTaxHsnResponse;
+  | SalesTaxHsnResponse
+  | SalesTaxInvoiceResponse;
 
 // ---- (E) Supplier Tax Report (two modes via `level` discriminant) ----------
 

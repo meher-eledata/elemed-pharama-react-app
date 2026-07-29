@@ -52,6 +52,8 @@ export interface AddProductRequest {
   brand_name: string;
   username: string; // Required for activity log tracking
   description?: string; // Optional; persisted to product.description when provided
+  // Optional Indian drug schedule (allowlist G/H/H1/X/C/C1/K; omitted/"" → stored NULL)
+  schedule?: string;
 }
 
 export interface AddProductResponse {
@@ -65,6 +67,7 @@ export interface AddProductResponse {
     brand_id: string;
     hsn_id: string;
     description: string | null;
+    schedule: string | null; // Uppercased allowlist value, or null
     package_info: string; // Not Used for Product. Stored in Inventory Batch
     unit_of_measure: string;
     dosage: string | null;

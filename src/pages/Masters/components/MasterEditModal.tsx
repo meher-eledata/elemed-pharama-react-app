@@ -23,7 +23,12 @@ import {
 } from '../../../config/constants/MasterView.constants';
 import { MASTER_VIEW_LABELS } from '../../../config/label/MasterView.labels';
 import { useGetProductFieldOptionsQuery } from '../../../redux/slices/masterApi';
-import { PRODUCT_TYPES, PRODUCT_UNITS, mergeProductOptions } from '../../../config/constants/product.constants';
+import {
+  PRODUCT_TYPES,
+  PRODUCT_UNITS,
+  PRODUCT_SCHEDULE_OPTIONS,
+  mergeProductOptions,
+} from '../../../config/constants/product.constants';
 
 interface MasterEditModalProps {
   open: boolean;
@@ -103,6 +108,13 @@ const MasterEditModal: React.FC<MasterEditModalProps> = ({
   // Resolve the option list for a select field, ensuring the current stored value is
   // present (prepended if missing) so editing other fields never drops an off-list value.
   const selectOptionsFor = (key: string, current: string): string[] => {
+    if (key === 'schedule') {
+      // Fixed statutory list (incl. explicit 'NONE') — never merged with the dynamic
+      // field-options endpoint. The select's own blank MenuItem clears to NULL.
+      const list = PRODUCT_SCHEDULE_OPTIONS.map((o) => o.value);
+      if (current !== '' && !list.includes(current)) return [current, ...list];
+      return list;
+    }
     // Predefined list first, then any legacy distinct DB value not already present.
     const predefined = key === 'type' ? PRODUCT_TYPES : PRODUCT_UNITS;
     const dynamic = key === 'type' ? fieldOptions?.types : fieldOptions?.units;

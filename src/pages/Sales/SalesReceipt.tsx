@@ -423,6 +423,10 @@ const SalesReceipt: React.FC = () => {
                   pack_qty: line.pack_qty || 1,
                   // Use exactly what backend sends, without treating '0' or '0000' as invalid
                   hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
+                  schedule: line.schedule ?? null,
+                  // Latent gap (surfaced when result.lines became typed): SalesReceiptItem
+                  // requires `type`; the API line carries it as product_type.
+                  type: line.product_type || line.type || 'N/A',
                   quantity: netQty.toString(),
                   unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(8) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price with high precision
                   mrp: line.mrp ? Number(parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toFixed(2).replace(/\.00$/, '') : '0', // Calculate aggregate MRP for historic invoices

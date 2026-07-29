@@ -165,7 +165,12 @@ import styled from '@mui/system/styled';
 import { useSelector } from 'react-redux';
 import { useAddProductMutation } from '../../../redux/slices/inventoryApi';
 import { useGetProductFieldOptionsQuery } from '../../../redux/slices/masterApi';
-import { PRODUCT_TYPES, PRODUCT_UNITS, mergeProductOptions } from '../../../config/constants/product.constants';
+import {
+  PRODUCT_TYPES,
+  PRODUCT_UNITS,
+  PRODUCT_SCHEDULE_OPTIONS,
+  mergeProductOptions,
+} from '../../../config/constants/product.constants';
 import { extractErrorMessage } from '../../../utils/errorUtils';
 import { RootState } from '../../../redux/store';
 
@@ -235,6 +240,7 @@ export const NEW_PRODUCT_MODAL_LABELS = {
     { key: 'brand_name', label: 'Brand name *', type: 'text' },
     { key: 'hsn_id', label: 'HSN code *', type: 'text' },
     { key: 'unit_of_measure', label: 'Unit of measure *', type: 'select' },
+    { key: 'schedule', label: 'Schedule', type: 'select' },
     { key: 'min_quantity', label: 'Minimum quantity *', type: 'number' },
     { key: 'max_quantity', label: 'Maximum quantity', type: 'number' },
     { key: 'description', label: 'Description', type: 'multiline' },
@@ -340,6 +346,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
     brand_name: '',
     hsn_id: '',
     unit_of_measure: '',
+    schedule: '',
     min_quantity: '',
     max_quantity: '',
     description: ''
@@ -385,6 +392,8 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         brand_name: formData.brand_name.trim(),
         username: user?.username || 'Guest',
         ...(description ? { description } : {}),
+        // Fixed statutory schedule (allowlist) — omitted entirely means "No Schedule" (NULL).
+        ...(formData.schedule ? { schedule: formData.schedule } : {}),
       };
 
       // Validate numeric fields
@@ -407,6 +416,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
         brand_name: '',
         hsn_id: '',
         unit_of_measure: '',
+        schedule: '',
         min_quantity: '',
         max_quantity: '',
         description: ''
@@ -432,6 +442,7 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
       brand_name: '',
       hsn_id: '',
       unit_of_measure: '',
+      schedule: '',
       min_quantity: '',
       max_quantity: '',
       description: ''
@@ -565,11 +576,15 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                 const isSelect = field.type === 'select';
                 // Dropdown source: predefined list first, then any legacy distinct DB value
                 // not already present (`type` → types, `unit_of_measure` → units).
-                const selectOptions = isSelect
-                  ? field.key === 'type'
-                    ? mergeProductOptions(PRODUCT_TYPES, typeOptions)
-                    : mergeProductOptions(PRODUCT_UNITS, unitOptions)
-                  : [];
+                // `schedule` is a FIXED statutory list — never merged with field-options.
+                const selectOptions: ReadonlyArray<{ value: string; label: string }> = !isSelect
+                  ? []
+                  : field.key === 'schedule'
+                    ? PRODUCT_SCHEDULE_OPTIONS
+                    : (field.key === 'type'
+                        ? mergeProductOptions(PRODUCT_TYPES, typeOptions)
+                        : mergeProductOptions(PRODUCT_UNITS, unitOptions)
+                      ).map((opt) => ({ value: opt, label: opt }));
                 return (
                 <Grid key={idx} item xs={12} sm={isMultiline ? 12 : 6} component="div">
                   <Box>
@@ -614,8 +629,8 @@ const NewProductModal: React.FC<NewProductModalProps> = ({ open, onClose, onProd
                     >
                       {isSelect
                         ? selectOptions.map((opt) => (
-                            <MenuItem key={opt} value={opt}>
-                              {opt}
+                            <MenuItem key={opt.label} value={opt.value}>
+                              {opt.label}
                             </MenuItem>
                           ))
                         : null}

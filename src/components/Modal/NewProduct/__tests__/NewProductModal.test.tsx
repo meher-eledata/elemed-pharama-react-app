@@ -456,10 +456,11 @@ describe('NewProductModal', () => {
       const user = userEvent.setup();
       renderWithTheme(<NewProductModal open={true} onClose={mockOnClose} />);
 
-      // The two `select` fields (Type, Unit of measure) are the only comboboxes; the
-      // remaining product fields are plain text/number inputs. Type is the first.
+      // The three `select` fields (Type, Unit of measure, Schedule) are the only
+      // comboboxes; the remaining product fields are plain text/number inputs.
+      // Type is the first, Unit of measure second, Schedule third.
       const comboboxes = screen.getAllByRole('combobox');
-      expect(comboboxes).toHaveLength(2);
+      expect(comboboxes).toHaveLength(3);
 
       await user.click(comboboxes[0]);
       // Distinct type values from the query appear as options.
@@ -470,6 +471,52 @@ describe('NewProductModal', () => {
       await user.click(comboboxes[1]);
       expect(await screen.findByRole('option', { name: 'Box' })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: 'Strip' })).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+    });
+
+    it('renders Schedule as a FIXED statutory dropdown (No Schedule + G/H/H1/X/C/C1/K)', async () => {
+      const user = userEvent.setup();
+      renderWithTheme(<NewProductModal open={true} onClose={mockOnClose} />);
+
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[2]);
+
+      expect(await screen.findByRole('option', { name: 'No Schedule' })).toBeInTheDocument();
+      for (const code of ['G', 'H', 'H1', 'X', 'C', 'C1', 'K']) {
+        expect(screen.getByRole('option', { name: code })).toBeInTheDocument();
+      }
+      // Fixed list only — dynamic field-option values (types/units) must NOT leak in.
+      expect(screen.queryByRole('option', { name: 'Tablet' })).not.toBeInTheDocument();
+    });
+
+    it('sends schedule "NONE" when "No Schedule" is explicitly chosen', async () => {
+      const user = userEvent.setup();
+      const mockUnwrap = jest.fn().mockResolvedValue({ message: 'ok' });
+      mockAddProduct.mockReturnValue({ unwrap: mockUnwrap });
+      renderWithTheme(<NewProductModal open={true} onClose={mockOnClose} />);
+
+      // Textboxes in field order: product_name, brand_name, hsn_id, description.
+      const textboxes = screen.getAllByRole('textbox');
+      await user.type(textboxes[0], 'Amox 500');
+      await user.type(textboxes[1], 'BrandX');
+      await user.type(textboxes[2], 'HSN1');
+      const spinbuttons = screen.getAllByRole('spinbutton');
+      await user.type(spinbuttons[0], '1'); // min quantity
+
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]); // type
+      await user.click(await screen.findByRole('option', { name: 'Tablet' }));
+      await user.click(comboboxes[1]); // unit of measure
+      await user.click(await screen.findByRole('option', { name: 'Strip' }));
+      await user.click(comboboxes[2]); // schedule
+      await user.click(await screen.findByRole('option', { name: 'No Schedule' }));
+
+      await user.click(screen.getByRole('button', { name: /^add$/i }));
+
+      await waitFor(() => expect(mockAddProduct).toHaveBeenCalled());
+      // Explicit "No Schedule" is the allowlist value 'NONE' (never re-prompts) —
+      // distinct from omitting the field (NULL = not yet attributed).
+      expect(mockAddProduct.mock.calls[0][0].schedule).toBe('NONE');
     });
   });
 

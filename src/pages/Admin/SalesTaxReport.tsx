@@ -24,12 +24,15 @@ import {
   SalesTaxLevel,
   SalesTaxReportRow,
   SalesTaxHsnRow,
+  SalesTaxInvoiceRow,
 } from '../../redux/slices/reportsApi';
 import { useGetProductsQuery } from '../../redux/slices/masterApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import {
   toNum,
   formatCurrency,
+  formatWholeCurrency,
+  formatSignedCurrency,
   formatNumber,
   formatCount,
   formatPercent,
@@ -68,6 +71,20 @@ interface HsnRow extends SalesTaxHsnRow {
   igstN: number;
   totalTaxN: number;
   lineTotalN: number;
+}
+
+interface InvoiceRow extends SalesTaxInvoiceRow {
+  _id: number;
+  quantityN: number;
+  taxableN: number;
+  discountN: number;
+  cgstN: number;
+  sgstN: number;
+  igstN: number;
+  totalTaxN: number;
+  lineTotalN: number;
+  invoiceTotalN: number;
+  roundOffN: number;
 }
 
 const SalesTaxReport: React.FC = () => {
@@ -177,6 +194,24 @@ const SalesTaxReport: React.FC = () => {
     }));
   }, [data]);
 
+  const invoiceRows: InvoiceRow[] = useMemo(() => {
+    if (!data || data.level !== 'invoice') return [];
+    return data.rows.map((r, i) => ({
+      ...r,
+      _id: i,
+      quantityN: toNum(r.quantity),
+      taxableN: toNum(r.taxable_value),
+      discountN: toNum(r.discount_amount),
+      cgstN: toNum(r.cgst_amount),
+      sgstN: toNum(r.sgst_amount),
+      igstN: toNum(r.igst_amount),
+      totalTaxN: toNum(r.total_tax),
+      lineTotalN: toNum(r.line_total),
+      invoiceTotalN: toNum(r.invoice_total),
+      roundOffN: toNum(r.round_off),
+    }));
+  }, [data]);
+
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -202,6 +237,7 @@ const SalesTaxReport: React.FC = () => {
 
   const sortedRows = useMemo(() => sortRows(rows), [rows, sortConfig]);
   const sortedHsnRows = useMemo(() => sortRows(hsnRows), [hsnRows, sortConfig]);
+  const sortedInvoiceRows = useMemo(() => sortRows(invoiceRows), [invoiceRows, sortConfig]);
 
   const handleSortRequest = (key: string) =>
     setSortConfig((prev) => ({
@@ -249,6 +285,23 @@ const SalesTaxReport: React.FC = () => {
     { key: 'lineTotalN', header: L.TABLE_HSN.TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.lineTotalN)}</CellText> },
   ];
 
+  const invoiceColumns: TableColumn<InvoiceRow>[] = [
+    { key: 'invoice_number', header: L.TABLE_INVOICE.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'sale_date', header: L.TABLE_INVOICE.SALE_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.sale_date)}</CellText> },
+    { key: 'customer_details', header: L.TABLE_INVOICE.CUSTOMER, sortable: true, render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
+    { key: 'line_count', header: L.TABLE_INVOICE.LINES, sortable: true, render: (r) => <CellText>{formatCount(r.line_count)}</CellText> },
+    { key: 'quantityN', header: L.TABLE_INVOICE.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.quantityN)}</CellText> },
+    { key: 'taxableN', header: L.TABLE_INVOICE.TAXABLE_VALUE, sortable: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
+    { key: 'discountN', header: L.TABLE_INVOICE.DISCOUNT, sortable: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
+    { key: 'cgstN', header: L.TABLE_INVOICE.CGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.cgstN)}</CellText> },
+    { key: 'sgstN', header: L.TABLE_INVOICE.SGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.sgstN)}</CellText> },
+    { key: 'igstN', header: L.TABLE_INVOICE.IGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.igstN)}</CellText> },
+    { key: 'totalTaxN', header: L.TABLE_INVOICE.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatNumber(r.totalTaxN)}</CellText> },
+    // Signed 2dp — paise matter for the round-off adjustment.
+    { key: 'roundOffN', header: L.TABLE_INVOICE.ROUND_OFF, sortable: true, render: (r) => <CellText>{formatSignedCurrency(r.roundOffN)}</CellText> },
+    { key: 'invoiceTotalN', header: L.TABLE_INVOICE.INVOICE_TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatWholeCurrency(r.invoiceTotalN)}</CellText> },
+  ];
+
   const summary = data?.summary;
   const summaryCards = useMemo(
     () => [
@@ -257,7 +310,10 @@ const SalesTaxReport: React.FC = () => {
       { title: L.SUMMARY.TOTAL_SGST, value: formatCurrency(toNum(summary?.total_sgst)) },
       { title: L.SUMMARY.TOTAL_IGST, value: formatCurrency(toNum(summary?.total_igst)) },
       { title: L.SUMMARY.TOTAL_TAX, value: formatCurrency(toNum(summary?.total_tax)), accentColor: C.COLORS.PURPLE },
-      { title: L.SUMMARY.TOTAL_SALES, value: formatCurrency(toNum(summary?.total_sales)) },
+      // total_sales is WHOLE-RUPEE (ROUND-then-SUM over invoices) — no 2dp tail.
+      { title: L.SUMMARY.TOTAL_SALES, value: formatWholeCurrency(toNum(summary?.total_sales)) },
+      // Signed 2dp round-off: exact invoice value sum + round_off = total_sales.
+      { title: L.SUMMARY.ROUND_OFF, value: formatSignedCurrency(toNum(summary?.round_off)) },
       { title: L.SUMMARY.TOTAL_MRP_VALUE, value: formatCurrency(toNum(summary?.total_mrp_value)) },
       { title: L.SUMMARY.LINES, value: formatCount(summary?.line_count ?? 0) },
       { title: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
@@ -277,7 +333,7 @@ const SalesTaxReport: React.FC = () => {
     sgstN: formatNumber(toNum(summary?.total_sgst)),
     igstN: formatNumber(toNum(summary?.total_igst)),
     totalTaxN: formatNumber(toNum(summary?.total_tax)),
-    lineTotalN: formatCurrency(toNum(summary?.total_sales)),
+    lineTotalN: formatWholeCurrency(toNum(summary?.total_sales)),
   };
   const hsnTotals: Record<string, string> = {
     line_count: formatCount(summary?.line_count ?? 0),
@@ -289,7 +345,19 @@ const SalesTaxReport: React.FC = () => {
     sgstN: formatNumber(toNum(summary?.total_sgst)),
     igstN: formatNumber(toNum(summary?.total_igst)),
     totalTaxN: formatNumber(toNum(summary?.total_tax)),
-    lineTotalN: formatCurrency(toNum(summary?.total_sales)),
+    lineTotalN: formatWholeCurrency(toNum(summary?.total_sales)),
+  };
+  const invoiceTotals: Record<string, string> = {
+    line_count: formatCount(summary?.line_count ?? 0),
+    quantityN: formatNumber(toNum(summary?.total_quantity)),
+    taxableN: formatNumber(toNum(summary?.total_taxable)),
+    discountN: formatNumber(toNum(summary?.total_discount)),
+    cgstN: formatNumber(toNum(summary?.total_cgst)),
+    sgstN: formatNumber(toNum(summary?.total_sgst)),
+    igstN: formatNumber(toNum(summary?.total_igst)),
+    totalTaxN: formatNumber(toNum(summary?.total_tax)),
+    roundOffN: formatSignedCurrency(toNum(summary?.round_off)),
+    invoiceTotalN: formatWholeCurrency(toNum(summary?.total_sales)),
   };
 
   const renderTotalsRow = (cols: TableColumn<any>[], totals: Record<string, string>) => (
@@ -307,6 +375,25 @@ const SalesTaxReport: React.FC = () => {
   );
 
   const csvData = useMemo(() => {
+    if (level === 'invoice') {
+      return sortedInvoiceRows.map((r) => ({
+        [L.TABLE_INVOICE.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_INVOICE.SALE_DATE]: formatReportDate(r.sale_date),
+        [L.TABLE_INVOICE.CUSTOMER]: csvString(r.customer_details),
+        [L.TABLE_INVOICE.LINES]: csvString(r.line_count),
+        [L.TABLE_INVOICE.QTY]: r.quantityN.toFixed(2),
+        [`${L.TABLE_INVOICE.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
+        [`${L.TABLE_INVOICE.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
+        [`${L.TABLE_INVOICE.CGST_AMT} (₹)`]: r.cgstN.toFixed(2),
+        [`${L.TABLE_INVOICE.SGST_AMT} (₹)`]: r.sgstN.toFixed(2),
+        [`${L.TABLE_INVOICE.IGST_AMT} (₹)`]: r.igstN.toFixed(2),
+        [`${L.TABLE_INVOICE.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
+        // Signed 2dp (toFixed keeps the '-' for negatives; paise matter here).
+        [`${L.TABLE_INVOICE.ROUND_OFF} (₹)`]: r.roundOffN.toFixed(2),
+        // Whole-rupee stored invoice grand total — export without a fake 2dp tail.
+        [`${L.TABLE_INVOICE.INVOICE_TOTAL} (₹)`]: r.invoiceTotalN.toFixed(0),
+      }));
+    }
     if (level === 'hsn') {
       return sortedHsnRows.map((r) => ({
         [L.TABLE_HSN.HSN]: csvString(r.hsn_code),
@@ -347,7 +434,7 @@ const SalesTaxReport: React.FC = () => {
       [`${L.TABLE.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
       [`${L.TABLE.LINE_TOTAL} (₹)`]: r.lineTotalN.toFixed(2),
     }));
-  }, [level, sortedRows, sortedHsnRows]);
+  }, [level, sortedRows, sortedHsnRows, sortedInvoiceRows]);
 
   const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${level}_${start ? start.format('YYYY-MM-DD') : ''}_${
     end ? end.format('YYYY-MM-DD') : ''
@@ -361,13 +448,15 @@ const SalesTaxReport: React.FC = () => {
     setLevel(newLevel);
     setCurrentPage(1);
     setSortConfig({
-      key: newLevel === 'product' ? 'sale_date' : 'lineTotalN',
+      key: newLevel === 'hsn' ? 'lineTotalN' : 'sale_date',
       direction: C.TABLE.DEFAULT_SORT_DIRECTION,
     });
   };
 
-  const hasRows = level === 'product' ? rows.length > 0 : hsnRows.length > 0;
-  const totalRows = level === 'product' ? sortedRows.length : sortedHsnRows.length;
+  const hasRows =
+    level === 'product' ? rows.length > 0 : level === 'hsn' ? hsnRows.length > 0 : invoiceRows.length > 0;
+  const totalRows =
+    level === 'product' ? sortedRows.length : level === 'hsn' ? sortedHsnRows.length : sortedInvoiceRows.length;
 
   return (
     <Box sx={{ padding: C.PAGE.PADDING, pb: C.PAGE.PADDING_BOTTOM }}>
@@ -423,6 +512,7 @@ const SalesTaxReport: React.FC = () => {
         options={[
           { value: 'product', label: L.LEVEL_TOGGLE.PRODUCT },
           { value: 'hsn', label: L.LEVEL_TOGGLE.HSN },
+          { value: 'invoice', label: L.LEVEL_TOGGLE.INVOICE },
         ]}
       />
 
@@ -462,7 +552,7 @@ const SalesTaxReport: React.FC = () => {
                 disableFooterWrapper
                 footerContent={hasRows ? renderTotalsRow(columns, productTotals) : undefined}
               />
-            ) : (
+            ) : level === 'hsn' ? (
               <ReusableTable
                 columns={hsnColumns}
                 data={sortedHsnRows}
@@ -484,6 +574,29 @@ const SalesTaxReport: React.FC = () => {
                 sortConfig={sortConfig}
                 disableFooterWrapper
                 footerContent={hasRows ? renderTotalsRow(hsnColumns, hsnTotals) : undefined}
+              />
+            ) : (
+              <ReusableTable
+                columns={invoiceColumns}
+                data={sortedInvoiceRows}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+                emptyMessage={L.EMPTY_TABLE}
+                searchAndFilterConfig={{ filterOptions: [] }}
+                currentSearchTerm=""
+                onSearchChange={() => {}}
+                showFilters={false}
+                onShowFiltersToggle={() => {}}
+                currentFilterKey=""
+                onFilterSelect={() => {}}
+                totalRows={totalRows}
+                rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onSortRequest={handleSortRequest}
+                sortConfig={sortConfig}
+                disableFooterWrapper
+                footerContent={hasRows ? renderTotalsRow(invoiceColumns, invoiceTotals) : undefined}
               />
             )}
           </TableShell>

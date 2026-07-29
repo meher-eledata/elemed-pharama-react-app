@@ -91,6 +91,9 @@ export interface ProductOption {
   name: string;
   id: number;
   currentQuantity?: number;
+  // Drug schedule (api-contract.md): NULL = not yet attributed (one-time popup on
+  // add-to-receipt); 'NONE' = explicitly none (never prompts).
+  schedule?: string | null;
 }
 
 export interface SupplierTotals {
