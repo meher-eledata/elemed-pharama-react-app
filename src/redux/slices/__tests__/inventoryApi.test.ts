@@ -323,6 +323,23 @@ describe('Inventory API Endpoints', () => {
       );
     });
 
+    it('should pass the optional schedule through in the request body', async () => {
+      const bodyWithSchedule = { ...body, schedule: 'H1' };
+      mockBaseQuery.mockResolvedValueOnce({
+        data: { message: 'created', product: { id: 2, schedule: 'H1' } },
+        meta: mockMeta(201, 'Created', 'inventory/add-product/'),
+      });
+
+      const store = makeStore();
+      await store.dispatch(inventoryApi.endpoints.addProduct.initiate(bodyWithSchedule));
+
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'inventory/add-product/', method: 'POST', body: bodyWithSchedule },
+        apiObject,
+        undefined
+      );
+    });
+
     it('should handle error when adding a product fails', async () => {
       mockBaseQuery.mockResolvedValueOnce({
         error: { status: 400, data: { message: 'exists' } },

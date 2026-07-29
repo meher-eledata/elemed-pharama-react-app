@@ -56,6 +56,20 @@ export const PRODUCT_UNITS = [
   'Unit',
 ] as const;
 
+// Indian drug schedules — a FIXED statutory list (do NOT merge with / fetch from the
+// get-product-field-options endpoint). The empty value means "No Schedule" and is sent
+// as null/omitted so the backend clears/stores NULL. Backend allowlist: G, H, H1, X, C, C1, K.
+export const PRODUCT_SCHEDULE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: '', label: 'No Schedule' },
+  { value: 'G', label: 'G' },
+  { value: 'H', label: 'H' },
+  { value: 'H1', label: 'H1' },
+  { value: 'X', label: 'X' },
+  { value: 'C', label: 'C' },
+  { value: 'C1', label: 'C1' },
+  { value: 'K', label: 'K' },
+];
+
 // Merge the predefined list (shown first, in order) with dynamic distinct values from the
 // DB, appending only those not already present. Dedup is case-insensitive so e.g. a stored
 // "tablet" does not duplicate the predefined "Tablet".

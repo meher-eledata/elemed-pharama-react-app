@@ -66,7 +66,8 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
     totalValue: totalValue.toFixed(2),
     totalDiscount: totalDiscount.toFixed(2),
     taxAmount: taxAmount.toFixed(2),
-    totalPayableAmount: totalPayableAmount.toFixed(2),
+    // Whole-rupee grand total (matches the backend's rounded invoice total) — no ".00" tail.
+    totalPayableAmount: String(totalPayableAmount),
   };
 };
 

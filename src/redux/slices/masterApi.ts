@@ -121,6 +121,8 @@ export interface Product {
   hsn_id: number | null;
   type: string | null;
   description: string | null;
+  // Indian drug schedule (uppercase G/H/H1/X/C/C1/K, or null)
+  schedule: string | null;
   package_info: string | null;
   unit_of_measure: string | null;
   dosage: string | null;
@@ -170,6 +172,8 @@ export interface UpdateProductRequest {
   min_qty?: number | null;
   max_qty?: number | null;
   hsn_id?: string | null;
+  // Indian drug schedule (allowlist G/H/H1/X/C/C1/K); null/"" clears to NULL
+  schedule?: string | null;
 }
 
 export interface UpdateDoctorRequest {

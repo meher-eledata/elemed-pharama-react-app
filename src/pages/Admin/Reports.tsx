@@ -18,6 +18,7 @@ import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
+import { formatWholeCurrency } from '../../utils/reportFormat';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
@@ -386,7 +387,7 @@ const DailySalesReport: React.FC = () => {
     const csvRows = [
       // Summary Section
       { Section: 'Summary', Metric: 'Total Bills', Value: reportData.totalBills.toString(), Details: '' },
-      { Section: 'Summary', Metric: 'Total Sales (₹)', Value: reportData.totalSales.toFixed(2), Details: '' },
+      { Section: 'Summary', Metric: 'Total Sales (₹)', Value: reportData.totalSales.toFixed(0), Details: '' },
       { Section: 'Summary', Metric: 'Total Discount (₹)', Value: reportData.totalDiscount.toFixed(2), Details: '' },
       { Section: 'Summary', Metric: 'Total Tax Collected (₹)', Value: reportData.totalTaxCollected.toFixed(2), Details: '' },
       { Section: '', Metric: '', Value: '', Details: '' }, // Empty row
@@ -583,7 +584,8 @@ const DailySalesReport: React.FC = () => {
                 fontFamily: "'Lexend', sans-serif",
               }}
             >
-              {formatCurrency(reportData.totalSales)}
+              {/* Whole-rupee: backend ROUND-then-SUMs invoice grand totals */}
+              {formatWholeCurrency(reportData.totalSales)}
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
               <Typography
@@ -593,7 +595,7 @@ const DailySalesReport: React.FC = () => {
                   color: '#3B82F6',
                 }}
               >
-                In Patient: {formatCurrency(reportData.totalSalesBreakdown.inpatient)}
+                In Patient: {formatWholeCurrency(reportData.totalSalesBreakdown.inpatient)}
               </Typography>
               <Typography
                 sx={{
@@ -602,7 +604,7 @@ const DailySalesReport: React.FC = () => {
                   color: '#10B981',
                 }}
               >
-                Out Patient: {formatCurrency(reportData.totalSalesBreakdown.outpatient)}
+                Out Patient: {formatWholeCurrency(reportData.totalSalesBreakdown.outpatient)}
               </Typography>
             </Box>
           </Card>
