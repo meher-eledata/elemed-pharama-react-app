@@ -10,9 +10,9 @@ import {
   InputLabel,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { StandardButton } from '../../../components/Common';
+import { StandardButton } from '../../Common';
 import { PRODUCT_SCHEDULE_OPTIONS } from '../../../config/constants/product.constants';
-import { SALES_PAGE_LABELS } from '../../../config/label/SalesPage.labels';
+import { SCHEDULE_ATTRIBUTION_MODAL_LABELS } from '../../../config/label/ScheduleAttributionModal.labels';
 
 interface ScheduleAttributionModalProps {
   open: boolean;
@@ -38,11 +38,12 @@ const modalStyle = {
   fontFamily: "'Lexend', sans-serif",
 };
 
-const L = SALES_PAGE_LABELS.SCHEDULE_MODAL;
+const L = SCHEDULE_ATTRIBUTION_MODAL_LABELS;
 
 // One-time attribution popup: shown when a product with schedule NULL (never
-// attributed) is added to the sale cart. An explicit choice — including
-// "No Schedule" ('NONE') — is persisted on the product and never asked again.
+// attributed) is added to the sale cart OR to a receipt in the Receive flow.
+// An explicit choice — including "No Schedule" ('NONE') — is persisted on the
+// product and never asked again.
 const ScheduleAttributionModal: React.FC<ScheduleAttributionModalProps> = ({
   open,
   productName,

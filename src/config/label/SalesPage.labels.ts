@@ -40,16 +40,6 @@ export const SALES_PAGE_LABELS = {
   SELECT_TYPE_MESSAGE: "Please select a product type",
   LOADING_PRODUCTS: "Loading products...",
 
-  // One-time schedule attribution popup (fires when a product's schedule is NULL)
-  SCHEDULE_MODAL: {
-    TITLE: "Assign Drug Schedule",
-    DESCRIPTION:
-      "\"{product}\" has no drug schedule assigned yet. Pick one (or \"No Schedule\") — it is saved on the product and you won't be asked again.",
-    FIELD_LABEL: "Schedule",
-    CANCEL_BUTTON: "Skip for now",
-    SAVE_BUTTON: "Save & Add to Cart",
-  },
-
   // Type Selection
   AUTO_SELECTED_TYPE: "Auto-selected single type: {type} for product: {product}",
   AVAILABLE_TYPES: "Available types for product {product}:",

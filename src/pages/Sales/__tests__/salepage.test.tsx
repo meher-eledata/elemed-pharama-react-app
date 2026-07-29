@@ -392,7 +392,7 @@ describe('SalePage', () => {
       fireEvent.mouseDown(screen.getByLabelText('Schedule'));
       const listbox = await screen.findByRole('listbox');
       fireEvent.click(within(listbox).getByText('H'));
-      fireEvent.click(screen.getByText('Save & Add to Cart'));
+      fireEvent.click(screen.getByText('Save & Add'));
 
       // Persisted via update-product, receive cache invalidated, sale not blocked.
       await waitFor(() =>
