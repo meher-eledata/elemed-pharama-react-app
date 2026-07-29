@@ -273,10 +273,11 @@ describe('MasterEditModal — submit payload contains only PK + editable whiteli
     // Stored value prefilled.
     expect(within(scheduleCombo).getByText('H')).toBeInTheDocument();
 
-    // The fixed statutory codes are offered; dynamic field-options values are NOT.
+    // The fixed statutory codes (incl. the explicit 'NONE') are offered; dynamic
+    // field-options values are NOT.
     fireEvent.mouseDown(scheduleCombo);
     const listbox = screen.getByRole('listbox');
-    for (const code of ['G', 'H', 'H1', 'X', 'C', 'C1', 'K']) {
+    for (const code of ['NONE', 'G', 'H', 'H1', 'X', 'C', 'C1', 'K']) {
       expect(within(listbox).getByText(code)).toBeInTheDocument();
     }
     expect(within(listbox).queryByText('capsule')).not.toBeInTheDocument();

@@ -17,7 +17,9 @@ import {
   useGetBatchesForProductMutation
 } from "../../redux/slices/inventoryApi";
 import { useGetDoctorNamesQuery } from "../../redux/slices/salesApi";
-import { useGetProductsQuery } from "../../redux/slices/receiveApi";
+import { useGetProductsQuery, receiveApi } from "../../redux/slices/receiveApi";
+import { useUpdateProductMutation } from "../../redux/slices/masterApi";
+import ScheduleAttributionModal from "./components/ScheduleAttributionModal";
 import {
   addToCart,
   removeFromCart,
@@ -34,7 +36,7 @@ import {
   selectFormData,
   CartItem
 } from "../../redux/slices/cartSlice";
-import { RootState } from "../../redux/store";
+import { RootState, AppDispatch } from "../../redux/store";
 import { SALES_PAGE_LABELS } from "../../config/label/SalesPage.labels";
 import { SALES_PAGE_CONSTANTS } from "../../config/constants/SalesPage.constants";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -157,7 +159,8 @@ const products: Product[] = [
 export default function SalePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
+  // Typed so cross-slice thunks (receiveApi.util.invalidateTags) dispatch cleanly.
+  const dispatch = useDispatch<AppDispatch>();
 
   // Redux selectors
   const cartItems = useSelector(selectCartItems);
@@ -197,6 +200,9 @@ export default function SalePage() {
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+  // One-time schedule attribution popup: holds the cart item waiting on a choice.
+  const [pendingScheduleItem, setPendingScheduleItem] = useState<Product | null>(null);
+  const [updateProduct, { isLoading: isSavingSchedule }] = useUpdateProductMutation();
   // Informational modal shown when the fetched batches contain duplicate batch numbers
   // (data-migration dupes). Lists the offending batch number(s); dismissible — does NOT block the sale.
   const [duplicateBatchNumbers, setDuplicateBatchNumbers] = useState<string[]>([]);
@@ -674,6 +680,13 @@ export default function SalePage() {
       return;
     }
 
+    // The product's schedule from the products list. NULL = never attributed →
+    // one-time popup; 'NONE' or a real code = already attributed → no prompt.
+    const apiProduct = apiProducts.find(
+      (p) => Number(p.id) === Number(selectedTypeProductId || productId)
+    );
+    const productSchedule = apiProduct?.schedule ?? null;
+
     const newCartItem = createCartItem(
       findProduct,
       qty,
@@ -685,14 +698,49 @@ export default function SalePage() {
       selectedTypeProductId || productId,
       discountAuthorizedBy,
       batch,
-      finalDoctorId || discountAuthorizedById // Include ID if found, otherwise undefined
+      finalDoctorId || discountAuthorizedById, // Include ID if found, otherwise undefined
+      productSchedule
     );
 
+    if (apiProduct && productSchedule === null) {
+      // Not yet attributed — ask once before adding to cart (never blocks the sale).
+      setPendingScheduleItem(newCartItem);
+      return;
+    }
+
+    finalizeAddToCart(newCartItem);
+  };
+
+  const finalizeAddToCart = (item: Product) => {
     // Dispatch to Redux instead of local state
-    dispatch(addToCart(newCartItem));
+    dispatch(addToCart(item));
     handleClearProduct();
     showToast('Product added to cart successfully!', 'success');
+  };
 
+  // Popup choice: persist the schedule on the product, refresh the receive products
+  // cache (cross-slice — without this the popup re-fires all session), then add to cart.
+  const handleScheduleSelect = async (schedule: string) => {
+    const item = pendingScheduleItem;
+    if (!item) return;
+    try {
+      if (item.product_id) {
+        await updateProduct({ product_id: item.product_id, schedule }).unwrap();
+        dispatch(receiveApi.util.invalidateTags(['Receive']));
+      }
+      finalizeAddToCart({ ...item, schedule });
+    } catch {
+      // Persist failed — never block the sale; the popup fires again next time.
+      finalizeAddToCart(item);
+    } finally {
+      setPendingScheduleItem(null);
+    }
+  };
+
+  // Skipping adds to cart without a schedule; the popup fires again next time.
+  const handleScheduleCancel = () => {
+    if (pendingScheduleItem) finalizeAddToCart(pendingScheduleItem);
+    setPendingScheduleItem(null);
   };
 
   // Edit/Delete Handlers
@@ -949,6 +997,15 @@ export default function SalePage() {
         onConfirm={() => setDuplicateBatchNumbers([])}
         confirmLabel="OK"
         cancelLabel="Close"
+      />
+
+      {/* One-time drug-schedule attribution popup (schedule NULL only) */}
+      <ScheduleAttributionModal
+        open={pendingScheduleItem !== null}
+        productName={pendingScheduleItem?.name || ''}
+        saving={isSavingSchedule}
+        onSelect={handleScheduleSelect}
+        onCancel={handleScheduleCancel}
       />
 
       {/* Toast Notifications */}

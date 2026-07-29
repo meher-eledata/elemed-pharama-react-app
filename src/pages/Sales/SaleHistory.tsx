@@ -547,6 +547,7 @@ export default function SaleHistory() {
             manufacturer: item.manufacturer || 'N/A',
             expiryDate: item.expiryDate || '',
             hsn: item.hsn || '',
+            schedule: item.schedule ?? null,
             pack: item.pack || '',
           };
         }) : []
@@ -630,6 +631,7 @@ export default function SaleHistory() {
               discountPercent: disc.toString(),
               // Use exactly what backend sends, without treating '0' or '0000' as invalid
               hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
+              schedule: line.schedule ?? null,
               pack: line.pack_qty?.toString() || 'N/A',
               expiryDate: line.expiry_date || '',
             };

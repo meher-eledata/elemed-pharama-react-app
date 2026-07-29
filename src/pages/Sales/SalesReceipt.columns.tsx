@@ -8,6 +8,7 @@ import { SalesReceiptItem } from './SalesReceipt.types';
 import DeleteNewIcon from '../../assets/DeleteNew.svg';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
+import { formatSchedule } from '../../config/constants/product.constants';
 
 interface GetTableColumnsParams {
   editingRowId: string | null;
@@ -97,6 +98,15 @@ export const getTableColumns = ({
       render: (item) => (
         <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
           {item.batch}
+        </Typography>
+      )
+    },
+    {
+      key: 'schedule',
+      header: SALES_RECEIPT_LABELS.TABLE_HEADER_SCHEDULE,
+      render: (item) => (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {formatSchedule(item.schedule)}
         </Typography>
       )
     },

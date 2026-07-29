@@ -25,6 +25,7 @@ describe('PrintPreviewModal', () => {
       unitPrice: '100',
       mrp: '120',
       hsn: '3004',
+      schedule: 'H1',
       pack: '10x10',
       expiryDate: '2026-12',
       discountPercent: '5',
@@ -193,6 +194,7 @@ describe('PrintPreviewModal', () => {
     expect(screen.getByText(/^S\.No$/)).toBeInTheDocument();
     expect(screen.getByText(/^MFG$/)).toBeInTheDocument();
     expect(screen.getByText(/^HSN$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Sch$/)).toBeInTheDocument();
     expect(screen.getByText(/^Batch$/)).toBeInTheDocument();
     expect(screen.getByText(/^Pack$/)).toBeInTheDocument();
     expect(screen.getByText(/^Exp$/)).toBeInTheDocument();
@@ -200,5 +202,20 @@ describe('PrintPreviewModal', () => {
     expect(screen.getByText(/^MRP$/)).toBeInTheDocument();
     expect(screen.getByText(/^GST$/)).toBeInTheDocument();
     expect(screen.getByText(/^Amount$/)).toBeInTheDocument();
+  });
+
+  it('renders the schedule cell; null and "NONE" render blank (formatSchedule)', () => {
+    render(<PrintPreviewModal {...mockProps} />);
+    // Item carries schedule 'H1' — shown as-is.
+    expect(screen.getByText('H1')).toBeInTheDocument();
+
+    // 'NONE' (explicitly none) must NOT print the literal string.
+    render(
+      <PrintPreviewModal
+        {...mockProps}
+        salesItems={[{ ...mockSalesItems[0], id: '2', schedule: 'NONE' }]}
+      />
+    );
+    expect(screen.queryByText('NONE')).not.toBeInTheDocument();
   });
 });

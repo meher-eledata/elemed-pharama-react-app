@@ -31,6 +31,7 @@ import {
   type MasterCategoryConfig,
 } from '../../../config/constants/MasterView.constants';
 import { MASTER_VIEW_LABELS } from '../../../config/label/MasterView.labels';
+import { formatSchedule } from '../../../config/constants/product.constants';
 import { extractErrorMessage } from '../../../utils/errorUtils';
 import { useLogDownloadMutation } from '../../../redux/slices/activityApi';
 import MasterEditModal from './MasterEditModal';
@@ -83,6 +84,11 @@ const renderCell = (key: string, value: unknown): React.ReactNode => {
   if (key === 'gender') {
     const match = MASTER_GENDER_OPTIONS.find((o) => o.value === Number(value));
     return match ? match.label : MASTER_VIEW_LABELS.EMPTY_PLACEHOLDER;
+  }
+  if (key === 'schedule') {
+    // NULL (not yet attributed) and 'NONE' (explicitly none) BOTH display blank.
+    const formatted = formatSchedule(String(value));
+    return formatted === '' ? MASTER_VIEW_LABELS.EMPTY_PLACEHOLDER : formatted;
   }
   return String(value);
 };

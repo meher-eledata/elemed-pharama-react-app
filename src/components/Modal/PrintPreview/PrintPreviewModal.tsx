@@ -3,6 +3,7 @@ import { Box, Typography } from '@mui/material';
 import { StandardButton } from '../../Common';
 import html2pdf from 'html2pdf.js';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
+import { formatSchedule } from '../../../config/constants/product.constants';
 
 interface SalesReceiptItem {
   id: string;
@@ -14,6 +15,7 @@ interface SalesReceiptItem {
   unitPrice: string;
   mrp?: string;
   hsn?: string;
+  schedule?: string | null;
   pack?: string;
   expiryDate?: string;
   discountPercent: string;
@@ -381,7 +383,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             {/* Fixed Header */}
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
+              gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 0.5fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
               columnGap: '8px',
               backgroundColor: '#F9FAFB',
               padding: isA5 ? '4px 8px' : '10px 12px',
@@ -397,6 +399,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               <Box>Product Name</Box>
               <Box>MFG</Box>
               <Box>HSN</Box>
+              <Box>Sch</Box>
               <Box>Batch</Box>
               <Box>Pack</Box>
               <Box>Exp</Box>
@@ -443,7 +446,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                   return (
                     <Box key={item.id} sx={{
                       display: 'grid',
-                      gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
+                      gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 0.5fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
                       columnGap: '8px',
                       padding: isA5 ? '4px 8px' : '10px 12px',
                       fontSize: tableRowSize,
@@ -458,6 +461,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                       <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</Box>
                       <Box>{mfg}</Box>
                       <Box>{item.hsn || 'N/A'}</Box>
+                      <Box>{formatSchedule(item.schedule)}</Box>
                       <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.batch}</Box>
                       <Box>{item.pack || 'N/A'}</Box>
                       <Box>{formattedExp}</Box>
