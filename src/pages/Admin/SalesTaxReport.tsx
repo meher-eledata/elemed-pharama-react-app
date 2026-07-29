@@ -32,6 +32,7 @@ import {
   toNum,
   formatCurrency,
   formatWholeCurrency,
+  formatSignedCurrency,
   formatNumber,
   formatCount,
   formatPercent,
@@ -83,6 +84,7 @@ interface InvoiceRow extends SalesTaxInvoiceRow {
   totalTaxN: number;
   lineTotalN: number;
   invoiceTotalN: number;
+  roundOffN: number;
 }
 
 const SalesTaxReport: React.FC = () => {
@@ -206,6 +208,7 @@ const SalesTaxReport: React.FC = () => {
       totalTaxN: toNum(r.total_tax),
       lineTotalN: toNum(r.line_total),
       invoiceTotalN: toNum(r.invoice_total),
+      roundOffN: toNum(r.round_off),
     }));
   }, [data]);
 
@@ -294,6 +297,8 @@ const SalesTaxReport: React.FC = () => {
     { key: 'sgstN', header: L.TABLE_INVOICE.SGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.sgstN)}</CellText> },
     { key: 'igstN', header: L.TABLE_INVOICE.IGST_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.igstN)}</CellText> },
     { key: 'totalTaxN', header: L.TABLE_INVOICE.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatNumber(r.totalTaxN)}</CellText> },
+    // Signed 2dp — paise matter for the round-off adjustment.
+    { key: 'roundOffN', header: L.TABLE_INVOICE.ROUND_OFF, sortable: true, render: (r) => <CellText>{formatSignedCurrency(r.roundOffN)}</CellText> },
     { key: 'invoiceTotalN', header: L.TABLE_INVOICE.INVOICE_TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatWholeCurrency(r.invoiceTotalN)}</CellText> },
   ];
 
@@ -307,6 +312,8 @@ const SalesTaxReport: React.FC = () => {
       { title: L.SUMMARY.TOTAL_TAX, value: formatCurrency(toNum(summary?.total_tax)), accentColor: C.COLORS.PURPLE },
       // total_sales is WHOLE-RUPEE (ROUND-then-SUM over invoices) — no 2dp tail.
       { title: L.SUMMARY.TOTAL_SALES, value: formatWholeCurrency(toNum(summary?.total_sales)) },
+      // Signed 2dp round-off: exact invoice value sum + round_off = total_sales.
+      { title: L.SUMMARY.ROUND_OFF, value: formatSignedCurrency(toNum(summary?.round_off)) },
       { title: L.SUMMARY.TOTAL_MRP_VALUE, value: formatCurrency(toNum(summary?.total_mrp_value)) },
       { title: L.SUMMARY.LINES, value: formatCount(summary?.line_count ?? 0) },
       { title: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
@@ -349,6 +356,7 @@ const SalesTaxReport: React.FC = () => {
     sgstN: formatNumber(toNum(summary?.total_sgst)),
     igstN: formatNumber(toNum(summary?.total_igst)),
     totalTaxN: formatNumber(toNum(summary?.total_tax)),
+    roundOffN: formatSignedCurrency(toNum(summary?.round_off)),
     invoiceTotalN: formatWholeCurrency(toNum(summary?.total_sales)),
   };
 
@@ -380,6 +388,8 @@ const SalesTaxReport: React.FC = () => {
         [`${L.TABLE_INVOICE.SGST_AMT} (₹)`]: r.sgstN.toFixed(2),
         [`${L.TABLE_INVOICE.IGST_AMT} (₹)`]: r.igstN.toFixed(2),
         [`${L.TABLE_INVOICE.TOTAL_TAX} (₹)`]: r.totalTaxN.toFixed(2),
+        // Signed 2dp (toFixed keeps the '-' for negatives; paise matter here).
+        [`${L.TABLE_INVOICE.ROUND_OFF} (₹)`]: r.roundOffN.toFixed(2),
         // Whole-rupee stored invoice grand total — export without a fake 2dp tail.
         [`${L.TABLE_INVOICE.INVOICE_TOTAL} (₹)`]: r.invoiceTotalN.toFixed(0),
       }));

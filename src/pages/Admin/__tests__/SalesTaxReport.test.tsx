@@ -79,6 +79,8 @@ const FIXTURE: reportsApi.SalesTaxReportResponse = {
     total_igst: '0.00',
     total_tax: '101.70',
     total_sales: '1234.50',
+    // SIGNED 2dp round-off (negative here to exercise the '-' rendering).
+    round_off: '-0.40',
     total_mrp_value: '1200.00',
     product_count: 1,
     invoice_count: 1,
@@ -131,6 +133,8 @@ const INVOICE_FIXTURE: reportsApi.SalesTaxReportResponse = {
       total_tax: '101.70',
       line_total: '1234.50',
       invoice_total: '457.00',
+      // Signed 2dp per-invoice round-off (positive: rounded up to the whole rupee).
+      round_off: '0.50',
     },
   ],
   summary: FIXTURE.summary,
@@ -221,6 +225,27 @@ describe('SalesTaxReport page', () => {
     expect(screen.getByText('Invoice Total')).toBeInTheDocument();
     expect(screen.getByText('INV-300')).toBeInTheDocument();
     expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
+  });
+
+  it('shows the SIGNED 2dp summary Round-off figure on every level', () => {
+    renderPage();
+    // Product-wise (default): summary round_off "-0.40" -> -₹0.40.
+    expect(screen.getByText('Round-off')).toBeInTheDocument();
+    expect(screen.getByText('-₹0.40')).toBeInTheDocument();
+    // HSN-wise keeps the shared summary figure.
+    fireEvent.click(screen.getByText('HSN-code-wise'));
+    expect(screen.getByText('-₹0.40')).toBeInTheDocument();
+  });
+
+  it('renders a signed 2dp Round-off column in the invoice-wise table', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Invoice-wise'));
+    // Tile + column header both say Round-off.
+    expect(screen.getAllByText('Round-off').length).toBeGreaterThanOrEqual(2);
+    // Per-row round_off "0.50" -> +₹0.50 (signed, paise kept).
+    expect(screen.getByText('+₹0.50')).toBeInTheDocument();
+    // Summary figure (tile + totals footer) stays signed 2dp.
+    expect(screen.getAllByText('-₹0.40').length).toBeGreaterThanOrEqual(2);
   });
 
   it('renders invoice_total as a WHOLE-RUPEE amount (no ".00" paise tail)', () => {

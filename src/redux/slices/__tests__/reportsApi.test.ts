@@ -217,9 +217,11 @@ describe('Reports API Endpoints', () => {
             line_total: '456.50',
             // Whole-rupee ROUND(invoice.total_amount, 0), serialized 2dp by pg
             invoice_total: '457.00',
+            // SIGNED 2dp string: invoice_total − exact stored total
+            round_off: '0.50',
           },
         ],
-        summary: { line_count: 3, total_sales: '457.00' },
+        summary: { line_count: 3, total_sales: '457.00', round_off: '0.50' },
       };
       mockBaseQuery.mockResolvedValueOnce({
         data: mockResponse,

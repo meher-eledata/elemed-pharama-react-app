@@ -36,6 +36,13 @@ export const formatWholeCurrency = (amount: number): string => {
   return `${SYMBOL}${amount.toLocaleString(LOCALE, { maximumFractionDigits: 0 })}`;
 };
 
+/**
+ * Format a SIGNED ₹ amount with an explicit +/- sign and 2 decimals (paise matter),
+ * e.g. +₹0.10 / -₹0.40. Used for round-off adjustments.
+ */
+export const formatSignedCurrency = (amount: number): string =>
+  `${amount < 0 ? '-' : '+'}${formatCurrency(Math.abs(amount))}`;
+
 /** Format a number as en-IN with 2 decimals (no currency symbol). */
 export const formatNumber = (amount: number): string => {
   const { LOCALE, FRACTION_DIGITS } = ADMIN_REPORTS_CONSTANTS.CURRENCY;
