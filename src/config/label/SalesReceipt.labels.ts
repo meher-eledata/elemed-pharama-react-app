@@ -72,6 +72,7 @@ export const SALES_RECEIPT_LABELS = {
   ORIENTATION_LABEL: "Orientation:",
   ORIENTATION_LANDSCAPE: "Landscape",
   ORIENTATION_PORTRAIT: "Portrait",
+  PRINT_DIALOG_PAPER_HINT: "In the browser print dialog, set Paper size to {size}. Orientation is applied automatically.",
 
   // Print Preview
   PRINT_PREVIEW_TITLE: "Print Preview - Sales Receipt",

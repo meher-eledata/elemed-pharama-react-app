@@ -141,9 +141,17 @@ describe('PrintPreviewModal', () => {
   it('renders an orientation selector with Landscape and Portrait options', () => {
     render(<PrintPreviewModal {...mockProps} />);
 
-    expect(screen.getByText(/orientation/i)).toBeInTheDocument();
+    expect(screen.getByText('Orientation:')).toBeInTheDocument();
     expect(screen.getByText(/^Landscape$/)).toBeInTheDocument();
     expect(screen.getByText(/^Portrait$/)).toBeInTheDocument();
+  });
+
+  it('shows a hint that the browser print dialog paper size must match the selected size', () => {
+    render(<PrintPreviewModal {...mockProps} pageSize="A5" />);
+
+    expect(
+      screen.getByText(/set Paper size to A5\. Orientation is applied automatically/i)
+    ).toBeInTheDocument();
   });
 
   it('calls onOrientationChange when an orientation option is clicked', () => {
