@@ -132,10 +132,8 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         gap: '12px',
-        mb: 3,
+        mb: 1,
         mt: 1,
-        pb: 2,
-        borderBottom: '1px solid #E5E7EB'
       }}>
         <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#616161' }}>Page Size:</Typography>
         <Box sx={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '2px' }}>
@@ -191,6 +189,18 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           ))}
         </Box>
       </Box>
+
+      {/* The page can set orientation via CSS, but the browser dialog's paper size must match manually */}
+      <Typography sx={{
+        textAlign: 'center',
+        fontSize: '12px',
+        color: '#6B7280',
+        mb: 3,
+        pb: 2,
+        borderBottom: '1px solid #E5E7EB'
+      }}>
+        {SALES_RECEIPT_LABELS.PRINT_DIALOG_PAPER_HINT.replace('{size}', pageSize.toUpperCase())}
+      </Typography>
 
       {/* Print Preview Content */}
       <Box ref={printContentRef} sx={{
