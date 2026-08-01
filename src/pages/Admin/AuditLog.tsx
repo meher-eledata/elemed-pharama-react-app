@@ -11,6 +11,20 @@ import { useNavigate } from 'react-router-dom';
 import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Backend stores/returns event_time in UTC. Display it in India Standard Time so
+// admins read timestamps in their local (Asia/Kolkata) time.
+const IST_TIMEZONE = 'Asia/Kolkata';
+const formatIstTime = (value: string): string => {
+  if (!value) return '-';
+  const d = dayjs.utc(value);
+  return d.isValid() ? d.tz(IST_TIMEZONE).format('DD MMM YYYY, hh:mm A') : String(value);
+};
 import { useGetActivityLogQuery } from '../../redux/slices/adminSlice';
 import { extractErrorMessage } from '../../utils/errorUtils';
 import {
@@ -35,6 +49,7 @@ interface AuditLogEntry {
   eventDetails: string;
   quantityChanged: string | number;
   relatedId: string | number;
+  ipAddress: string;
 }
 
 const AuditLog: React.FC = () => {
@@ -73,6 +88,7 @@ const AuditLog: React.FC = () => {
         eventDetails: String(entry.eventDetails ?? entry.event_details ?? ''),
         quantityChanged: entry.quantityChanged ?? entry.quantity_changed ?? '',
         relatedId: entry.relatedId ?? entry.related_id ?? '',
+        ipAddress: String(entry.ipAddress ?? entry.ip_address ?? ''),
       };
     });
   }, [activityLogData]);
@@ -135,7 +151,8 @@ const AuditLog: React.FC = () => {
 
     if (eventTime) {
       filtered = filtered.filter(entry => {
-        const eventDate = dayjs(entry.eventTime);
+        // Compare on the IST calendar day so the date filter matches the displayed time.
+        const eventDate = dayjs.utc(entry.eventTime).tz(IST_TIMEZONE);
         return eventDate.isSame(eventTime, 'day');
       });
     }
@@ -199,7 +216,7 @@ const AuditLog: React.FC = () => {
           fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
           color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY
         }}>
-          {entry.eventTime}
+          {formatIstTime(entry.eventTime)}
         </Typography>
       ),
     },
@@ -308,6 +325,19 @@ const AuditLog: React.FC = () => {
           }}
         >
           {entry.username || 'NA'}
+        </Typography>
+      ),
+    },
+    {
+      key: 'ipAddress',
+      header: AUDIT_LOG_LABELS.TABLE.IP_ADDRESS,
+      sortable: true,
+      render: (entry) => (
+        <Typography sx={{
+          fontSize: AUDIT_LOG_CONSTANTS.USER_INFO.NAME_FONT_SIZE,
+          color: AUDIT_LOG_CONSTANTS.TABLE.TEXT_COLOR_PRIMARY
+        }}>
+          {entry.ipAddress || '-'}
         </Typography>
       ),
     },

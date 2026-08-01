@@ -193,17 +193,82 @@ describe('Reports API Endpoints', () => {
     });
   });
 
+  describe('POST reports/salesTax/get-sales-tax-report (getSalesTaxReport, level "invoice")', () => {
+    const body = { start_date: '2026-07-01', end_date: '2026-07-29', level: 'invoice' as const };
+
+    it('should fetch invoice-level rows (money fields as pg numeric-strings)', async () => {
+      const mockResponse = {
+        level: 'invoice',
+        rows: [
+          {
+            invoice_id: 12,
+            invoice_number: 'INV-12',
+            sale_date: '2026-07-28',
+            customer_details: 'Ward 4',
+            line_count: 3,
+            product_count: 2,
+            quantity: '5.00',
+            taxable_value: '400.00',
+            discount_amount: '10.00',
+            cgst_amount: '24.00',
+            sgst_amount: '24.00',
+            igst_amount: '0.00',
+            total_tax: '48.00',
+            line_total: '456.50',
+            // Whole-rupee ROUND(invoice.total_amount, 0), serialized 2dp by pg
+            invoice_total: '457.00',
+            // SIGNED 2dp string: invoice_total − exact stored total
+            round_off: '0.50',
+          },
+        ],
+        summary: { line_count: 3, total_sales: '457.00', round_off: '0.50' },
+      };
+      mockBaseQuery.mockResolvedValueOnce({
+        data: mockResponse,
+        meta: mockMeta(200, 'OK', 'reports/salesTax/get-sales-tax-report'),
+      });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        reportsApi.endpoints.getSalesTaxReport.initiate(body)
+      );
+
+      expect(result.data).toEqual(mockResponse);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'reports/salesTax/get-sales-tax-report', method: 'POST', body },
+        apiObject,
+        undefined
+      );
+    });
+
+    it('should handle error when fetching the sales tax report fails', async () => {
+      mockBaseQuery.mockResolvedValueOnce({
+        error: { status: 400, data: { error: "level must be one of 'product', 'hsn', or 'invoice'" } },
+        meta: mockMeta(400, 'Bad Request', 'reports/salesTax/get-sales-tax-report'),
+      });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        reportsApi.endpoints.getSalesTaxReport.initiate(body)
+      );
+
+      expect(result.error).toBeDefined();
+    });
+  });
+
   describe('Endpoint Configuration', () => {
     it('should have all endpoints defined', () => {
       expect(reportsApi.endpoints.getDailySalesReport).toBeDefined();
       expect(reportsApi.endpoints.getWeeklyBillCounts).toBeDefined();
       expect(reportsApi.endpoints.getDailySalesTable).toBeDefined();
+      expect(reportsApi.endpoints.getSalesTaxReport).toBeDefined();
     });
 
     it('should export correct hooks', () => {
       expect(reportsApi.useGetDailySalesReportQuery).toBeDefined();
       expect(reportsApi.useGetWeeklyBillCountsQuery).toBeDefined();
       expect(reportsApi.useGetDailySalesTableQuery).toBeDefined();
+      expect(reportsApi.useGetSalesTaxReportQuery).toBeDefined();
     });
   });
 });

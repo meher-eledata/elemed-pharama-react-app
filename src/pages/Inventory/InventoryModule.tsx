@@ -111,9 +111,13 @@ const InventoryModule: React.FC = () => {
 
   // Handle incoming tab state from dashboard
   useEffect(() => {
-    const state = location.state as { tab?: StockType };
+    const state = location.state as { tab?: StockType; nearExpiryMonths?: number };
     if (state?.tab) {
       setSelectedStockType(state.tab);
+      // Land on the correct near-expiry sub-tab (1-month vs 3-month) when deep-linked.
+      if (typeof state.nearExpiryMonths === 'number') {
+        setNearExpiryMonths(state.nearExpiryMonths);
+      }
       // Clear the state so it doesn't persist on manual refreshes
       window.history.replaceState({}, document.title);
     }

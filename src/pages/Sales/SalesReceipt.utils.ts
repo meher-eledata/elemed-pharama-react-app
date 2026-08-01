@@ -1,5 +1,6 @@
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
+import { formatSchedule } from '../../config/constants/product.constants';
 
 /**
  * Transform cart items from Sales Page to SalesReceiptItem format
@@ -41,6 +42,7 @@ export const transformCartItems = (cartItems: any[]): SalesReceiptItem[] => {
       igstPercent: item.igstPercent || '0',
       pack_qty: item.pack_qty,
       amount: amount,
+      schedule: item.schedule ?? null,
     };
   });
 };
@@ -66,7 +68,8 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
     totalValue: totalValue.toFixed(2),
     totalDiscount: totalDiscount.toFixed(2),
     taxAmount: taxAmount.toFixed(2),
-    totalPayableAmount: totalPayableAmount.toFixed(2),
+    // Whole-rupee grand total (matches the backend's rounded invoice total) — no ".00" tail.
+    totalPayableAmount: String(totalPayableAmount),
   };
 };
 
@@ -97,6 +100,7 @@ export const generatePrintHTML = (data: {
   labels: any;
   patientType?: string;
   pageSize?: 'A4' | 'A5';
+  orientation?: 'landscape' | 'portrait';
   brandIcon?: string;
   splitPayments?: any[];
 }): string => {
@@ -119,27 +123,66 @@ export const generatePrintHTML = (data: {
     labels,
     patientType,
     pageSize = 'A4',
+    orientation = 'landscape',
     brandIcon,
     splitPayments,
   } = data;
 
   const isA5 = pageSize === 'A5';
+  // True sheet dimensions in mm (portrait base, swapped for landscape).
+  const [baseWmm, baseHmm] = isA5 ? [148, 210] : [210, 297];
+  const pageWmm = orientation === 'landscape' ? baseHmm : baseWmm;
+  const pageHmm = orientation === 'landscape' ? baseWmm : baseHmm;
+
+  // Typography tiers keyed on the printable width:
+  //   wide   = 297mm (A4 landscape) — roomy, but tight row padding so ~9 items + summary fit one page
+  //   medium = 210mm (A4 portrait / A5 landscape)
+  //   narrow = 148mm (A5 portrait) — 12 columns must fit, so smallest sizes
+  const sz = pageWmm >= 297 ? {
+    body: '13px', headerMb: '12px', headerPb: '6px', logoW: '90px',
+    pharmacyName: '20px', pharmacySub: '9px', pharmacyAddr: '8px', addrMargin: '4px 0',
+    docTitle: '15px', docTitleMb: '10px', detailsMb: '15px', sectionPad: '10px',
+    detailTitle: '16px', detailTitleMb: '12px', detailItem: '13px', detailItemMb: '6px',
+    lineHeight: '1.4', emailItem: '11px', itemsTitle: '14px', itemsTitleMb: '8px',
+    thPad: '6px 8px', tdPad: '6px 8px', cell: '13px',
+    summaryPad: '12px 20px', summaryGap: '60px', summaryItemGap: '6px', summaryFont: '14px',
+    summaryValue: '14px', summaryRightLabel: '16px', summaryRightValue: '22px',
+  } : pageWmm >= 210 ? {
+    body: '11px', headerMb: '8px', headerPb: '5px', logoW: '70px',
+    pharmacyName: '16px', pharmacySub: '8px', pharmacyAddr: '7.5px', addrMargin: '3px 0',
+    docTitle: '12px', docTitleMb: '8px', detailsMb: '10px', sectionPad: '6px 8px',
+    detailTitle: '11px', detailTitleMb: '5px', detailItem: '10px', detailItemMb: '3px',
+    lineHeight: '1.35', emailItem: '9px', itemsTitle: '11px', itemsTitleMb: '5px',
+    thPad: '5px 6px', tdPad: '4px 6px', cell: '10px',
+    summaryPad: '8px 14px', summaryGap: '36px', summaryItemGap: '3px', summaryFont: '11px',
+    summaryValue: '12px', summaryRightLabel: '12px', summaryRightValue: '17px',
+  } : {
+    body: '10px', headerMb: '6px', headerPb: '4px', logoW: '55px',
+    pharmacyName: '14px', pharmacySub: '8px', pharmacyAddr: '7px', addrMargin: '2px 0',
+    docTitle: '11px', docTitleMb: '6px', detailsMb: '6px', sectionPad: '4px 6px',
+    detailTitle: '10px', detailTitleMb: '3px', detailItem: '9px', detailItemMb: '2px',
+    lineHeight: '1.3', emailItem: '8px', itemsTitle: '10px', itemsTitleMb: '3px',
+    thPad: '3px 4px', tdPad: '2px 4px', cell: '9px',
+    summaryPad: '5px 10px', summaryGap: '24px', summaryItemGap: '2px', summaryFont: '9px',
+    summaryValue: '11px', summaryRightLabel: '10px', summaryRightValue: '14px',
+  };
+  const bodyPad = isA5 ? '6mm' : '10mm';
 
   return `
+    <!DOCTYPE html>
     <html>
       <head>
         <title>${labels.CUSTOMER_RECEIPT_TITLE}</title>
         <style>
           @media print {
-            @page { 
-              margin: ${isA5 ? '10mm' : '15mm'} !important;
-              size: ${pageSize} landscape !important;
+            /* Zero page margins suppress the browser's header/footer band
+               (title, URL, date); the visual margin comes from body padding. */
+            @page {
+              margin: 0;
+              size: ${pageWmm}mm ${pageHmm}mm;
             }
             html, body {
               margin: 0;
-              padding: 0;
-              width: 100%;
-              height: 100%;
               overflow: visible;
             }
             * {
@@ -154,40 +197,46 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          body { 
-            font-family: 'Lexend', sans-serif; 
+          body {
+            font-family: 'Lexend', sans-serif;
             margin: 0;
-            padding: 0;
+            /* Match the print page box exactly so the tab rendering mirrors the print layout. */
+            width: ${pageWmm}mm;
+            box-sizing: border-box;
+            padding: ${bodyPad};
+            background-color: #FFFFFF;
             color: #1A212B;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
-            font-size: ${isA5 ? '10px' : '13px'};
+            font-size: ${sz.body};
           }
-          .receipt-header { 
-            text-align: left; 
-            margin-bottom: ${isA5 ? '15px' : '30px'}; 
+          .receipt-header {
+            text-align: left;
+            margin-bottom: ${sz.headerMb};
           }
-          .receipt-title { 
-            font-size: ${isA5 ? '20px' : '28px'}; 
-            font-weight: bold; 
-            margin-bottom: ${isA5 ? '10px' : '20px'}; 
+          .doc-title {
+            text-align: center;
+            font-size: ${sz.docTitle};
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: 0 0 ${sz.docTitleMb};
             color: #1A212B;
           }
-          .receipt-details { 
-            display: flex; 
+          .receipt-details {
+            display: flex;
             flex-direction: row;
-            gap: 0px; 
-            margin-bottom: ${isA5 ? '10px' : '15px'}; 
-            border: 1px solid #E5E7EB; 
-            border-radius: 8px; 
+            gap: 0px;
+            margin-bottom: ${sz.detailsMb};
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
             overflow: hidden;
             page-break-inside: avoid;
           }
-          .detail-section { 
-            flex: 1; 
-            background-color: #F9FAFB !important; 
-            padding: ${isA5 ? '6px' : '10px'}; 
+          .detail-section {
+            flex: 1;
+            background-color: #F9FAFB !important;
+            padding: ${sz.sectionPad};
             border-right: 2px solid #9CA3AF; 
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
@@ -197,28 +246,28 @@ export const generatePrintHTML = (data: {
           .detail-section:last-child {
             border-right: none;
           }
-          .detail-title { 
-            font-weight: bold; 
-            margin-bottom: ${isA5 ? '6px' : '12px'}; 
-            font-size: ${isA5 ? '11px' : '16px'};
+          .detail-title {
+            font-weight: bold;
+            margin-bottom: ${sz.detailTitleMb};
+            font-size: ${sz.detailTitle};
             color: #1A212B;
           }
-          .detail-item { 
-            font-size: ${isA5 ? '9px' : '13px'}; 
-            margin-bottom: ${isA5 ? '3px' : '6px'};
+          .detail-item {
+            font-size: ${sz.detailItem};
+            margin-bottom: ${sz.detailItemMb};
             color: #374151;
-            line-height: 1.4;
+            line-height: ${sz.lineHeight};
           }
           .detail-item.email-item {
-            font-size: ${isA5 ? '8px' : '11px'};
+            font-size: ${sz.emailItem};
           }
           .items-section { 
             margin-bottom: 0px;
           }
-          .items-title { 
-            font-weight: bold; 
-            margin-bottom: ${isA5 ? '4px' : '8px'}; 
-            font-size: ${isA5 ? '12px' : '14px'};
+          .items-title {
+            font-weight: bold;
+            margin-bottom: ${sz.itemsTitleMb};
+            font-size: ${sz.itemsTitle};
             color: #1A212B;
           }
           .items-table { 
@@ -232,11 +281,11 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          .items-table th { 
-            background-color: #C7D2FE !important; 
-            padding: ${isA5 ? '4px 4px' : '10px 8px'}; 
-            font-weight: bold; 
-            font-size: ${isA5 ? '9px' : '13px'}; 
+          .items-table th {
+            background-color: #C7D2FE !important;
+            padding: ${sz.thPad};
+            font-weight: bold;
+            font-size: ${sz.cell};
             text-align: left;
             color: #1A212B !important;
             border-bottom: 2px solid #A5B4FC !important;
@@ -259,13 +308,13 @@ export const generatePrintHTML = (data: {
               color-adjust: exact !important;
             }
           }
-          .items-table td { 
-            padding: ${isA5 ? '4px 4px' : '10px 8px'}; 
-            font-size: ${isA5 ? '9px' : '13px'}; 
-            background-color: #FFFFFF !important; 
+          .items-table td {
+            padding: ${sz.tdPad};
+            font-size: ${sz.cell};
+            background-color: #FFFFFF !important;
             color: #374151 !important;
             border-top: 1px solid #E5E7EB;
-            line-height: 1.4;
+            line-height: ${sz.lineHeight};
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
@@ -282,9 +331,9 @@ export const generatePrintHTML = (data: {
           .items-table td:not(:last-child) {
             border-right: 1px solid #E5E7EB;
           }
-          .summary { 
-            background-color: #C7D2FE !important; 
-            padding: ${isA5 ? '8px 12px' : '12px 20px'}; 
+          .summary {
+            background-color: #C7D2FE !important;
+            padding: ${sz.summaryPad};
             display: flex; 
             justify-content: space-between; 
             align-items: flex-start;
@@ -310,16 +359,16 @@ export const generatePrintHTML = (data: {
               border: 2px solid #A5B4FC !important;
             }
           }
-          .summary-left { 
-            display: flex; 
-            gap: ${isA5 ? '30px' : '60px'}; 
-            font-size: ${isA5 ? '10px' : '14px'};
+          .summary-left {
+            display: flex;
+            gap: ${sz.summaryGap};
+            font-size: ${sz.summaryFont};
             color: #1A212B;
           }
           .summary-item {
             display: flex;
             flex-direction: column;
-            gap: ${isA5 ? '3px' : '6px'};
+            gap: ${sz.summaryItemGap};
           }
           .summary-label {
             font-weight: 500;
@@ -327,37 +376,37 @@ export const generatePrintHTML = (data: {
           }
           .summary-value {
             font-weight: 700;
-            font-size: ${isA5 ? '12px' : '14px'};
+            font-size: ${sz.summaryValue};
             color: #1A212B;
           }
-          .summary-right { 
+          .summary-right {
             display: flex;
             flex-direction: column;
-            gap: ${isA5 ? '3px' : '6px'};
+            gap: ${sz.summaryItemGap};
             align-items: flex-end;
             text-align: right;
           }
           .summary-right-label {
-            font-size: ${isA5 ? '12px' : '16px'};
+            font-size: ${sz.summaryRightLabel};
             font-weight: 500;
             color: #1A212B;
           }
           .summary-right-value {
-            font-size: ${isA5 ? '16px' : '22px'};
+            font-size: ${sz.summaryRightValue};
             font-weight: 700;
             color: #1A212B;
           }
         </style>
       </head>
       <body>
-        <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: 6px; margin-bottom: 12px; gap: 0;">
+        <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: ${sz.headerPb}; gap: 0;">
           <div style="flex: 1; display: flex; justify-content: flex-start;">
-            ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${isA5 ? '70px' : '90px'}; height: auto;" />` : ''}
+            ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
           </div>
           <div style="flex: 3; text-align: center;">
-            <div style="font-size: ${isA5 ? '16px' : '20px'}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
-            <div style="font-size: ${isA5 ? '8px' : '9px'}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
-            <div style="font-size: ${isA5 ? '7px' : '8px'}; margin: 4px 0; line-height: 1.2; color: #4B5563;">
+            <div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
+            <div style="font-size: ${sz.pharmacySub}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
+            <div style="font-size: ${sz.pharmacyAddr}; margin: ${sz.addrMargin}; line-height: 1.2; color: #4B5563;">
               PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
               DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
               GSTIN No: 37AAQCS3213C2ZH<br />
@@ -366,7 +415,8 @@ export const generatePrintHTML = (data: {
           </div>
           <div style="flex: 1;"></div>
         </div>
-        
+        <div class="doc-title">${labels.CUSTOMER_RECEIPT_TITLE}</div>
+
         <div class="receipt-details">
           <!-- 1 Row Layout -->
           <div class="detail-section">
@@ -413,6 +463,7 @@ export const generatePrintHTML = (data: {
                 <th>Product Name</th>
                 <th>MFG</th>
                 <th>HSN</th>
+                <th>Sch</th>
                 <th>Batch</th>
                 <th>Pack</th>
                 <th>Exp</th>
@@ -426,6 +477,7 @@ export const generatePrintHTML = (data: {
               ${salesItems.length > 1 ? salesItems.slice(0, -1).map((item, index) => {
                 const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
                 const hsn = (item as any).hsn || '';
+                const schedule = formatSchedule(item.schedule);
                 const pack = (item as any).pack || 'N/A';
                 const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
                 let formattedExp = 'N/A';
@@ -443,6 +495,7 @@ export const generatePrintHTML = (data: {
                     <td>${item.productName}</td>
                     <td>${mfg}</td>
                     <td>${hsn}</td>
+                    <td>${schedule}</td>
                     <td>${item.batch}</td>
                     <td>${pack}</td>
                     <td>${formattedExp}</td>
@@ -454,12 +507,13 @@ export const generatePrintHTML = (data: {
                 `;
               }).join('') : ''}
             </tbody>
-            <tbody style="page-break-inside: avoid;">
+            <tbody>
               ${salesItems.length > 0 ? (() => {
                 const item = salesItems[salesItems.length - 1];
                 const index = salesItems.length - 1;
                 const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
                 const hsn = (item as any).hsn || '';
+                const schedule = formatSchedule(item.schedule);
                 const pack = (item as any).pack || 'N/A';
                 const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
                 let formattedExp = 'N/A';
@@ -477,6 +531,7 @@ export const generatePrintHTML = (data: {
                     <td>${item.productName}</td>
                     <td>${mfg}</td>
                     <td>${hsn}</td>
+                    <td>${schedule}</td>
                     <td>${item.batch}</td>
                     <td>${pack}</td>
                     <td>${formattedExp}</td>
@@ -488,7 +543,7 @@ export const generatePrintHTML = (data: {
                 `;
               })() : ''}
               <tr>
-                <td colspan="11" class="summary-td">
+                <td colspan="12" class="summary-td">
                   <div class="summary">
                     <div class="summary-left">
                       <div class="summary-item">

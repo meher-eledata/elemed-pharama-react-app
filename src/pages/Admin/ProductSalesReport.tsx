@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Box } from '@mui/material';
+import { Box, TableCell, TableRow } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
@@ -43,8 +43,8 @@ const PATIENT_TYPE_DISPLAY: Record<string, string> = {
 interface SalesRow extends ProductSalesReportRow {
   _id: number;
   qtyN: number;
-  mrpN: number;
-  spN: number;
+  unitMrpN: number;
+  spAfterDiscN: number;
   discPctN: number;
   discAmtN: number;
   cgstN: number;
@@ -85,8 +85,9 @@ const ProductSalesReport: React.FC = () => {
   );
   const patientOptions: FilterSelectOption[] = [
     { value: '', label: L.FILTER.PATIENT_TYPE_ALL },
-    { value: '1', label: L.FILTER.PATIENT_TYPE_INPATIENT },
-    { value: '0', label: L.FILTER.PATIENT_TYPE_OUTPATIENT },
+    // Backend/DB uses 0 = inpatient, 1 = outpatient.
+    { value: '0', label: L.FILTER.PATIENT_TYPE_INPATIENT },
+    { value: '1', label: L.FILTER.PATIENT_TYPE_OUTPATIENT },
   ];
 
   const rows: SalesRow[] = useMemo(() => {
@@ -95,8 +96,9 @@ const ProductSalesReport: React.FC = () => {
       ...r,
       _id: i,
       qtyN: toNum(r.quantity),
-      mrpN: toNum(r.mrp),
-      spN: toNum(r.selling_price),
+      unitMrpN: toNum(r.unit_mrp),
+      // SP column shows per-unit price AFTER discount (discount_pct is 0..100).
+      spAfterDiscN: toNum(r.selling_price) * (1 - toNum(r.discount_pct) / 100),
       discPctN: toNum(r.discount_pct),
       discAmtN: toNum(r.discount_amount),
       cgstN: toNum(r.cgst_amount),
@@ -146,9 +148,10 @@ const ProductSalesReport: React.FC = () => {
     { key: 'batch_number', header: L.TABLE.BATCH_NUMBER, sortable: true, render: (r) => <CellText>{r.batch_number || '-'}</CellText> },
     { key: 'patientDisplay', header: L.TABLE.PATIENT_TYPE, sortable: true, render: (r) => <CellText>{r.patientDisplay}</CellText> },
     { key: 'customer_name', header: L.TABLE.CUSTOMER, sortable: true, render: (r) => <CellText>{r.customer_name || '-'}</CellText> },
+    { key: 'customer_details', header: L.TABLE.CUSTOMER_DETAILS, sortable: true, render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
     { key: 'qtyN', header: L.TABLE.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
-    { key: 'mrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
-    { key: 'spN', header: L.TABLE.SP, sortable: true, render: (r) => <CellText>{formatNumber(r.spN)}</CellText> },
+    { key: 'unitMrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.unitMrpN)}</CellText> },
+    { key: 'spAfterDiscN', header: L.TABLE.SP, sortable: true, render: (r) => <CellText>{formatNumber(r.spAfterDiscN)}</CellText> },
     { key: 'discPctN', header: L.TABLE.DISCOUNT_PCT, sortable: true, render: (r) => <CellText>{formatPercent(r.discPctN)}</CellText> },
     { key: 'discAmtN', header: L.TABLE.DISCOUNT_AMT, sortable: true, render: (r) => <CellText>{formatNumber(r.discAmtN)}</CellText> },
     { key: 'cgstN', header: L.TABLE.CGST_AMT, sortable: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
@@ -157,6 +160,57 @@ const ProductSalesReport: React.FC = () => {
     { key: 'totalTaxN', header: L.TABLE.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
     { key: 'lineTotalN', header: L.TABLE.LINE_TOTAL, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.lineTotalN)}</CellText> },
   ];
+
+  // Totals summed from the full filtered, in-memory row set that backs both the
+  // table (ReusableTable paginates client-side) and the CSV — keeps totals
+  // filter-correct and guarantees the CSV totals match the UI table exactly.
+  const totals = useMemo(
+    () =>
+      sortedRows.reduce(
+        (acc, r) => {
+          acc.qtyN += r.qtyN;
+          acc.unitMrpN += r.unitMrpN;
+          acc.spAfterDiscN += r.spAfterDiscN;
+          acc.discAmtN += r.discAmtN;
+          acc.cgstN += r.cgstN;
+          acc.sgstN += r.sgstN;
+          acc.igstN += r.igstN;
+          acc.totalTaxN += r.totalTaxN;
+          acc.lineTotalN += r.lineTotalN;
+          return acc;
+        },
+        { qtyN: 0, unitMrpN: 0, spAfterDiscN: 0, discAmtN: 0, cgstN: 0, sgstN: 0, igstN: 0, totalTaxN: 0, lineTotalN: 0 }
+      ),
+    [sortedRows]
+  );
+
+  const totalsCellByKey: Record<string, React.ReactNode> = {
+    invoice_number: <CellText weight={700}>{L.TABLE.TOTAL}</CellText>,
+    qtyN: <CellText weight={700}>{formatNumber(totals.qtyN)}</CellText>,
+    unitMrpN: <CellText weight={700}>{formatNumber(totals.unitMrpN)}</CellText>,
+    spAfterDiscN: <CellText weight={700}>{formatNumber(totals.spAfterDiscN)}</CellText>,
+    discAmtN: <CellText weight={700}>{formatNumber(totals.discAmtN)}</CellText>,
+    cgstN: <CellText weight={700}>{formatCurrency(totals.cgstN)}</CellText>,
+    sgstN: <CellText weight={700}>{formatCurrency(totals.sgstN)}</CellText>,
+    igstN: <CellText weight={700}>{formatCurrency(totals.igstN)}</CellText>,
+    totalTaxN: <CellText weight={700}>{formatCurrency(totals.totalTaxN)}</CellText>,
+    lineTotalN: <CellText weight={700}>{formatCurrency(totals.lineTotalN)}</CellText>,
+  };
+
+  const totalsFooter = (
+    <TableRow sx={{ bgcolor: '#F9FAFB' }}>
+      {columns
+        .filter((c) => !c.hide)
+        .map((c, i) => (
+          <TableCell
+            key={i}
+            sx={{ padding: '12px 16px', whiteSpace: 'nowrap', borderTop: '2px solid #E5E7EB' }}
+          >
+            {totalsCellByKey[c.key as string] ?? null}
+          </TableCell>
+        ))}
+    </TableRow>
+  );
 
   const summary = data?.summary;
   const summaryStats = useMemo(
@@ -174,36 +228,60 @@ const ProductSalesReport: React.FC = () => {
     [summary]
   );
 
-  const csvData = useMemo(
-    () =>
-      sortedRows.map((r) => ({
-        [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
-        [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
-        [L.TABLE.PRODUCT]: csvString(r.product_name),
-        [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
-        [L.TABLE.HSN]: csvString(r.hsn_code),
-        [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
-        [L.TABLE.PATIENT_TYPE]: r.patientDisplay,
-        [L.TABLE.CUSTOMER]: csvString(r.customer_name),
-        [L.TABLE.QTY]: r.qtyN.toFixed(2),
-        [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
-        [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),
-        [L.TABLE.DISCOUNT_PCT]: r.discPctN.toFixed(2),
-        [L.TABLE.DISCOUNT_AMT]: r.discAmtN.toFixed(2),
-        [L.TABLE.CGST_AMT]: r.cgstN.toFixed(2),
-        [L.TABLE.SGST_AMT]: r.sgstN.toFixed(2),
-        [L.TABLE.IGST_AMT]: r.igstN.toFixed(2),
-        [L.TABLE.TOTAL_TAX]: r.totalTaxN.toFixed(2),
-        [`${L.TABLE.LINE_TOTAL} (₹)`]: r.lineTotalN.toFixed(2),
-      })),
-    [sortedRows]
-  );
+  const csvData = useMemo(() => {
+    const dataRows = sortedRows.map((r) => ({
+      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
+      [L.TABLE.PRODUCT]: csvString(r.product_name),
+      [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
+      [L.TABLE.HSN]: csvString(r.hsn_code),
+      [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
+      [L.TABLE.PATIENT_TYPE]: r.patientDisplay,
+      [L.TABLE.CUSTOMER]: csvString(r.customer_name),
+      [L.TABLE.CUSTOMER_DETAILS]: csvString(r.customer_details),
+      [L.TABLE.QTY]: r.qtyN.toFixed(2),
+      [`${L.TABLE.MRP} (₹)`]: r.unitMrpN.toFixed(2),
+      [`${L.TABLE.SP} (₹)`]: r.spAfterDiscN.toFixed(2),
+      [L.TABLE.DISCOUNT_PCT]: r.discPctN.toFixed(2),
+      [L.TABLE.DISCOUNT_AMT]: r.discAmtN.toFixed(2),
+      [L.TABLE.CGST_AMT]: r.cgstN.toFixed(2),
+      [L.TABLE.SGST_AMT]: r.sgstN.toFixed(2),
+      [L.TABLE.IGST_AMT]: r.igstN.toFixed(2),
+      [L.TABLE.TOTAL_TAX]: r.totalTaxN.toFixed(2),
+      [`${L.TABLE.LINE_TOTAL} (₹)`]: r.lineTotalN.toFixed(2),
+    }));
+    if (dataRows.length > 0) {
+      // Totals row mirrors the in-table totals footer (percentage column left blank).
+      dataRows.push({
+        [L.TABLE.INVOICE_NUMBER]: L.TABLE.TOTAL,
+        [L.TABLE.SALE_DATE]: '',
+        [L.TABLE.PRODUCT]: '',
+        [L.TABLE.PRODUCT_CODE]: '',
+        [L.TABLE.HSN]: '',
+        [L.TABLE.BATCH_NUMBER]: '',
+        [L.TABLE.PATIENT_TYPE]: '',
+        [L.TABLE.CUSTOMER]: '',
+        [L.TABLE.CUSTOMER_DETAILS]: '',
+        [L.TABLE.QTY]: totals.qtyN.toFixed(2),
+        [`${L.TABLE.MRP} (₹)`]: totals.unitMrpN.toFixed(2),
+        [`${L.TABLE.SP} (₹)`]: totals.spAfterDiscN.toFixed(2),
+        [L.TABLE.DISCOUNT_PCT]: '',
+        [L.TABLE.DISCOUNT_AMT]: totals.discAmtN.toFixed(2),
+        [L.TABLE.CGST_AMT]: totals.cgstN.toFixed(2),
+        [L.TABLE.SGST_AMT]: totals.sgstN.toFixed(2),
+        [L.TABLE.IGST_AMT]: totals.igstN.toFixed(2),
+        [L.TABLE.TOTAL_TAX]: totals.totalTaxN.toFixed(2),
+        [`${L.TABLE.LINE_TOTAL} (₹)`]: totals.lineTotalN.toFixed(2),
+      });
+    }
+    return dataRows;
+  }, [sortedRows, totals]);
   const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${start ? start.format('YYYY-MM-DD') : ''}_${
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
     csvLinkRef.current?.link?.click();
-    logDownload({ category: 'report', name: 'Product Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
+    logDownload({ category: 'report', name: 'Product Sales Report', format: 'csv', count: sortedRows.length }).catch(() => {});
   };
 
   return (
@@ -271,6 +349,8 @@ const ProductSalesReport: React.FC = () => {
               onPageChange={setCurrentPage}
               onSortRequest={handleSortRequest}
               sortConfig={sortConfig}
+              footerContent={sortedRows.length > 0 ? totalsFooter : undefined}
+              disableFooterWrapper
             />
           </TableShell>
         </>

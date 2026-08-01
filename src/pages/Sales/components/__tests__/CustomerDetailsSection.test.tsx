@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import CustomerDetailsSection from '../CustomerDetailsSection';
-import { Customer } from '../../../../redux/slices/salesApi';
+import { Customer, CustomerOption } from '../../../../redux/slices/salesApi';
 
 // Mock Redux store
 const createMockStore = () => {
@@ -20,14 +20,21 @@ describe('CustomerDetailsSection', () => {
     customerName: '',
     customerMobile: '',
     customerCity: '',
+    customerDetails: '',
     patientType: 'Out Patient',
     selectedCustomer: null,
-    customerNames: ['John Doe', 'Jane Smith', 'Bob Johnson'],
+    customerOptions: [
+      { id: '1', name: 'John Doe', phone: '1234567890' },
+      { id: '2', name: 'Jane Smith', phone: '9876543210' },
+      { id: '3', name: 'Bob Johnson', phone: null },
+    ] as CustomerOption[],
     availablePhones: ['1234567890', '9876543210'],
     onCustomerNameChange: jest.fn(),
     onCustomerSelect: jest.fn(),
+    onCustomerOptionSelect: jest.fn(),
     onCustomerMobileChange: jest.fn(),
     onCustomerCityChange: jest.fn(),
+    onCustomerDetailsChange: jest.fn(),
     onPatientTypeChange: jest.fn(),
     onAddNewCustomer: jest.fn(),
   };
@@ -52,7 +59,32 @@ describe('CustomerDetailsSection', () => {
     expect(screen.getByLabelText(/customer name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/mobile number/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/city/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Details')).toBeInTheDocument();
     expect(screen.getByText(/add new customer/i)).toBeInTheDocument();
+  });
+
+  it('renders the Details field capped at 150 characters', () => {
+    renderComponent();
+
+    const detailsInput = screen.getByLabelText('Details');
+    expect(detailsInput).toBeInTheDocument();
+    expect(detailsInput).toHaveAttribute('maxlength', '150');
+  });
+
+  it('displays customer details when provided', () => {
+    renderComponent({ customerDetails: 'Regular customer' });
+
+    const detailsInput = screen.getByLabelText('Details');
+    expect(detailsInput).toHaveValue('Regular customer');
+  });
+
+  it('calls onCustomerDetailsChange when the Details input changes', () => {
+    renderComponent();
+
+    const detailsInput = screen.getByLabelText('Details');
+    fireEvent.change(detailsInput, { target: { value: 'Needs follow-up' } });
+
+    expect(mockProps.onCustomerDetailsChange).toHaveBeenCalledWith('Needs follow-up');
   });
 
   it('displays customer name when provided', () => {

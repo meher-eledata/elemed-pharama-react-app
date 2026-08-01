@@ -10,6 +10,11 @@ export const validateCustomerData = (customerData: any): { isValid: boolean; err
   if (!customerData.customerName || !customerData.customerName.trim()) {
     return { isValid: false, error: 'Customer name is required' };
   }
+  // A name must contain at least one letter — rejects an all-digit / no-letter value,
+  // which is how a phone number gets wrongly entered into the name field.
+  if (!/[A-Za-z]/.test(customerData.customerName.trim())) {
+    return { isValid: false, error: 'Enter a valid customer name' };
+  }
   if (!customerData.mobileNumber || !customerData.mobileNumber.trim()) {
     return { isValid: false, error: 'Phone number is required' };
   }
@@ -138,6 +143,7 @@ export const transformCartItemsForEdit = (salesItems: SalesReceiptItem[]): CartI
     igstPercent: item.igstPercent,
     pack_qty: item.pack_qty,
     amount: item.amount,
+    schedule: item.schedule,
   }));
 };
 
@@ -172,6 +178,7 @@ const cartToSalesItem = (c: CartItem): SalesReceiptItem => {
   igst: c.igst || '0',
   igstPercent: c.igstPercent || '0',
   amount: c.amount || String(c.totalPrice ?? 0),
+  schedule: c.schedule,
   };
 };
 
@@ -201,6 +208,8 @@ export const mergeCartWithApiItems = (
         manufacturer: match.manufacturer,
         hsn: match.hsn,
         pack: match.pack,
+        // Cart value wins; fall back to the DB line's schedule for edited sales.
+        schedule: base.schedule ?? match.schedule,
         returned_quantity: match.returned_quantity,
         original_quantity: match.original_quantity,
       };

@@ -33,6 +33,10 @@ export const SUPPLIER_PAYMENT_REPORT_LABELS = {
   CHART_SERIES: {
     PAID: 'Paid (₹)',
   },
+  AXIS: {
+    DATE: 'Date',
+    PAID: 'Amount Paid (₹)',
+  },
   TABLE: {
     RECEIPT_NUMBER: 'Receipt #',
     INVOICE_DATE: 'Invoice Date',
@@ -46,6 +50,7 @@ export const SUPPLIER_PAYMENT_REPORT_LABELS = {
     PAYMENT_DONE: 'Payment Done',
     TRANSACTION_DATE: 'Transaction Date',
     PAYMENT_METHOD: 'Payment Method',
+    DETAILS: 'Details',
     PENDING_DUE: 'Pending Due',
   },
   EMPTY_TABLE: 'No payments for the selected period.',

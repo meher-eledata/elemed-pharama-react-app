@@ -82,12 +82,13 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
       const productData = products
         .map((product: any) => {
           if (Array.isArray(product) && product.length >= 2) {
-            return { name: product[0], id: product[1], currentQuantity: product[2] ? Number(product[2]) : 0 };
+            return { name: product[0], id: product[1], currentQuantity: product[2] ? Number(product[2]) : 0, schedule: null };
           } else if (product && typeof product === 'object') {
-            return { 
-              name: product.name || product.product_name || product.productName || '', 
+            return {
+              name: product.name || product.product_name || product.productName || '',
               id: product.id || product.product_id || product.productId,
-              currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0
+              currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0,
+              schedule: product.schedule ?? null
             };
           }
           return null;

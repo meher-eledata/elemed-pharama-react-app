@@ -403,7 +403,9 @@ export const receiveApi = createApi({
     }),
 
     // Get all products endpoint (shared across modules)
-    getProducts: builder.query<{ name: string, id: number, currentQuantity?: number }[], void>({
+    // `schedule` semantics (api-contract.md): NULL = not yet attributed (sale-cart popup
+    // prompts once); 'NONE' = explicitly none (never prompts). Both display blank.
+    getProducts: builder.query<{ name: string, id: number, currentQuantity?: number, schedule: string | null }[], void>({
       query: () => {
         return "receive/get-products/";
       },
@@ -431,12 +433,13 @@ export const receiveApi = createApi({
           })
           .map((product: any) => {
             if (Array.isArray(product)) {
-              return { name: product[0], id: product[1], currentQuantity: product[2] ? Number(product[2]) : 0 };
+              return { name: product[0], id: product[1], currentQuantity: product[2] ? Number(product[2]) : 0, schedule: null };
             }
             return {
               name: product.name,
               id: product.product_id || product.id,
-              currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0
+              currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0,
+              schedule: product.schedule ?? null
             };
           })
           .filter((product: any) => {

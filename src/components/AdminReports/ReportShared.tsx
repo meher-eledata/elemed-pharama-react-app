@@ -54,7 +54,8 @@ export const BackLink: React.FC<{ onClick: () => void; label?: string }> = ({
 interface ReportHeaderProps {
   title: string;
   subtitle: string;
-  onDownloadCsv: () => void;
+  /** When omitted, the download button is not rendered (e.g. on overview tabs). */
+  onDownloadCsv?: () => void;
   downloadLabel: string;
   downloadDisabled?: boolean;
   /** Optional extra controls rendered between the date filter and the CSV button. */
@@ -106,16 +107,18 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
     <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
       {children}
       <DateRangeFilter dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
-      <StandardButton
-        variant="primary"
-        size="medium"
-        startIcon={<DownloadIcon />}
-        onClick={onDownloadCsv}
-        disabled={downloadDisabled}
-        sx={{ whiteSpace: 'nowrap', mb: '1px' }}
-      >
-        {downloadLabel}
-      </StandardButton>
+      {onDownloadCsv && (
+        <StandardButton
+          variant="primary"
+          size="medium"
+          startIcon={<DownloadIcon />}
+          onClick={onDownloadCsv}
+          disabled={downloadDisabled}
+          sx={{ whiteSpace: 'nowrap', mb: '1px' }}
+        >
+          {downloadLabel}
+        </StandardButton>
+      )}
     </Box>
   </Box>
 );

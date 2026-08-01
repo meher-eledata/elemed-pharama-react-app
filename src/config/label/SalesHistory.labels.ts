@@ -1,5 +1,5 @@
 export const SALES_HISTORY_LABELS = {
-  PAGE_TITLE: 'Sale history',
+  PAGE_TITLE: 'Sales history',
   SEARCH_PLACEHOLDER: 'Search by Invoice Number, Customer Name, or Phone Number',
   SHOW_FILTERS: 'Show filters',
   HIDE_FILTERS: 'Hide filters',
@@ -13,6 +13,7 @@ export const SALES_HISTORY_LABELS = {
     INVOICE_DATE: 'Invoice date',
     CUSTOMER_NAME: 'Customer name',
     MOBILE_NUMBER: 'Mobile number',
+    CUSTOMER_DETAILS: 'Customer Details',
     DOCTOR: 'Doctor',
     USERNAME: 'Username',
     TOTAL_AMOUNT: 'Total amount (₹)',

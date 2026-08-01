@@ -25,6 +25,7 @@ describe('PrintPreviewModal', () => {
       unitPrice: '100',
       mrp: '120',
       hsn: '3004',
+      schedule: 'H1',
       pack: '10x10',
       expiryDate: '2026-12',
       discountPercent: '5',
@@ -57,12 +58,12 @@ describe('PrintPreviewModal', () => {
     jest.clearAllMocks();
   });
 
-  it('renders print preview with branded header and customer details', () => {
+  it('renders print preview with branded header, receipt title and customer details', () => {
     render(<PrintPreviewModal {...mockProps} />);
 
-    // The receipt renders the pharmacy branded header rather than a
-    // "Customer receipt" title.
     expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    // Centered in-document receipt title (matches the printed output).
+    expect(screen.getByText(/customer receipt/i)).toBeInTheDocument();
     expect(screen.getByText(/john doe/i)).toBeInTheDocument();
     expect(screen.getByText(/1234567890/i)).toBeInTheDocument();
   });
@@ -137,6 +138,30 @@ describe('PrintPreviewModal', () => {
     expect(onPageSizeChange).toHaveBeenCalledWith('A5');
   });
 
+  it('renders an orientation selector with Landscape and Portrait options', () => {
+    render(<PrintPreviewModal {...mockProps} />);
+
+    expect(screen.getByText('Orientation:')).toBeInTheDocument();
+    expect(screen.getByText(/^Landscape$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Portrait$/)).toBeInTheDocument();
+  });
+
+  it('shows a hint that the browser print dialog paper size must match the selected size', () => {
+    render(<PrintPreviewModal {...mockProps} pageSize="A5" />);
+
+    expect(
+      screen.getByText(/set Paper size to A5\. Orientation is applied automatically/i)
+    ).toBeInTheDocument();
+  });
+
+  it('calls onOrientationChange when an orientation option is clicked', () => {
+    const onOrientationChange = jest.fn();
+    render(<PrintPreviewModal {...mockProps} onOrientationChange={onOrientationChange} />);
+
+    fireEvent.click(screen.getByText(/^Portrait$/));
+    expect(onOrientationChange).toHaveBeenCalledWith('portrait');
+  });
+
   it('does not render action buttons (this is a view-only preview body)', () => {
     // PrintPreviewModal renders only the receipt body and a page-size
     // selector; Cancel/Print/Save controls live in the parent dialog, so
@@ -177,6 +202,7 @@ describe('PrintPreviewModal', () => {
     expect(screen.getByText(/^S\.No$/)).toBeInTheDocument();
     expect(screen.getByText(/^MFG$/)).toBeInTheDocument();
     expect(screen.getByText(/^HSN$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Sch$/)).toBeInTheDocument();
     expect(screen.getByText(/^Batch$/)).toBeInTheDocument();
     expect(screen.getByText(/^Pack$/)).toBeInTheDocument();
     expect(screen.getByText(/^Exp$/)).toBeInTheDocument();
@@ -184,5 +210,20 @@ describe('PrintPreviewModal', () => {
     expect(screen.getByText(/^MRP$/)).toBeInTheDocument();
     expect(screen.getByText(/^GST$/)).toBeInTheDocument();
     expect(screen.getByText(/^Amount$/)).toBeInTheDocument();
+  });
+
+  it('renders the schedule cell; null and "NONE" render blank (formatSchedule)', () => {
+    render(<PrintPreviewModal {...mockProps} />);
+    // Item carries schedule 'H1' — shown as-is.
+    expect(screen.getByText('H1')).toBeInTheDocument();
+
+    // 'NONE' (explicitly none) must NOT print the literal string.
+    render(
+      <PrintPreviewModal
+        {...mockProps}
+        salesItems={[{ ...mockSalesItems[0], id: '2', schedule: 'NONE' }]}
+      />
+    );
+    expect(screen.queryByText('NONE')).not.toBeInTheDocument();
   });
 });

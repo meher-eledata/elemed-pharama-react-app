@@ -15,6 +15,8 @@ export const SALES_RECEIPT_LABELS = {
   MOBILE_NUMBER_PLACEHOLDER: "mobile number",
   CITY_LABEL: "City",
   CITY_PLACEHOLDER: "City",
+  CUSTOMER_DETAILS_FIELD_LABEL: "Details",
+  CUSTOMER_DETAILS_FIELD_PLACEHOLDER: "Details",
   ADD_NEW_CUSTOMER_BUTTON: "Add new customer",
 
   // Doctor Details
@@ -37,6 +39,7 @@ export const SALES_RECEIPT_LABELS = {
   TABLE_HEADER_QUANTITY: "Units",
   TABLE_HEADER_TYPE: "Unit",
   TABLE_HEADER_BATCH: "Batch",
+  TABLE_HEADER_SCHEDULE: "Schedule",
   TABLE_HEADER_UNIT_PRICE: "Unit price",
   TABLE_HEADER_DISC: "Disc (%)",
   TABLE_HEADER_CGST: "CGST",
@@ -64,6 +67,12 @@ export const SALES_RECEIPT_LABELS = {
   CANCEL_BUTTON: "Cancel",
   PRINT_BUTTON: "Save and Print",
   PRINT_ONLY_BUTTON: "Print",
+
+  // Print Options
+  ORIENTATION_LABEL: "Orientation:",
+  ORIENTATION_LANDSCAPE: "Landscape",
+  ORIENTATION_PORTRAIT: "Portrait",
+  PRINT_DIALOG_PAPER_HINT: "In the browser print dialog, set Paper size to {size}. Orientation is applied automatically.",
 
   // Print Preview
   PRINT_PREVIEW_TITLE: "Print Preview - Sales Receipt",

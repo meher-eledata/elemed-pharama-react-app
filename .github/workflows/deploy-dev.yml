@@ -1,28 +1,26 @@
-name: Deploy Dev (frontend)
+name: Deploy Dev (frontend, serverless)
 
-# Auto-deploys the frontend to the DEV ECS service whenever the `developer`
-# branch updates (direct push or PR merge). DEV-ONLY: the IAM role this assumes
-# can only be assumed from refs/heads/developer of this repo (see dev_deployment
-# OIDC runbook), so this workflow can never touch the production service.
+# Auto-deploys the frontend SPA to the DEV serverless env (S3 + CloudFront) on push/merge to `dev`.
+# Keyless OIDC; the assumed role is trusted ONLY from refs/heads/dev of this repo and grants
+# nothing on prod.
 on:
   push:
-    branches: [developer]
-  workflow_dispatch:        # allow manual re-deploy from the Actions tab
+    branches: [dev]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-dev-frontend
   cancel-in-progress: false
 
 permissions:
-  id-token: write           # required for OIDC -> AWS
+  id-token: write
   contents: read
 
 env:
   AWS_REGION: us-east-1
-  ECR_REGISTRY: 187691954418.dkr.ecr.us-east-1.amazonaws.com
-  ECR_REPOSITORY: elemed-frontend-dev
-  ECS_CLUSTER: elemed-cluster
-  ECS_SERVICE: elemed-frontend-dev-service
+  S3_BUCKET: elemed-sdev-frontend
+  CLOUDFRONT_DIST_ID: E2NS044CHKDC5Z
+  VITE_API_BASE_URL: https://dev.elemed.co/api/
   AWS_ROLE_ARN: arn:aws:iam::187691954418:role/elemed-github-actions-dev
 
 jobs:
@@ -30,29 +28,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build, tag, and push image
-        # VITE_API_BASE_URL=/api/ is baked in at build time (same as the manual deploy).
+      - name: Sync build to S3
+        # Hashed assets are cached forever (Vite renames them on change); index.html must
+        # always revalidate so browsers pick up new bundle references without a hard reload.
         run: |
-          docker build \
-            --build-arg VITE_API_BASE_URL=/api/ \
-            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
-            -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" \
-            .
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
-
-      - name: Force a new ECS deployment
-        run: aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --force-new-deployment
-
-      - name: Wait for the service to stabilize
-        run: aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+          aws s3 sync dist/ "s3://$S3_BUCKET" --delete \
+            --exclude "index.html" \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp dist/index.html "s3://$S3_BUCKET/index.html" \
+            --cache-control "no-cache"
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DIST_ID" --paths "/*"

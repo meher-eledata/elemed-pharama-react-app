@@ -109,6 +109,7 @@ export interface SalesHistoryItem {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  customerDetails: string;
   doctorName: string;
   doctorMobile: string;
   doctorEmail: string;
@@ -193,6 +194,7 @@ export default function SaleHistory() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
   const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
   // Force refresh of saved history when location changes (e.g., after edit or return)
   const [refreshKey, setRefreshKey] = useState(0);
@@ -207,33 +209,32 @@ export default function SaleHistory() {
   const savedHistory = useMemo(() => getSalesHistoryFromStorage(), [refreshKey]);
 
   const salesHistoryData: SalesHistoryItem[] = useMemo(() => {
-    const formatToDDMMYYYY = (dateStr: string) => {
+    const formatInvoiceDate = (dateStr: string) => {
       if (!dateStr) return '';
-      // Quick check if already roughly DD/MM/YYYY format
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+      // Already in the canonical "DD MMM YYYY" display format
+      if (/^\d{2}\s[A-Za-z]{3}\s\d{4}$/.test(dateStr)) return dateStr;
 
-      const stdTime = Date.parse(dateStr);
-      if (!isNaN(stdTime)) {
-        const d = new Date(stdTime);
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}/${d.getFullYear()}`;
+      // Legacy "DD/MM/YYYY" values (e.g. from older saved history) -> normalize
+      const dmy = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (dmy) {
+        const [, dd, mm, yyyy] = dmy;
+        const d = dayjs(`${yyyy}-${mm}-${dd}`);
+        return d.isValid() ? d.format('DD MMM YYYY') : dateStr;
       }
 
       const d = dayjs(dateStr);
-      if (d.isValid()) return d.format('DD/MM/YYYY');
-
-      return dateStr;
+      return d.isValid() ? d.format('DD MMM YYYY') : dateStr;
     };
 
     const savedItems: SalesHistoryItem[] = savedHistory.map((item: any, index: number) => ({
       id: item.id || `saved_${index}`,
       invoiceNumber: item.invoiceNumber || '',
-      invoiceDate: formatToDDMMYYYY(item.invoiceDate || ''),
+      invoiceDate: formatInvoiceDate(item.invoiceDate || ''),
       customerId: Number(item.customerId) || 0,
       customerName: item.customerName || '',
       customerMobile: item.customerMobile || '',
       customerCity: item.customerCity || '',
+      customerDetails: item.customerDetails || '',
       doctorName: item.doctorName || '',
       doctorMobile: item.doctorMobile || '',
       doctorEmail: item.doctorEmail || '',
@@ -323,6 +324,7 @@ export default function SaleHistory() {
         customerName: invoice.customer_name || (invoice.customer_id ? `Customer ${invoice.customer_id}` : 'N/A'),
         customerMobile: invoice.customer_phone || invoice.customer_mobile || 'N/A',
         customerCity: invoice.customer_city || 'N/A',
+        customerDetails: invoice.customer_details || '',
         doctorName: invoice.doctor_name || (invoice.doctor_id ? `Doctor ${invoice.doctor_id}` : 'N/A'),
         doctorMobile: invoice.doctor_mobile || 'N/A',
         doctorEmail: invoice.doctor_email || 'N/A',
@@ -365,6 +367,7 @@ export default function SaleHistory() {
             customerName: isFallbackValue(item.customerName) ? (savedItem.customerName || item.customerName) : item.customerName,
             customerMobile: (item.customerMobile === 'N/A' || !item.customerMobile) ? (savedItem.customerMobile || item.customerMobile) : item.customerMobile,
             customerCity: (item.customerCity === 'N/A' || !item.customerCity) ? (savedItem.customerCity || item.customerCity) : item.customerCity,
+            customerDetails: item.customerDetails || savedItem.customerDetails || '',
             doctorName: isFallbackValue(item.doctorName) ? (savedItem.doctorName || item.doctorName) : item.doctorName,
             doctorMobile: (item.doctorMobile === 'N/A' || !item.doctorMobile) ? (savedItem.doctorMobile || item.doctorMobile) : item.doctorMobile,
             doctorEmail: (item.doctorEmail === 'N/A' || !item.doctorEmail) ? (savedItem.doctorEmail || item.doctorEmail) : item.doctorEmail,
@@ -544,6 +547,7 @@ export default function SaleHistory() {
             manufacturer: item.manufacturer || 'N/A',
             expiryDate: item.expiryDate || '',
             hsn: item.hsn || '',
+            schedule: item.schedule ?? null,
             pack: item.pack || '',
           };
         }) : []
@@ -627,6 +631,7 @@ export default function SaleHistory() {
               discountPercent: disc.toString(),
               // Use exactly what backend sends, without treating '0' or '0000' as invalid
               hsn: line.hsn_code || (line.hsn_id ? line.hsn_id.toString() : '') || '',
+              schedule: line.schedule ?? null,
               pack: line.pack_qty?.toString() || 'N/A',
               expiryDate: line.expiry_date || '',
             };
@@ -650,7 +655,8 @@ export default function SaleHistory() {
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
-            totalPayableAmount: Math.round(finalPayable).toFixed(2),
+            // Whole-rupee invoice grand total (backend rounds total_amount) — no fake ".00" tail.
+            totalPayableAmount: String(Math.round(finalPayable)),
             splitPayments: (() => {
               const apiPayments = Array.from(new Map(payments.map((p: any) => [
                 `${p.payment_method}_${p.payment_amount}_${p.transaction_number || ''}`, p
@@ -997,6 +1003,12 @@ export default function SaleHistory() {
       sortable: true,
     },
     {
+      key: 'customerDetails',
+      header: SALES_HISTORY_LABELS.TABLE.CUSTOMER_DETAILS,
+      sortable: true,
+      render: (item) => item.customerDetails || '-',
+    },
+    {
       key: 'doctorName',
       header: SALES_HISTORY_LABELS.TABLE.DOCTOR,
       sortable: true,
@@ -1234,6 +1246,7 @@ export default function SaleHistory() {
         labels: SALES_RECEIPT_LABELS,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
+        orientation: orientation,
       });
 
       printWindow.document.write(htmlContent);
@@ -1883,6 +1896,8 @@ export default function SaleHistory() {
               brandIcon={bgWhiteIcon}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
+              orientation={orientation}
+              onOrientationChange={setOrientation}
               splitPayments={invoiceDetails.splitPayments || []}
             />
           }

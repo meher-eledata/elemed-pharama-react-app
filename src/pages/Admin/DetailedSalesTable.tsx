@@ -14,6 +14,7 @@ import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
+import { formatWholeCurrency } from '../../utils/reportFormat';
 
 interface SalesData {
   id: number;
@@ -21,6 +22,7 @@ interface SalesData {
   transactionType: string;
   invoiceNumber: string;
   customerName: string;
+  customerDetails: string;
   doctorName: string;
   paymentType: string;
   saleAmount: number;
@@ -74,6 +76,7 @@ const DetailedSalesTable: React.FC = () => {
         transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
         invoiceNumber: item.invoice_number,
         customerName: resolvedCustomerName,
+        customerDetails: (item.customer_details && String(item.customer_details).trim()) ? item.customer_details : '',
         doctorName: (item.doctor_name && String(item.doctor_name).trim()) ? item.doctor_name : 'N/A',
         paymentType: (() => {
           const raw = (item.payment_type || '').trim().toUpperCase();
@@ -261,6 +264,20 @@ const DetailedSalesTable: React.FC = () => {
       ),
     },
     {
+      key: 'customerDetails',
+      header: DETAILED_SALES_TABLE_LABELS.TABLE.CUSTOMER_DETAILS,
+      sortable: true,
+      render: (item) => (
+        <Typography sx={{
+          fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
+          fontSize: '14px',
+          color: '#1A212B',
+        }}>
+          {item.customerDetails || '-'}
+        </Typography>
+      ),
+    },
+    {
       key: 'doctorName',
       header: "Doctor Name",
       sortable: true,
@@ -368,7 +385,8 @@ const DetailedSalesTable: React.FC = () => {
           fontSize: '14px',
           color: '#1A212B',
         }}>
-          {formatCurrency(item.totalAmount)}
+          {/* Whole-rupee: backend rounds invoice/refund grand totals */}
+          {formatWholeCurrency(item.totalAmount)}
         </Typography>
       ),
     },
@@ -416,6 +434,7 @@ const DetailedSalesTable: React.FC = () => {
       'Transaction Type': item.transactionType,
       'Invoice Number': item.invoiceNumber,
       'Customer Name': item.customerName,
+      'Customer Details': item.customerDetails,
       'Doctor Name': item.doctorName,
       'Payment Type': item.paymentType,
       'Sale Amount (₹)': item.saleAmount.toFixed(2),
@@ -423,7 +442,7 @@ const DetailedSalesTable: React.FC = () => {
       'CGST (₹)': item.cgst.toFixed(2),
       'SGST (₹)': item.sgst.toFixed(2),
       'IGST (₹)': item.igst.toFixed(2),
-      'Total Amount (₹)': item.totalAmount.toFixed(2),
+      'Total Amount (₹)': item.totalAmount.toFixed(0),
       'Patient Type': item.patientType,
     }));
   }, [sortedData]);
@@ -738,7 +757,7 @@ const DetailedSalesTable: React.FC = () => {
             </Box>
             <Box sx={{ borderLeft: '2px solid #E5E7EB', pl: 3 }}>
               <Typography sx={{ fontSize: '12px', color: '#5C17E5', fontWeight: 600, fontFamily: "'Lexend', sans-serif" }}>Grand Total</Typography>
-              <Typography sx={{ fontSize: '18px', color: '#1A212B', fontWeight: 700, fontFamily: "'Lexend', sans-serif" }}>{formatCurrency(grandTotals.totalAmount)}</Typography>
+              <Typography sx={{ fontSize: '18px', color: '#1A212B', fontWeight: 700, fontFamily: "'Lexend', sans-serif" }}>{formatWholeCurrency(grandTotals.totalAmount)}</Typography>
             </Box>
           </Box>
         </Box>

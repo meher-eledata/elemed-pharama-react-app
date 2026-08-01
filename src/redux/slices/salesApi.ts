@@ -122,6 +122,18 @@ export interface SearchCustomerRequest {
   searchTerm: string; // Can be name or mobile number
 }
 
+// GET /api/sales/get-customer-options — Sales-page customer autocomplete.
+// `id` is a STRING (pg BIGINT serialization); `phone` is RAW/unmasked and may be null.
+export interface CustomerOption {
+  id: string;
+  name: string;
+  phone: string | null;
+}
+
+export interface GetCustomerOptionsResponse {
+  customers: CustomerOption[];
+}
+
 export interface GetCustomerPhonesRequest {
   name: string;
 }
@@ -231,11 +243,14 @@ export interface SubmitSaleRequest {
   customer_mobile?: string; // Send mobile if ID not available
   customer_city?: string; // Send city if ID not available
   customer_phone?: string; // Snapshotted onto the invoice (with customer_id)
+  customer_details?: string; // Free-text "Details" (≤150 chars trimmed; blank stored as NULL)
   doctor_id?: number; // ID of the doctor
   doctor_name?: string; // Name of the doctor
   doctor_mobile?: string; // Mobile of the doctor
   doctor_email?: string; // Email of the doctor
-  invoice_number?: string | null; // Invoice number entered by user (for return flow - invoice already stored in DB)
+  // REQUIRED (2026-07-29): backend 400s when missing/blank and 409s on a duplicate
+  // ("invoice_number <n> already exists"). Always generated client-side (cartStorage).
+  invoice_number: string;
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   patient_type?: number; // 1 for "In Patient", 0 for "Out Patient"
   lines: SubmitSaleLine[];
@@ -299,6 +314,7 @@ export interface EditSaleRequest {
   customer_mobile?: string;
   customer_city?: string;
   customer_phone?: string; // Snapshotted onto the invoice (with customer_id)
+  customer_details?: string; // Free-text "Details"; re-saved on every edit (≤150 chars trimmed; blank → NULL)
   doctor_id?: number;
   doctor_name?: string;
   doctor_mobile?: string;
@@ -314,6 +330,24 @@ export interface EditSaleResponse {
   invoice_id: number;
   invoice_number: string;
   total_amount: number;
+}
+
+// GET sales/get-invoices row (raw SQL row — legacy loose shape; only explicitly
+// contracted fields are typed). customer_details is always present on read
+// (null when never set / blank).
+export interface Invoice {
+  customer_details: string | null;
+  [key: string]: any;
+}
+
+// POST sales/get-invoice-details/ response (legacy loose shape). The invoice
+// object carries the stored free-text detail as customer_details: string | null.
+export interface InvoiceDetailsResponse {
+  invoice: { customer_details: string | null; [key: string]: any };
+  // Each line carries the product master's drug schedule, joined read-time
+  // (NULL = not yet attributed, 'NONE' = explicitly none — both display blank).
+  lines?: Array<{ schedule: "G" | "H" | "H1" | "X" | "C" | "C1" | "K" | "NONE" | null; [key: string]: any }>;
+  [key: string]: any;
 }
 
 
@@ -359,7 +393,7 @@ export const salesApi = createApi({
     }),
 
     // Get invoices
-    getInvoices: builder.query<any[], void>({
+    getInvoices: builder.query<Invoice[], void>({
       query: () => "sales/get-invoices",
       providesTags: ["Sales"],
     }),
@@ -535,6 +569,15 @@ export const salesApi = createApi({
       providesTags: ["Sales"],
     }),
 
+    // Customer options (id + name + raw phone) for the Sales-page autocomplete —
+    // supports search by name OR mobile number with auto-fill.
+    getCustomerOptions: builder.query<CustomerOption[], void>({
+      query: () => "sales/get-customer-options",
+      providesTags: ["Sales"],
+      transformResponse: (response: GetCustomerOptionsResponse): CustomerOption[] =>
+        response?.customers ?? [],
+    }),
+
     getCustomers: builder.query<Customer[], void>({
       query: () => "sales/get-customers",
       providesTags: ["Sales"],
@@ -567,7 +610,7 @@ export const salesApi = createApi({
 
     // Get invoice details for editing invoices
     // Backend accepts either invoice_id (database id) or invoice_number (string like "INV-1234")
-    getInvoiceDetails: builder.mutation<any, { invoice_id?: number; invoice_number?: string }>({
+    getInvoiceDetails: builder.mutation<InvoiceDetailsResponse, { invoice_id?: number; invoice_number?: string }>({
       query: (body) => ({
         url: "sales/get-invoice-details/",
         method: "POST",
@@ -680,6 +723,7 @@ export const {
   useAddCustomerMutation,
   useGetAllCustomerNamesQuery,
   useLazyGetAllCustomerNamesQuery,
+  useGetCustomerOptionsQuery,
   useGetCustomersQuery,
   useLazyGetCustomersQuery,
   useGetCustomerPhonesMutation,

@@ -158,6 +158,8 @@ export interface ActivityLogEntry {
   quantity_changed?: string | number;
   relatedId?: string | number;
   related_id?: string | number;
+  ipAddress?: string | null;
+  ip_address?: string | null;
 }
 
 export interface GetActivityLogResponse {

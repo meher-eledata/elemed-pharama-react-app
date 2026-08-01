@@ -122,7 +122,7 @@ describe('SaleHistory', () => {
   it('renders sale history page with title', () => {
     renderComponent();
     
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   it('renders Start new sale button', () => {
@@ -355,7 +355,7 @@ describe('SaleHistory', () => {
     // SaleConfirmationDialog should be in the component tree (even if not visible)
     // We can verify it exists by checking if it can be found when open=true
     // This is a structural test to ensure the dialog is properly integrated
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   it('handles Start new sale button click', () => {
@@ -372,7 +372,7 @@ describe('SaleHistory', () => {
     renderComponent();
     
     // Should show empty state or table
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   it('handles sorting', () => {
@@ -386,7 +386,7 @@ describe('SaleHistory', () => {
       expect(invoiceHeaders[0]).toBeInTheDocument();
     } else {
       // At least verify the table exists
-      expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+      expect(screen.getByText(/sales history/i)).toBeInTheDocument();
     }
   });
 
@@ -395,7 +395,7 @@ describe('SaleHistory', () => {
 
     // Pagination controls should be present
     // This depends on table implementation
-    expect(screen.getByText(/sale history/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales history/i)).toBeInTheDocument();
   });
 
   // Helper: re-point the mocked getInvoices query at a custom dataset for one test.
@@ -410,6 +410,34 @@ describe('SaleHistory', () => {
       refetch: stableRefetch,
     }));
   };
+
+  it('renders the Customer Details column with the invoice value', async () => {
+    useInvoices([
+      { ...mockInvoices[0], customer_details: 'Ward 4 follow-up' },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Customer Details')).toBeInTheDocument();
+    expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
+  });
+
+  it('renders a dash in Customer Details when the invoice has none', async () => {
+    useInvoices([
+      { ...mockInvoices[0], customer_details: null },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const row = screen.getByText(/inv7896/i).closest('tr')!;
+    expect(row).toHaveTextContent('-');
+  });
 
   it('enables the Edit icon for an invoice with no return', async () => {
     useInvoices([

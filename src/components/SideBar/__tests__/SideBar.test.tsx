@@ -86,6 +86,20 @@ describe('Sidebar', () => {
       // toggle does not appear in the pharmacy admin sidebar.
       expect(screen.queryByText('Modules')).not.toBeInTheDocument();
     });
+
+    it('renders the "Supplier Credit" admin entry (label from Admin.labels.ts)', () => {
+      renderSidebar('/admin/users');
+
+      expect(screen.getByText('Supplier Credit')).toBeInTheDocument();
+    });
+
+    it('navigates to /admin/supplier-credit when the "Supplier Credit" entry is clicked', () => {
+      renderSidebar('/admin/users');
+
+      fireEvent.click(screen.getByText('Supplier Credit'));
+
+      expect(navigateSpy).toHaveBeenCalledWith('/admin/supplier-credit');
+    });
   });
 
   describe('pharmacy app sidebar (on a non-admin pharmacy path)', () => {

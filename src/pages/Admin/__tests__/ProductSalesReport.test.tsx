@@ -56,6 +56,8 @@ const FIXTURE: reportsApi.ProductSalesReportResponse = {
       customer_name: 'John Patient',
       quantity: '10.00',
       mrp: '120.00',
+      pack_qty: 10,
+      unit_mrp: '12.00',
       selling_price: '100.00',
       discount_pct: '5.00',
       discount_amount: '50.00',
@@ -64,6 +66,7 @@ const FIXTURE: reportsApi.ProductSalesReportResponse = {
       igst_amount: '0.00',
       total_tax: '108.93',
       line_total: '1234.50',
+      customer_details: 'Ward 4 follow-up',
     },
   ],
   summary: {
@@ -123,6 +126,12 @@ describe('ProductSalesReport page', () => {
     expect(screen.getByText('Invoice #')).toBeInTheDocument();
     expect(screen.getAllByText('Product').length).toBeGreaterThan(0);
     expect(screen.getByText('Amoxicillin 500mg')).toBeInTheDocument();
+  });
+
+  it('renders the Customer Details column with the invoice-level value', () => {
+    renderPage();
+    expect(screen.getByText('Customer Details')).toBeInTheDocument();
+    expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
   });
 
   it('formats the line total as ₹ and never renders NaN', () => {

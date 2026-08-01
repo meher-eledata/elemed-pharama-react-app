@@ -24,6 +24,8 @@ export interface Product {
   igstPercent?: string;
   amount?: string;
   pack_qty?: number;
+  // Drug schedule carried from the product master (null/'NONE' display blank)
+  schedule?: string | null;
 }
 
 export interface ApiProduct {

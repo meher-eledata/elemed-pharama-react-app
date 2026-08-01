@@ -3,6 +3,7 @@ import { Box, Typography } from '@mui/material';
 import { StandardButton } from '../../Common';
 import html2pdf from 'html2pdf.js';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
+import { formatSchedule } from '../../../config/constants/product.constants';
 
 interface SalesReceiptItem {
   id: string;
@@ -14,6 +15,7 @@ interface SalesReceiptItem {
   unitPrice: string;
   mrp?: string;
   hsn?: string;
+  schedule?: string | null;
   pack?: string;
   expiryDate?: string;
   discountPercent: string;
@@ -44,6 +46,8 @@ interface PrintPreviewModalProps {
   brandIcon?: string;
   pageSize?: 'A4' | 'A5';
   onPageSizeChange?: (size: 'A4' | 'A5') => void;
+  orientation?: 'landscape' | 'portrait';
+  onOrientationChange?: (orientation: 'landscape' | 'portrait') => void;
   splitPayments?: any[];
 }
 
@@ -67,6 +71,8 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   onAfterSave,
   pageSize = 'A4',
   onPageSizeChange,
+  orientation = 'landscape',
+  onOrientationChange,
   brandIcon,
   splitPayments = [],
 }) => {
@@ -103,8 +109,8 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         },
         jsPDF: {
           unit: 'mm',
-          format: 'a4',
-          orientation: 'portrait' as const
+          format: pageSize.toLowerCase(),
+          orientation: orientation
         }
       };
 
@@ -126,10 +132,8 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         gap: '12px',
-        mb: 3,
+        mb: 1,
         mt: 1,
-        pb: 2,
-        borderBottom: '1px solid #E5E7EB'
       }}>
         <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#616161' }}>Page Size:</Typography>
         <Box sx={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '2px' }}>
@@ -156,7 +160,47 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             </Box>
           ))}
         </Box>
+        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#616161', ml: '12px' }}>{SALES_RECEIPT_LABELS.ORIENTATION_LABEL}</Typography>
+        <Box sx={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '2px' }}>
+          {([
+            { value: 'landscape', label: SALES_RECEIPT_LABELS.ORIENTATION_LANDSCAPE },
+            { value: 'portrait', label: SALES_RECEIPT_LABELS.ORIENTATION_PORTRAIT },
+          ] as const).map((option) => (
+            <Box
+              key={option.value}
+              onClick={() => onOrientationChange?.(option.value)}
+              sx={{
+                padding: '6px 16px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: orientation === option.value ? '#FFFFFF' : 'transparent',
+                color: orientation === option.value ? '#5C17E5' : '#6B7280',
+                boxShadow: orientation === option.value ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  backgroundColor: orientation === option.value ? '#FFFFFF' : '#E5E7EB',
+                }
+              }}
+            >
+              {option.label}
+            </Box>
+          ))}
+        </Box>
       </Box>
+
+      {/* The page can set orientation via CSS, but the browser dialog's paper size must match manually */}
+      <Typography sx={{
+        textAlign: 'center',
+        fontSize: '12px',
+        color: '#6B7280',
+        mb: 3,
+        pb: 2,
+        borderBottom: '1px solid #E5E7EB'
+      }}>
+        {SALES_RECEIPT_LABELS.PRINT_DIALOG_PAPER_HINT.replace('{size}', pageSize.toUpperCase())}
+      </Typography>
 
       {/* Print Preview Content */}
       <Box ref={printContentRef} sx={{
@@ -205,12 +249,21 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               GSTIN No: 37AAQCS3213C2ZH<br />
               (M): 0891-2554040, 8096655050
             </Typography>
-            {/* <Typography sx={{ fontSize: isA5 ? '8px' : '10px', fontWeight: 600, color: '#666', marginTop: '2px' }}>
-              {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
-            </Typography> */}
           </Box>
           <Box sx={{ flex: 1, textAlign: 'right' }}></Box>
         </Box>
+
+        {/* Centered in-document receipt title (matches the printed output) */}
+        <Typography sx={{
+          textAlign: 'center',
+          fontSize: isA5 ? '11px' : '15px',
+          fontWeight: 700,
+          letterSpacing: '0.5px',
+          color: '#1A212B',
+          marginBottom: isA5 ? '6px' : '10px',
+        }}>
+          {SALES_RECEIPT_LABELS.CUSTOMER_RECEIPT_TITLE}
+        </Typography>
 
         {/* Four Section Layout - 1 Row */}
         <Box sx={{
@@ -340,7 +393,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             {/* Fixed Header */}
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
+              gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 0.5fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
               columnGap: '8px',
               backgroundColor: '#F9FAFB',
               padding: isA5 ? '4px 8px' : '10px 12px',
@@ -356,6 +409,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               <Box>Product Name</Box>
               <Box>MFG</Box>
               <Box>HSN</Box>
+              <Box>Sch</Box>
               <Box>Batch</Box>
               <Box>Pack</Box>
               <Box>Exp</Box>
@@ -402,7 +456,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                   return (
                     <Box key={item.id} sx={{
                       display: 'grid',
-                      gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
+                      gridTemplateColumns: '0.5fr 2fr 0.7fr 0.7fr 0.5fr 1.2fr 0.7fr 0.9fr 0.6fr 0.9fr 0.8fr 1fr',
                       columnGap: '8px',
                       padding: isA5 ? '4px 8px' : '10px 12px',
                       fontSize: tableRowSize,
@@ -417,6 +471,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                       <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</Box>
                       <Box>{mfg}</Box>
                       <Box>{item.hsn || 'N/A'}</Box>
+                      <Box>{formatSchedule(item.schedule)}</Box>
                       <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.batch}</Box>
                       <Box>{item.pack || 'N/A'}</Box>
                       <Box>{formattedExp}</Box>

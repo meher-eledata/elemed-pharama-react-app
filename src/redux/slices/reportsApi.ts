@@ -27,6 +27,8 @@ export interface DailySalesTableItem {
   igst: string;
   total_amount: string;
   patient_type: string;
+  // Invoice-level free-text detail (Sale + Refund rows; null where not applicable)
+  customer_details: string | null;
 }
 
 export interface WeeklyBillCountItem {
@@ -103,6 +105,7 @@ export interface SupplierReceiptReportRow {
   receipt_id: number;
   receipt_date: string;
   invoice_number: string | null;
+  po_number: string | null;
   supplier_id: number;
   supplier_name: string;
   supplier_gst: string | null;
@@ -113,7 +116,7 @@ export interface SupplierReceiptReportRow {
   product_code: string | null;
   hsn_code: string | null;
   mrp: Num;
-  sp: Num;
+  purchase_price: Num;
   received_qty: Num;
   cgst: Num;
   sgst: Num;
@@ -138,6 +141,7 @@ export interface SupplierReceiptReportResponse {
     spend_by_date: { date: string; spend: Num }[];
     qty_by_date: { date: string; qty: Num }[];
     top_products_by_value: { product_name: string; value: Num; qty: Num }[];
+    top_suppliers_by_value: { supplier_name: string; value: Num; qty: Num }[];
   };
 }
 
@@ -158,6 +162,7 @@ export interface SupplierPaymentReportRow {
   payment_done: Num;
   transaction_date: string;
   payment_method: string | null;
+  details: string | null;
   pending_due_supplier: Num;
 }
 
@@ -200,6 +205,8 @@ export interface ProductSalesReportRow {
   customer_name: string | null;
   quantity: Num;
   mrp: Num | null;
+  pack_qty: number | null;
+  unit_mrp: Num;
   selling_price: Num;
   discount_pct: Num;
   discount_amount: Num;
@@ -208,6 +215,8 @@ export interface ProductSalesReportRow {
   igst_amount: Num;
   total_tax: Num;
   line_total: Num;
+  // Invoice-level free-text detail repeated on each of that invoice's lines
+  customer_details: string | null;
 }
 
 export interface ProductSalesReportSummary {
@@ -229,11 +238,15 @@ export interface ProductSalesReportResponse {
 
 // ---- (D) Sales Tax Report -------------------------------------------------
 
+export type SalesTaxLevel = "product" | "hsn" | "invoice";
+
 export interface SalesTaxReportRequest {
   start_date: string;
   end_date: string;
   product_id?: number;
   patient_type?: 0 | 1;
+  level?: SalesTaxLevel;
+  hsn_code?: string;
 }
 
 export interface SalesTaxReportRow {
@@ -250,6 +263,7 @@ export interface SalesTaxReportRow {
   mrp: Num | null;
   selling_price: Num;
   taxable_value: Num;
+  discount_amount: Num;
   cgst_rate: Num;
   sgst_rate: Num;
   igst_rate: Num;
@@ -258,26 +272,91 @@ export interface SalesTaxReportRow {
   igst_amount: Num;
   total_tax: Num;
   line_total: Num;
+  // Invoice-level free-text detail (product level ONLY — hsn rows are aggregated)
+  customer_details: string | null;
+}
+
+export interface SalesTaxHsnRow {
+  hsn_code: string | null;
+  cgst_rate: Num;
+  sgst_rate: Num;
+  igst_rate: Num;
+  line_count: number;
+  product_count: number;
+  quantity: Num;
+  taxable_value: Num;
+  discount_amount: Num;
+  cgst_amount: Num;
+  sgst_amount: Num;
+  igst_amount: Num;
+  total_tax: Num;
+  line_total: Num;
+}
+
+// One row per invoice (level "invoice"). `invoice_total` is the WHOLE-RUPEE
+// stored invoice grand total (ROUND(invoice.total_amount, 0)); other money
+// fields are 2dp line-derived aggregates. All money fields are pg numeric-strings.
+export interface SalesTaxInvoiceRow {
+  invoice_id: number;
+  invoice_number: string | null;
+  sale_date: string;
+  customer_details: string | null;
+  line_count: number;
+  product_count: number;
+  quantity: Num;
+  taxable_value: Num;
+  discount_amount: Num;
+  cgst_amount: Num;
+  sgst_amount: Num;
+  igst_amount: Num;
+  total_tax: Num;
+  line_total: Num;
+  invoice_total: Num;
+  // SIGNED 2dp string (e.g. "0.10" / "-0.40"): invoice_total − exact stored total
+  round_off: Num;
 }
 
 export interface SalesTaxReportSummary {
   line_count: number;
   total_quantity: Num;
   total_taxable: Num;
+  total_discount: Num;
   total_cgst: Num;
   total_sgst: Num;
   total_igst: Num;
   total_tax: Num;
   total_sales: Num;
+  // SIGNED 2dp string, ALL levels: SUM over distinct invoices of (rounded − exact
+  // invoice total); positive = collected more than exact. exact sum + round_off = total_sales.
+  round_off: Num;
   total_mrp_value: Num;
   product_count: number;
   invoice_count: number;
+  hsn_count: number;
 }
 
-export interface SalesTaxReportResponse {
+export interface SalesTaxProductResponse {
+  level: "product";
   rows: SalesTaxReportRow[];
   summary: SalesTaxReportSummary;
 }
+
+export interface SalesTaxHsnResponse {
+  level: "hsn";
+  rows: SalesTaxHsnRow[];
+  summary: SalesTaxReportSummary;
+}
+
+export interface SalesTaxInvoiceResponse {
+  level: "invoice";
+  rows: SalesTaxInvoiceRow[];
+  summary: SalesTaxReportSummary;
+}
+
+export type SalesTaxReportResponse =
+  | SalesTaxProductResponse
+  | SalesTaxHsnResponse
+  | SalesTaxInvoiceResponse;
 
 // ---- (E) Supplier Tax Report (two modes via `level` discriminant) ----------
 
@@ -303,6 +382,7 @@ export interface SupplierTaxReceiptRow {
   sgst: Num;
   igst: Num;
   total_tax: Num;
+  gst_rate: Num | null;
   receipt_total: Num;
 }
 
@@ -317,6 +397,7 @@ export interface SupplierTaxSupplierRow {
   sgst: Num;
   igst: Num;
   total_tax: Num;
+  gst_rate: Num | null;
   total_with_tax: Num;
 }
 
@@ -329,6 +410,7 @@ export interface SupplierTaxReportSummary {
   total_sgst: Num;
   total_igst: Num;
   total_tax: Num;
+  gst_rate: Num | null;
   total_with_tax: Num;
 }
 

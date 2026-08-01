@@ -562,6 +562,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onSuccess })
 
       const errorMessage = extractErrorMessage(error, 'Failed to create user. Please try again.');
 
+      // Close only the confirmation sub-dialog (not the whole form) so the user
+      // returns to the still-populated Add User form and can correct and resubmit.
+      setShowPasswordConfirmation(false);
+
       showToast(errorMessage, 'error');
 
     } finally {

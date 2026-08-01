@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SalesReceipt from '../SalesReceipt';
+import { executeSave } from '../SalesReceipt.saveHandler';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
 
@@ -39,6 +40,8 @@ jest.mock('../../../utils/cartStorage', () => ({
   getFormDataFromStorage: jest.fn(() => null),
   generateNextInvoiceNumber: jest.fn(() => 'INV001'),
   setEditInvoiceId: jest.fn(),
+  saveSalesHistoryToStorage: jest.fn(),
+  saveInvoiceNumber: jest.fn(),
 }));
 
 const createMockStore = (initialState = {}) => {
@@ -86,6 +89,14 @@ describe('SalesReceipt', () => {
     (salesApi.useGetAllCustomerNamesQuery as jest.Mock) = jest.fn(() => ({
       data: ['John Doe', 'Jane Smith'],
       refetch: jest.fn(),
+    }));
+
+    (salesApi.useGetCustomerOptionsQuery as jest.Mock) = jest.fn(() => ({
+      data: [
+        { id: '1', name: 'John Doe', phone: '1234567890' },
+        { id: '2', name: 'Jane Smith', phone: '9876543210' },
+      ],
+      isLoading: false,
     }));
 
     (salesApi.useSubmitSaleMutation as jest.Mock) = jest.fn(() => [
@@ -281,9 +292,100 @@ describe('SalesReceipt', () => {
   it('displays sales items in table when available', () => {
     // This would require setting up cart items in the store
     renderComponent();
-    
+
     // Verify the page title exists instead of looking for "sales receipt" text
     expect(screen.getByText(/sale details/i)).toBeInTheDocument();
+  });
+
+  it('renders a Schedule column in the items table', () => {
+    renderComponent();
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
+  });
+
+  describe('executeSave payloads (customer_details)', () => {
+    // Minimal, valid save inputs shared by the submit and edit payload assertions.
+    const baseSaveParams = {
+      customerName: 'John Doe',
+      customerMobile: '1234567890',
+      customerCity: 'Mumbai',
+      customerDetails: '  Ward 4 follow-up  ',
+      patientType: 'Out Patient',
+      doctorName: 'Dr. Smith',
+      doctorMobile: '',
+      doctorEmail: '',
+      paymentMode: 'Cash',
+      insuranceCompany: '',
+      invoiceNumber: 'INV1',
+      invoiceDate: '2026-07-16',
+      salesItems: [{ ...mockSalesItems[0], product_id: 1, mrp: '100' }] as any[],
+      totalValue: '1000',
+      totalDiscount: '0',
+      taxAmount: '0',
+      totalPayableAmount: '1000',
+      selectedCustomer: { id: 1, name: 'John Doe', mobile: '1234567890' } as any,
+      apiProducts: [{ product_id: 1, name: 'Product A' }],
+      isProductsLoading: false,
+      isProductsError: false,
+      productsError: null,
+      user: { username: 'testuser' },
+      showToast: jest.fn(),
+      resetForm: jest.fn(),
+      clearCart: jest.fn(),
+      navigate: jest.fn(),
+      skipNavigation: true,
+    };
+
+    it('includes trimmed customer_details in the submit-sale payload', async () => {
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+      });
+
+      expect(submitTrigger).toHaveBeenCalledWith(
+        expect.objectContaining({ customer_details: 'Ward 4 follow-up' })
+      );
+    });
+
+    it('includes trimmed customer_details in the edit-sale payload', async () => {
+      const editTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'ok', invoice_id: 5 }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        submitSale: jest.fn(),
+        editSale: editTrigger,
+        isEditMode: true,
+        invoiceId: 5,
+      });
+
+      expect(editTrigger).toHaveBeenCalledWith(
+        expect.objectContaining({ customer_details: 'Ward 4 follow-up' })
+      );
+    });
+
+    it('sends an empty customer_details when the Details field is blank', async () => {
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        customerDetails: '   ',
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+      });
+
+      // Backend trims and stores blank as NULL — the client sends the empty string.
+      expect(submitTrigger).toHaveBeenCalledWith(
+        expect.objectContaining({ customer_details: '' })
+      );
+    });
   });
 });
 

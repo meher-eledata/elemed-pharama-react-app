@@ -21,6 +21,7 @@ export const ADMIN_CONSTANTS = {
     REPORTS: '#E8F5E9', // Light green
     AUDIT: '#FFF3E0', // Light orange/peach
     SETTINGS: '#F3E5F5', // Light purple
+    SUPPLIER_CREDIT: '#FFF8E1', // Light amber
   },
   ACTION_BUTTON: {
     HEIGHT: 40,

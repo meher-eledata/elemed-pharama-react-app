@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -8,6 +8,7 @@ import SalePage from '../salepage';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
 import * as inventoryApi from '../../../redux/slices/inventoryApi';
+import * as masterApi from '../../../redux/slices/masterApi';
 
 // Mock dependencies
 jest.mock('react-router-dom', () => ({
@@ -19,6 +20,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../redux/slices/salesApi');
 jest.mock('../../../redux/slices/receiveApi');
 jest.mock('../../../redux/slices/inventoryApi');
+jest.mock('../../../redux/slices/masterApi');
 jest.mock('../../../hooks/useDebounce', () => ({
   useDebounce: (value: any) => value,
 }));
@@ -122,6 +124,18 @@ describe('SalePage', () => {
       })),
       { isLoading: false },
     ]);
+
+    // Schedule attribution popup deps (RTK-hook gotcha: register every new hook the
+    // component uses in auto-mocked suites, or destructuring the tuple throws).
+    (masterApi.useUpdateProductMutation as jest.Mock) = jest.fn(() => [
+      jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue({ message: 'updated' }) })),
+      { isLoading: false },
+    ]);
+    // Cross-slice cache invalidation: the auto-mocked api object needs a real action
+    // back from util.invalidateTags so dispatch() receives a plain object.
+    (receiveApi as any).receiveApi = {
+      util: { invalidateTags: jest.fn(() => ({ type: 'test/invalidateTags' })) },
+    };
   });
 
   const renderComponent = (store = createMockStore()) => {
@@ -305,6 +319,120 @@ describe('SalePage', () => {
 
     // Should show warning toast
     expect(nextButton).toBeInTheDocument();
+  });
+
+  describe('one-time schedule attribution popup', () => {
+    // Cascade auto-resolves (single brand -> single type product_id 42 -> single batch)
+    // and validateSale resolves, so Add to Cart becomes actionable.
+    const setupCascade = (schedule: string | null) => {
+      (receiveApi.useGetProductsQuery as jest.Mock) = jest.fn(() => ({
+        data: [{ id: 42, name: 'Product A', currentQuantity: 100, schedule }],
+        isLoading: false,
+        error: null,
+        isFetching: false,
+      }));
+      (inventoryApi.useGetBrandsFromProductNameMutation as jest.Mock) = jest.fn(() => [
+        jest.fn(() => ({
+          unwrap: jest.fn().mockResolvedValue([{ id: 1, brand_name: 'BrandA', currentQuantity: 100 }]),
+        })),
+        { isLoading: false },
+      ]);
+      (inventoryApi.useGetTypesForBrandAndProductMutation as jest.Mock) = jest.fn(() => [
+        jest.fn(() => ({
+          unwrap: jest.fn().mockResolvedValue([{ type: 'Capsule', product_id: 42, currentQuantity: 100 }]),
+        })),
+        { isLoading: false },
+      ]);
+      (salesApi.useGetBatchNumbersByProductIdMutation as jest.Mock) = jest.fn(() => [
+        jest.fn(() => ({
+          unwrap: jest.fn().mockResolvedValue({
+            batches: [{ batch_number: 'B-1', current_qty: 10 }],
+          }),
+        })),
+        { isLoading: false },
+      ]);
+      const validateFn = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ mrp: 100, selling_price: 90, pack_qty: 1 }),
+      }));
+      (salesApi.useValidateSaleMutation as jest.Mock) = jest.fn(() => [validateFn, { isLoading: false }]);
+      const updateProductFn = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'updated', product_id: 42 }),
+      }));
+      (masterApi.useUpdateProductMutation as jest.Mock) = jest.fn(() => [updateProductFn, { isLoading: false }]);
+      const invalidateTagsFn = jest.fn(() => ({ type: 'test/invalidateTags' }));
+      (receiveApi as any).receiveApi = { util: { invalidateTags: invalidateTagsFn } };
+      return { validateFn, updateProductFn, invalidateTagsFn };
+    };
+
+    const selectProductAndValidate = async (validateFn: jest.Mock) => {
+      const productInput = screen.getByPlaceholderText(/search for a product/i);
+      productInput.focus();
+      fireEvent.change(productInput, { target: { value: 'Product A' } });
+      const option = await screen.findByRole('option', { name: /Product A/i });
+      fireEvent.click(option);
+      // Units defaults to 0 (validation is gated on qty > 0) — first zero-valued
+      // input is the Units field (Discount is the second).
+      const zeroInputs = screen.getAllByDisplayValue('0');
+      fireEvent.change(zeroInputs[0], { target: { value: '2' } });
+      await waitFor(() => expect(validateFn).toHaveBeenCalled());
+    };
+
+    it('fires ONLY for a NULL (never attributed) schedule and persists the choice', async () => {
+      const { validateFn, updateProductFn, invalidateTagsFn } = setupCascade(null);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Assign Drug Schedule')).toBeInTheDocument();
+      });
+
+      // Choose a schedule from the fixed statutory list.
+      fireEvent.mouseDown(screen.getByLabelText('Schedule'));
+      const listbox = await screen.findByRole('listbox');
+      fireEvent.click(within(listbox).getByText('H'));
+      fireEvent.click(screen.getByText('Save & Add'));
+
+      // Persisted via update-product, receive cache invalidated, sale not blocked.
+      await waitFor(() =>
+        expect(updateProductFn).toHaveBeenCalledWith({ product_id: 42, schedule: 'H' })
+      );
+      await waitFor(() =>
+        expect(invalidateTagsFn).toHaveBeenCalledWith(['Receive'])
+      );
+      expect(await screen.findByText('Product added to cart successfully!')).toBeInTheDocument();
+    });
+
+    it("does NOT fire for an explicit 'NONE' schedule", async () => {
+      const { validateFn, updateProductFn } = setupCascade('NONE');
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Product added to cart successfully!')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Assign Drug Schedule')).not.toBeInTheDocument();
+      expect(updateProductFn).not.toHaveBeenCalled();
+    });
+
+    it('cancel ("Skip for now") adds to cart unblocked without persisting', async () => {
+      const { validateFn, updateProductFn } = setupCascade(null);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Assign Drug Schedule')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Skip for now'));
+      expect(await screen.findByText('Product added to cart successfully!')).toBeInTheDocument();
+      expect(updateProductFn).not.toHaveBeenCalled();
+    });
   });
 
   it('shows the duplicate-batch admin warning modal when batches contain duplicate batch numbers', async () => {

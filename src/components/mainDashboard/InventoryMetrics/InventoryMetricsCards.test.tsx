@@ -2,11 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InventoryMetricsCards from './InventoryMetricsCard';
+import { useGetInvoiceStatsQuery } from '../../../redux/slices/dashboardApi';
 import {
-  useGetInvoiceStatsQuery,
-  useGetInventoryByDateQuery,
-} from '../../../redux/slices/dashboardApi';
-import { useGetNearExpiryStockQuery } from '../../../redux/slices/inventoryApi';
+  useGetLowStockQuery,
+  useGetExcessStockQuery,
+  useGetExpiredStockQuery,
+  useGetNearExpiryStockQuery,
+} from '../../../redux/slices/inventoryApi';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 const theme = createTheme();
@@ -14,16 +16,15 @@ const theme = createTheme();
 // Mock the API hooks to control their return values
 jest.mock('../../../redux/slices/dashboardApi');
 
-// The component also calls useGetNearExpiryStockQuery (inventoryApi) and
-// useNavigate (react-router-dom). Mock both so the component can render
-// without a Provider/Router wrapper.
+// The stock cards now consume the SAME inventoryApi queries the inventory page
+// uses (low/excess/expired/near-expiry) — register EVERY hook the component
+// calls (auto-mocked-slice gotcha) so it renders without a Provider/Router.
 jest.mock('../../../redux/slices/inventoryApi', () => ({
   __esModule: true,
-  useGetNearExpiryStockQuery: jest.fn(() => ({
-    data: [],
-    isLoading: false,
-    error: null,
-  })),
+  useGetLowStockQuery: jest.fn(() => ({ data: [], isLoading: false, error: null })),
+  useGetExcessStockQuery: jest.fn(() => ({ data: [], isLoading: false, error: null })),
+  useGetExpiredStockQuery: jest.fn(() => ({ data: [], isLoading: false, error: null })),
+  useGetNearExpiryStockQuery: jest.fn(() => ({ data: [], isLoading: false, error: null })),
 }));
 
 const mockNavigate = jest.fn();
@@ -51,85 +52,33 @@ jest.mock('../Charts/PieChart', () => ({
 }));
 
 
-// Mock data to simulate API responses for different scenarios
-const mockInventoryData = {
-  belowMinProducts: [
-    {
-      product_id: '106',
-      name: 'Omeprazole Capsule',
-      batchNumber: 'OMP20',
-      currentQuantity: 9,
-      minQty: 25,
-      maxQty: 300,
-      expiryDate: '2025-11-12',
-      activityDate: '2025-09-19T08:37:11Z',
-    },
-    {
-      product_id: '109',
-      name: 'Salbutamol Inhaler',
-      batchNumber: 'SBT100',
-      currentQuantity: 6,
-      minQty: 15,
-      maxQty: 200,
-      expiryDate: '2025-08-20',
-      activityDate: '2025-09-19T08:37:11Z',
-    },
-  ],
-  expiredProducts: [
-    {
-      product_id: '109',
-      name: 'Salbutamol Inhaler',
-      batchNumber: 'SBT100',
-      currentQuantity: 6,
-      minQty: 15,
-      maxQty: 200,
-      expiryDate: '2025-08-20',
-      activityDate: '2025-09-19T08:37:11Z',
-    },
-  ],
-  aboveMaxProducts: [
-    {
-      product_id: '101',
-      name: 'Paracetamol Tablet',
-      batchNumber: 'PCM500',
-      currentQuantity: 2000,
-      minQty: 50,
-      maxQty: 1000,
-      expiryDate: '2025-12-31',
-      activityDate: '2025-09-19T08:37:11Z',
-    },
-    {
-      product_id: '102',
-      name: 'Ibuprofen Capsule',
-      batchNumber: 'IBU200',
-      currentQuantity: 1500,
-      minQty: 30,
-      maxQty: 500,
-      expiryDate: '2026-03-15',
-      activityDate: '2025-09-19T08:37:11Z',
-    },
-  ],
-};
+// Mock data — the stock lists come from the inventoryApi (live inventory_balance
+// + per-batch expiry), the SAME source the /inventory page counts.
+const mockLowStockData = [
+  { id: '106', name: 'Omeprazole Capsule', currentQuantity: 9, minQuantity: 25 },
+  { id: '109', name: 'Salbutamol Inhaler', currentQuantity: 6, minQuantity: 15 },
+];
+
+const mockExcessStockData = [
+  { id: '101', name: 'Paracetamol Tablet', currentQuantity: 2000, maxQuantity: 1000 },
+  { id: '102', name: 'Ibuprofen Capsule', currentQuantity: 1500, maxQuantity: 500 },
+];
+
+const mockExpiredStockData = [
+  {
+    id: '109',
+    name: 'Salbutamol Inhaler',
+    currentQuantity: 6,
+    batchNumber: 'SBT100',
+    expiryDate: '2025-08-20',
+    daysPastExpiry: 30,
+  },
+];
 
 const mockInvoiceData = {
   latestBatchReceivedOn: '2025-09-19T08:37:11Z',
   returns: 5,
   activeSalesDays: 10,
-};
-
-// New mock data for the date range filter test
-const mockUpdatedInventoryData = {
-  belowMinProducts: [
-    { product_id: '110', name: 'New Low Stock Item', currentQuantity: 5 },
-  ],
-  expiredProducts: [],
-  aboveMaxProducts: [],
-};
-
-const mockUpdatedInvoiceData = {
-  latestBatchReceivedOn: '2025-08-15T12:00:00Z',
-  returns: 2,
-  activeSalesDays: 5,
 };
 
 // Near Expiry data comes from a separate hook (inventoryApi).
@@ -157,8 +106,18 @@ describe('InventoryMetricsCards', () => {
       isLoading: false,
       error: null,
     });
-    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-      data: mockInventoryData,
+    (useGetLowStockQuery as jest.Mock).mockReturnValue({
+      data: mockLowStockData,
+      isLoading: false,
+      error: null,
+    });
+    (useGetExcessStockQuery as jest.Mock).mockReturnValue({
+      data: mockExcessStockData,
+      isLoading: false,
+      error: null,
+    });
+    (useGetExpiredStockQuery as jest.Mock).mockReturnValue({
+      data: mockExpiredStockData,
       isLoading: false,
       error: null,
     });
@@ -175,11 +134,10 @@ describe('InventoryMetricsCards', () => {
   });
 
   // Test Case 1: Renders initial summary cards
-  // Current behaviour: the three stock cards are Low Stock Items (from
-  // belowMinProducts), Near Expiry Stock (from the inventoryApi near-expiry
-  // hook) and Expired Stock (from expiredProducts). The "Excess Stock"
-  // card was replaced by "Near Expiry Stock".
-  it('renders the three inventory metric cards with correct data', async () => {
+  // Current behaviour: the four stock cards (Low / Excess / Near Expiry / Expired)
+  // all come from the inventoryApi queries — the SAME hooks the inventory page
+  // counts — so the dashboard numbers match /inventory by construction.
+  it('renders the four inventory metric cards with the inventory-endpoint numbers', async () => {
     render(
       <ThemeProvider theme={theme}>
         <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
@@ -192,6 +150,10 @@ describe('InventoryMetricsCards', () => {
       expect(lowStockCard).not.toBeNull();
       expect(within(lowStockCard as HTMLElement).getByText('2')).toBeInTheDocument();
 
+      const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
+      expect(excessStockCard).not.toBeNull();
+      expect(within(excessStockCard as HTMLElement).getByText('2')).toBeInTheDocument();
+
       const nearExpiryCard = screen.getByText('Near Expiry Stock').closest('.MuiPaper-root');
       expect(nearExpiryCard).not.toBeNull();
       expect(within(nearExpiryCard as HTMLElement).getByText('2')).toBeInTheDocument();
@@ -200,6 +162,21 @@ describe('InventoryMetricsCards', () => {
       expect(expiredStockCard).not.toBeNull();
       expect(within(expiredStockCard as HTMLElement).getByText('1')).toBeInTheDocument();
     });
+  });
+
+  it('navigates to the inventory excess tab when Excess Stock "View Items" is clicked', async () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
+    expect(excessStockCard).not.toBeNull();
+    const viewItemsButton = within(excessStockCard as HTMLElement).getByRole('button', { name: 'View Items' });
+    fireEvent.click(viewItemsButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/inventory', { state: { tab: 'excess' } });
   });
 
   // Test Case 2: Low Stock "View Items" navigates to the inventory page.
@@ -262,7 +239,7 @@ describe('InventoryMetricsCards', () => {
       </ThemeProvider>
     );
 
-    const cardTitles = ['Low Stock Items', 'Near Expiry Stock', 'Expired Stock'];
+    const cardTitles = ['Low Stock Items', 'Excess Stock', 'Near Expiry Stock', 'Expired Stock'];
     cardTitles.forEach((title) => {
       const card = screen.getByText(title).closest('.MuiPaper-root');
       expect(card).not.toBeNull();
@@ -276,11 +253,8 @@ describe('InventoryMetricsCards', () => {
   // component does not pass a `disabled` prop), so we only assert the count.
   it('renders a count of 0 for the Expired Stock card when there are no expired products', () => {
     // Override the mock data for this specific test case
-    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-      data: {
-        ...mockInventoryData,
-        expiredProducts: [], // Simulate no expired products
-      },
+    (useGetExpiredStockQuery as jest.Mock).mockReturnValue({
+      data: [], // Simulate no expired batches
       isLoading: false,
       error: null,
     });
@@ -361,8 +335,8 @@ describe('InventoryMetricsCards', () => {
       isLoading: true,
       error: null,
     });
-    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-      data: null,
+    (useGetLowStockQuery as jest.Mock).mockReturnValue({
+      data: undefined,
       isLoading: true,
       error: null,
     });
@@ -387,8 +361,8 @@ describe('InventoryMetricsCards', () => {
       isLoading: false,
       error: new Error('API Error'),
     });
-    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-      data: null,
+    (useGetLowStockQuery as jest.Mock).mockReturnValue({
+      data: undefined,
       isLoading: false,
       error: new Error('API Error'),
     });
@@ -413,15 +387,9 @@ describe('InventoryMetricsCards', () => {
       isLoading: false,
       error: null,
     });
-    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-      data: {
-        belowMinProducts: [],
-        expiredProducts: [],
-        aboveMaxProducts: [],
-      },
-      isLoading: false,
-      error: null,
-    });
+    (useGetLowStockQuery as jest.Mock).mockReturnValue({ data: [], isLoading: false, error: null });
+    (useGetExcessStockQuery as jest.Mock).mockReturnValue({ data: [], isLoading: false, error: null });
+    (useGetExpiredStockQuery as jest.Mock).mockReturnValue({ data: [], isLoading: false, error: null });
     (useGetNearExpiryStockQuery as jest.Mock).mockReturnValue({
       data: [],
       isLoading: false,
@@ -439,6 +407,9 @@ describe('InventoryMetricsCards', () => {
       const lowStockCard = screen.getByText('Low Stock Items').closest('.MuiPaper-root');
       expect(within(lowStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
 
+      const excessStockCard = screen.getByText('Excess Stock').closest('.MuiPaper-root');
+      expect(within(excessStockCard as HTMLElement).getByText('0')).toBeInTheDocument();
+
       const nearExpiryCard = screen.getByText('Near Expiry Stock').closest('.MuiPaper-root');
       expect(within(nearExpiryCard as HTMLElement).getByText('0')).toBeInTheDocument();
 
@@ -448,7 +419,10 @@ describe('InventoryMetricsCards', () => {
   });
 
   // Test Case 10: Date range prop changes
-  it('refetches data when date range changes', async () => {
+  // Current behaviour: only the invoice stats react to the date picker. The stock
+  // cards consume LIVE inventory-state queries which are date-INDEPENDENT by
+  // design — they must NOT receive the date range.
+  it('passes the new date range to invoice stats only; stock queries stay date-independent', async () => {
     const { rerender } = render(
       <ThemeProvider theme={theme}>
         <InventoryMetricsCards dateRange={{ startDate: '2024-01-01', endDate: '2024-01-31' }} />
@@ -462,12 +436,13 @@ describe('InventoryMetricsCards', () => {
       </ThemeProvider>
     );
 
-    // Verify that the API hooks were called with the new date range (check last call)
+    // Verify that the invoice-stats hook received the new date range (check last call)
     const invoiceStatsCalls = (useGetInvoiceStatsQuery as jest.Mock).mock.calls;
-    const inventoryCalls = (useGetInventoryByDateQuery as jest.Mock).mock.calls;
-    
     expect(invoiceStatsCalls[invoiceStatsCalls.length - 1][0]).toEqual({ startDate: '2024-02-01', endDate: '2024-02-28' });
-    expect(inventoryCalls[inventoryCalls.length - 1][0]).toEqual({ startDate: '2024-02-01', endDate: '2024-02-28' });
+
+    // The stock queries take no date arguments (live state, no range).
+    const lowCalls = (useGetLowStockQuery as jest.Mock).mock.calls;
+    expect(lowCalls[lowCalls.length - 1][0]).toBeUndefined();
   });
 
   // Test Cases 11 & 12 removed: the component no longer opens an in-page modal
@@ -496,23 +471,15 @@ describe('InventoryMetricsCards', () => {
 
   // Test Case 14: Performance with large datasets
   it('handles large datasets efficiently', async () => {
-    const largeInventoryData = {
-      belowMinProducts: Array.from({ length: 100 }, (_, i) => ({
-        product_id: `${i}`,
-        name: `Product ${i}`,
-        batchNumber: `BATCH${i}`,
-        currentQuantity: Math.floor(Math.random() * 10),
-        minQty: 25,
-        maxQty: 300,
-        expiryDate: '2025-11-12',
-        activityDate: '2025-09-19T08:37:11Z',
-      })),
-      expiredProducts: [],
-      aboveMaxProducts: [],
-    };
+    const largeLowStockData = Array.from({ length: 100 }, (_, i) => ({
+      id: `${i}`,
+      name: `Product ${i}`,
+      currentQuantity: Math.floor(Math.random() * 10),
+      minQuantity: 25,
+    }));
 
-    (useGetInventoryByDateQuery as jest.Mock).mockReturnValue({
-      data: largeInventoryData,
+    (useGetLowStockQuery as jest.Mock).mockReturnValue({
+      data: largeLowStockData,
       isLoading: false,
       error: null,
     });

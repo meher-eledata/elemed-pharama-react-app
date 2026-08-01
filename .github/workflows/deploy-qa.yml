@@ -1,0 +1,55 @@
+name: Deploy QA (frontend, serverless)
+
+# Auto-deploys the frontend SPA to the QA serverless env (S3 + CloudFront) on push/merge to `qa`.
+# Keyless OIDC; the assumed role is trusted ONLY from refs/heads/qa of this repo and grants
+# nothing on prod.
+on:
+  push:
+    branches: [qa]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-qa-frontend
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: elemed-qa-frontend
+  CLOUDFRONT_DIST_ID: E1FOQS1ATURUIO
+  VITE_API_BASE_URL: https://qa.elemed.co/api/
+  AWS_ROLE_ARN: arn:aws:iam::187691954418:role/elemed-github-actions-qa
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Sync build to S3
+        # Hashed assets are cached forever (Vite renames them on change); index.html must
+        # always revalidate so browsers pick up new bundle references without a hard reload.
+        run: |
+          aws s3 sync dist/ "s3://$S3_BUCKET" --delete \
+            --exclude "index.html" \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp dist/index.html "s3://$S3_BUCKET/index.html" \
+            --cache-control "no-cache"
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DIST_ID" --paths "/*"

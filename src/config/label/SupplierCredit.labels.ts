@@ -1,0 +1,56 @@
+export const SUPPLIER_CREDIT_LABELS = {
+  PAGE_TITLE: 'Supplier Credit',
+  SUBTITLE: 'Review supplier credit transactions and post manual adjustments.',
+  BACK_BUTTON: 'Back',
+  ADJUST_BUTTON: 'Adjust Credit',
+  FILTERS: {
+    SUPPLIER: 'Supplier',
+    ALL_SUPPLIERS: 'All suppliers',
+    START_DATE: 'From date',
+    END_DATE: 'To date',
+    RESET: 'Reset filters',
+  },
+  TABLE: {
+    DATE: 'Date (IST)',
+    SUPPLIER: 'Supplier',
+    TYPE: 'Type',
+    DIRECTION: 'Direction',
+    AMOUNT: 'Amount',
+    REASON: 'Reason',
+    BY: 'By',
+    RELATED: 'Related Payment / PO',
+  },
+  DIRECTION: {
+    IN: 'Credit In',
+    OUT: 'Credit Out',
+  },
+  MESSAGES: {
+    LOADING: 'Loading credit transactions...',
+    ERROR: 'Failed to load credit transactions. Please try again.',
+    EMPTY: 'No credit transactions found.',
+    TOTAL: 'Total transactions',
+  },
+  DIALOG: {
+    TITLE: 'Adjust Supplier Credit',
+    SUPPLIER: 'Supplier',
+    SUPPLIER_PLACEHOLDER: 'Select a supplier',
+    ACTION: 'Action',
+    ADD_CREDIT: 'Add Credit',
+    SUBTRACT_CREDIT: 'Subtract Credit',
+    AMOUNT: 'Amount',
+    AMOUNT_PLACEHOLDER: 'Enter amount',
+    REASON: 'Reason',
+    REASON_PLACEHOLDER: 'Reason for this adjustment',
+    AVAILABLE_CREDIT: 'Current available credit',
+    SUBMIT: 'Submit Adjustment',
+    CANCEL: 'Cancel',
+    SUCCESS: 'Credit adjusted successfully.',
+    VALIDATION: {
+      SUPPLIER_REQUIRED: 'Please select a supplier.',
+      AMOUNT_REQUIRED: 'Please enter an amount greater than 0.',
+      REASON_REQUIRED: 'Please enter a reason.',
+    },
+  },
+} as const;
+
+export type SupplierCreditLabels = typeof SUPPLIER_CREDIT_LABELS;

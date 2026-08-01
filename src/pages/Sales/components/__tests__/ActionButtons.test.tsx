@@ -48,6 +48,31 @@ describe('ActionButtons', () => {
     expect(mockProps.onPrint).toHaveBeenCalledTimes(1);
   });
 
+  it('renders page size and orientation selectors and reports changes', () => {
+    const onPageSizeChange = jest.fn();
+    const onOrientationChange = jest.fn();
+    render(
+      <ActionButtons
+        {...mockProps}
+        onPageSizeChange={onPageSizeChange}
+        onOrientationChange={onOrientationChange}
+      />
+    );
+
+    fireEvent.click(screen.getByText(/^A5$/));
+    expect(onPageSizeChange).toHaveBeenCalledWith('A5');
+
+    fireEvent.click(screen.getByText(/^Portrait$/));
+    expect(onOrientationChange).toHaveBeenCalledWith('portrait');
+  });
+
+  it('hides page size and orientation selectors when hidePageSize is set', () => {
+    render(<ActionButtons {...mockProps} hidePageSize />);
+
+    expect(screen.queryByText(/^A5$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Portrait$/)).not.toBeInTheDocument();
+  });
+
   it('renders buttons with correct styling', () => {
     render(<ActionButtons {...mockProps} />);
     

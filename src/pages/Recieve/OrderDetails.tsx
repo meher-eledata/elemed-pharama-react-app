@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
-import { RootState } from "../../redux/store";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../redux/store";
 import {
   Box,
   Typography,
@@ -14,11 +14,12 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
-import { useAddSupplierMutation } from "../../redux/slices/masterApi";
+import { useAddSupplierMutation, useUpdateProductMutation } from "../../redux/slices/masterApi";
 import { useGetBatchesForProductMutation } from "../../redux/slices/inventoryApi";
-import { getReceiptFileUrl } from "../../redux/slices/receiveApi";
+import { getReceiptFileUrl, receiveApi } from "../../redux/slices/receiveApi";
 import { ReusableTable } from "../../components/PharmaTable";
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
+import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
 import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
 import { StandardButton } from "../../components/Common";
@@ -41,9 +42,15 @@ import { getProductTableColumns } from "./components/ProductTableColumns";
 
 const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigate = useNavigate();
+  // Typed so cross-slice thunks (receiveApi.util.invalidateTags) dispatch cleanly.
+  const dispatch = useDispatch<AppDispatch>();
   const [addSupplier] = useAddSupplierMutation();
   const [getBatchesForProduct] = useGetBatchesForProductMutation();
+  const [updateProduct, { isLoading: isSavingSchedule }] = useUpdateProductMutation();
   const token = useSelector((state: RootState) => state.auth.token);
+  // One-time schedule attribution popup: the product waiting on a choice before
+  // its line is added to the receipt table.
+  const [pendingScheduleProduct, setPendingScheduleProduct] = useState<{ name: string; product_id: number } | null>(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -65,6 +72,44 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       setSnackbarOpen(true);
     }
   );
+
+  // Add-to-receipt gate: a product whose schedule is NULL (never attributed) asks
+  // once via the popup; 'NONE' or a real code adds straight to the table. Products
+  // just created via NewProductModal re-enter the options list with their chosen
+  // schedule (fetchAllProducts refetch), so they never double-prompt.
+  const handleProductSelect = (productName: string) => {
+    const pid = data.getProductIdFromName(productName);
+    const option = pid != null ? data.productOptionsWithIds.find((p) => p.id === pid) : undefined;
+    if (option && (option.schedule ?? null) === null) {
+      setPendingScheduleProduct({ name: productName, product_id: option.id });
+      return;
+    }
+    table.addProductToTable(productName);
+  };
+
+  // Popup choice: persist the schedule on the product, refresh both product caches
+  // (the RTK receive cache AND this page's raw-fetch options list — without the
+  // refresh the popup re-fires all session), then add the line. Never blocks.
+  const handleScheduleSelect = async (schedule: string) => {
+    const pending = pendingScheduleProduct;
+    if (!pending) return;
+    try {
+      await updateProduct({ product_id: pending.product_id, schedule }).unwrap();
+      dispatch(receiveApi.util.invalidateTags(['Receive']));
+      data.fetchAllProducts();
+    } catch {
+      // Persist failed — the popup fires again next time; the receipt is not blocked.
+    } finally {
+      table.addProductToTable(pending.name);
+      setPendingScheduleProduct(null);
+    }
+  };
+
+  // Skipping adds the line without a schedule; the popup fires again next time.
+  const handleScheduleCancel = () => {
+    if (pendingScheduleProduct) table.addProductToTable(pendingScheduleProduct.name);
+    setPendingScheduleProduct(null);
+  };
 
   // Initialize submit hook
   const submit = useOrderDetailsSubmit({
@@ -280,6 +325,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     return form.supplierName.trim() !== '' && table.pharmaTableData.length > 0;
   };
 
+  // Invoice number is required before a receipt can be submitted (mirrors backend rule).
+  const validateInvoiceNumber = () => {
+    if (!form.invoiceNumber.trim()) {
+      form.setInvoiceNumberError('Invoice number is required');
+      return false;
+    }
+    form.setInvoiceNumberError('');
+    return true;
+  };
+
   const handleConfirmDelete = () => {
     if (form.rowToDeleteId) {
       table.deleteRow(form.rowToDeleteId);
@@ -313,6 +368,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   };
 
   const handleProceedToPaymentClick = () => {
+    if (!validateInvoiceNumber()) {
+      return;
+    }
     if (!form.invoiceFile && !form.invoiceAttachmentUrl) {
       form.setIsUploadConfirmationDialogOpen(true);
       return;
@@ -320,7 +378,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     form.setIsProceedToPaymentDialogOpen(true);
   };
 
+  const handleSaveAndPayLaterClick = () => {
+    if (!validateInvoiceNumber()) {
+      return;
+    }
+    submit.handleSaveAndPayLater();
+  };
+
   const handleSubmitReceipt = async () => {
+    if (!validateInvoiceNumber()) {
+      return;
+    }
+
     if (form.isEditMode) {
       await submit.proceedWithSave();
       return;
@@ -386,7 +455,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         invoiceDate={form.invoiceDate}
         setInvoiceDate={form.setInvoiceDate}
         invoiceNumber={form.invoiceNumber}
-        setInvoiceNumber={form.setInvoiceNumber}
+        setInvoiceNumber={(val: string) => {
+          form.setInvoiceNumber(val);
+          if (form.invoiceNumberError) form.setInvoiceNumberError('');
+        }}
+        invoiceNumberError={form.invoiceNumberError}
       />
 
       <Divider sx={{ marginTop: "10px", border: "0.3px solid #CBD4E14D" }} />
@@ -398,7 +471,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         autocompleteProductOptions={data.autocompleteProductOptions}
         filterProductOptions={data.filterProductOptions}
         isProductsLoading={data.isProductsLoading}
-        onProductSelect={table.addProductToTable}
+        onProductSelect={handleProductSelect}
         onAddNewProduct={() => form.setIsNewProductModalOpen(true)}
         invoiceFile={form.invoiceFile}
         invoiceFileName={form.invoiceFileName}
@@ -509,7 +582,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
               variant="secondary"
               size="large"
               disabled={!validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
-              onClick={submit.handleSaveAndPayLater}
+              onClick={handleSaveAndPayLaterClick}
               sx={{ height: "48px", width: "160px", fontSize: "12px", marginLeft: "10px" }}
             >
               {form.isSaving ? "Processing..." : "Save & Pay Later"}
@@ -566,6 +639,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         isOpen={form.isNewSupplierModalOpen}
         onClose={() => form.setIsNewSupplierModalOpen(false)}
         onSubmit={handleSupplierSubmit}
+      />
+
+      {/* One-time drug-schedule attribution popup (schedule NULL only) */}
+      <ScheduleAttributionModal
+        open={pendingScheduleProduct !== null}
+        productName={pendingScheduleProduct?.name || ''}
+        saving={isSavingSchedule}
+        onSelect={handleScheduleSelect}
+        onCancel={handleScheduleCancel}
       />
 
       <ConfirmationDialog

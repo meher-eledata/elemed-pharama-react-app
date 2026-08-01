@@ -39,6 +39,7 @@ interface ExecuteSaveParams {
   customerName: string;
   customerMobile: string;
   customerCity: string;
+  customerDetails: string;
   patientType: string;
   doctorName: string;
   doctorId?: number;
@@ -80,6 +81,7 @@ export const executeSave = async ({
   customerName,
   customerMobile,
   customerCity,
+  customerDetails,
   patientType,
   doctorName,
   doctorId,
@@ -258,6 +260,8 @@ export const executeSave = async ({
       customer_mobile: customerMobile,
       customer_phone: customerMobile, // Snapshotted onto the invoice alongside customer_id
       customer_city: customerCity,
+      // Free-text "Details"; backend trims and stores blank as NULL (≤150 chars)
+      customer_details: (customerDetails || '').trim(),
       doctor_id: doctorId,
       doctor_name: doctorName,
       doctor_mobile: doctorMobile,
@@ -356,6 +360,8 @@ export const executeSave = async ({
         customer_mobile: customerMobile,
         customer_phone: customerMobile, // Snapshotted onto the invoice alongside customer_id
         customer_city: customerCity,
+        // Free-text "Details"; re-saved on every edit (backend trims, blank → NULL)
+        customer_details: (customerDetails || '').trim(),
         doctor_id: doctorId,
         doctor_name: doctorName,
         doctor_mobile: doctorMobile,
@@ -621,6 +627,7 @@ export const executeSave = async ({
       customerName,
       customerMobile,
       customerCity: customerCity || '',
+      customerDetails: (customerDetails || '').trim(),
       doctorName: doctorName || '',
       doctorMobile: doctorMobile || '',
       doctorEmail: doctorEmail || '',
