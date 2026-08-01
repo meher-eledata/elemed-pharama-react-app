@@ -3,9 +3,10 @@ import { Box, Typography, CircularProgress, Snackbar, Alert, Switch } from '@mui
 import { useDispatch } from 'react-redux';
 import { useGetMeQuery, useToggleModuleMutation } from '../../redux/slices/orgApi';
 import { setOrgContext } from '../../redux/slices/orgSlice';
-import { MODULES, ALL_MODULE_KEYS } from '../../config/modules.config';
+import { MODULES, ALL_MODULE_KEYS, COMING_SOON_MODULE_KEYS } from '../../config/modules.config';
 import { extractErrorMessage } from '../../utils/errorUtils';
 import { ORG_LABELS } from '../../config/label/Org.labels';
+import { ComingSoonChip } from '../../components/Common';
 
 const M = ORG_LABELS.MODULES;
 // pharmacy is the core app — its switch is always-on and disabled so an admin can
@@ -28,6 +29,12 @@ const OrgModules: React.FC = () => {
   const [toggleModule] = useToggleModuleMutation();
 
   const activeModules = meData?.activeModules ?? [];
+  // Coming-soon modules cannot be enabled: static registry list merged with the
+  // backend's /me report (the backend also rejects enabling them with a 400).
+  const comingSoonModules = new Set<string>([
+    ...COMING_SOON_MODULE_KEYS,
+    ...(meData?.comingSoonModules ?? []),
+  ]);
 
   const handleToggleModule = async (moduleKey: string, label: string, enabled: boolean) => {
     setPendingModuleKey(moduleKey);
@@ -77,7 +84,8 @@ const OrgModules: React.FC = () => {
         {!isLoading && !isError && ALL_MODULE_KEYS.map((key) => {
           const mod = MODULES[key];
           const isCore = key === CORE_MODULE_KEY;
-          const isEnabled = isCore || activeModules.includes(key);
+          const isComingSoon = comingSoonModules.has(key);
+          const isEnabled = !isComingSoon && (isCore || activeModules.includes(key));
           return (
             <Box
               key={key}
@@ -112,6 +120,7 @@ const OrgModules: React.FC = () => {
                       {M.CORE_TAG}
                     </Typography>
                   )}
+                  {isComingSoon && <ComingSoonChip />}
                 </Box>
                 <Typography sx={{ fontSize: '13px', color: '#6B7280', fontFamily: "'Lexend', sans-serif", mt: '2px' }}>
                   {mod.description}
@@ -119,7 +128,7 @@ const OrgModules: React.FC = () => {
               </Box>
               <Switch
                 checked={isEnabled}
-                disabled={isCore || pendingModuleKey === key}
+                disabled={isCore || isComingSoon || pendingModuleKey === key}
                 onChange={(e) => handleToggleModule(key, mod.label, e.target.checked)}
                 sx={{
                   '& .MuiSwitch-switchBase.Mui-checked': { color: '#5C17E5' },

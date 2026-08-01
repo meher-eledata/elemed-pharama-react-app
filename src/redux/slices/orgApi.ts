@@ -30,7 +30,10 @@ export interface MeResponse {
   // null for legacy/no-org users.
   organization: MeOrganization | null;
   // Subset of ["pharmacy","inpatient"]; legacy/no-org users get ["pharmacy"].
+  // NEVER contains a coming-soon module (e.g. "outpatient").
   activeModules: string[];
+  // Modules that exist but cannot be enabled yet (contains "outpatient").
+  comingSoonModules: string[];
 }
 
 // PUT /api/admin/modules — owner/admin only. Toggles a module for the org.

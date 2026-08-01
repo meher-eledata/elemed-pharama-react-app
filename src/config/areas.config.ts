@@ -10,7 +10,7 @@ import {
   selectOrgLoaded,
 } from '../redux/slices/orgSlice';
 import type { RootState } from '../redux/store';
-import type { ModuleKey } from './modules.config';
+import { COMING_SOON_MODULE_KEYS, type ModuleKey } from './modules.config';
 
 // An "area" is a top-level destination the user can switch between: each active
 // product module (Pharmacy, Outpatient) plus the dedicated Org Management section.
@@ -56,6 +56,12 @@ export const AREAS: AreaDefinition[] = [
   },
 ];
 
+// Areas gated as "Coming Soon": never navigable, regardless of role/module
+// access. Coming-soon modules ride on the module registry; the whole Org
+// Management area is additionally gated until org-level settings ship — the app
+// presents only the pharmacy module UI for now.
+export const COMING_SOON_AREA_KEYS: AreaKey[] = [...COMING_SOON_MODULE_KEYS, 'org'];
+
 /**
  * Maps a pathname to the area it belongs to. `/outpatient*` → outpatient,
  * `/org*` → org, everything else (/dashboard, /sales, /inventory, /receive,
@@ -89,7 +95,8 @@ export const useAccessibleAreas = (): AreaDefinition[] => {
     org: canManageOrg,
   };
 
-  return AREAS.filter((area) => access[area.key]);
+  // Coming-soon areas are never accessible destinations, whatever the access.
+  return AREAS.filter((area) => access[area.key] && !COMING_SOON_AREA_KEYS.includes(area.key));
 };
 
 // Re-export so consumers can render an area icon without importing MUI directly.

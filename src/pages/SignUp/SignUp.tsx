@@ -17,7 +17,8 @@ import { useDispatch } from "react-redux";
 
 import { useSignupMutation, setCredentials } from "../../redux/slices/authSlice";
 import { setOrgContext } from "../../redux/slices/orgSlice";
-import { MODULES, ALL_MODULE_KEYS, ModuleKey } from "../../config/modules.config";
+import { MODULES, ALL_MODULE_KEYS, COMING_SOON_MODULE_KEYS, ModuleKey } from "../../config/modules.config";
+import { ComingSoonChip } from "../../components/Common";
 import { SIGNUP_LABELS } from "../../config/label/signupLabels";
 import { SIGNUP_CONSTANTS } from "../../config/constants/signupConstants";
 import { extractErrorMessage } from "../../utils/errorUtils";
@@ -85,12 +86,15 @@ const SignUp: React.FC = () => {
   const setField = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const toggleModule = (key: ModuleKey) =>
+  const toggleModule = (key: ModuleKey) => {
+    // Coming-soon modules are visible but never selectable.
+    if (COMING_SOON_MODULE_KEYS.includes(key)) return;
     setOptionalModules((prev) => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
+  };
 
   const validate = (): boolean => {
     const { VALIDATION } = SIGNUP_LABELS;
@@ -319,6 +323,7 @@ const SignUp: React.FC = () => {
           {ALL_MODULE_KEYS.map((key) => {
             const mod = MODULES[key];
             const isRequired = key === REQUIRED_MODULE;
+            const isComingSoon = COMING_SOON_MODULE_KEYS.includes(key);
             const checked = isRequired || optionalModules.has(key);
             return (
               <Box
@@ -331,14 +336,15 @@ const SignUp: React.FC = () => {
                   p: "0.75rem 1rem",
                   border: `1px solid ${checked ? "#5C17E5" : "#9AA8BC"}`,
                   borderRadius: "0.75rem",
-                  cursor: isRequired ? "default" : "pointer",
+                  cursor: isRequired || isComingSoon ? "default" : "pointer",
                   backgroundColor: checked ? "rgba(92, 23, 229, 0.04)" : "transparent",
+                  opacity: isComingSoon ? 0.6 : 1,
                   transition: "border-color 0.15s, background-color 0.15s",
                 }}
               >
                 <Checkbox
                   checked={checked}
-                  disabled={isRequired}
+                  disabled={isRequired || isComingSoon}
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => toggleModule(key)}
                   disableRipple
@@ -346,7 +352,7 @@ const SignUp: React.FC = () => {
                     p: 0,
                     color: "#9AA8BC",
                     "&.Mui-checked": { color: "#5C17E5" },
-                    "&.Mui-disabled": { color: "#5C17E5" },
+                    "&.Mui-disabled": { color: isRequired ? "#5C17E5" : "#9AA8BC" },
                   }}
                 />
                 <Box sx={{ flex: 1 }}>
@@ -354,6 +360,7 @@ const SignUp: React.FC = () => {
                     <Typography sx={{ fontSize: "0.875rem", fontWeight: 600, color: "#1A212B" }}>
                       {mod.label}
                     </Typography>
+                    {isComingSoon && <ComingSoonChip />}
                     {isRequired && (
                       <Typography
                         sx={{

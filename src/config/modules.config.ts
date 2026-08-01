@@ -97,3 +97,8 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
 
 // Registry order — used to render module sidebar items deterministically.
 export const ALL_MODULE_KEYS: ModuleKey[] = ['pharmacy', 'inpatient', 'outpatient'];
+
+// Modules that are visible but cannot be selected/enabled yet ("Coming Soon").
+// Mirrors the backend: /me reports `comingSoonModules`, `activeModules` never
+// includes them, and PUT /admin/modules rejects enabling them with a 400.
+export const COMING_SOON_MODULE_KEYS: ModuleKey[] = ['outpatient'];

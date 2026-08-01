@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
 import { selectOrgLoaded, selectCanManageOrg } from '../redux/slices/orgSlice';
+import { COMING_SOON_AREA_KEYS } from '../config/areas.config';
 
 /**
  * Org Management guard. Mirrors RoleGuard/ModuleGuard: allows an authenticated
@@ -18,6 +19,12 @@ export const OrgGuard = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  // The whole Org area is currently gated as "Coming Soon" — not navigable even
+  // for superadmins. Redirect direct visits straight to the pharmacy home.
+  if (COMING_SOON_AREA_KEYS.includes('org')) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (!loaded) {
