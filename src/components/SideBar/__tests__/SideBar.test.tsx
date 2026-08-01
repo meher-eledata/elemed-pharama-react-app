@@ -100,6 +100,14 @@ describe('Sidebar', () => {
 
       expect(navigateSpy).toHaveBeenCalledWith('/admin/supplier-credit');
     });
+
+    it('renders the "Locations" admin entry and navigates to /admin/locations', () => {
+      renderSidebar('/admin/users');
+
+      fireEvent.click(screen.getByText('Locations'));
+
+      expect(navigateSpy).toHaveBeenCalledWith('/admin/locations');
+    });
   });
 
   describe('pharmacy app sidebar (on a non-admin pharmacy path)', () => {

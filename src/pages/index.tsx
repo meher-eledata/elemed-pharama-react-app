@@ -30,6 +30,7 @@ import SalesTaxReport from "./Admin/SalesTaxReport";
 import SupplierTaxReport from "./Admin/SupplierTaxReport";
 import HistoricalData from "./Admin/HistoricalData";
 import SupplierCredit from "./Admin/SupplierCredit";
+import Locations from "./Admin/Locations";
 import UserProfile from "./Profile/UserProfile";
 import Launcher from "./Home/Launcher";
 import OrgDashboard from "./Org/OrgDashboard";
@@ -139,6 +140,7 @@ export const Pages = () => {
             <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
             <Route path="historical-data" element={<HistoricalData />} />
             <Route path="supplier-credit" element={<SupplierCredit />} />
+            <Route path="locations" element={<Locations />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="audit" element={<AuditLog />} />
           </Route>

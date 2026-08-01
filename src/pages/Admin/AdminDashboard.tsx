@@ -9,6 +9,7 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import StorageIcon from '@mui/icons-material/Storage';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
@@ -188,6 +189,14 @@ const AdminDashboard: React.FC = () => {
           action={ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.ACTION}
           onAction={() => navigate('/admin/supplier-credit')}
           iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.SUPPLIER_CREDIT}
+        />
+        <Card
+          icon={<StorefrontOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+          title={ADMIN_LABELS.SECTIONS.LOCATIONS.TITLE}
+          desc={ADMIN_LABELS.SECTIONS.LOCATIONS.DESC}
+          action={ADMIN_LABELS.SECTIONS.LOCATIONS.ACTION}
+          onAction={() => navigate('/admin/locations')}
+          iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.LOCATIONS}
         />
         <Card
           icon={<AssignmentOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}

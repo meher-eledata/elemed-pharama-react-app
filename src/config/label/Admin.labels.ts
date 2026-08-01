@@ -32,6 +32,11 @@ export const ADMIN_LABELS = {
       DESC: 'Review supplier credit transactions and post manual adjustments.',
       ACTION: 'Manage Supplier Credit',
     },
+    LOCATIONS: {
+      TITLE: 'Locations',
+      DESC: 'Create and manage the pharmacy locations of your organization.',
+      ACTION: 'Manage Locations',
+    },
   },
 } as const;
 
