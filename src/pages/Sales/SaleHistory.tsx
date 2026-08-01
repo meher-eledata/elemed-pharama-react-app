@@ -27,7 +27,8 @@ import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
 import bgWhiteIcon from '../../assets/BG_White.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
-import { generatePrintHTML } from './SalesReceipt.utils';
+import { generatePrintHTML, buildPrintIdentity } from './SalesReceipt.utils';
+import { selectCurrentLocation, selectOrganization } from '../../redux/slices/orgSlice';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
 import { clearCart, clearFormData } from '../../redux/slices/cartSlice';
@@ -164,6 +165,13 @@ export default function SaleHistory() {
   const dispatch = useDispatch();
 
   const user = useSelector((state: RootState) => state.auth.user);
+  // Receipt header identity: the CURRENT location (org name fallback).
+  const currentLocation = useSelector(selectCurrentLocation);
+  const organization = useSelector(selectOrganization);
+  const printIdentity = useMemo(
+    () => buildPrintIdentity(currentLocation, organization?.name ?? null),
+    [currentLocation, organization]
+  );
 
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
@@ -1244,6 +1252,7 @@ export default function SaleHistory() {
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
         splitPayments: invoiceDetails.splitPayments || [],
         labels: SALES_RECEIPT_LABELS,
+        identity: printIdentity,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
         orientation: orientation,
@@ -1879,6 +1888,7 @@ export default function SaleHistory() {
           content={
             <PrintPreviewModal
               salesItems={invoiceDetails.items || []}
+              identity={printIdentity}
               customerName={invoiceDetails.customerName || ''}
               customerMobile={invoiceDetails.customerMobile || ''}
               customerCity={invoiceDetails.customerCity || ''}

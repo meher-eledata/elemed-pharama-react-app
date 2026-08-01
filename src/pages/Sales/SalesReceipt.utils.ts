@@ -1,6 +1,43 @@
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
+import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { formatSchedule } from '../../config/constants/product.constants';
+import type { Location } from '../../redux/slices/orgApi';
+
+/**
+ * The pharmacy identity printed in the receipt header. Built from the CURRENT
+ * location (name, address, drug licenses, GSTIN, phone); falls back to the
+ * organization name with blank detail lines when no location is available.
+ */
+export interface PrintPharmacyIdentity {
+  // Big header line (location name, else organization name).
+  name: string;
+  // Parenthesised secondary line (organization name when a location is named).
+  subtitle: string;
+  // Pre-formatted small lines: address / DL / GSTIN / phone — absent values omitted.
+  addressLines: string[];
+}
+
+export const buildPrintIdentity = (
+  location: Location | null | undefined,
+  organizationName?: string | null,
+): PrintPharmacyIdentity => {
+  const name = location?.name || organizationName || '';
+  const subtitle =
+    location?.name && organizationName && organizationName !== location.name
+      ? organizationName
+      : '';
+  const drugLicenses = [location?.drug_license_1, location?.drug_license_2]
+    .filter(Boolean)
+    .join(', ');
+  const addressLines = [
+    location?.address || '',
+    drugLicenses ? `${SALES_RECEIPT_LABELS.PHARMACY_DL_PREFIX}${drugLicenses}` : '',
+    location?.gstin ? `${SALES_RECEIPT_LABELS.PHARMACY_GSTIN_PREFIX}${location.gstin}` : '',
+    location?.phone ? `${SALES_RECEIPT_LABELS.PHARMACY_PHONE_PREFIX}${location.phone}` : '',
+  ].filter(Boolean);
+  return { name, subtitle, addressLines };
+};
 
 /**
  * Transform cart items from Sales Page to SalesReceiptItem format
@@ -98,6 +135,7 @@ export const generatePrintHTML = (data: {
   taxAmount: string;
   totalPayableAmount: string;
   labels: any;
+  identity: PrintPharmacyIdentity;
   patientType?: string;
   pageSize?: 'A4' | 'A5';
   orientation?: 'landscape' | 'portrait';
@@ -121,6 +159,7 @@ export const generatePrintHTML = (data: {
     taxAmount,
     totalPayableAmount,
     labels,
+    identity,
     patientType,
     pageSize = 'A4',
     orientation = 'landscape',
@@ -404,14 +443,11 @@ export const generatePrintHTML = (data: {
             ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
           </div>
           <div style="flex: 3; text-align: center;">
-            <div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
-            <div style="font-size: ${sz.pharmacySub}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
-            <div style="font-size: ${sz.pharmacyAddr}; margin: ${sz.addrMargin}; line-height: 1.2; color: #4B5563;">
-              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
-              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
-              GSTIN No: 37AAQCS3213C2ZH<br />
-              (M): 0891-2554040, 8096655050
-            </div>
+            <div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">${identity.name}</div>
+            ${identity.subtitle ? `<div style="font-size: ${sz.pharmacySub}; font-weight: 500; margin: 2px 0; color: #374151;">(${identity.subtitle})</div>` : ''}
+            ${identity.addressLines.length > 0 ? `<div style="font-size: ${sz.pharmacyAddr}; margin: ${sz.addrMargin}; line-height: 1.2; color: #4B5563;">
+              ${identity.addressLines.join('<br />')}
+            </div>` : ''}
           </div>
           <div style="flex: 1;"></div>
         </div>

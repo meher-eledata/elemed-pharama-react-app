@@ -4,6 +4,7 @@ import { StandardButton } from '../../Common';
 import html2pdf from 'html2pdf.js';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { formatSchedule } from '../../../config/constants/product.constants';
+import type { PrintPharmacyIdentity } from '../../../pages/Sales/SalesReceipt.utils';
 
 interface SalesReceiptItem {
   id: string;
@@ -27,6 +28,8 @@ interface SalesReceiptItem {
 
 interface PrintPreviewModalProps {
   salesItems: SalesReceiptItem[];
+  // Header identity of the CURRENT location (falls back to the org name).
+  identity: PrintPharmacyIdentity;
   customerName: string;
   customerMobile: string;
   customerCity: string;
@@ -53,6 +56,7 @@ interface PrintPreviewModalProps {
 
 const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   salesItems,
+  identity,
   customerName,
   customerMobile,
   customerCity,
@@ -238,17 +242,23 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           </Box>
           <Box sx={{ flex: 3, textAlign: 'center' }}>
             <Typography sx={{ fontSize: isA5 ? '16px' : '20px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
-              ELITE PHARMACY
+              {identity.name}
             </Typography>
-            <Typography sx={{ fontSize: isA5 ? '8px' : '9px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
-              (SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)
-            </Typography>
-            <Typography sx={{ fontSize: isA5 ? '7px' : '8px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
-              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
-              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
-              GSTIN No: 37AAQCS3213C2ZH<br />
-              (M): 0891-2554040, 8096655050
-            </Typography>
+            {identity.subtitle && (
+              <Typography sx={{ fontSize: isA5 ? '8px' : '9px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
+                ({identity.subtitle})
+              </Typography>
+            )}
+            {identity.addressLines.length > 0 && (
+              <Typography sx={{ fontSize: isA5 ? '7px' : '8px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
+                {identity.addressLines.map((line, index) => (
+                  <React.Fragment key={index}>
+                    {line}
+                    {index < identity.addressLines.length - 1 && <br />}
+                  </React.Fragment>
+                ))}
+              </Typography>
+            )}
           </Box>
           <Box sx={{ flex: 1, textAlign: 'right' }}></Box>
         </Box>

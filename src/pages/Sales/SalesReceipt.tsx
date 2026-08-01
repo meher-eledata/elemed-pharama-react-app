@@ -54,7 +54,8 @@ import { ApplyGstCheckbox } from './components/ApplyGstCheckbox';
 import { ActionButtons } from './components/ActionButtons';
 import { Toast } from './components/Toast';
 import { SalesReceiptItem } from './SalesReceipt.types';
-import { getTodayDate, generatePrintHTML, calculateFinancialSummary } from './SalesReceipt.utils';
+import { getTodayDate, generatePrintHTML, calculateFinancialSummary, buildPrintIdentity } from './SalesReceipt.utils';
+import { selectCurrentLocation, selectOrganization } from '../../redux/slices/orgSlice';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 import { transformCartItemsForEdit, mergeCartWithApiItems } from './SalesReceipt.handlers';
 import { getTableColumns } from './SalesReceipt.columns';
@@ -83,6 +84,13 @@ const SalesReceipt: React.FC = () => {
 
   const cartTotal = useSelector(selectCartTotal);
   const user = useSelector((state: RootState) => state.auth.user);
+  // Receipt header identity: the CURRENT location (org name fallback).
+  const currentLocation = useSelector(selectCurrentLocation);
+  const organization = useSelector(selectOrganization);
+  const printIdentity = useMemo(
+    () => buildPrintIdentity(currentLocation, organization?.name ?? null),
+    [currentLocation, organization]
+  );
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
@@ -1128,6 +1136,7 @@ const SalesReceipt: React.FC = () => {
         totalPayableAmount,
         patientType,
         labels: SALES_RECEIPT_LABELS,
+        identity: printIdentity,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
         orientation: orientation,
@@ -1839,6 +1848,7 @@ const SalesReceipt: React.FC = () => {
           content={
             <PrintPreviewModal
               salesItems={salesItems}
+              identity={printIdentity}
               customerName={customerName}
               customerMobile={customerMobile}
               customerCity={customerCity}

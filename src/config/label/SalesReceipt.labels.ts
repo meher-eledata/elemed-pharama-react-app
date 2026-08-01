@@ -77,6 +77,11 @@ export const SALES_RECEIPT_LABELS = {
   // Print Preview
   PRINT_PREVIEW_TITLE: "Print Preview - Sales Receipt",
   CUSTOMER_RECEIPT_TITLE: "Customer receipt",
+
+  // Receipt header identity line prefixes (values come from the current location).
+  PHARMACY_DL_PREFIX: "DL No: ",
+  PHARMACY_GSTIN_PREFIX: "GSTIN No: ",
+  PHARMACY_PHONE_PREFIX: "(M): ",
   ITEMS_SECTION_TITLE: "Items",
   GENERATED_ON: "Generated on: {date}",
 
