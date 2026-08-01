@@ -25,6 +25,22 @@ export interface MeOrganization {
   logo_url?: string | null;
 }
 
+// A physical org location (pharmacy branch). Returned by GET /api/me and the
+// admin location CRUD. status: 1 = active, 0 = deactivated.
+export interface Location {
+  id: number;
+  organization_id: number;
+  name: string;
+  code: string | null;
+  type: string;
+  gstin: string | null;
+  drug_license_1: string | null;
+  drug_license_2: string | null;
+  address: string | null;
+  phone: string | null;
+  status: number;
+}
+
 export interface MeResponse {
   user: MeUser;
   // null for legacy/no-org users.
@@ -34,6 +50,8 @@ export interface MeResponse {
   activeModules: string[];
   // Modules that exist but cannot be enabled yet (contains "outpatient").
   comingSoonModules: string[];
+  // All of the org's locations (active and inactive).
+  locations: Location[];
 }
 
 // PUT /api/admin/modules — owner/admin only. Toggles a module for the org.

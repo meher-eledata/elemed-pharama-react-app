@@ -17,9 +17,9 @@ const mockFetch = (status: number, body: unknown = {}) => {
 };
 
 // Minimal BaseQueryApi stub sufficient for fetchBaseQuery + the wrapper.
-const makeApi = () => ({
+const makeApi = (state: object = { auth: { token: null } }) => ({
   dispatch: jest.fn(),
-  getState: () => ({ auth: { token: null } }),
+  getState: () => state,
   signal: new AbortController().signal,
   abort: jest.fn(),
   endpoint: 'test',
@@ -81,5 +81,28 @@ describe('baseQueryWithReauth 401 handling', () => {
 
     expect(api.dispatch).not.toHaveBeenCalled();
     expect(redirectSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('baseQueryWithReauth x-location-id header', () => {
+  it('sends x-location-id when a current location is selected', async () => {
+    const fetchMock = mockFetch(200, { ok: true });
+    const api = makeApi({ auth: { token: 'JWT' }, org: { currentLocationId: 7 } });
+
+    await baseQueryWithReauth('protected', api as never, {});
+
+    const request = (fetchMock as jest.Mock).mock.calls[0][0] as Request;
+    expect(request.headers.get('x-location-id')).toBe('7');
+    expect(request.headers.get('Authorization')).toBe('Bearer JWT');
+  });
+
+  it('omits x-location-id when no location is selected', async () => {
+    const fetchMock = mockFetch(200, { ok: true });
+    const api = makeApi({ auth: { token: 'JWT' }, org: { currentLocationId: null } });
+
+    await baseQueryWithReauth('protected', api as never, {});
+
+    const request = (fetchMock as jest.Mock).mock.calls[0][0] as Request;
+    expect(request.headers.get('x-location-id')).toBeNull();
   });
 });

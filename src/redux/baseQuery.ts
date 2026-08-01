@@ -10,6 +10,13 @@ const baseQuery = fetchBaseQuery({
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
+    // Multi-location scoping: every request carries the working location. The
+    // backend requires it for pharmacy writes when the org has >1 active
+    // location and defaults to the single active location otherwise.
+    const locationId = (getState() as RootState)?.org?.currentLocationId;
+    if (locationId != null) {
+      headers.set('x-location-id', String(locationId));
+    }
     return headers;
   },
 });

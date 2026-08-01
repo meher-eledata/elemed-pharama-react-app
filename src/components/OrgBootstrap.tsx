@@ -25,6 +25,9 @@ export const OrgBootstrap = () => {
           orgRole: data.user.org_role ?? null,
           moduleRoles: data.user.module_roles ?? {},
           canManageRoles: data.user.can_manage_roles ?? false,
+          // Seeds locations + resolves currentLocationId (persisted choice if
+          // still active, else the single active location, else null).
+          locations: data.locations ?? [],
         })
       );
     }

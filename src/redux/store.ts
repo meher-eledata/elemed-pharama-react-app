@@ -12,6 +12,7 @@ import { historicalFilesApi } from "./slices/historicalFilesApi";
 import { activityApi } from "./slices/activityApi";
 import { profileApi } from "./slices/profileApi";
 import { orgApi } from "./slices/orgApi";
+import { locationsApi } from "./slices/locationsApi";
 import { outpatientApi } from "./slices/outpatientApi";
 import { alertsApi } from "./slices/alertsApi";
 import { adminCreditApi } from "./slices/adminCreditApi";
@@ -35,6 +36,7 @@ export const store = configureStore({
     [activityApi.reducerPath]: activityApi.reducer,
     [profileApi.reducerPath]: profileApi.reducer,
     [orgApi.reducerPath]: orgApi.reducer,
+    [locationsApi.reducerPath]: locationsApi.reducer,
     [outpatientApi.reducerPath]: outpatientApi.reducer,
     [alertsApi.reducerPath]: alertsApi.reducer,
     [adminCreditApi.reducerPath]: adminCreditApi.reducer,
@@ -53,6 +55,7 @@ export const store = configureStore({
       .concat(activityApi.middleware)
       .concat(profileApi.middleware)
       .concat(orgApi.middleware)
+      .concat(locationsApi.middleware)
       .concat(outpatientApi.middleware)
       .concat(alertsApi.middleware)
       .concat(adminCreditApi.middleware)
