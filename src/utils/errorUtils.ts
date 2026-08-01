@@ -1,3 +1,5 @@
+import { LOCATION_LABELS } from '../config/label/Locations.labels';
+
 interface ApiError {
   data?: {
     message?: string;
@@ -42,6 +44,13 @@ export const extractErrorMessage = (
       }
 
       if (apiError.data.error) {
+        // Multi-location: the backend rejects pharmacy writes without a
+        // location header (400 { error: 'Location required' }). Tell the user
+        // exactly what to do rather than echoing the raw error.
+        if (apiError.data.error === 'Location required') {
+          return LOCATION_LABELS.LOCATION_REQUIRED_TOAST;
+        }
+
         let errorMessage = apiError.data.error;
 
         if (apiError.data.fields && Array.isArray(apiError.data.fields)) {

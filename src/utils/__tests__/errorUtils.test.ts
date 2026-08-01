@@ -133,6 +133,12 @@ describe('errorUtils', () => {
       expect(extractErrorMessage({})).toBe(DEFAULT_MESSAGE);
       expect(extractErrorMessage({ foo: 'bar' }, 'fallback')).toBe('fallback');
     });
+
+    it("maps the multi-location 400 'Location required' to a top-bar hint", () => {
+      expect(
+        extractErrorMessage({ status: 400, data: { error: 'Location required' } })
+      ).toBe('Please select a location from the switcher in the top bar, then try again.');
+    });
   });
 
   describe('logError', () => {

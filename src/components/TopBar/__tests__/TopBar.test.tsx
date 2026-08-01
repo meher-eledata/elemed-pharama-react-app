@@ -28,6 +28,8 @@ jest.mock('../../../redux/slices/alertsApi', () => ({
 }));
 
 import { TopBar } from '../TopBar';
+import orgReducer, { setOrgContext, setCurrentLocation } from '../../../redux/slices/orgSlice';
+import type { Location } from '../../../redux/slices/orgApi';
 
 const createStore = () =>
   configureStore({
@@ -49,19 +51,62 @@ const createStore = () =>
           moduleRoles: {},
           canManageRoles: false,
           loaded: false,
+          locations: [],
+          currentLocationId: null,
         },
       ) => state,
     },
   });
 
-const renderTopBar = () =>
+const renderTopBar = (store = createStore()) =>
   render(
-    <Provider store={createStore()}>
+    <Provider store={store}>
       <MemoryRouter>
         <TopBar />
       </MemoryRouter>
     </Provider>,
   );
+
+// Store with the REAL org reducer so the location switcher's dispatches work.
+const makeLocation = (id: number, name: string, status = 1): Location => ({
+  id,
+  organization_id: 1,
+  name,
+  code: null,
+  type: 'pharmacy',
+  gstin: null,
+  drug_license_1: null,
+  drug_license_2: null,
+  address: null,
+  phone: null,
+  status,
+});
+
+const createStoreWithLocations = (locations: Location[]) => {
+  const store = configureStore({
+    reducer: {
+      auth: (
+        state = {
+          token: 'JWT123',
+          isAuthenticated: true,
+          user: { first_name: 'Pat', last_name: 'Lee', role: 1 },
+        },
+      ) => state,
+      org: orgReducer,
+    },
+  });
+  store.dispatch(
+    setOrgContext({
+      organization: { id: 1, name: 'Acme', slug: 'acme' },
+      activeModules: ['pharmacy'],
+      orgRole: 'admin',
+      moduleRoles: {},
+      canManageRoles: true,
+      locations,
+    }),
+  );
+  return store;
+};
 
 const openMenuAndClickLogout = () => {
   fireEvent.click(screen.getByText('Pat Lee'));
@@ -70,8 +115,74 @@ const openMenuAndClickLogout = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  localStorage.clear();
   // Default: empty alerts feed. Individual tests override before rendering.
   mockAlertsData = { count: 0, alerts: [] };
+});
+
+describe('TopBar — location switcher', () => {
+  it('renders nothing when the org has a single active location', () => {
+    const store = createStoreWithLocations([makeLocation(1, 'Main Branch')]);
+    renderTopBar(store);
+
+    expect(screen.queryByText('Main Branch')).not.toBeInTheDocument();
+    expect(screen.queryByText('Select location')).not.toBeInTheDocument();
+  });
+
+  it('shows the switcher when the org has more than one active location', () => {
+    const store = createStoreWithLocations([
+      makeLocation(1, 'Main Branch'),
+      makeLocation(2, 'Health City Branch'),
+    ]);
+    renderTopBar(store);
+
+    // No selection yet → placeholder on the switcher button.
+    expect(screen.getAllByText('Select location').length).toBeGreaterThan(0);
+  });
+
+  it('prompts with a location dialog when none is selected, and picking one selects it', async () => {
+    const store = createStoreWithLocations([
+      makeLocation(1, 'Main Branch'),
+      makeLocation(2, 'Health City Branch'),
+    ]);
+    renderTopBar(store);
+
+    // The auto-open dialog lists both locations.
+    expect(screen.getByText('Select a location')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Health City Branch'));
+
+    expect((store.getState() as any).org.currentLocationId).toBe(2);
+    expect(localStorage.getItem('pharma_current_location')).toBe('2');
+    // Dialog closes (animated unmount); the switcher then shows the chosen location.
+    await waitFor(() =>
+      expect(screen.queryByText('Select a location')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Health City Branch')).toBeInTheDocument();
+  });
+
+  it('does not prompt when a location is already selected', () => {
+    const store = createStoreWithLocations([
+      makeLocation(1, 'Main Branch'),
+      makeLocation(2, 'Health City Branch'),
+    ]);
+    store.dispatch(setCurrentLocation(1));
+    renderTopBar(store);
+
+    expect(screen.queryByText('Select a location')).not.toBeInTheDocument();
+    expect(screen.getByText('Main Branch')).toBeInTheDocument();
+  });
+
+  it('counts only ACTIVE locations for visibility (1 active + 1 inactive → hidden)', () => {
+    const store = createStoreWithLocations([
+      makeLocation(1, 'Main Branch'),
+      makeLocation(2, 'Closed Branch', 0),
+    ]);
+    renderTopBar(store);
+
+    expect(screen.queryByText('Select location')).not.toBeInTheDocument();
+    expect(screen.queryByText('Select a location')).not.toBeInTheDocument();
+  });
 });
 
 describe('TopBar — logout calls the server endpoint', () => {

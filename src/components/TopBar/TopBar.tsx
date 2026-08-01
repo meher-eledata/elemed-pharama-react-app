@@ -103,6 +103,7 @@ import { RootState } from "../../redux/store";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getInitials } from "../../config/helpers/initials";
 import { ModuleSwitcher } from "../ModuleSwitcher/ModuleSwitcher";
+import { LocationSwitcher } from "./LocationSwitcher";
 import { currentAreaKeyFromPath } from "../../config/areas.config";
 import { NOTIFICATION_LABELS } from "../../config/label/Notifications.labels";
 
@@ -204,8 +205,9 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
 
   return (
     <Box className="topbar-container">
-      <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <ModuleSwitcher />
+        <LocationSwitcher />
       </Box>
       <Box className="right-controls" sx={{ marginLeft: "auto" }}>
         <IconButton
