@@ -50,10 +50,19 @@ export const LocationSwitcher: React.FC = () => {
     <>
       <Box
         role="button"
+        tabIndex={0}
         aria-haspopup="true"
         aria-expanded={open ? 'true' : undefined}
         aria-label={LOCATION_LABELS.SWITCHER.PLACEHOLDER}
         onClick={(e) => setAnchorEl(e.currentTarget)}
+        // Real keyboard support for the role="button" control (Enter/Space),
+        // matching native button semantics.
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setAnchorEl(e.currentTarget);
+          }
+        }}
         sx={{
           display: 'flex',
           alignItems: 'center',
