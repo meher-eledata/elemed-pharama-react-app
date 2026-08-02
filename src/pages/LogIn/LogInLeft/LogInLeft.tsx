@@ -15,6 +15,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useLoginMutation, setCredentials } from "../../../redux/slices/authSlice";
 import { useDispatch } from "react-redux";
+import type { AppDispatch } from "../../../redux/store";
 
 import { LOGIN_LABELS } from "../../../config/label/loginLabels";
 import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants";
@@ -23,7 +24,9 @@ import elemedLogo from "../../../assets/ElemedLogo.svg";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  // Typed dispatch: handleLoginEffect expects the store's AppDispatch (which
+  // now carries the listener-middleware signature), not the plain Dispatch.
+  const dispatch = useDispatch<AppDispatch>();
 
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");

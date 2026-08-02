@@ -18,6 +18,7 @@ import { alertsApi } from "./slices/alertsApi";
 import { adminCreditApi } from "./slices/adminCreditApi";
 import cartReducer from "./slices/cartSlice";
 import orgReducer from "./slices/orgSlice";
+import { locationChangeListener } from "./locationChangeListener";
 
 export const store = configureStore({
   reducer: {
@@ -43,6 +44,9 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
+      // On a real location switch, reset the location-scoped RTK Query caches
+      // so no page keeps serving the previous branch's data.
+      .prepend(locationChangeListener.middleware)
       .concat(authApi.middleware)
       .concat(inventoryApi.middleware) 
       .concat(dashboardApi.middleware)
