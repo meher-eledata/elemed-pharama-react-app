@@ -165,6 +165,34 @@ describe('Admin Locations page', () => {
     );
   });
 
+  it("sends '' for blanked optional fields on update so the backend clears them", async () => {
+    mockUpdate.mockReturnValue({ unwrap: () => Promise.resolve({ location: FIXTURE[0] }) });
+    renderPage();
+
+    fireEvent.click(screen.getByLabelText('Edit Main Branch'));
+    expect(await screen.findByText('Edit Location')).toBeInTheDocument();
+
+    // Blank the GSTIN — the update must carry gstin: '' (undefined would be
+    // skipped server-side and the field could never be cleared).
+    fireEvent.change(screen.getByLabelText('GSTIN'), { target: { value: '' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith({
+        id: 1,
+        name: 'Main Branch',
+        code: 'MB',
+        type: 'pharmacy',
+        gstin: '',
+        drug_license_1: 'DL-1',
+        drug_license_2: 'DL-2',
+        address: '12 Main Road',
+        phone: '040-1234567',
+        status: 1,
+      }),
+    );
+  });
+
   it('surfaces the backend 400 when deactivating the last active location', async () => {
     mockUpdate.mockReturnValue({
       unwrap: () =>

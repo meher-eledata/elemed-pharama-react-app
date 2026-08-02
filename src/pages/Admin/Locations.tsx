@@ -136,25 +136,38 @@ const Locations: React.FC = () => {
       return;
     }
     setFormError('');
-    const body = {
+    const trimmed = {
       name: form.name.trim(),
-      code: form.code.trim() || undefined,
-      type: form.type.trim() || undefined,
-      gstin: form.gstin.trim() || undefined,
-      drug_license_1: form.drug_license_1.trim() || undefined,
-      drug_license_2: form.drug_license_2.trim() || undefined,
-      address: form.address.trim() || undefined,
-      phone: form.phone.trim() || undefined,
+      code: form.code.trim(),
+      type: form.type.trim(),
+      gstin: form.gstin.trim(),
+      drug_license_1: form.drug_license_1.trim(),
+      drug_license_2: form.drug_license_2.trim(),
+      address: form.address.trim(),
+      phone: form.phone.trim(),
     };
     try {
       if (editingLocation) {
+        // UPDATE sends '' for blanked optional fields — the backend maps empty
+        // string to null, so clearing a field actually clears it (an omitted /
+        // undefined field is skipped server-side and would never clear).
         await updateLocation({
           id: editingLocation.id,
-          ...body,
+          ...trimmed,
           status: form.active ? 1 : 0,
         }).unwrap();
       } else {
-        await createLocation(body).unwrap();
+        // CREATE omits untouched empties (nothing to clear on a new row).
+        await createLocation({
+          name: trimmed.name,
+          code: trimmed.code || undefined,
+          type: trimmed.type || undefined,
+          gstin: trimmed.gstin || undefined,
+          drug_license_1: trimmed.drug_license_1 || undefined,
+          drug_license_2: trimmed.drug_license_2 || undefined,
+          address: trimmed.address || undefined,
+          phone: trimmed.phone || undefined,
+        }).unwrap();
       }
       // Locations also live in org context (seeded from /me) — refetch it so the
       // top-bar switcher and print identity pick the change up immediately.
