@@ -165,13 +165,8 @@ export default function SaleHistory() {
   const dispatch = useDispatch();
 
   const user = useSelector((state: RootState) => state.auth.user);
-  // Receipt header identity: the CURRENT location (org name fallback).
   const currentLocation = useSelector(selectCurrentLocation);
   const organization = useSelector(selectOrganization);
-  const printIdentity = useMemo(
-    () => buildPrintIdentity(currentLocation, organization?.name ?? null),
-    [currentLocation, organization]
-  );
 
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
@@ -199,6 +194,14 @@ export default function SaleHistory() {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
   const [invoiceDetails, setInvoiceDetails] = useState<any>(null);
+  // Reprint header identity: the invoice's OWN branch when the detail fetch
+  // returned one (an invoice made at branch B keeps B's identity even while
+  // branch A is selected); else the currently selected location; else the
+  // org-name fallback inside buildPrintIdentity.
+  const printIdentity = useMemo(
+    () => buildPrintIdentity(invoiceDetails?.invoiceLocation ?? currentLocation, organization?.name ?? null),
+    [invoiceDetails, currentLocation, organization]
+  );
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'save' | 'print' | null>(null);
   const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
@@ -529,6 +532,8 @@ export default function SaleHistory() {
         taxAmount: (mergedItem as any).taxAmount || '0',
         totalPayableAmount: (mergedItem.totalAmount || 0).toString(),
         splitPayments: mergedItem.splitPayments || [],
+        // Branch identity unknown until the API detail fetch returns.
+        invoiceLocation: null,
         items: itemsFromSaved.length > 0 ? itemsFromSaved.map((item: any) => {
           // Handle both SalesReceiptItem format and any other format
           if (item.id && item.productName) {
@@ -663,6 +668,8 @@ export default function SaleHistory() {
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
+            // The invoice's OWN branch — drives the reprint header identity.
+            invoiceLocation: result.location ?? result.data?.location ?? null,
             // Whole-rupee invoice grand total (backend rounds total_amount) — no fake ".00" tail.
             totalPayableAmount: String(Math.round(finalPayable)),
             splitPayments: (() => {

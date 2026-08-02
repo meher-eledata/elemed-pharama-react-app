@@ -32,7 +32,8 @@ import {
   useLazyGetInvoicesQuery,
   Customer,
   CustomerOption,
-  DoctorPhoneEmailInfo
+  DoctorPhoneEmailInfo,
+  InvoiceLocation
 } from '../../redux/slices/salesApi';
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
 import {
@@ -84,12 +85,16 @@ const SalesReceipt: React.FC = () => {
 
   const cartTotal = useSelector(selectCartTotal);
   const user = useSelector((state: RootState) => state.auth.user);
-  // Receipt header identity: the CURRENT location (org name fallback).
   const currentLocation = useSelector(selectCurrentLocation);
   const organization = useSelector(selectOrganization);
+  // The loaded invoice's OWN branch (edit / return-details mode) — reprints
+  // must keep the branch the sale was made at, not the selected location.
+  const [invoiceLocation, setInvoiceLocation] = useState<InvoiceLocation | null>(null);
+  // Receipt header identity: the invoice's own branch when loaded, else the
+  // CURRENT location (org-name fallback inside buildPrintIdentity).
   const printIdentity = useMemo(
-    () => buildPrintIdentity(currentLocation, organization?.name ?? null),
-    [currentLocation, organization]
+    () => buildPrintIdentity(invoiceLocation ?? currentLocation, organization?.name ?? null),
+    [invoiceLocation, currentLocation, organization]
   );
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
@@ -320,6 +325,9 @@ const SalesReceipt: React.FC = () => {
             if (result) {
               const invoice = result.invoice || {};
               const lines = result.lines || [];
+              // Pin the print header to the branch this invoice was made at
+              // (null for legacy rows → falls back to the current location).
+              setInvoiceLocation(result.location ?? null);
               // Backend currently returns voided payments alongside active ones; skip them so
               // the editor doesn't load stale rows (e.g., old UPI: 13 next to new UPI: 36).
               // Remove this filter once getInvoiceDetails returns only active payments.

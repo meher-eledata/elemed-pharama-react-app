@@ -1,6 +1,7 @@
 import { buildPrintIdentity, generatePrintHTML } from '../SalesReceipt.utils';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import type { Location } from '../../../redux/slices/orgApi';
+import type { InvoiceLocation } from '../../../redux/slices/salesApi';
 
 const location: Location = {
   id: 1,
@@ -101,5 +102,31 @@ describe('generatePrintHTML header identity', () => {
     expect(html).toContain('Acme Health Org');
     expect(html).not.toContain('GSTIN No:');
     expect(html).not.toContain('DL No:');
+  });
+
+  it("reprints with the invoice's OWN branch identity, not the selected location", () => {
+    // `location` (branch A) is the currently selected location; the invoice
+    // detail returned its own branch B snapshot (salesApi InvoiceLocation —
+    // no type/status fields). The reprint must carry B's name/GSTIN.
+    const invoiceBranch: InvoiceLocation = {
+      id: 2,
+      name: 'Riverside Branch',
+      code: 'RB',
+      gstin: '33BBBBB1111B2Z6',
+      drug_license_1: 'DL-B1',
+      drug_license_2: null,
+      address: '9 River Road',
+      phone: null,
+    };
+
+    const html = generatePrintHTML({
+      ...baseData,
+      identity: buildPrintIdentity(invoiceBranch, 'Acme Health Org'),
+    });
+
+    expect(html).toContain('Riverside Branch');
+    expect(html).toContain('GSTIN No: 33BBBBB1111B2Z6');
+    expect(html).not.toContain('Health City Pharmacy');
+    expect(html).not.toContain('22AAAAA0000A1Z5');
   });
 });

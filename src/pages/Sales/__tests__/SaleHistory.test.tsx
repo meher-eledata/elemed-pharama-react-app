@@ -302,6 +302,49 @@ describe('SaleHistory', () => {
     }, { timeout: 3000 });
   });
 
+  it("previews a historical invoice with its OWN branch identity, not the selected location", async () => {
+    // Selected location = Health City Pharmacy (branch A, from the org state).
+    // The invoice detail returns its own branch B — the preview header must
+    // show branch B's name/GSTIN, never branch A's.
+    const branchB = {
+      id: 2,
+      name: 'Riverside Branch',
+      code: 'RB',
+      gstin: '33BBBBB1111B2Z6',
+      drug_license_1: 'DL-B1',
+      drug_license_2: null,
+      address: '9 River Road',
+      phone: null,
+    };
+    const stableTrigger = jest.fn(() => ({
+      unwrap: jest.fn().mockResolvedValue({
+        invoice: {},
+        lines: [],
+        payments: [],
+        location: branchB,
+      }),
+    }));
+    (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = jest.fn(() => [
+      stableTrigger,
+      { isLoading: false },
+    ]);
+
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const tableRow = screen.getByText(/inv7896/i).closest('tr')!;
+    fireEvent.click(tableRow.querySelector('svg')!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
+      expect(screen.getByText('Riverside Branch')).toBeInTheDocument();
+      expect(document.body.textContent).toContain('33BBBBB1111B2Z6');
+      expect(screen.queryByText('Health City Pharmacy')).not.toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
+
   it('closes invoice modal when close button is clicked', async () => {
     renderComponent();
     

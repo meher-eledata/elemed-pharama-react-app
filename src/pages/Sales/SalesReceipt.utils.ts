@@ -5,9 +5,11 @@ import { formatSchedule } from '../../config/constants/product.constants';
 import type { Location } from '../../redux/slices/orgApi';
 
 /**
- * The pharmacy identity printed in the receipt header. Built from the CURRENT
- * location (name, address, drug licenses, GSTIN, phone); falls back to the
- * organization name with blank detail lines when no location is available.
+ * The pharmacy identity printed in the receipt header. Built from a location
+ * (name, address, drug licenses, GSTIN, phone) — for reprints of historical
+ * invoices that is the invoice's OWN branch, otherwise the currently selected
+ * location; falls back to the organization name with blank detail lines when
+ * no location is available.
  */
 export interface PrintPharmacyIdentity {
   // Big header line (location name, else organization name).
@@ -18,8 +20,15 @@ export interface PrintPharmacyIdentity {
   addressLines: string[];
 }
 
+// The identity fields actually printed — satisfied both by the org `Location`
+// shape and by the invoice detail's own `InvoiceLocation` snapshot (salesApi).
+export type PrintLocationSource = Pick<
+  Location,
+  'name' | 'gstin' | 'drug_license_1' | 'drug_license_2' | 'address' | 'phone'
+>;
+
 export const buildPrintIdentity = (
-  location: Location | null | undefined,
+  location: PrintLocationSource | null | undefined,
   organizationName?: string | null,
 ): PrintPharmacyIdentity => {
   const name = location?.name || organizationName || '';
