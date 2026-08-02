@@ -45,6 +45,13 @@ export const authApi = createApi({
                 body: credentials,
             }),
         }),
+        signup: builder.mutation<SignupResponse, SignupRequest>({
+            query: (body) => ({
+                url: 'signup',
+                method: 'POST',
+                body,
+            }),
+        }),
         passwordRecovery: builder.mutation<PasswordRecoveryResponse, PasswordRecoveryRequest>({
             query: (body) => ({
                 url: 'send-password-change-email',
@@ -70,7 +77,7 @@ export const authApi = createApi({
     }),
 });
 
-export const { useLoginMutation, usePasswordRecoveryMutation, useResetPasswordMutation, useCreatePasswordMutation } = authApi;
+export const { useLoginMutation, useSignupMutation, usePasswordRecoveryMutation, useResetPasswordMutation, useCreatePasswordMutation } = authApi;
 
 export interface User {
     id: number;
@@ -79,6 +86,8 @@ export interface User {
     first_name: string;
     last_name: string;
     role?: number | string;
+    org_id?: number;
+    org_role?: 'owner' | 'admin' | 'staff' | string;
 }
 
 interface LoginResponse {
@@ -89,6 +98,25 @@ interface LoginResponse {
 interface LoginRequest {
     username: string;
     password: string;
+}
+
+// POST /api/signup (PUBLIC) — creates an organization + owner user and returns
+// an auth token plus the org. `pharmacy` is always enabled server-side; `modules`
+// adds others (e.g. 'inpatient').
+export interface SignupRequest {
+    org_name: string;
+    email: string;
+    password: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    modules?: string[];
+}
+
+export interface SignupResponse {
+    token: string;
+    user: User;
+    organization: { id: number; name: string; slug: string };
 }
 
 interface PasswordRecoveryRequest {

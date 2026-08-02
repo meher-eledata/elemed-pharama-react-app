@@ -33,17 +33,9 @@ export const handleLoginEffect = ({
     setSnackbarSeverity("success");
     setSnackbarOpen(true);
 
-    const userRole = data?.user?.role;
-    const isAdmin =
-      userRole === 0 ||
-      userRole === '0' ||
-      String(userRole).toLowerCase() === 'admin';
-
-    if (isAdmin) {
-      navigate("/admin");
-    } else {
-      navigate("/dashboard");
-    }
+    // The launcher (/home) computes accessible areas and either routes a
+    // single-area user straight in or shows the area picker.
+    navigate("/home");
 
     return;
   }

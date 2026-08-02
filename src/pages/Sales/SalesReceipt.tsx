@@ -32,7 +32,8 @@ import {
   useLazyGetInvoicesQuery,
   Customer,
   CustomerOption,
-  DoctorPhoneEmailInfo
+  DoctorPhoneEmailInfo,
+  InvoiceLocation
 } from '../../redux/slices/salesApi';
 import { useGetProductsQuery } from '../../redux/slices/receiveApi';
 import {
@@ -54,7 +55,8 @@ import { ApplyGstCheckbox } from './components/ApplyGstCheckbox';
 import { ActionButtons } from './components/ActionButtons';
 import { Toast } from './components/Toast';
 import { SalesReceiptItem } from './SalesReceipt.types';
-import { getTodayDate, generatePrintHTML, calculateFinancialSummary } from './SalesReceipt.utils';
+import { getTodayDate, generatePrintHTML, calculateFinancialSummary, buildPrintIdentity } from './SalesReceipt.utils';
+import { selectCurrentLocation, selectOrganization } from '../../redux/slices/orgSlice';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 import { transformCartItemsForEdit, mergeCartWithApiItems } from './SalesReceipt.handlers';
 import { getTableColumns } from './SalesReceipt.columns';
@@ -83,6 +85,17 @@ const SalesReceipt: React.FC = () => {
 
   const cartTotal = useSelector(selectCartTotal);
   const user = useSelector((state: RootState) => state.auth.user);
+  const currentLocation = useSelector(selectCurrentLocation);
+  const organization = useSelector(selectOrganization);
+  // The loaded invoice's OWN branch (edit / return-details mode) — reprints
+  // must keep the branch the sale was made at, not the selected location.
+  const [invoiceLocation, setInvoiceLocation] = useState<InvoiceLocation | null>(null);
+  // Receipt header identity: the invoice's own branch when loaded, else the
+  // CURRENT location (org-name fallback inside buildPrintIdentity).
+  const printIdentity = useMemo(
+    () => buildPrintIdentity(invoiceLocation ?? currentLocation, organization?.name ?? null),
+    [invoiceLocation, currentLocation, organization]
+  );
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
@@ -312,6 +325,9 @@ const SalesReceipt: React.FC = () => {
             if (result) {
               const invoice = result.invoice || {};
               const lines = result.lines || [];
+              // Pin the print header to the branch this invoice was made at
+              // (null for legacy rows → falls back to the current location).
+              setInvoiceLocation(result.location ?? null);
               // Backend currently returns voided payments alongside active ones; skip them so
               // the editor doesn't load stale rows (e.g., old UPI: 13 next to new UPI: 36).
               // Remove this filter once getInvoiceDetails returns only active payments.
@@ -1128,6 +1144,7 @@ const SalesReceipt: React.FC = () => {
         totalPayableAmount,
         patientType,
         labels: SALES_RECEIPT_LABELS,
+        identity: printIdentity,
         brandIcon: bgWhiteIcon,
         pageSize: pageSize,
         orientation: orientation,
@@ -1839,6 +1856,7 @@ const SalesReceipt: React.FC = () => {
           content={
             <PrintPreviewModal
               salesItems={salesItems}
+              identity={printIdentity}
               customerName={customerName}
               customerMobile={customerMobile}
               customerCity={customerCity}

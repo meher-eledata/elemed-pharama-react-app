@@ -101,7 +101,7 @@ describe('LogInLeft (LoginForm)', () => {
     it('renders login form with all elements', () => {
       renderWithProviders(<LogInLeft />);
 
-      expect(screen.getByText(/Elite\s+Pharmacy/)).toBeInTheDocument();
+      expect(screen.getByText('Elemed')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Enter your username')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
       expect(screen.getByText('Forgot Password?')).toBeInTheDocument();
@@ -292,7 +292,7 @@ describe('LogInLeft (LoginForm)', () => {
   });
 
   describe('Success Handling', () => {
-    it('navigates to dashboard on successful login', async () => {
+    it('navigates to the launcher home on successful login', async () => {
       const mockUnwrap = jest.fn().mockResolvedValue({
         token: 'test-token',
         user: { id: 1, username: 'testuser', email: 'test@test.com' },
@@ -315,7 +315,7 @@ describe('LogInLeft (LoginForm)', () => {
       }
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+        expect(mockNavigate).toHaveBeenCalledWith('/home');
       }, { timeout: 3000 });
     });
 

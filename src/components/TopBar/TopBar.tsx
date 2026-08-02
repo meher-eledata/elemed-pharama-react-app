@@ -100,8 +100,11 @@ import { logout } from "../../redux/slices/authSlice";
 import { useLogoutMutation } from "../../redux/slices/activityApi";
 import { useGetAlertsQuery } from "../../redux/slices/alertsApi";
 import { RootState } from "../../redux/store";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getInitials } from "../../config/helpers/initials";
+import { ModuleSwitcher } from "../ModuleSwitcher/ModuleSwitcher";
+import { LocationSwitcher } from "./LocationSwitcher";
+import { currentAreaKeyFromPath } from "../../config/areas.config";
 import { NOTIFICATION_LABELS } from "../../config/label/Notifications.labels";
 
 import "./TopBar.scss";
@@ -119,13 +122,21 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   const alertsOpen = Boolean(alertsAnchorEl);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [logoutRequest] = useLogoutMutation();
+
+  // Pharmacy Admin is a pharmacy-area destination, so only surface it while in
+  // the pharmacy area — it would be confusing alongside the Org/Outpatient areas.
+  const inPharmacyArea = currentAreaKeyFromPath(location.pathname) === 'pharmacy';
 
   // Near-expiry alerts feed for the notification bell. Near-expiry is measured
   // in days, so an hourly poll is plenty; it's also recalculated on demand each
-  // time the bell is opened (see handleAlertsOpen).
+  // time the bell is opened (see handleAlertsOpen). Pharmacy-module data: only
+  // poll while in the pharmacy area so non-pharmacy orgs/areas don't hit a
+  // module-gated endpoint.
   const { data: alertsData, refetch: refetchAlerts } = useGetAlertsQuery(undefined, {
     pollingInterval: 3600000,
+    skip: !inPharmacyArea,
   });
   const alertCount = alertsData?.count ?? 0;
   const alerts = alertsData?.alerts ?? [];
@@ -155,8 +166,9 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
 
   const handleAlertsOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAlertsAnchorEl(event.currentTarget);
-    // Recalculate the alerts fresh whenever the bell is opened.
-    refetchAlerts();
+    // Recalculate the alerts fresh whenever the bell is opened. Skipped outside
+    // the pharmacy area (the query is skipped there — module-gated endpoint).
+    if (inPharmacyArea) refetchAlerts();
   };
 
   const handleAlertsClose = () => {
@@ -193,7 +205,9 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
 
   return (
     <Box className="topbar-container">
-      <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box className="left-controls" sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <ModuleSwitcher />
+        <LocationSwitcher />
       </Box>
       <Box className="right-controls" sx={{ marginLeft: "auto" }}>
         <IconButton
@@ -291,8 +305,8 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
             "aria-labelledby": "user-button",
           }}
         >
-          {isAdmin && (
-            <MenuItem onClick={handleAdminAccess}>Admin Access</MenuItem>
+          {isAdmin && inPharmacyArea && (
+            <MenuItem onClick={handleAdminAccess}>Pharmacy Admin</MenuItem>
           )}
           <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>Profile</MenuItem>
           <MenuItem onClick={handleLogout}>Logout</MenuItem>

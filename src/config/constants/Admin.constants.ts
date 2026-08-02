@@ -22,6 +22,7 @@ export const ADMIN_CONSTANTS = {
     AUDIT: '#FFF3E0', // Light orange/peach
     SETTINGS: '#F3E5F5', // Light purple
     SUPPLIER_CREDIT: '#FFF8E1', // Light amber
+    LOCATIONS: '#E8EAF6', // Light indigo
   },
   ACTION_BUTTON: {
     HEIGHT: 40,

@@ -332,11 +332,28 @@ export interface EditSaleResponse {
   total_amount: number;
 }
 
+// The invoice's OWN branch identity, returned by get-invoice-details
+// (multi-location). Reprints must use THIS, never the currently selected
+// location — an invoice made at branch B keeps B's name/GSTIN on reprint.
+export interface InvoiceLocation {
+  id: number;
+  name: string;
+  code: string | null;
+  gstin: string | null;
+  drug_license_1: string | null;
+  drug_license_2: string | null;
+  address: string | null;
+  phone: string | null;
+}
+
 // GET sales/get-invoices row (raw SQL row — legacy loose shape; only explicitly
 // contracted fields are typed). customer_details is always present on read
-// (null when never set / blank).
+// (null when never set / blank). location_id is the branch the sale was made at
+// (null for legacy pre-multi-location rows). NOTE: pg returns BIGINT columns as
+// strings on this raw-SQL path (e.g. "1") — Number() it before comparisons.
 export interface Invoice {
   customer_details: string | null;
+  location_id: number | string | null;
   [key: string]: any;
 }
 
@@ -344,6 +361,8 @@ export interface Invoice {
 // object carries the stored free-text detail as customer_details: string | null.
 export interface InvoiceDetailsResponse {
   invoice: { customer_details: string | null; [key: string]: any };
+  // The invoice's own branch (null for legacy rows with no location).
+  location?: InvoiceLocation | null;
   // Each line carries the product master's drug schedule, joined read-time
   // (NULL = not yet attributed, 'NONE' = explicitly none — both display blank).
   lines?: Array<{ schedule: "G" | "H" | "H1" | "X" | "C" | "C1" | "K" | "NONE" | null; [key: string]: any }>;

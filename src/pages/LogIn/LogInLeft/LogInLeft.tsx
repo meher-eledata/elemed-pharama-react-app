@@ -15,15 +15,18 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useLoginMutation, setCredentials } from "../../../redux/slices/authSlice";
 import { useDispatch } from "react-redux";
+import type { AppDispatch } from "../../../redux/store";
 
 import { LOGIN_LABELS } from "../../../config/label/loginLabels";
 import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants";
 import { handleLoginEffect } from "../../../config/helpers/loginHandlers";
-import bgWhiteIcon from "../../../assets/BG_White.svg";
+import elemedLogo from "../../../assets/ElemedLogo.svg";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  // Typed dispatch: handleLoginEffect expects the store's AppDispatch (which
+  // now carries the listener-middleware signature), not the plain Dispatch.
+  const dispatch = useDispatch<AppDispatch>();
 
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -78,14 +81,8 @@ const LoginForm: React.FC = () => {
       // Set credentials before navigating
       dispatch(setCredentials(response));
 
-      const userRole = response?.user?.role;
-      const isAdmin = userRole === 0 || userRole === '0' || String(userRole).toLowerCase() === 'admin';
-
-      if (isAdmin) {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
-      }
+      // Land on the launcher, which routes the user to whatever area(s) they can access.
+      navigate("/home");
     } catch (err) {
       const errMsg =
         (err as any)?.data?.error ||
@@ -128,8 +125,8 @@ const LoginForm: React.FC = () => {
           }}
         >
           <img
-            src={bgWhiteIcon}
-            alt="Logo"
+            src={elemedLogo}
+            alt="Elemed"
             style={{
               height: "100px", // Restored to large size as requested
               width: "auto",
@@ -145,7 +142,7 @@ const LoginForm: React.FC = () => {
               whiteSpace: "nowrap", // Prevents wrapping
             }}
           >
-            Elite  Pharmacy
+            Elemed
           </Typography>
         </Box>
       </Box>
@@ -310,6 +307,18 @@ const LoginForm: React.FC = () => {
             ? LOGIN_LABELS.LOGIN_BUTTON_LOADING
             : LOGIN_LABELS.LOGIN_BUTTON}
         </Button>
+
+        {/* Create-an-organization CTA */}
+        <Box sx={{ mt: "1.5rem", display: "flex", justifyContent: "center", gap: "0.375rem" }}>
+          <Typography sx={{ fontSize: "0.875rem", color: "#728197" }}>
+            {LOGIN_LABELS.SIGNUP_QUESTION}
+          </Typography>
+          <Link to="/signup" style={{ textDecoration: "none" }}>
+            <Typography sx={{ fontSize: "0.875rem", fontWeight: 600, color: "#5C17E5", cursor: "pointer" }}>
+              {LOGIN_LABELS.SIGNUP_LINK}
+            </Typography>
+          </Link>
+        </Box>
 
       </Box>
 

@@ -8,6 +8,7 @@ import {
   useUploadReceiptFileMutation,
 } from "../../../redux/slices/receiveApi";
 import { PharmaTableRow, SupplierOption, ProductOption } from "../types";
+import { extractErrorMessage } from "../../../utils/errorUtils";
 
 interface SubmitHookParams {
   supplierName: string;
@@ -420,14 +421,15 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       }, 2000);
 
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-        else if (error.data.error) errorMessage = error.data.error;
-        else if (Array.isArray(error.data.errors) && error.data.errors.length > 0) errorMessage = error.data.errors[0];
-      } else if (error?.message) {
-        errorMessage = error.message;
+      // extractErrorMessage also maps the multi-location 400 'Location required'
+      // to a clear "pick a location in the top bar" message.
+      let errorMessage = extractErrorMessage(error, 'Failed to submit receipt');
+      if (
+        errorMessage === 'Failed to submit receipt' &&
+        Array.isArray(error?.data?.errors) &&
+        error.data.errors.length > 0
+      ) {
+        errorMessage = error.data.errors[0];
       }
       setSaveError(errorMessage);
     } finally {
@@ -538,14 +540,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         });
       }
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      // Also surfaces the multi-location 400 'Location required' clearly.
+      setSaveError(extractErrorMessage(error, 'Failed to submit receipt'));
       setIsSaving(false);
     } finally {
       setIsSaving(false);
@@ -625,14 +621,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         }, 1500);
       }
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      // Also surfaces the multi-location 400 'Location required' clearly.
+      setSaveError(extractErrorMessage(error, 'Failed to submit receipt'));
     } finally {
       setIsSaving(false);
     }

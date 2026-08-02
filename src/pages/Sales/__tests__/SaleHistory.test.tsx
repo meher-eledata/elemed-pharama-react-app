@@ -64,6 +64,30 @@ const createMockStore = (initialState = {}) => {
         isLoading: false,
         error: null,
       }) => state,
+      // Current-location context drives the receipt print header identity.
+      org: (state = {
+        organization: { id: 1, name: 'Acme Health Org', slug: 'acme' },
+        activeModules: ['pharmacy'],
+        orgRole: 'admin',
+        moduleRoles: {},
+        canManageRoles: false,
+        loaded: true,
+        locations: [
+          {
+            id: 1,
+            name: 'Health City Pharmacy',
+            code: 'HC',
+            type: 'pharmacy',
+            gstin: '22AAAAA0000A1Z5',
+            drug_license_1: 'DL-1',
+            drug_license_2: 'DL-2',
+            address: '12 Main Road',
+            phone: '040-1234567',
+            status: 1,
+          },
+        ],
+        currentLocationId: 1,
+      }) => state,
     },
     preloadedState: initialState,
   });
@@ -269,12 +293,55 @@ describe('SaleHistory', () => {
       }
     }
 
-    // Wait for modal and PrintPreviewModal content.
-    // The "Customer receipt" title was removed from PrintPreviewModal; the
-    // pharmacy header ("ELITE PHARMACY") is now the stable receipt content.
+    // Wait for modal and PrintPreviewModal content. The receipt header shows
+    // the CURRENT location's identity from org state (no hardcoded pharmacy).
     await waitFor(() => {
       expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
-      expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+      expect(screen.getByText('Health City Pharmacy')).toBeInTheDocument();
+      expect(screen.queryByText(/elite pharmacy/i)).not.toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
+
+  it("previews a historical invoice with its OWN branch identity, not the selected location", async () => {
+    // Selected location = Health City Pharmacy (branch A, from the org state).
+    // The invoice detail returns its own branch B — the preview header must
+    // show branch B's name/GSTIN, never branch A's.
+    const branchB = {
+      id: 2,
+      name: 'Riverside Branch',
+      code: 'RB',
+      gstin: '33BBBBB1111B2Z6',
+      drug_license_1: 'DL-B1',
+      drug_license_2: null,
+      address: '9 River Road',
+      phone: null,
+    };
+    const stableTrigger = jest.fn(() => ({
+      unwrap: jest.fn().mockResolvedValue({
+        invoice: {},
+        lines: [],
+        payments: [],
+        location: branchB,
+      }),
+    }));
+    (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = jest.fn(() => [
+      stableTrigger,
+      { isLoading: false },
+    ]);
+
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const tableRow = screen.getByText(/inv7896/i).closest('tr')!;
+    fireEvent.click(tableRow.querySelector('svg')!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
+      expect(screen.getByText('Riverside Branch')).toBeInTheDocument();
+      expect(document.body.textContent).toContain('33BBBBB1111B2Z6');
+      expect(screen.queryByText('Health City Pharmacy')).not.toBeInTheDocument();
     }, { timeout: 3000 });
   });
 

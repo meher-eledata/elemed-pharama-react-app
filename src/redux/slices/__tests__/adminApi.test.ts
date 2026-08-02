@@ -215,6 +215,92 @@ describe('Admin API Endpoints', () => {
     });
   });
 
+  describe('GET admin/role-options', () => {
+    it('builds the correct request and returns data', async () => {
+      const mockResponse = {
+        org_roles: ['superadmin', 'admin', 'member'],
+        module_roles: { pharmacy: ['pharmacist'], inpatient: [], outpatient: ['receptionist', 'doctor'] },
+      };
+      mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        adminApi.endpoints.getRoleOptions.initiate(undefined)
+      );
+
+      expect(result.data).toEqual(mockResponse);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'admin/role-options', method: 'GET' },
+        expectExtraArgs,
+        undefined
+      );
+    });
+  });
+
+  describe('PUT admin/users/:id/roles', () => {
+    it('interpolates id and sends org_role + module_roles (null removes)', async () => {
+      const mockResponse = {
+        message: 'updated',
+        user: { id: 7, org_role: 'admin', module_roles: { outpatient: 'doctor' }, can_manage_roles: false },
+      };
+      mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        adminApi.endpoints.updateUserRoles.initiate({
+          userId: 7,
+          org_role: 'admin',
+          module_roles: { outpatient: 'doctor', pharmacy: null },
+        })
+      );
+
+      expect(result.data).toEqual(mockResponse);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        {
+          url: 'admin/users/7/roles',
+          method: 'PUT',
+          body: { org_role: 'admin', module_roles: { outpatient: 'doctor', pharmacy: null } },
+        },
+        expectExtraArgs,
+        undefined
+      );
+    });
+
+    it('surfaces the guard error', async () => {
+      mockBaseQuery.mockResolvedValueOnce({
+        error: { status: 400, data: { error: 'cannot remove the last superadmin' } },
+        meta: okMeta,
+      });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        adminApi.endpoints.updateUserRoles.initiate({ userId: 1, org_role: 'member' })
+      );
+
+      expect(result.error).toBeDefined();
+      expect((result.error as { status: number }).status).toBe(400);
+    });
+  });
+
+  describe('PUT admin/users/:id/manage-roles', () => {
+    it('interpolates id and sends can_manage_roles', async () => {
+      const mockResponse = { message: 'updated', user: { id: 3, can_manage_roles: true } };
+      mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });
+
+      const store = makeStore();
+      const result = await store.dispatch(
+        adminApi.endpoints.setManageRoles.initiate({ userId: 3, can_manage_roles: true })
+      );
+
+      expect(result.data).toEqual(mockResponse);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'admin/users/3/manage-roles', method: 'PUT', body: { can_manage_roles: true } },
+        expectExtraArgs,
+        undefined
+      );
+    });
+  });
+
   describe('PUT admin/users/:id/disable', () => {
     it('builds the correct request and returns data', async () => {
       const mockResponse = {
@@ -301,6 +387,9 @@ describe('Admin API Endpoints', () => {
       expect(adminApi.endpoints.enableUser).toBeDefined();
       expect(adminApi.endpoints.sendEmailTest).toBeDefined();
       expect(adminApi.endpoints.updateUserRole).toBeDefined();
+      expect(adminApi.endpoints.getRoleOptions).toBeDefined();
+      expect(adminApi.endpoints.updateUserRoles).toBeDefined();
+      expect(adminApi.endpoints.setManageRoles).toBeDefined();
       expect(adminApi.endpoints.getActivityLog).toBeDefined();
     });
 
@@ -311,6 +400,9 @@ describe('Admin API Endpoints', () => {
       expect(adminApi.useEnableUserMutation).toBeDefined();
       expect(adminApi.useSendEmailTestMutation).toBeDefined();
       expect(adminApi.useUpdateUserRoleMutation).toBeDefined();
+      expect(adminApi.useGetRoleOptionsQuery).toBeDefined();
+      expect(adminApi.useUpdateUserRolesMutation).toBeDefined();
+      expect(adminApi.useSetManageRolesMutation).toBeDefined();
       expect(adminApi.useGetActivityLogQuery).toBeDefined();
     });
   });

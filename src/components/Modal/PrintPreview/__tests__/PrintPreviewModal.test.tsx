@@ -36,8 +36,21 @@ describe('PrintPreviewModal', () => {
     },
   ];
 
+  // Header identity comes from the CURRENT location (org name in the subtitle).
+  const mockIdentity = {
+    name: 'Health City Pharmacy',
+    subtitle: 'Acme Health Org',
+    addressLines: [
+      '12 Main Road, Springfield, 530001',
+      'DL No: DL-20-1111, DL-21-2222',
+      'GSTIN No: 22AAAAA0000A1Z5',
+      '(M): 040-1234567',
+    ],
+  };
+
   const mockProps = {
     salesItems: mockSalesItems,
+    identity: mockIdentity,
     customerName: 'John Doe',
     customerMobile: '1234567890',
     customerCity: 'Mumbai',
@@ -58,14 +71,41 @@ describe('PrintPreviewModal', () => {
     jest.clearAllMocks();
   });
 
-  it('renders print preview with branded header, receipt title and customer details', () => {
+  it('renders print preview with the location identity header, receipt title and customer details', () => {
     render(<PrintPreviewModal {...mockProps} />);
 
-    expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    // Header shows the CURRENT location identity (nothing hardcoded).
+    expect(screen.getByText('Health City Pharmacy')).toBeInTheDocument();
+    expect(screen.getByText('(Acme Health Org)')).toBeInTheDocument();
+    expect(screen.getByText(/12 Main Road, Springfield, 530001/)).toBeInTheDocument();
+    expect(screen.getByText(/DL No: DL-20-1111, DL-21-2222/)).toBeInTheDocument();
+    expect(screen.getByText(/GSTIN No: 22AAAAA0000A1Z5/)).toBeInTheDocument();
+    expect(screen.getByText(/\(M\): 040-1234567/)).toBeInTheDocument();
     // Centered in-document receipt title (matches the printed output).
     expect(screen.getByText(/customer receipt/i)).toBeInTheDocument();
     expect(screen.getByText(/john doe/i)).toBeInTheDocument();
     expect(screen.getByText(/1234567890/i)).toBeInTheDocument();
+  });
+
+  it('never renders a hardcoded pharmacy identity', () => {
+    render(<PrintPreviewModal {...mockProps} />);
+
+    expect(screen.queryByText(/elite pharmacy/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/susruta/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/37AAQCS3213C2ZH/i)).not.toBeInTheDocument();
+  });
+
+  it('falls back to the organization name with blank detail lines when no location exists', () => {
+    render(
+      <PrintPreviewModal
+        {...mockProps}
+        identity={{ name: 'Acme Health Org', subtitle: '', addressLines: [] }}
+      />
+    );
+
+    expect(screen.getByText('Acme Health Org')).toBeInTheDocument();
+    expect(screen.queryByText(/GSTIN No:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/DL No:/)).not.toBeInTheDocument();
   });
 
   it('displays customer details section', () => {
@@ -177,7 +217,7 @@ describe('PrintPreviewModal', () => {
     render(<PrintPreviewModal {...mockProps} salesItems={[]} />);
 
     expect(screen.getByText(/no items added/i)).toBeInTheDocument();
-    expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    expect(screen.getByText('Health City Pharmacy')).toBeInTheDocument();
   });
 
   it('handles missing optional fields', () => {
@@ -190,7 +230,7 @@ describe('PrintPreviewModal', () => {
       />
     );
 
-    expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    expect(screen.getByText('Health City Pharmacy')).toBeInTheDocument();
   });
 
   it('displays the table column headers for items', () => {

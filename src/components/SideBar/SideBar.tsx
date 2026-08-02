@@ -2,30 +2,35 @@ import './Sidebar.scss';
 import { Box, IconButton, Typography, Divider } from '@mui/material';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from "react-router-dom";
-import { useSelector } from 'react-redux';
 import { List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import ArrowIcon from '../../assets/Arrow.svg';
-import BgWhiteIcon from '../../assets/BG_White.svg';
-import BoxIcon from '../../assets/Box.svg';
+import ElemedLogo from '../../assets/ElemedLogo.svg';
 import CheckBoxIcon from '../../assets/CheckBox.svg';
-import DollarIcon from '../../assets/Dollor.svg';
 import GearIcon from '../../assets/Gear.svg';
 import GroupIcon from '../../assets/Group.svg';
 import HumanIcon from '../../assets/Human.svg';
-import MailIcon from '../../assets/Mail.svg';
 import VectorIcon from '../../assets/Vector.svg';
 import SettingsIcon from '../../assets/Setting.svg';
 import ThunderIcon from '../../assets/Thunder.svg';
 import LocalPharmacyOutlinedIcon from '@mui/icons-material/LocalPharmacyOutlined';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import BusinessIcon from '@mui/icons-material/Business';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import { useGetMeQuery } from '../../redux/slices/orgApi';
+import { MODULES } from '../../config/modules.config';
+import { currentAreaKeyFromPath } from '../../config/areas.config';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
+
 interface SidebarItem {
   id: string;
   icon: string | React.ReactNode;
@@ -59,17 +64,9 @@ const WhiteIcon: React.FC<{ children: React.ReactElement }> = ({ children }) => 
   </Box>
 );
 
-const baseItems: SidebarItem[] = [
-  { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' },
-  { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: "Sales", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales' },
-  { id: 'box', icon: BoxIcon, alt: 'Box', label: "Inventory", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
-  // { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
-  { id: 'mail', icon: MailIcon, alt: 'Mail', label: "Order Receive", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive' },
-  { id: 'master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: "Master", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/master', isComponent: true },
-  // { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', label: "Tasks", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  // { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  // { id: 'gear', icon: GearIcon, alt: 'Gear', label: "Tools", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
-];
+// Home is always present regardless of active modules. The remaining non-admin
+// items are derived from the org's active modules (see MODULES registry).
+const homeItem: SidebarItem = { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' };
 interface SidebarProps {
   onOpenChange?: (isOpen: boolean) => void;
   isOpen?: boolean;
@@ -102,25 +99,56 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   }, [open, onOpenChange]);
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useSelector((state: any) => state.auth.user);
+  // Org identity (logo + name) for the top-left brand. Falls back to the Elemed
+  // default when the org has no custom logo.
+  const { data: me } = useGetMeQuery();
+  const orgLogo = me?.organization?.logo_url || ElemedLogo;
+  const orgName = me?.organization?.name || 'Elemed';
 
-  // Order, labels and icons mirror the AdminDashboard tiles (tiles are canonical).
+  // The current top-level area (pharmacy / outpatient / org) determines which nav
+  // set the sidebar shows. Areas are switched via the TopBar ModuleSwitcher /
+  // launcher — each area is self-contained, never mixing another area's items.
+  const area = currentAreaKeyFromPath(location.pathname);
+
+  // Pharmacy APP sidebar = fixed Home + pharmacy module items only. Outpatient is a
+  // separate area (see below) and is never mixed in here.
+  const pharmacyItems: SidebarItem[] = useMemo(
+    () => [homeItem, ...MODULES.pharmacy.sidebarItems],
+    []
+  );
+
+  // Pharmacy ADMIN sidebar. Order, labels and icons mirror the AdminDashboard tiles
+  // (tiles are canonical). Org-level concerns (roles, module toggle) now live in the
+  // dedicated /org area, so they are intentionally absent here.
   const adminItems: SidebarItem[] = useMemo(() => [
-    { id: 'admin-home', icon: <WhiteIcon><LocalPharmacyOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Pharmacist access', label: 'Pharmacist access', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard', isComponent: true },
+    { id: 'admin-home', icon: <WhiteIcon><LocalPharmacyOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Pharmacy Home', label: 'Pharmacy Home', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard', isComponent: true },
     { id: 'admin-users', icon: <WhiteIcon><PeopleAltIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Account Management', label: 'User Account Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/users', isComponent: true },
     { id: 'admin-reports', icon: <WhiteIcon><BarChartIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Reports', label: 'Reports', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/reports', isComponent: true },
     { id: 'admin-master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: 'Master', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/master', isComponent: true },
     { id: 'admin-inventory-adjustment', icon: <WhiteIcon><InventoryIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Inventory Adjustment', label: 'Inventory Adjustment', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/inventory-adjustment', isComponent: true },
     { id: 'admin-historical-data', icon: <WhiteIcon><FolderOpenOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Historical Data', label: 'Historical Data', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/historical-data', isComponent: true },
     { id: 'admin-credit', icon: <WhiteIcon><AccountBalanceWalletOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.TITLE, label: ADMIN_LABELS.SECTIONS.SUPPLIER_CREDIT.TITLE, iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/supplier-credit', isComponent: true },
+    { id: 'admin-locations', icon: <WhiteIcon><StorefrontOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: ADMIN_LABELS.SECTIONS.LOCATIONS.TITLE, label: ADMIN_LABELS.SECTIONS.LOCATIONS.TITLE, iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/locations', isComponent: true },
     { id: 'admin-audit', icon: <WhiteIcon><DescriptionIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'User Activity Log', label: 'User Activity Log', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/audit', isComponent: true },
     { id: 'admin-settings', icon: <WhiteIcon><SettingsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'System Settings', label: 'System Settings', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/admin/settings', isComponent: true },
   ], []);
 
+  // Org Management sidebar — the dedicated /org area (roles, modules, settings).
+  const orgItems: SidebarItem[] = useMemo(() => [
+    { id: 'org-home', icon: <WhiteIcon><BusinessIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Org Home', label: 'Org Home', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org', isComponent: true },
+    { id: 'org-roles', icon: <WhiteIcon><GroupsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Role Management', label: 'Role Management', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/roles', isComponent: true },
+    { id: 'org-modules', icon: <WhiteIcon><ViewModuleOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Modules', label: 'Modules', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/modules', isComponent: true },
+    { id: 'org-settings', icon: <WhiteIcon><SettingsOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Organization Settings', label: 'Organization Settings', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/settings', isComponent: true },
+    { id: 'org-label', icon: <WhiteIcon><ImageOutlinedIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Org Label', label: 'Org Label', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/org/label', isComponent: true },
+  ], []);
+
   const sidebarItems = useMemo(() => {
+    if (area === 'org') return orgItems;
+    if (area === 'outpatient') return MODULES.outpatient.sidebarItems;
+    // pharmacy area: admin sub-mode vs the pharmacy app
     if (location.pathname.startsWith('/admin')) return adminItems;
-    return baseItems;
-  }, [location.pathname, adminItems]);
+    return pharmacyItems;
+  }, [area, location.pathname, orgItems, adminItems, pharmacyItems]);
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -199,19 +227,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
           }}
         >
           <img
-            src={BgWhiteIcon}
+            src={orgLogo}
             alt="Logo"
-            style={{ width: '2.5rem', height: '2.5rem', cursor: 'pointer' }}
+            style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain', cursor: 'pointer' }}
             onClick={(e) => {
-              // Role-aware home navigation. Stop propagation so the click does NOT
-              // also fire the surrounding Box's sidebar open/close toggle.
+              // Always land on the launcher home. Stop propagation so the click does
+              // NOT also fire the surrounding Box's sidebar open/close toggle.
               e.stopPropagation();
-              const role = user?.role;
-              const isAdmin =
-                role === 0 ||
-                role === '0' ||
-                String(role).toLowerCase() === 'admin';
-              navigate(isAdmin ? '/admin' : '/dashboard');
+              navigate('/home');
             }}
           />
           {open && (
@@ -226,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
                 color: '#5C17E5'
               }}
             >
-              Elite  pharmacy
+              {orgName}
             </Typography>
           )}
         </Box>

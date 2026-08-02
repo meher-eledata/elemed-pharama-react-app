@@ -11,14 +11,20 @@ import { reportsApi } from "./slices/reportsApi";
 import { historicalFilesApi } from "./slices/historicalFilesApi";
 import { activityApi } from "./slices/activityApi";
 import { profileApi } from "./slices/profileApi";
+import { orgApi } from "./slices/orgApi";
+import { locationsApi } from "./slices/locationsApi";
+import { outpatientApi } from "./slices/outpatientApi";
 import { alertsApi } from "./slices/alertsApi";
 import { adminCreditApi } from "./slices/adminCreditApi";
 import cartReducer from "./slices/cartSlice";
+import orgReducer from "./slices/orgSlice";
+import { locationChangeListener } from "./locationChangeListener";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     cart: cartReducer,
+    org: orgReducer,
     [authApi.reducerPath]: authApi.reducer,
     [inventoryApi.reducerPath]: inventoryApi.reducer,  
     [dashboardApi.reducerPath]: dashboardApi.reducer,
@@ -30,11 +36,17 @@ export const store = configureStore({
     [historicalFilesApi.reducerPath]: historicalFilesApi.reducer,
     [activityApi.reducerPath]: activityApi.reducer,
     [profileApi.reducerPath]: profileApi.reducer,
+    [orgApi.reducerPath]: orgApi.reducer,
+    [locationsApi.reducerPath]: locationsApi.reducer,
+    [outpatientApi.reducerPath]: outpatientApi.reducer,
     [alertsApi.reducerPath]: alertsApi.reducer,
     [adminCreditApi.reducerPath]: adminCreditApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
+      // On a real location switch, reset the location-scoped RTK Query caches
+      // so no page keeps serving the previous branch's data.
+      .prepend(locationChangeListener.middleware)
       .concat(authApi.middleware)
       .concat(inventoryApi.middleware) 
       .concat(dashboardApi.middleware)
@@ -46,6 +58,9 @@ export const store = configureStore({
       .concat(historicalFilesApi.middleware)
       .concat(activityApi.middleware)
       .concat(profileApi.middleware)
+      .concat(orgApi.middleware)
+      .concat(locationsApi.middleware)
+      .concat(outpatientApi.middleware)
       .concat(alertsApi.middleware)
       .concat(adminCreditApi.middleware)
 });
