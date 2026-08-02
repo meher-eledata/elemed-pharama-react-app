@@ -349,10 +349,11 @@ export interface InvoiceLocation {
 // GET sales/get-invoices row (raw SQL row — legacy loose shape; only explicitly
 // contracted fields are typed). customer_details is always present on read
 // (null when never set / blank). location_id is the branch the sale was made at
-// (null for legacy pre-multi-location rows).
+// (null for legacy pre-multi-location rows). NOTE: pg returns BIGINT columns as
+// strings on this raw-SQL path (e.g. "1") — Number() it before comparisons.
 export interface Invoice {
   customer_details: string | null;
-  location_id: number | null;
+  location_id: number | string | null;
   [key: string]: any;
 }
 
