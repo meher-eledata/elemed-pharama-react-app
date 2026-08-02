@@ -29,7 +29,6 @@ export interface MeOrganization {
 // admin location CRUD. status: 1 = active, 0 = deactivated.
 export interface Location {
   id: number;
-  organization_id: number;
   name: string;
   code: string | null;
   type: string;
@@ -50,7 +49,9 @@ export interface MeResponse {
   activeModules: string[];
   // Modules that exist but cannot be enabled yet (contains "outpatient").
   comingSoonModules: string[];
-  // All of the org's locations (active and inactive).
+  // ACTIVE locations this user may operate in (admins: all active; members
+  // with user_location rows: assigned only). The admin CRUD list is the
+  // any-status one.
   locations: Location[];
 }
 
