@@ -75,7 +75,6 @@ const createMockStore = (initialState = {}) => {
         locations: [
           {
             id: 1,
-            organization_id: 1,
             name: 'Health City Pharmacy',
             code: 'HC',
             type: 'pharmacy',

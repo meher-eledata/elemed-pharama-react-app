@@ -4,7 +4,6 @@ import type { Location } from '../../../redux/slices/orgApi';
 
 const location: Location = {
   id: 1,
-  organization_id: 1,
   name: 'Health City Pharmacy',
   code: 'HC',
   type: 'pharmacy',

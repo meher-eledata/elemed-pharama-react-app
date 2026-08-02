@@ -12,7 +12,6 @@ import type { Location } from '../orgApi';
 
 const makeLocation = (over: Partial<Location> = {}): Location => ({
   id: 1,
-  organization_id: 1,
   name: 'Main Branch',
   code: 'MB',
   type: 'pharmacy',

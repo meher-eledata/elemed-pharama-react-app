@@ -32,7 +32,6 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 const location: Location = {
   id: 1,
-  organization_id: 1,
   name: 'Main Branch',
   code: 'MB',
   type: 'pharmacy',

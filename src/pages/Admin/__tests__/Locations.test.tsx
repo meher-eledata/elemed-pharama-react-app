@@ -39,7 +39,6 @@ const mocked = locationsApi as unknown as {
 const FIXTURE: Location[] = [
   {
     id: 1,
-    organization_id: 1,
     name: 'Main Branch',
     code: 'MB',
     type: 'pharmacy',
@@ -52,7 +51,6 @@ const FIXTURE: Location[] = [
   },
   {
     id: 2,
-    organization_id: 1,
     name: 'Closed Branch',
     code: null,
     type: 'pharmacy',

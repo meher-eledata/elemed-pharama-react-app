@@ -70,7 +70,6 @@ const renderTopBar = (store = createStore()) =>
 // Store with the REAL org reducer so the location switcher's dispatches work.
 const makeLocation = (id: number, name: string, status = 1): Location => ({
   id,
-  organization_id: 1,
   name,
   code: null,
   type: 'pharmacy',
