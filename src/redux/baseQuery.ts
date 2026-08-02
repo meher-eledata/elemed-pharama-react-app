@@ -1,6 +1,7 @@
 import { fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import { logout } from './slices/authSlice';
+import { setCurrentLocation } from './slices/orgSlice';
 import type { RootState } from './store';
 
 const baseQuery = fetchBaseQuery({
@@ -49,6 +50,16 @@ export const baseQueryWithReauth: BaseQueryFn<
     // so the broken authenticated UI is fully torn down.
     api.dispatch(logout());
     redirect.toLogin();
+  } else if (
+    result.error?.status === 403 &&
+    (result.error.data as { error?: string } | null | undefined)?.error === 'Invalid location'
+  ) {
+    // Stale persisted location: the backend rejects an unknown/inactive
+    // x-location-id with 403 { error: 'Invalid location' }. Clear the
+    // selection (the orgSlice reducer also removes the persisted
+    // pharma_current_location) so the /me reseed + location picker dialog can
+    // repair it. The token is still valid — do NOT log out.
+    api.dispatch(setCurrentLocation(null));
   }
 
   return result;

@@ -1,5 +1,6 @@
 import { baseQueryWithReauth, redirect } from '../baseQuery';
 import { logout } from '../slices/authSlice';
+import { setCurrentLocation } from '../slices/orgSlice';
 
 // fetchBaseQuery calls global fetch with a Request object; we mock fetch to
 // drive the status codes the wrapper reacts to.
@@ -80,6 +81,20 @@ describe('baseQueryWithReauth 401 handling', () => {
     await baseQueryWithReauth('protected', api as never, {});
 
     expect(api.dispatch).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  it('clears the current location on 403 "Invalid location" without logging out', async () => {
+    // Stale persisted location: the selection is nulled (which also drops the
+    // persisted id) so the /me reseed + location picker can repair it.
+    mockFetch(403, { error: 'Invalid location' });
+    const api = makeApi({ auth: { token: 'JWT' }, org: { currentLocationId: 99 } });
+
+    await baseQueryWithReauth('protected', api as never, {});
+
+    expect(api.dispatch).toHaveBeenCalledTimes(1);
+    expect(api.dispatch).toHaveBeenCalledWith(setCurrentLocation(null));
+    expect(api.dispatch).not.toHaveBeenCalledWith(logout());
     expect(redirectSpy).not.toHaveBeenCalled();
   });
 });
