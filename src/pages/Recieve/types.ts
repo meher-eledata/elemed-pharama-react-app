@@ -91,6 +91,10 @@ export interface ProductOption {
   name: string;
   id: number;
   currentQuantity?: number;
+  // Dosage form / type (e.g. "NASAL SPRAY", "INJ") and brand, surfaced in the
+  // Find Product dropdown so same-named products are distinguishable.
+  type?: string;
+  brand_name?: string | null;
   // Drug schedule (api-contract.md): NULL = not yet attributed (one-time popup on
   // add-to-receipt); 'NONE' = explicitly none (never prompts).
   schedule?: string | null;
