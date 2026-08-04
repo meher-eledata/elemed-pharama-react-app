@@ -166,16 +166,28 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
                   >
                     {isLoading && <CircularProgress size={16} sx={{ mr: 1 }} color="primary" />}
                     
-                    {typeof option === 'string' ? option : (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                        <Typography sx={{ fontSize: '14px', fontFamily: "'Lexend', sans-serif" }}>
-                          {option.name}
-                        </Typography>
-                        <Typography sx={{ fontSize: '12px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400, fontFamily: "'Lexend', sans-serif" }}>
-                          {option.currentQuantity || 0}
-                        </Typography>
-                      </Box>
-                    )}
+                    {typeof option === 'string' ? option : (() => {
+                      const secondary = [option.type, option.brand_name]
+                        .filter((v) => v && String(v).trim() !== '')
+                        .join(' · ');
+                      return (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '8px' }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <Typography sx={{ fontSize: '14px', fontFamily: "'Lexend', sans-serif" }}>
+                              {option.name}
+                            </Typography>
+                            {!isAddProduct && secondary && (
+                              <Typography sx={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, fontFamily: "'Lexend', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {secondary}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Typography sx={{ fontSize: '12px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400, fontFamily: "'Lexend', sans-serif" }}>
+                            {option.currentQuantity || 0}
+                          </Typography>
+                        </Box>
+                      );
+                    })()}
                   </Box>
                 );
               }}

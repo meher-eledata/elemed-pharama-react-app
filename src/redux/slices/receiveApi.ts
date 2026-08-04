@@ -405,7 +405,7 @@ export const receiveApi = createApi({
     // Get all products endpoint (shared across modules)
     // `schedule` semantics (api-contract.md): NULL = not yet attributed (sale-cart popup
     // prompts once); 'NONE' = explicitly none (never prompts). Both display blank.
-    getProducts: builder.query<{ name: string, id: number, currentQuantity?: number, schedule: string | null }[], void>({
+    getProducts: builder.query<{ name: string, id: number, currentQuantity?: number, type?: string, brand_name?: string | null, schedule: string | null }[], void>({
       query: () => {
         return "receive/get-products/";
       },
@@ -439,6 +439,8 @@ export const receiveApi = createApi({
               name: product.name,
               id: product.product_id || product.id,
               currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0,
+              type: product.type ?? '',
+              brand_name: product.brand_name ?? null,
               schedule: product.schedule ?? null
             };
           })

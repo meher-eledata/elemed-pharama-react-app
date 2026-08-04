@@ -88,6 +88,8 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
               name: product.name || product.product_name || product.productName || '',
               id: product.id || product.product_id || product.productId,
               currentQuantity: product.currentQuantity ? Number(product.currentQuantity) : 0,
+              type: product.type ?? '',
+              brand_name: product.brand_name ?? null,
               schedule: product.schedule ?? null
             };
           }
@@ -130,10 +132,17 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
       }
 
       return options.filter(option => {
-        const optionStr = (typeof option === 'string' ? option : option.name).toLowerCase();
-        return optionStr.includes(inputValue) || 
-               optionStr === orderLabels.addProducts.toLowerCase() || 
-               optionStr === "loading products...";
+        if (typeof option === 'string') {
+          const optionStr = option.toLowerCase();
+          return optionStr.includes(inputValue) ||
+                 optionStr === "loading products...";
+        }
+        const haystack = [option.name, option.type, option.brand_name]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(inputValue) ||
+               option.name?.toLowerCase() === orderLabels.addProducts.toLowerCase();
       });
     };
   }, []);
