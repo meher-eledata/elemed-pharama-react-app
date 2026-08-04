@@ -76,6 +76,7 @@ interface ExecuteSaveParams {
   originalSalesItems?: SalesReceiptItem[]; // For diff tracking in edit mode
   skipNavigation?: boolean; // Flag to skip navigation after save
   onSuccess?: () => void; // Optional callback after successful save
+  onSaleSaved?: () => void | Promise<void>; // Runs once the sale is persisted (before nav) — used to discard a resumed draft
 }
 
 export const executeSave = async ({
@@ -116,6 +117,7 @@ export const executeSave = async ({
   originalSalesItems,
   skipNavigation = false,
   onSuccess,
+  onSaleSaved,
   splitPayments = [],
 }: ExecuteSaveParams): Promise<void> => {
   try {
@@ -606,6 +608,15 @@ export const executeSave = async ({
         // Format stock error messages to be more user-friendly
         const formattedErrorMessage = formatStockErrorMessage(errorMessage);
         throw new Error(formattedErrorMessage);
+      }
+    }
+
+    // Sale is now persisted — discard any resumed draft (non-fatal on failure).
+    if (onSaleSaved) {
+      try {
+        await onSaleSaved();
+      } catch (cleanupError) {
+        logError(cleanupError, 'SalesReceipt.executeSave.onSaleSaved');
       }
     }
 

@@ -64,6 +64,7 @@ export const SALES_RECEIPT_LABELS = {
 
   // Action Buttons
   SAVE_BUTTON: "Save",
+  SAVE_DRAFT_BUTTON: "Save draft",
   CANCEL_BUTTON: "Cancel",
   PRINT_BUTTON: "Save and Print",
   PRINT_ONLY_BUTTON: "Print",

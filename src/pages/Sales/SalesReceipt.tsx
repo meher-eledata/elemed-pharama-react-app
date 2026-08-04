@@ -40,7 +40,8 @@ import {
   selectCartTotal,
   clearCart,
   clearFormData,
-  setCartItems
+  setCartItems,
+  SalesFormData
 } from '../../redux/slices/cartSlice';
 import { RootState } from '../../redux/store';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
@@ -65,6 +66,12 @@ import { useCustomerPhones } from './hooks/useCustomerPhones';
 import { useDoctorPhonesAndEmails } from './hooks/useDoctorPhonesAndEmails';
 import { handleCustomerSubmit } from './SalesReceipt.customerHandler';
 import { executeSave } from './SalesReceipt.saveHandler';
+import { executeSaveDraft } from './SalesReceipt.draftHandler';
+import {
+  useCreateDraftMutation,
+  useUpdateDraftMutation,
+  useDeleteDraftMutation,
+} from '../../redux/slices/draftsApi';
 import {
   SalesReceiptContainer,
   SalesReceiptHeader,
@@ -107,6 +114,10 @@ const SalesReceipt: React.FC = () => {
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [deleteSales] = useDeleteSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
+
+  const [createDraft, { isLoading: isSavingDraft }] = useCreateDraftMutation();
+  const [updateDraft, { isLoading: isUpdatingDraft }] = useUpdateDraftMutation();
+  const [deleteDraft] = useDeleteDraftMutation();
 
 
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
@@ -198,6 +209,14 @@ const SalesReceipt: React.FC = () => {
   const editModeData = (location.state as any) || null;
   const isEditMode = editModeData?.isEditMode || false;
   const isReturnDetailsMode = editModeData?.isReturnDetailsMode || false;
+
+  // Server draft id — set when resuming a saved draft (via navigation state) or after
+  // the first "Save draft" of a fresh sale, so subsequent saves update in place.
+  const [activeDraftId, setActiveDraftId] = useState<number | undefined>(
+    editModeData?.draftId && !isNaN(Number(editModeData.draftId))
+      ? Number(editModeData.draftId)
+      : undefined
+  );
 
   // CRITICAL: Resolve database invoice ID from navigation state
   const rawInvoiceId = editModeData?.invoiceId || editModeData?.invoice_id || editModeData?.id;
@@ -720,6 +739,17 @@ const SalesReceipt: React.FC = () => {
       setTotalPayableAmount(summary.totalPayableAmount);
     }
   }, [salesItems]);
+
+  // Restore the split-payment breakdown once when resuming a saved draft (loss-free);
+  // the cart items + form fields are rehydrated via redux before navigation.
+  useEffect(() => {
+    const draftSplits = editModeData?.draftSplitPayments;
+    if (Array.isArray(draftSplits) && draftSplits.length > 0) {
+      setSplitPayments(draftSplits);
+    }
+    // Mount-only: navigation state is fixed for the life of this page instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCustomerAutoFill = useCallback((customer: Customer) => {
     setCustomerMobile(customer.mobile);
@@ -1486,10 +1516,63 @@ const SalesReceipt: React.FC = () => {
       originalSalesItems: originalInvoiceData?.salesItems,
       skipNavigation,
       onSuccess,
+      onSaleSaved: activeDraftId
+        ? async () => {
+            try {
+              await deleteDraft(activeDraftId).unwrap();
+            } catch {
+              // idempotent DELETE — ignore (draft may already be gone)
+            }
+            setActiveDraftId(undefined);
+          }
+        : undefined,
       splitPayments: effectiveSplitPayments,
       upsertInvoicePayments,
     });
-  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones]);
+  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft]);
+
+  const handleSaveDraft = useCallback(async () => {
+    const matchedDoctor = doctorNamesData.find((d: any) =>
+      (typeof d === 'string' ? d : d.name) === doctorName
+    );
+    const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
+    const customerId = (selectedCustomer?.id && selectedCustomer.id > 0) ? selectedCustomer.id : undefined;
+
+    const formData: SalesFormData = {
+      customerName,
+      customerMobile,
+      customerCity,
+      customerDetails,
+      patientType,
+      doctorName,
+      doctorMobile,
+      doctorEmail,
+      paymentMode,
+      insuranceCompany,
+      invoiceNumber,
+      invoiceDate,
+      customerId,
+    };
+
+    await executeSaveDraft({
+      draftId: activeDraftId,
+      formData,
+      salesItems,
+      financials: { totalValue, totalDiscount, taxAmount, totalPayableAmount },
+      splitPayments,
+      doctorId,
+      patientType,
+      customerName,
+      customerMobile,
+      customerId,
+      invoiceNumber,
+      invoiceDate,
+      createDraft,
+      updateDraft,
+      showToast,
+      onCreated: setActiveDraftId,
+    });
+  }, [doctorNamesData, doctorName, selectedCustomer, customerName, customerMobile, customerCity, customerDetails, patientType, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, activeDraftId, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, splitPayments, createDraft, updateDraft]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {
@@ -1784,8 +1867,10 @@ const SalesReceipt: React.FC = () => {
             <ActionButtons
               onCancel={handleCancel}
               onSave={handleSave}
+              onSaveDraft={isEditMode ? undefined : handleSaveDraft}
               onPrint={handlePrint}
               isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
+              isSaveDraftDisabled={salesItems.length === 0 || isSavingDraft || isUpdatingDraft}
               hidePrintButton={isEditMode}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}

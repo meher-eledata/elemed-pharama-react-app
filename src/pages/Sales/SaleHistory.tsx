@@ -1494,27 +1494,47 @@ export default function SaleHistory() {
         <Typography variant="h4" fontWeight={700}>
           {SALES_HISTORY_LABELS.PAGE_TITLE}
         </Typography>
-        <StandardButton
-          onClick={handleStartNewSale}
-          variant="primary"
-          size="large"
-          startIcon={<AddIcon sx={{ fontSize: '1.125rem' }} />}
-          sx={{
-            minWidth: '10rem', // 160px = 10rem
-            borderRadius: '1.875rem', // 30px = 1.875rem
-            backgroundColor: '#5C17E5',
-            color: '#FFFFFF',
-            fontWeight: 700,
-            fontSize: '0.875rem', // 14px = 0.875rem
-            textTransform: 'none',
-            boxShadow: 'none',
-            '& .MuiButton-startIcon': {
-              marginRight: '0.5rem', // 8px = 0.5rem
-            },
-          }}
-        >
-          Start new sale
-        </StandardButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <StandardButton
+            onClick={() => navigate('/sales/drafts')}
+            variant="secondary"
+            size="large"
+            sx={{
+              minWidth: '10rem', // 160px = 10rem
+              borderRadius: '1.875rem', // 30px = 1.875rem
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #5C17E5',
+              color: '#5C17E5',
+              fontWeight: 700,
+              fontSize: '0.875rem', // 14px = 0.875rem
+              textTransform: 'none',
+              boxShadow: 'none',
+            }}
+          >
+            View drafts
+          </StandardButton>
+          <StandardButton
+            onClick={handleStartNewSale}
+            variant="primary"
+            size="large"
+            startIcon={<AddIcon sx={{ fontSize: '1.125rem' }} />}
+            sx={{
+              minWidth: '10rem', // 160px = 10rem
+              borderRadius: '1.875rem', // 30px = 1.875rem
+              backgroundColor: '#5C17E5',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '0.875rem', // 14px = 0.875rem
+              textTransform: 'none',
+              boxShadow: 'none',
+              '& .MuiButton-startIcon': {
+                marginRight: '0.5rem', // 8px = 0.5rem
+              },
+            }}
+          >
+            Start new sale
+          </StandardButton>
+        </Box>
       </Box>
 
       {/* Search and Filter Section */}
