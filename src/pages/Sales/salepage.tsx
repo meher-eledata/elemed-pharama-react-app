@@ -519,7 +519,7 @@ export default function SalePage() {
       console.log('🔍 Product type:', newType);
 
       // Use sales API endpoint: sales/get-batch-numbers-by-product-id
-      let batchObjects: { batch_number: string; current_qty: number }[] = [];
+      let batchObjects: { batch_number: string; current_qty: number; expiry_date: string }[] = [];
 
       try {
         const batchesResult: any = await getBatchNumbersByProductId({ product_id: typeProductId }).unwrap();

@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent, useCallback, useEffect, useMemo, useRef } from 'react';
+import dayjs from 'dayjs';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import DeleteInvoiceDialog from '../../components/DeleteDialogue/DeleteInvoiceDialog';
@@ -74,7 +75,21 @@ import {
 } from './SalesReceipt.styles';
 
 import { getPrintStyles, fieldStyles } from './SalesReceipt.printStyles';
+import { paymentMethods } from '../../config/constants/OrderDetail.constants';
 import bgWhiteIcon from '../../assets/BG_White.svg';
+
+// Explicit default payment mode (Cash) so state === displayed === saved from the start,
+// instead of relying on an empty '' that the UI cosmetically renders as the first option.
+const DEFAULT_PAYMENT_MODE = paymentMethods[0];
+
+// Convert an arbitrary date value to the canonical ISO YYYY-MM-DD state format.
+// Returns '' for blank/invalid input so callers can fall back to their default.
+const normalizeIso = (v: string | undefined | null): string => {
+  const s = (v || '').trim();
+  if (!s) return '';
+  const parsed = dayjs(s);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+};
 
 const SalesReceipt: React.FC = () => {
   const navigate = useNavigate();
@@ -156,7 +171,7 @@ const SalesReceipt: React.FC = () => {
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
   const [availableDoctorInfo, setAvailableDoctorInfo] = useState<DoctorPhoneEmailInfo[]>([]);
 
-  const [paymentMode, setPaymentMode] = useState('');
+  const [paymentMode, setPaymentMode] = useState(DEFAULT_PAYMENT_MODE);
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => getTodayDate());
@@ -481,9 +496,9 @@ const SalesReceipt: React.FC = () => {
                       'CREDIT': 'Credit',
                       'MULTIPLE': 'Multiple',
                     };
-                    return map[upper] || raw || 'Cash';
+                    return map[upper] || raw || DEFAULT_PAYMENT_MODE;
                   }
-                  return result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || 'Cash';
+                  return result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || DEFAULT_PAYMENT_MODE;
                 })(),
                 insuranceCompany: result.insurance_company || result.invoice?.insurance_company || editModeData.insuranceCompany || '',
                 patientType: (() => {
@@ -499,36 +514,14 @@ const SalesReceipt: React.FC = () => {
                 })(),
                 invoiceNumber: (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || editModeData.invoiceNumber || '',
                 invoiceDate: (() => {
+                  // Canonical state format is ISO YYYY-MM-DD. The backend already
+                  // returns YYYY-MM-DD; normalize any fallback to ISO too (normalizeIso
+                  // is hoisted to module scope so restore paths reuse it).
                   const raw = invoice.invoice_date;
                   if (!raw) {
-                    const localDate = editModeData.invoiceDate;
-                    if (localDate) return localDate;
-                    return getTodayDate();
+                    return normalizeIso(editModeData.invoiceDate) || getTodayDate();
                   }
-
-                  // Handle YYYY-MM-DD from backend without timezone shift
-                  const dateParts = raw.split(/[-/]/);
-                  let d: Date;
-
-                  if (dateParts.length === 3) {
-                    if (dateParts[0].length === 4) {
-                      // YYYY-MM-DD
-                      d = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-                    } else {
-                      d = new Date(raw);
-                    }
-                  } else {
-                    d = new Date(raw);
-                  }
-
-                  if (isNaN(d.getTime())) return editModeData.invoiceDate || getTodayDate();
-
-                  // Revert to the original "DD MMM YYYY" format for consistency
-                  return d.toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                  });
+                  return normalizeIso(raw) || normalizeIso(editModeData.invoiceDate) || getTodayDate();
                 })(),
                 salesItems: mappedSalesItems,
                 // In Edit Mode, prefer the user's current cart (which may include newly-added
@@ -833,11 +826,15 @@ const SalesReceipt: React.FC = () => {
       setDoctorName(formData.doctorName);
       setDoctorMobile(formData.doctorMobile);
       setDoctorEmail(formData.doctorEmail);
-      // Set paymentMode from form data, or default to 'Cash' if empty
-      setPaymentMode(formData.paymentMode || 'Cash');
+      // Set paymentMode from form data, or the explicit default if empty
+      setPaymentMode(formData.paymentMode || DEFAULT_PAYMENT_MODE);
       setInsuranceCompany(formData.insuranceCompany);
       if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
-      if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
+      // Normalize the restored value: a cart persisted before the ISO migration holds a
+      // legacy "DD MMM YYYY" string, which the strict save-validation would now reject.
+      // Empty/invalid → leave the ISO default already in state.
+      const restoredIso = normalizeIso(formData.invoiceDate);
+      if (restoredIso) setInvoiceDate(restoredIso);
     }, []),
     onCustomerRestored: useCallback((customer) => {
       if (!customer) return;
@@ -851,13 +848,6 @@ const SalesReceipt: React.FC = () => {
       });
     }, [])
   });
-
-  // Set default payment mode to 'Cash' if empty and not in edit mode
-  useEffect(() => {
-    if (!isEditMode && !paymentMode) {
-      setPaymentMode('Cash');
-    }
-  }, [isEditMode, paymentMode]);
 
   // Generate invoice number on mount (if not in edit mode and not already set)
   // PRIORITY ORDER:
@@ -1248,7 +1238,7 @@ const SalesReceipt: React.FC = () => {
     setDoctorEmail('');
     setSelectedDoctor(null);
     setAvailableDoctorInfo([]);
-    setPaymentMode('');
+    setPaymentMode(DEFAULT_PAYMENT_MODE);
     setInsuranceCompany('');
     setTotalValue('');
     setTotalDiscount('');
@@ -1892,7 +1882,7 @@ const SalesReceipt: React.FC = () => {
         <PaymentSplitModal
           open={isPaymentSplitModalOpen}
           onClose={() => setIsPaymentSplitModalOpen(false)}
-          onSave={(payments) => { setSplitPayments(payments); setPaymentMode(''); }}
+          onSave={(payments) => { setSplitPayments(payments); setPaymentMode(DEFAULT_PAYMENT_MODE); }}
           totalAmount={parseFloat(totalPayableAmount) || 0}
           existingPayments={splitPayments}
         />

@@ -56,7 +56,9 @@ export const useOrderReceiveFilters = (
 
       if (dateRange[0] || dateRange[1]) {
         sortableItems = sortableItems.filter(item => {
-          const receivedDate = dayjs(item.received, 'DD/MM/YYYY');
+          const receivedDate = item.receivedRaw
+            ? dayjs(item.receivedRaw)
+            : dayjs(item.received, 'MMM DD, YYYY h:mm A');
           const startDate = dateRange[0];
           const endDate = dateRange[1];
 

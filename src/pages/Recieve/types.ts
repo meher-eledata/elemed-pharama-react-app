@@ -20,6 +20,7 @@ export interface OrderReceiveRow {
   supplier: string;
   supplierId: number;
   received: string;
+  receivedRaw?: string;
   status: string;
   reBy: string;
   amt: number;

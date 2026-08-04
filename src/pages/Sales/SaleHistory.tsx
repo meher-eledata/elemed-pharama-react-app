@@ -25,6 +25,7 @@ import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/Sale
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
+import { paymentMethods } from '../../config/constants/OrderDetail.constants';
 import bgWhiteIcon from '../../assets/BG_White.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
@@ -512,7 +513,7 @@ export default function SaleHistory() {
         doctorName: mergedItem.doctorName || 'N/A',
         doctorMobile: mergedItem.doctorMobile === 'N/A' ? '' : (mergedItem.doctorMobile || ''),
         doctorEmail: mergedItem.doctorEmail === 'N/A' ? '' : (mergedItem.doctorEmail || ''),
-        paymentMode: mergedItem.paymentMode || 'Cash',
+        paymentMode: mergedItem.paymentMode || paymentMethods[0],
         insuranceCompany: (mergedItem as any).insuranceCompany || '',
         invoiceNumber: mergedItem.invoiceNumber || '',
         invoiceDate: mergedItem.invoiceDate || '',
@@ -651,7 +652,8 @@ export default function SaleHistory() {
             paymentMode: derivePaymentMode(payments, inv.payment_mode || initialDetails.paymentMode),
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
             invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
-            invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('DD/MM/YYYY') : initialDetails.invoiceDate,
+            // Hand off the invoice date in the canonical ISO form the New Sale flow stores.
+            invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('YYYY-MM-DD') : initialDetails.invoiceDate,
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
@@ -1350,7 +1352,7 @@ export default function SaleHistory() {
           doctorName: savedItem.doctorName || invoice.doctorName,
           doctorMobile: savedItem.doctorMobile || '',
           doctorEmail: savedItem.doctorEmail || '',
-          paymentMode: savedItem.paymentMode || 'Cash',
+          paymentMode: savedItem.paymentMode || paymentMethods[0],
           insuranceCompany: savedItem.insuranceCompany || '',
           invoiceNumber: savedItem.invoiceNumber || invoice.invoiceNumber,
           invoiceDate: savedItem.invoiceDate || invoice.invoiceDate,
@@ -1380,7 +1382,7 @@ export default function SaleHistory() {
           doctorName: invoice.doctorName,
           doctorMobile: '',
           doctorEmail: '',
-          paymentMode: 'Cash',
+          paymentMode: paymentMethods[0],
           insuranceCompany: '',
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
@@ -1449,7 +1451,7 @@ export default function SaleHistory() {
           username: invoice.username,
           totalAmount: invoice.totalAmount,
           items: invoiceItems, // Pass the invoice items
-          paymentMode: savedItem?.paymentMode || 'Cash'
+          paymentMode: savedItem?.paymentMode || paymentMethods[0]
         }
       });
     }

@@ -1,5 +1,5 @@
+import dayjs from 'dayjs';
 import { SalesReceiptItem } from './SalesReceipt.types';
-import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
 import { formatSchedule } from '../../config/constants/product.constants';
 
 /**
@@ -73,12 +73,20 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
   };
 };
 
+// Canonical internal format for the invoiceDate STATE is ISO `YYYY-MM-DD`.
+// Human-readable formatting ("DD MMM YYYY") happens only at display edges.
 export const getTodayDate = (): string => {
-  const today = new Date();
-  return today.toLocaleDateString(
-    SALES_RECEIPT_CONSTANTS.DATE_LOCALE,
-    SALES_RECEIPT_CONSTANTS.DATE_FORMAT_OPTIONS
-  );
+  return dayjs().format('YYYY-MM-DD');
+};
+
+// Display-edge formatter: turn the ISO invoiceDate state into the app's
+// human-readable "DD MMM YYYY" convention. Tolerant of any dayjs-parseable
+// legacy value so stale strings never render as raw ISO.
+export const formatInvoiceDateForDisplay = (isoDate: string): string => {
+  const raw = (isoDate || '').trim();
+  if (!raw) return '';
+  const d = dayjs(raw);
+  return d.isValid() ? d.format('DD MMM YYYY') : raw;
 };
 
 export const generatePrintHTML = (data: {
@@ -450,7 +458,7 @@ export const generatePrintHTML = (data: {
           <div class="detail-section">
             <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
             <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
-            <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}</div>
+            <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', formatInvoiceDateForDisplay(invoiceDate))}</div>
           </div>
         </div>
         
