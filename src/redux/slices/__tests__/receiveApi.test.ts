@@ -397,13 +397,13 @@ describe('Receive API Endpoints', () => {
 
   describe('GET receive/get-products/ (getProducts query)', () => {
     it('calls baseQuery with the string url and transforms object rows', async () => {
-      mockOk([{ name: 'P', product_id: 3, currentQuantity: '12', schedule: 'H1' }]);
+      mockOk([{ name: 'P', product_id: 3, currentQuantity: '12', type: 'NASAL SPRAY', brand_name: 'Acme', schedule: 'H1' }]);
       const store = makeStore();
       const result = await store.dispatch(
         receiveApi.endpoints.getProducts.initiate()
       );
 
-      expect(result.data).toEqual([{ name: 'P', id: 3, currentQuantity: 12, schedule: 'H1' }]);
+      expect(result.data).toEqual([{ name: 'P', id: 3, currentQuantity: 12, type: 'NASAL SPRAY', brand_name: 'Acme', schedule: 'H1' }]);
       expect(mockBaseQuery).toHaveBeenCalledWith(
         'receive/get-products/',
         expectExtraArgs,
@@ -426,7 +426,7 @@ describe('Receive API Endpoints', () => {
       const result = await store.dispatch(
         receiveApi.endpoints.getProducts.initiate()
       );
-      expect(result.data).toEqual([{ name: 'P3', id: 6, currentQuantity: 0, schedule: null }]);
+      expect(result.data).toEqual([{ name: 'P3', id: 6, currentQuantity: 0, type: '', brand_name: null, schedule: null }]);
     });
   });
 
