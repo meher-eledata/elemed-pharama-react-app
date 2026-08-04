@@ -32,3 +32,36 @@ export const ORDER_RECEIVE_CONSTANTS = {
     ANCHOR: { vertical: 'bottom', horizontal: 'right' as const },
   },
 } as const;
+
+// Auto-fill of the receive form from an uploaded supplier invoice
+// (POST /api/receive/extract-invoice). Fields at/above DEFAULT_THRESHOLD are
+// pre-filled; below-threshold / unmatched fields are left blank and surfaced for
+// manual review. Human labels drive the "needs review" banner.
+export const INVOICE_EXTRACTION = {
+  DEFAULT_THRESHOLD: 0.85,
+  EXTRACTING: 'Reading invoice…',
+  FALLBACK_TOAST: "Couldn't auto-read the invoice — please enter the details manually.",
+  REVIEW_SUBTITLE:
+    "We left the fields below blank because the invoice wasn't clear enough. Please check and fill them in.",
+  SUPPLIER_PICK: 'Closest supplier matches:',
+  PRODUCT_PICK: 'Closest product matches:',
+  reviewTitle: (n: number) => `${n} ${n === 1 ? 'field needs' : 'fields need'} your review`,
+  lineLabel: (n: number) => `Line ${n}`,
+  FIELD_LABELS: {
+    'header.supplier': 'Supplier',
+    'header.invoice_number': 'Invoice number',
+    'header.invoice_date': 'Invoice date',
+    'header.po_number': 'PO number',
+    product: 'Product',
+    batch_number: 'Batch number',
+    expiry_date: 'Expiry date',
+    received_qty: 'Received packs',
+    free_qty: 'Free packs',
+    purchase_price: 'Purchase price',
+    cgst: 'CGST',
+    sgst: 'SGST',
+    igst: 'IGST',
+    discount: 'Discount',
+    mrp: 'MRP',
+  } as Record<string, string>,
+} as const;
