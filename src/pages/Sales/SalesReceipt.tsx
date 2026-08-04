@@ -176,6 +176,25 @@ const SalesReceipt: React.FC = () => {
   // 🔒 Pause flag: prevents phone-lookup hook from overwriting the real ID while addCustomer is in flight
   const isAddingCustomerRef = useRef(false);
 
+  // Tracks the sanctioned receipt -> salepage hop ("Edit Cart"), which must keep
+  // the cart. Any other unmount clears the working cart/form data.
+  const goingToSalepageRef = useRef(false);
+
+  // Clear the working cart when leaving the sale-creation flow. "Edit Cart" is
+  // the only exit that keeps the cart (guarded by goingToSalepageRef); finalize/
+  // draft/abandon should all leave an empty cart. clearCart/clearFormData are
+  // idempotent, so a completed sale (already cleared) and StrictMode's double
+  // cleanup in dev are both harmless.
+  useEffect(() => {
+    return () => {
+      if (!goingToSalepageRef.current) {
+        dispatch(clearCart());
+        dispatch(clearFormData());
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [doctorName, setDoctorName] = useState('');
   const [doctorMobile, setDoctorMobile] = useState('');
   const [doctorEmail, setDoctorEmail] = useState('');
@@ -1092,6 +1111,8 @@ const SalesReceipt: React.FC = () => {
     setEditInvoiceId(resolvedInvoiceId || invoiceNumber);
     // Navigate to sales/new page to edit/add products to cart
     // Pass edit mode state so we can return to edit mode correctly
+    // Sanctioned receipt -> salepage hop: keep the cart populated.
+    goingToSalepageRef.current = true;
     navigate('/sales/new', {
       state: {
         isEditMode,

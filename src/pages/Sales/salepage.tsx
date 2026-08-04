@@ -162,11 +162,30 @@ export default function SalePage() {
   // Typed so cross-slice thunks (receiveApi.util.invalidateTags) dispatch cleanly.
   const dispatch = useDispatch<AppDispatch>();
 
+  // Tracks whether we are leaving this page via the "Next" button toward the
+  // receipt (a sanctioned flow that must keep the cart). Any other unmount
+  // (navigating away from the sale-creation flow) clears the working cart.
+  const goingToReceiptRef = useRef(false);
+
   // Redux selectors
   const cartItems = useSelector(selectCartItems);
   const cartTotal = useSelector(selectCartTotal);
   const cartItemsCount = useSelector(selectCartItemsCount);
   const formData = useSelector(selectFormData);
+
+  // Clear the working cart when leaving the sale-creation flow. The only
+  // sanctioned exit that keeps the cart is the "Next" hop to the receipt
+  // (guarded by goingToReceiptRef). clearCart/clearFormData are idempotent, so
+  // StrictMode's double cleanup in dev is harmless.
+  useEffect(() => {
+    return () => {
+      if (!goingToReceiptRef.current) {
+        dispatch(clearCart());
+        dispatch(clearFormData());
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Form State
   const [productType, setProductType] = useState("");
@@ -789,6 +808,9 @@ export default function SalePage() {
     const totalAmount = cartTotal; // Use Redux selector
     const editState = (location.state as any) || {};
 
+    // Sanctioned new -> receipt hop: skip the unmount clear so the receipt can
+    // hydrate the cart from Redux.
+    goingToReceiptRef.current = true;
     navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
       state: {
         ...editState,
