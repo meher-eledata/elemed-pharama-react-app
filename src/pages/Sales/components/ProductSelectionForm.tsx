@@ -590,10 +590,17 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                     const expiry = batchItem.expiry_date ? dayjs(batchItem.expiry_date) : null;
                     const expiryLabel = expiry && expiry.isValid() ? expiry.format('MMM YYYY') : '';
                     return (
-                      <MenuItem key={batchItem.batch_number} value={batchItem.batch_number} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                        <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>{batchItem.batch_number}</Typography>
+                      <MenuItem key={batchItem.batch_number} value={batchItem.batch_number} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '8px' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                          <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>{batchItem.batch_number}</Typography>
+                          {expiryLabel && (
+                            <Typography sx={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                              {`Exp: ${expiryLabel}`}
+                            </Typography>
+                          )}
+                        </Box>
                         <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400 }}>
-                          {`Qty: ${batchItem.current_qty ?? 0}`}{expiryLabel ? ` · Exp: ${expiryLabel}` : ''}
+                          {`Qty: ${batchItem.current_qty ?? 0}`}
                         </Typography>
                       </MenuItem>
                     );
