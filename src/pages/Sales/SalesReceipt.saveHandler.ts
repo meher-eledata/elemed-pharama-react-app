@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { Customer, AddCustomerRequest } from '../../redux/slices/salesApi';
+import { Customer, AddCustomerRequest, InsufficientStockItem, SubmitSaleError } from '../../redux/slices/salesApi';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage, generateNextInvoiceNumber, saveInvoiceNumber, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
@@ -77,6 +77,9 @@ interface ExecuteSaveParams {
   skipNavigation?: boolean; // Flag to skip navigation after save
   onSuccess?: () => void; // Optional callback after successful save
   onSaleSaved?: () => void | Promise<void>; // Runs once the sale is persisted (before nav) — used to discard a resumed draft
+  // Renders a per-medicine "not enough stock" list (backend 409). When provided, the sale is
+  // aborted cleanly (cart + resumed draft preserved) instead of surfacing a generic toast.
+  onStockShortage?: (lines: string[]) => void;
 }
 
 export const executeSave = async ({
@@ -118,6 +121,7 @@ export const executeSave = async ({
   skipNavigation = false,
   onSuccess,
   onSaleSaved,
+  onStockShortage,
   splitPayments = [],
 }: ExecuteSaveParams): Promise<void> => {
   try {
@@ -588,6 +592,34 @@ export const executeSave = async ({
         console.error('❌ Error data:', submitError?.data);
         console.error('❌ Full error object:', JSON.stringify(submitError, null, 2));
         logError(submitError, 'SalesReceipt.submitSale');
+
+        // Structured out-of-stock response (HTTP 409): name each short medicine so the user
+        // can fix quantities. Abort cleanly — do NOT throw (that would hit the generic toast),
+        // and do NOT reach the success path, so the cart and any resumed draft are preserved.
+        const short = (submitError?.data as SubmitSaleError | undefined)?.insufficient_stock;
+        if (Array.isArray(short) && short.length) {
+          const resolveName = (it: InsufficientStockItem): string => {
+            if (it.product_name && it.product_name.trim()) return it.product_name;
+            // Fall back to the local cart line: match product_id (+ batch when it disambiguates).
+            const byIdAndBatch = salesItems.find(
+              li => li.product_id != null && Number(li.product_id) === Number(it.product_id)
+                && (li.batch || '').toString().trim() === it.batch_number
+            );
+            const match = byIdAndBatch
+              || salesItems.find(li => li.product_id != null && Number(li.product_id) === Number(it.product_id));
+            if (match?.productName && match.productName.trim()) return match.productName;
+            return `Product ${it.product_id}`;
+          };
+          const lines = short.map(
+            it => `• ${resolveName(it)} (batch ${it.batch_number}): need ${it.requested}, have ${it.available}`
+          );
+          if (onStockShortage) {
+            onStockShortage(lines);
+            return;
+          }
+          // Fallback when no dialog handler is wired: surface the list via the generic path.
+          throw new Error(`Not enough stock for these items:\n${lines.join('\n')}`);
+        }
 
         let errorMessage = 'Failed to submit sale. Please try again.';
 

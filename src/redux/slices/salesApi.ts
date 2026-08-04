@@ -218,6 +218,22 @@ export interface ValidateSaleError {
   availableQuantity?: number;
 }
 
+// One line item the backend could not fully fulfil (POST /api/sales/submit-sale, HTTP 409).
+export interface InsufficientStockItem {
+  product_id: number;
+  product_name: string | null;
+  batch_number: string;
+  requested: number;
+  available: number;
+}
+
+// Error body for POST /api/sales/submit-sale when stock is short (HTTP 409).
+// RTK Query surfaces HTTP errors as `error.data`, so this types `error.data`.
+export interface SubmitSaleError {
+  message?: string;
+  insufficient_stock?: InsufficientStockItem[];
+}
+
 // Submit Sale interfaces
 export interface SubmitSaleLine {
   product_id: number;

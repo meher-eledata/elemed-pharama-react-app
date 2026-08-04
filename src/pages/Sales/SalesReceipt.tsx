@@ -221,6 +221,9 @@ const SalesReceipt: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
+  // Per-medicine "not enough stock" list surfaced when submit-sale returns HTTP 409.
+  const [stockShortageLines, setStockShortageLines] = useState<string[]>([]);
+  const [stockShortageOpen, setStockShortageOpen] = useState(false);
   const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
@@ -1537,6 +1540,10 @@ const SalesReceipt: React.FC = () => {
       originalSalesItems: originalInvoiceData?.salesItems,
       skipNavigation,
       onSuccess,
+      onStockShortage: (lines: string[]) => {
+        setStockShortageLines(lines);
+        setStockShortageOpen(true);
+      },
       onSaleSaved: activeDraftId
         ? async () => {
             try {
@@ -1927,6 +1934,29 @@ const SalesReceipt: React.FC = () => {
           })()}
           onClose={handleCancelDelete}
           onConfirm={handleConfirmDelete}
+        />
+
+        <ConfirmationDialog
+          open={stockShortageOpen}
+          title="Not enough stock"
+          message={
+            <Box sx={{ textAlign: 'left' }}>
+              <Typography sx={{ mb: 1.5, fontSize: '15px', color: '#374151' }}>
+                These items don't have enough stock. Please reduce the quantities (or pick another
+                batch) and try again:
+              </Typography>
+              {stockShortageLines.map((line, idx) => (
+                <Typography key={idx} sx={{ fontSize: '14px', mb: 0.5, color: '#B91C1C', fontWeight: 500 }}>
+                  {line}
+                </Typography>
+              ))}
+            </Box>
+          }
+          confirmLabel="OK"
+          cancelLabel="Close"
+          onClose={() => setStockShortageOpen(false)}
+          onConfirm={() => setStockShortageOpen(false)}
+          onCancel={() => setStockShortageOpen(false)}
         />
 
         <CommonModal
