@@ -11,6 +11,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import { ExtractInvoiceCandidate } from "../../../redux/slices/receiveApi";
 import { INVOICE_EXTRACTION } from "../../../config/constants/OrderReceive.constants";
+import { formatCandidateMeta } from "../utils";
 import {
   InvoiceReview,
   InvoiceReviewFieldItem,
@@ -96,9 +97,7 @@ const ProductCandidateList: React.FC<{
   return (
     <List disablePadding sx={{ mt: "4px", display: "flex", flexDirection: "column", gap: "2px" }}>
       {candidates.map((c) => {
-        const meta = [c.type, c.brand_name]
-          .filter((v) => v && String(v).trim() !== "")
-          .join(" · ");
+        const meta = formatCandidateMeta(c.type, c.brand_name);
         return (
           <ListItemButton
             key={c.id}
@@ -138,7 +137,7 @@ const ProductCandidateList: React.FC<{
         <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <AddIcon sx={{ fontSize: "16px" }} />
           <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: 500 }}>
-            {INVOICE_EXTRACTION.ADD_NEW_PRODUCT.replace(/^\+\s*/, "")}
+            {INVOICE_EXTRACTION.ADD_NEW_PRODUCT}
           </Typography>
         </Box>
       </ListItemButton>

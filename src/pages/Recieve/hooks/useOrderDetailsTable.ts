@@ -5,6 +5,7 @@ import { PharmaTableRow, ProductOption } from "../types";
 export const useOrderDetailsTable = (
   productOptionsWithIds: ProductOption[],
   getProductIdFromName: (name: string) => number | null,
+  getExactProductIdFromName: (name: string) => number | null,
   showError: (msg: string) => void
 ) => {
   // Table data state
@@ -108,11 +109,15 @@ export const useOrderDetailsTable = (
       return;
     }
 
-    // Guarantee a resolved catalog id on submit: prefer the id the edit-cell
-    // Autocomplete set on selection; otherwise re-resolve from the (typed) name.
+    // Guarantee the RIGHT catalog id on submit: prefer the id the edit-cell
+    // Autocomplete set on selection; otherwise re-resolve by EXACT name only, so a
+    // free-typed new name that overlaps an existing product doesn't grab its id.
+    // The add-new sentinel (id -1) is never a real product and must not be sent.
+    const selectedId =
+      editingData.product_id && editingData.product_id > 0 ? editingData.product_id : undefined;
     const resolvedProductId =
-      editingData.product_id ??
-      (editingData.productId ? getProductIdFromName(editingData.productId) ?? undefined : undefined);
+      selectedId ??
+      (editingData.productId ? getExactProductIdFromName(editingData.productId) ?? undefined : undefined);
 
     setPharmaTableData((prev) =>
       prev.map((row) =>

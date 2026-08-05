@@ -8,6 +8,7 @@ import { TableColumn } from "../../../components/PharmaTable";
 import { PharmaTableRow, ProductOption } from "../types";
 import { PharmaDatePicker } from "../../../components/Common";
 import { orderLabels } from "../../../config/label/OrderDetail.labels";
+import { formatCandidateMeta } from "../utils";
 import { orderDetailsStyles, TickMarkIcon } from "../styles";
 
 interface ProductTableColumnsParams {
@@ -107,9 +108,7 @@ export const getProductTableColumns = ({
               const secondary =
                 typeof option === "string"
                   ? ""
-                  : [option.type, option.brand_name]
-                      .filter((v) => v && String(v).trim() !== "")
-                      .join(" · ");
+                  : formatCandidateMeta(option.type, option.brand_name);
               return (
                 <Box
                   key={key}

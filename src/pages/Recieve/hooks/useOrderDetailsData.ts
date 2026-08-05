@@ -167,6 +167,19 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
     return product ? product.id : null;
   };
 
+  // Exact-match only (no substring fallback). Used on the edit-save path so a
+  // free-typed NEW name that merely contains/overlaps an existing product name
+  // does NOT silently resolve to that product's id.
+  const getExactProductIdFromName = (productName: string): number | null => {
+    if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
+      return null;
+    }
+    const normalize = (str: string) => str.trim().toLowerCase();
+    const target = normalize(productName);
+    const product = productOptionsWithIds.find((p) => normalize(p.name) === target);
+    return product ? product.id : null;
+  };
+
   return {
     // Supplier data
     supplierOptions,
@@ -185,6 +198,7 @@ export const useOrderDetailsData = (isEditMode: boolean, receiptId: number | nul
     autocompleteProductOptions,
     filterProductOptions,
     getProductIdFromName,
+    getExactProductIdFromName,
 
     // Receipt data
     receiptsData,

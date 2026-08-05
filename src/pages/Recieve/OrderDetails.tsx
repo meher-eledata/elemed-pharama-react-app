@@ -69,6 +69,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const table = useOrderDetailsTable(
     data.productOptionsWithIds,
     data.getProductIdFromName,
+    data.getExactProductIdFromName,
     (msg: string) => {
       setSnackbarMessage(msg);
       setSnackbarSeverity('error');

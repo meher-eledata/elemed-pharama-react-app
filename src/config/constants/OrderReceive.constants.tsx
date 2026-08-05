@@ -45,7 +45,7 @@ export const INVOICE_EXTRACTION = {
     "We left the fields below blank because the invoice wasn't clear enough. Please check and fill them in.",
   SUPPLIER_PICK: 'Closest supplier matches:',
   PRODUCT_PICK: 'Closest product matches:',
-  ADD_NEW_PRODUCT: '+ Add new product…',
+  ADD_NEW_PRODUCT: 'Add new product…',
   reviewTitle: (n: number) => `${n} ${n === 1 ? 'field needs' : 'fields need'} your review`,
   lineLabel: (n: number) => `Line ${n}`,
   FIELD_LABELS: {
