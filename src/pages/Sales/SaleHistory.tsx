@@ -1253,14 +1253,8 @@ export default function SaleHistory() {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-
-      // Delay print slightly to allow images to load
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.onafterprint = () => {
-          printWindow.close();
-        };
-      }, 500);
+      // The generated document self-paginates once fonts are ready, then calls
+      // window.print() and closes itself on afterprint — do NOT print from here.
     }
   };
 

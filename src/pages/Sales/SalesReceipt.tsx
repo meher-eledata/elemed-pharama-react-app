@@ -1180,17 +1180,9 @@ const SalesReceipt: React.FC = () => {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-
-      // Handle cleanup for the print window
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-
-      // Trigger browser print dialog in the next tick to make it non-blocking
-      // for the main window's navigation logic
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
+      // The generated document self-paginates once fonts are ready, then calls
+      // window.print() and closes itself on afterprint — do NOT print from here
+      // (doing so would fire before pagination and print an unpaginated page).
 
       // IMMEDIATELY finalize the workflow on the main screen for a snappy experience
       // This fulfills the user's request to navigate to history table right after clicking print
