@@ -354,36 +354,7 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
               </IconButton>
             </Box>
           ) : (
-            <Box sx={{ position: "relative", display: "inline-flex" }}>
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: "4px",
-                  right: "10px",
-                  zIndex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "3px",
-                  padding: "1px 8px",
-                  borderRadius: "10px",
-                  backgroundColor: "#F3E8FF",
-                  pointerEvents: "none",
-                }}
-              >
-                <AutoAwesomeIcon sx={{ color: "#5C17E5", fontSize: "12px" }} />
-                <Typography
-                  sx={{
-                    fontFamily: "'Lexend', sans-serif",
-                    fontSize: "10px",
-                    fontWeight: 500,
-                    letterSpacing: "0.2px",
-                    color: "#5C17E5",
-                  }}
-                >
-                  Elemed AI
-                </Typography>
-              </Box>
-
+            <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Box
                 onClick={() => fileInputRef.current?.click()}
                 sx={{
@@ -430,6 +401,32 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
                   }}
                 >
                   Upload Invoice
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "3px",
+                  padding: "2px 8px",
+                  borderRadius: "10px",
+                  backgroundColor: "#F3E8FF",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                <AutoAwesomeIcon sx={{ color: "#5C17E5", fontSize: "13px" }} />
+                <Typography
+                  sx={{
+                    fontFamily: "'Lexend', sans-serif",
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    letterSpacing: "0.2px",
+                    color: "#5C17E5",
+                  }}
+                >
+                  Elemed AI
                 </Typography>
               </Box>
             </Box>
