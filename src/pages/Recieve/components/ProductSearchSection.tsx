@@ -354,20 +354,27 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
               </IconButton>
             </Box>
           ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <Box sx={{ position: "relative", display: "inline-flex" }}>
               <Box
                 sx={{
+                  position: "absolute",
+                  top: "-8px",
+                  right: "10px",
+                  zIndex: 1,
                   display: "flex",
                   alignItems: "center",
-                  gap: "4px",
-                  alignSelf: "flex-end",
+                  gap: "3px",
+                  padding: "1px 8px",
+                  borderRadius: "10px",
+                  backgroundColor: "#F3E8FF",
+                  pointerEvents: "none",
                 }}
               >
-                <AutoAwesomeIcon sx={{ color: "#5C17E5", fontSize: "13px" }} />
+                <AutoAwesomeIcon sx={{ color: "#5C17E5", fontSize: "12px" }} />
                 <Typography
                   sx={{
                     fontFamily: "'Lexend', sans-serif",
-                    fontSize: "11px",
+                    fontSize: "10px",
                     fontWeight: 500,
                     letterSpacing: "0.2px",
                     color: "#5C17E5",
