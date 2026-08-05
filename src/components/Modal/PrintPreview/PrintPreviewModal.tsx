@@ -530,6 +530,21 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             </Box>
           </Box>
         </Box>
+
+        {/* Receipt footer. In this preview it renders once at the bottom of the
+            single continuous flow (and is captured by the html2pdf export).
+            True per-page repetition of the header/footer only manifests in the
+            actual window.print() output produced by generatePrintHTML. */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginTop: isA5 ? '10px' : '14px',
+          fontSize: isA5 ? '8px' : '9px',
+          color: '#6B7280',
+        }}>
+          <Box>Signature of Pharmacist</Box>
+          <Box sx={{ textAlign: 'right' }}>Powered by Elemed. Contact us at hr@elemed.com</Box>
+        </Box>
       </Box>
 
     </Box>

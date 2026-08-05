@@ -155,6 +155,7 @@ export const generatePrintHTML = (data: {
     thPad: '6px 8px', tdPad: '6px 8px', cell: '13px',
     summaryPad: '12px 20px', summaryGap: '60px', summaryItemGap: '6px', summaryFont: '14px',
     summaryValue: '14px', summaryRightLabel: '16px', summaryRightValue: '22px',
+    footerFont: '9px', footerH: '30px',
   } : pageWmm >= 210 ? {
     body: '11px', headerMb: '8px', headerPb: '5px', logoW: '70px',
     pharmacyName: '16px', pharmacySub: '8px', pharmacyAddr: '7.5px', addrMargin: '3px 0',
@@ -164,6 +165,7 @@ export const generatePrintHTML = (data: {
     thPad: '5px 6px', tdPad: '4px 6px', cell: '10px',
     summaryPad: '8px 14px', summaryGap: '36px', summaryItemGap: '3px', summaryFont: '11px',
     summaryValue: '12px', summaryRightLabel: '12px', summaryRightValue: '17px',
+    footerFont: '8px', footerH: '26px',
   } : {
     body: '10px', headerMb: '6px', headerPb: '4px', logoW: '55px',
     pharmacyName: '14px', pharmacySub: '8px', pharmacyAddr: '7px', addrMargin: '2px 0',
@@ -173,6 +175,7 @@ export const generatePrintHTML = (data: {
     thPad: '3px 4px', tdPad: '2px 4px', cell: '9px',
     summaryPad: '5px 10px', summaryGap: '24px', summaryItemGap: '2px', summaryFont: '9px',
     summaryValue: '11px', summaryRightLabel: '10px', summaryRightValue: '14px',
+    footerFont: '8px', footerH: '22px',
   };
   const bodyPad = isA5 ? '6mm' : '10mm';
 
@@ -278,16 +281,21 @@ export const generatePrintHTML = (data: {
             font-size: ${sz.itemsTitle};
             color: #1A212B;
           }
-          .items-table { 
-            width: 100%; 
+          .items-table {
+            width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            border: 2px solid #A5B4FC !important; 
-            border-radius: 8px; 
-            overflow: hidden;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+          }
+          /* Repeating page header cell: hosts the letterhead + doc title +
+             detail sections. Reset so it does NOT inherit items-table cell
+             styling (its inner divs keep their own styles). */
+          .letterhead-cell {
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
           }
           .items-table th {
             background-color: #C7D2FE !important;
@@ -296,17 +304,50 @@ export const generatePrintHTML = (data: {
             font-size: ${sz.cell};
             text-align: left;
             color: #1A212B !important;
+            /* Top + bottom of the indigo bordered box start on the column-header row. */
+            border-top: 2px solid #A5B4FC !important;
             border-bottom: 2px solid #A5B4FC !important;
             white-space: nowrap;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
+          .items-table th:first-child {
+            border-left: 2px solid #A5B4FC !important;
+          }
+          .items-table th:last-child {
+            border-right: 2px solid #A5B4FC !important;
+          }
           .items-table thead {
             display: table-header-group;
           }
           .items-table tr {
             page-break-inside: avoid;
+          }
+          /* Reserve bottom space on every printed page for the fixed footer. */
+          .footer-spacer {
+            display: table-footer-group;
+          }
+          .footer-spacer td {
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+          }
+          /* Fixed footer — Chrome repeats a position:fixed element on every
+             printed page and pins it to the physical page bottom. */
+          .page-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 ${bodyPad};
+            font-size: ${sz.footerFont};
+            color: #6B7280;
+          }
+          .page-footer .footer-right {
+            text-align: right;
           }
           @media print {
             .items-table th {
@@ -327,10 +368,18 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
+          /* Left/right of the indigo box run down every body row. */
+          .items-table tbody td:first-child {
+            border-left: 2px solid #A5B4FC !important;
+          }
+          .items-table tbody td:last-child {
+            border-right: 2px solid #A5B4FC !important;
+          }
           .summary-td {
             padding: 0 !important;
-            border: none !important;
             background-color: transparent !important;
+            /* Close the indigo box at the bottom of the summary (last) row. */
+            border-bottom: 2px solid #A5B4FC !important;
           }
           .items-table tbody tr:first-child td {
             border-top: none;
@@ -362,9 +411,6 @@ export const generatePrintHTML = (data: {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
               color-adjust: exact !important;
-            }
-            .items-table {
-              border: 2px solid #A5B4FC !important;
             }
           }
           .summary-left {
@@ -407,6 +453,21 @@ export const generatePrintHTML = (data: {
         </style>
       </head>
       <body>
+        <!-- Fixed footer: Chrome repeats a position:fixed element on every printed
+             page and pins it to the physical page bottom. The spacer <tfoot> below
+             reserves matching bottom space so it never overlaps table content.
+             Shows on page 1 and every subsequent page. -->
+        <div class="page-footer">
+          <span class="footer-left">Signature of Pharmacist</span>
+          <span class="footer-right">Powered by Elemed. Contact us at hr@elemed.com</span>
+        </div>
+        <table class="items-table">
+          <thead>
+            <!-- This whole <thead> repeats at the TOP of every printed page:
+                 the full letterhead + doc title + 4 detail sections + items title
+                 (in the reset letterhead-cell), followed by the column-header row. -->
+            <tr>
+              <td colspan="12" class="letterhead-cell">
         <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: ${sz.headerPb}; gap: 0;">
           <div style="flex: 1; display: flex; justify-content: flex-start;">
             ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
@@ -461,26 +522,29 @@ export const generatePrintHTML = (data: {
             <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', formatInvoiceDateForDisplay(invoiceDate))}</div>
           </div>
         </div>
-        
-        <div class="items-section">
-          <div class="items-title">${labels.ITEMS_SECTION_TITLE}</div>
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th style="width:30px">S.No</th>
-                <th>Product Name</th>
-                <th>MFG</th>
-                <th>HSN</th>
-                <th>Sch</th>
-                <th>Batch</th>
-                <th>Pack</th>
-                <th>Exp</th>
-                <th>Qty</th>
-                <th>MRP</th>
-                <th>GST</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
+                <div class="items-title">${labels.ITEMS_SECTION_TITLE}</div>
+              </td>
+            </tr>
+            <tr>
+              <th style="width:30px">S.No</th>
+              <th>Product Name</th>
+              <th>MFG</th>
+              <th>HSN</th>
+              <th>Sch</th>
+              <th>Batch</th>
+              <th>Pack</th>
+              <th>Exp</th>
+              <th>Qty</th>
+              <th>MRP</th>
+              <th>GST</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <!-- Spacer reserves bottom-of-page room for the fixed .page-footer.
+               Per HTML spec <tfoot> is declared before <tbody>. -->
+          <tfoot class="footer-spacer">
+            <tr><td colspan="12" style="height: ${sz.footerH};"></td></tr>
+          </tfoot>
             <tbody>
               ${salesItems.length > 1 ? salesItems.slice(0, -1).map((item, index) => {
                 const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
@@ -575,8 +639,7 @@ export const generatePrintHTML = (data: {
                 </td>
               </tr>
             </tbody>
-          </table>
-        </div>
+        </table>
       </body>
     </html>
   `;
