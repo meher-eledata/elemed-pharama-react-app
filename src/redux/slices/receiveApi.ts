@@ -230,6 +230,10 @@ export interface ExtractInvoiceCandidate {
   id: number;
   name: string;
   score: number;
+  // Product candidates carry dosage-form + brand so same-named products are
+  // distinguishable in the review banner (supplier candidates omit these).
+  type?: string | null;
+  brand_name?: string | null;
 }
 
 export interface ExtractInvoiceField<T = string | null> {

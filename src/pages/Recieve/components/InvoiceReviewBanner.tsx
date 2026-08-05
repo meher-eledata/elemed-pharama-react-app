@@ -1,5 +1,14 @@
 import React from "react";
-import { Alert, AlertTitle, Box, Chip, Typography } from "@mui/material";
+import {
+  Alert,
+  AlertTitle,
+  Box,
+  Chip,
+  List,
+  ListItemButton,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import { ExtractInvoiceCandidate } from "../../../redux/slices/receiveApi";
 import { INVOICE_EXTRACTION } from "../../../config/constants/OrderReceive.constants";
 import {
@@ -11,13 +20,14 @@ interface InvoiceReviewBannerProps {
   review: InvoiceReview;
   onSupplierCandidate: (c: ExtractInvoiceCandidate) => void;
   onProductCandidate: (rowId: string, c: ExtractInvoiceCandidate) => void;
+  onAddNewProduct: () => void;
   onDismiss: () => void;
 }
 
 const FONT = "'Lexend', sans-serif";
 
-// A blank / low-confidence field rendered as a warning chip. Where the extractor
-// returned near-matches (supplier / product) they are offered as quick-pick chips.
+// A blank / low-confidence field rendered as a warning chip. Supplier near-matches
+// stay as quick-pick chips (product matches use the aligned list below instead).
 const FieldItem: React.FC<{
   item: InvoiceReviewFieldItem;
   pickLabel?: string;
@@ -65,10 +75,82 @@ const FieldItem: React.FC<{
   </Box>
 );
 
+// Product candidates as a vertical, column-aligned list — NAME | muted (type · brand)
+// | right-aligned score% — so same-named products (e.g. Injection vs Nasal Spray) are
+// distinguishable. Always ends with an "+ Add new product…" row.
+const ProductCandidateList: React.FC<{
+  candidates: ExtractInvoiceCandidate[];
+  onPick: (c: ExtractInvoiceCandidate) => void;
+  onAddNewProduct: () => void;
+}> = ({ candidates, onPick, onAddNewProduct }) => {
+  const rowSx = {
+    display: "grid",
+    gridTemplateColumns: "minmax(90px, auto) 1fr auto",
+    alignItems: "center",
+    gap: "12px",
+    borderRadius: "8px",
+    px: "10px",
+    py: "5px",
+    minHeight: "unset",
+  };
+  return (
+    <List disablePadding sx={{ mt: "4px", display: "flex", flexDirection: "column", gap: "2px" }}>
+      {candidates.map((c) => {
+        const meta = [c.type, c.brand_name]
+          .filter((v) => v && String(v).trim() !== "")
+          .join(" · ");
+        return (
+          <ListItemButton
+            key={c.id}
+            onClick={() => onPick(c)}
+            sx={{ ...rowSx, "&:hover": { backgroundColor: "#F3E8FF" } }}
+          >
+            <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: 500, color: "#1A212B" }}>
+              {c.name}
+            </Typography>
+            <Typography
+              sx={{
+                fontFamily: FONT,
+                fontSize: "12px",
+                color: "#9CA3AF",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {meta}
+            </Typography>
+            <Typography sx={{ fontFamily: FONT, fontSize: "12px", fontWeight: 600, color: "#5C17E5" }}>
+              {Math.round(c.score * 100)}%
+            </Typography>
+          </ListItemButton>
+        );
+      })}
+      <ListItemButton
+        onClick={onAddNewProduct}
+        sx={{
+          ...rowSx,
+          gridTemplateColumns: "auto",
+          color: "#5C17E5",
+          "&:hover": { backgroundColor: "#F3E8FF" },
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <AddIcon sx={{ fontSize: "16px" }} />
+          <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: 500 }}>
+            {INVOICE_EXTRACTION.ADD_NEW_PRODUCT.replace(/^\+\s*/, "")}
+          </Typography>
+        </Box>
+      </ListItemButton>
+    </List>
+  );
+};
+
 const InvoiceReviewBanner: React.FC<InvoiceReviewBannerProps> = ({
   review,
   onSupplierCandidate,
   onProductCandidate,
+  onAddNewProduct,
   onDismiss,
 }) => {
   if (review.count === 0) return null;
@@ -110,18 +192,23 @@ const InvoiceReviewBanner: React.FC<InvoiceReviewBannerProps> = ({
             {INVOICE_EXTRACTION.lineLabel(line.index + 1)} — {line.label}
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {line.fields.map((item) => (
-              <FieldItem
-                key={item.path}
-                item={item}
-                pickLabel={INVOICE_EXTRACTION.PRODUCT_PICK}
-                onPick={
-                  item.path === "product"
-                    ? (c) => onProductCandidate(line.rowId, c)
-                    : undefined
-                }
-              />
-            ))}
+            {line.fields.map((item) =>
+              item.path === "product" ? (
+                <Box key={item.path}>
+                  <FieldItem item={item} />
+                  <Typography sx={{ fontFamily: FONT, fontSize: "12px", color: "#6B7280", mt: "6px" }}>
+                    {INVOICE_EXTRACTION.PRODUCT_PICK}
+                  </Typography>
+                  <ProductCandidateList
+                    candidates={item.candidates}
+                    onPick={(c) => onProductCandidate(line.rowId, c)}
+                    onAddNewProduct={onAddNewProduct}
+                  />
+                </Box>
+              ) : (
+                <FieldItem key={item.path} item={item} />
+              )
+            )}
           </Box>
         </Box>
       ))}

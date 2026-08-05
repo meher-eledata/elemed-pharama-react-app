@@ -447,7 +447,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       form.setRowToDeleteId(rowId);
       form.setIsDeleteDialogOpen(true);
     },
-  }), [table.editingRowId, table.editingData]);
+    productOptions: data.productOptionsWithIds,
+    onAddNewProduct: () => form.setIsNewProductModalOpen(true),
+  }), [table.editingRowId, table.editingData, data.productOptionsWithIds]);
 
   // Calculate total amount for footer
   const calculateTotalAmount = () => {
@@ -529,6 +531,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           review={extraction.review}
           onSupplierCandidate={extraction.applySupplierCandidate}
           onProductCandidate={extraction.applyProductCandidate}
+          onAddNewProduct={() => form.setIsNewProductModalOpen(true)}
           onDismiss={extraction.dismissReview}
         />
       )}

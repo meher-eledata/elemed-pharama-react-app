@@ -108,10 +108,16 @@ export const useOrderDetailsTable = (
       return;
     }
 
+    // Guarantee a resolved catalog id on submit: prefer the id the edit-cell
+    // Autocomplete set on selection; otherwise re-resolve from the (typed) name.
+    const resolvedProductId =
+      editingData.product_id ??
+      (editingData.productId ? getProductIdFromName(editingData.productId) ?? undefined : undefined);
+
     setPharmaTableData((prev) =>
       prev.map((row) =>
         row.id === editingRowId
-          ? { ...row, ...editingData, isEditing: false }
+          ? { ...row, ...editingData, product_id: resolvedProductId, isEditing: false }
           : row
       )
     );
