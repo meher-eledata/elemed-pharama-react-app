@@ -358,7 +358,7 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
               <Box
                 sx={{
                   position: "absolute",
-                  top: "-8px",
+                  top: "4px",
                   right: "10px",
                   zIndex: 1,
                   display: "flex",
