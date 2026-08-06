@@ -1126,6 +1126,37 @@ const SalesReceipt: React.FC = () => {
     dispatch(setCartItems(cartItemsWithGst));
     // Mark this cart as belonging to an edit session
     setEditInvoiceId(resolvedInvoiceId || invoiceNumber);
+    // When resuming an existing draft, snapshot the receipt-owned values (the same
+    // ones executeSaveDraft persists) so salepage's abandon-UPDATE can preserve them
+    // instead of nulling them via the backend's full-replace PUT.
+    let draftPreserve: {
+      customer_id?: number;
+      invoice_number?: string;
+      invoice_date?: string;
+      financials: { totalValue: string; totalDiscount: string; taxAmount: string; totalPayableAmount: string };
+      splitPayments: any[];
+      doctorId?: number;
+      patientType: string;
+    } | undefined;
+    if (activeDraftId != null) {
+      const matchedDoctor = doctorNamesData.find((d: any) =>
+        (typeof d === 'string' ? d : d.name) === doctorName
+      );
+      const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
+      const customerId = (selectedCustomer?.id && selectedCustomer.id > 0) ? selectedCustomer.id : undefined;
+      const invoice_date = /^\d{4}-\d{2}-\d{2}$/.test((invoiceDate || '').trim())
+        ? invoiceDate.trim()
+        : undefined;
+      draftPreserve = {
+        customer_id: customerId,
+        invoice_number: invoiceNumber || undefined,
+        invoice_date,
+        financials: { totalValue, totalDiscount, taxAmount, totalPayableAmount },
+        splitPayments,
+        doctorId,
+        patientType,
+      };
+    }
     // Navigate to sales/new page to edit/add products to cart
     // Pass edit mode state so we can return to edit mode correctly
     // Sanctioned receipt -> salepage hop: keep the cart populated.
@@ -1135,10 +1166,12 @@ const SalesReceipt: React.FC = () => {
         isEditMode,
         invoiceId: resolvedInvoiceId,
         invoiceNumber,
-        originalInvoiceData
+        originalInvoiceData,
+        draftId: activeDraftId,
+        draftPreserve
       }
     });
-  }, [salesItems, dispatch, navigate, isEditMode, resolvedInvoiceId, invoiceNumber, originalInvoiceData]);
+  }, [salesItems, dispatch, navigate, isEditMode, resolvedInvoiceId, invoiceNumber, originalInvoiceData, activeDraftId, doctorNamesData, doctorName, selectedCustomer, invoiceDate, totalValue, totalDiscount, taxAmount, totalPayableAmount, splitPayments, patientType]);
 
   /**
    * Handle Print Button Click

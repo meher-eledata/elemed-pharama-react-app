@@ -17,7 +17,7 @@ import {
   useGetBatchesForProductMutation
 } from "../../redux/slices/inventoryApi";
 import { useGetDoctorNamesQuery } from "../../redux/slices/salesApi";
-import { useCreateDraftMutation, DraftRequest } from "../../redux/slices/draftsApi";
+import { useCreateDraftMutation, useUpdateDraftMutation, DraftRequest } from "../../redux/slices/draftsApi";
 import { useGetProductsQuery, receiveApi } from "../../redux/slices/receiveApi";
 import { useUpdateProductMutation } from "../../redux/slices/masterApi";
 import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
@@ -176,6 +176,8 @@ export default function SalePage() {
 
   // Fire-and-forget create so a snapshot survives this component's unmount.
   const [createDraft] = useCreateDraftMutation();
+  // Update-in-place when resuming an existing draft, so we don't duplicate it.
+  const [updateDraft] = useUpdateDraftMutation();
 
   // Latest cart mirrored into refs every render so the empty-deps cleanup below
   // reads the CURRENT cart at unmount — a direct capture would freeze the
@@ -183,10 +185,20 @@ export default function SalePage() {
   const cartItemsRef = useRef(cartItems);
   const formDataRef = useRef(formData);
   const cartTotalRef = useRef(cartTotal);
+  // Active draft id (present only when resuming/editing an existing draft),
+  // mirrored into a ref so the empty-deps cleanup below reads it reliably.
+  const draftIdRef = useRef<number | undefined>(undefined);
+  // Receipt-owned values threaded from SalesReceipt.handleEditCart (present only
+  // when resuming an existing draft). Merged over the salepage cart on the
+  // abandon-UPDATE path so the backend's full-replace PUT doesn't reset them.
+  const draftPreserveRef = useRef<any>(undefined);
   useEffect(() => {
     cartItemsRef.current = cartItems;
     formDataRef.current = formData;
     cartTotalRef.current = cartTotal;
+    const navDraftId = (location.state as any)?.draftId;
+    draftIdRef.current = (navDraftId != null && !isNaN(Number(navDraftId))) ? Number(navDraftId) : undefined;
+    draftPreserveRef.current = (location.state as any)?.draftPreserve ?? undefined;
   });
 
   // Snapshot the in-progress cart as a DraftRequest. Mirrors executeSaveDraft,
@@ -222,6 +234,42 @@ export default function SalePage() {
     };
   }, []);
 
+  // Abandon-UPDATE body for a RESUMED draft: override ONLY items + totals +
+  // item_count from the current salepage cart, and preserve everything the
+  // receipt owns (financials discount/tax, splitPayments, invoice #/date,
+  // customer_id, doctorId, patientType) from the snapshot threaded in nav state.
+  // Falls back to the lean buildDraftBody when no snapshot rode along (edge:
+  // draftId present but no preserve) so the draft still updates in place.
+  const buildUpdateDraftBody = useCallback((): DraftRequest => {
+    const preserve = draftPreserveRef.current;
+    if (!preserve) return buildDraftBody();
+    const fd = formDataRef.current;
+    const items = cartItemsRef.current;
+    const total = cartTotalRef.current;
+    return {
+      customer_id: preserve.customer_id,
+      customer_name: fd?.customerName || undefined,
+      customer_phone: fd?.customerMobile || undefined,
+      invoice_number: preserve.invoice_number,
+      invoice_date: preserve.invoice_date,
+      total_amount: total,
+      item_count: items.length,
+      payload: {
+        formData: fd,
+        items,
+        financials: preserve.financials ?? {
+          totalValue: String(total),
+          totalDiscount: '0',
+          taxAmount: '0',
+          totalPayableAmount: String(total),
+        },
+        splitPayments: preserve.splitPayments ?? [],
+        doctorId: preserve.doctorId,
+        patientType: preserve.patientType ?? fd?.patientType ?? '',
+      },
+    };
+  }, [buildDraftBody]);
+
   // Clear the working cart when leaving the sale-creation flow. The only
   // sanctioned exit that keeps the cart is the "Next" hop to the receipt
   // (guarded by goingToReceiptRef). For any other exit, a non-empty cart is
@@ -236,7 +284,12 @@ export default function SalePage() {
         // below must ALWAYS run, so guard both the async rejection (.catch) and
         // any synchronous throw (try/catch) from the snapshot call.
         try {
-          createDraft(buildDraftBody()).catch(() => {});
+          const id = draftIdRef.current;
+          if (id != null) {
+            updateDraft({ id, ...buildUpdateDraftBody() }).catch(() => {});   // editing an existing draft → update in place, preserving receipt-owned fields
+          } else {
+            createDraft(buildDraftBody()).catch(() => {});              // fresh in-progress cart → new draft
+          }
         } catch {
           /* ignore — a failed snapshot must never block the cart wipe */
         }
