@@ -11,6 +11,7 @@ import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../redux/store';
@@ -1488,25 +1489,7 @@ export default function SaleHistory() {
         <Typography variant="h4" fontWeight={700}>
           {SALES_HISTORY_LABELS.PAGE_TITLE}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <StandardButton
-            onClick={() => navigate('/sales/drafts')}
-            variant="secondary"
-            size="large"
-            sx={{
-              minWidth: '10rem', // 160px = 10rem
-              borderRadius: '1.875rem', // 30px = 1.875rem
-              backgroundColor: '#FFFFFF',
-              border: '1px solid #5C17E5',
-              color: '#5C17E5',
-              fontWeight: 700,
-              fontSize: '0.875rem', // 14px = 0.875rem
-              textTransform: 'none',
-              boxShadow: 'none',
-            }}
-          >
-            Sale Drafts
-          </StandardButton>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <StandardButton
             onClick={handleStartNewSale}
             variant="primary"
@@ -1594,29 +1577,49 @@ export default function SaleHistory() {
             },
           }}
         />
-        <StandardButton
-          startIcon={
-            showFilters
-              ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
-              : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
-          }
-          onClick={handleShowFiltersToggle}
-          variant="secondary"
-          size="medium"
-          sx={{
-            minWidth: 160,
-            borderRadius: '12px',
-            bgcolor: '#EEF2F7',
-            color: '#1A212B',
-            border: '1px solid #D7DFEA',
-            boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
-            fontSize: '14px',
-            textTransform: 'none',
-            fontWeight: 600,
-          }}
-        >
-          {showFilters ? SALES_HISTORY_LABELS.HIDE_FILTERS : SALES_HISTORY_LABELS.SHOW_FILTERS}
-        </StandardButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Tooltip title="Sale Drafts">
+            <IconButton
+              aria-label="Sale Drafts"
+              onClick={() => navigate('/sales/drafts')}
+              sx={{
+                bgcolor: '#EEF2F7',
+                borderRadius: '12px',
+                color: '#1A212B',
+                border: '1px solid #D7DFEA',
+                boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
+                width: 44,
+                height: 44,
+                '&:hover': { bgcolor: '#E2E8F1' },
+              }}
+            >
+              <DescriptionOutlinedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+          <StandardButton
+            startIcon={
+              showFilters
+                ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+                : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+            }
+            onClick={handleShowFiltersToggle}
+            variant="secondary"
+            size="medium"
+            sx={{
+              minWidth: 160,
+              borderRadius: '12px',
+              bgcolor: '#EEF2F7',
+              color: '#1A212B',
+              border: '1px solid #D7DFEA',
+              boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
+              fontSize: '14px',
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {showFilters ? SALES_HISTORY_LABELS.HIDE_FILTERS : SALES_HISTORY_LABELS.SHOW_FILTERS}
+          </StandardButton>
+        </Box>
       </Box>
 
       {/* Custom Filters Section */}

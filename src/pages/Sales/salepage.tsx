@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Typography, Snackbar, Alert } from "@mui/material";
 import { StandardButton } from "../../components/Common";
@@ -17,6 +17,7 @@ import {
   useGetBatchesForProductMutation
 } from "../../redux/slices/inventoryApi";
 import { useGetDoctorNamesQuery } from "../../redux/slices/salesApi";
+import { useCreateDraftMutation, DraftRequest } from "../../redux/slices/draftsApi";
 import { useGetProductsQuery, receiveApi } from "../../redux/slices/receiveApi";
 import { useUpdateProductMutation } from "../../redux/slices/masterApi";
 import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
@@ -173,16 +174,75 @@ export default function SalePage() {
   const cartItemsCount = useSelector(selectCartItemsCount);
   const formData = useSelector(selectFormData);
 
+  // Fire-and-forget create so a snapshot survives this component's unmount.
+  const [createDraft] = useCreateDraftMutation();
+
+  // Latest cart mirrored into refs every render so the empty-deps cleanup below
+  // reads the CURRENT cart at unmount — a direct capture would freeze the
+  // (empty) first-render values.
+  const cartItemsRef = useRef(cartItems);
+  const formDataRef = useRef(formData);
+  const cartTotalRef = useRef(cartTotal);
+  useEffect(() => {
+    cartItemsRef.current = cartItems;
+    formDataRef.current = formData;
+    cartTotalRef.current = cartTotal;
+  });
+
+  // Snapshot the in-progress cart as a DraftRequest. Mirrors executeSaveDraft,
+  // but salepage's cartItems are already CartItem[] (== DraftPayload.items), so
+  // no transform is needed. Reads refs, so it is safe from the unmount cleanup.
+  const buildDraftBody = useCallback((): DraftRequest => {
+    const fd = formDataRef.current;
+    const items = cartItemsRef.current;
+    const total = cartTotalRef.current;
+    const rawDoctorId = (fd as { doctorId?: number } | null)?.doctorId;
+    const doctorId = typeof rawDoctorId === 'number' && rawDoctorId > 0 ? rawDoctorId : undefined;
+
+    return {
+      customer_name: fd?.customerName || undefined,
+      customer_phone: fd?.customerMobile || undefined,
+      total_amount: total,
+      item_count: items.length,
+      payload: {
+        formData: fd,
+        items,
+        // Payment/discount/tax are entered later on the receipt page, so these
+        // are the in-progress defaults derived from the running cart total.
+        financials: {
+          totalValue: String(total),
+          totalDiscount: '0',
+          taxAmount: '0',
+          totalPayableAmount: String(total),
+        },
+        splitPayments: [],
+        patientType: fd?.patientType || '',
+        doctorId,
+      },
+    };
+  }, []);
+
   // Clear the working cart when leaving the sale-creation flow. The only
   // sanctioned exit that keeps the cart is the "Next" hop to the receipt
-  // (guarded by goingToReceiptRef). clearCart/clearFormData are idempotent, so
-  // StrictMode's double cleanup in dev is harmless.
+  // (guarded by goingToReceiptRef). For any other exit, a non-empty cart is
+  // silently persisted as a server draft before wiping. clearCart/clearFormData
+  // are idempotent, so StrictMode's double cleanup in dev is harmless.
   useEffect(() => {
     return () => {
-      if (!goingToReceiptRef.current) {
-        dispatch(clearCart());
-        dispatch(clearFormData());
+      if (goingToReceiptRef.current) return;          // sanctioned Next→receipt hop: keep cart, no save
+      const items = cartItemsRef.current;
+      if (items && items.length > 0) {
+        // Fire-and-forget snapshot: the request outlives this unmount. The wipe
+        // below must ALWAYS run, so guard both the async rejection (.catch) and
+        // any synchronous throw (try/catch) from the snapshot call.
+        try {
+          createDraft(buildDraftBody()).catch(() => {});
+        } catch {
+          /* ignore — a failed snapshot must never block the cart wipe */
+        }
       }
+      dispatch(clearCart());
+      dispatch(clearFormData());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
