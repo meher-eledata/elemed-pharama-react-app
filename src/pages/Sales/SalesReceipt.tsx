@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent, useCallback, useEffect, useMemo, useRef } from 'react';
+import dayjs from 'dayjs';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import DeleteInvoiceDialog from '../../components/DeleteDialogue/DeleteInvoiceDialog';
@@ -39,7 +40,8 @@ import {
   selectCartTotal,
   clearCart,
   clearFormData,
-  setCartItems
+  setCartItems,
+  SalesFormData
 } from '../../redux/slices/cartSlice';
 import { RootState } from '../../redux/store';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
@@ -64,6 +66,12 @@ import { useCustomerPhones } from './hooks/useCustomerPhones';
 import { useDoctorPhonesAndEmails } from './hooks/useDoctorPhonesAndEmails';
 import { handleCustomerSubmit } from './SalesReceipt.customerHandler';
 import { executeSave } from './SalesReceipt.saveHandler';
+import { executeSaveDraft } from './SalesReceipt.draftHandler';
+import {
+  useCreateDraftMutation,
+  useUpdateDraftMutation,
+  useDeleteDraftMutation,
+} from '../../redux/slices/draftsApi';
 import {
   SalesReceiptContainer,
   SalesReceiptHeader,
@@ -74,7 +82,21 @@ import {
 } from './SalesReceipt.styles';
 
 import { getPrintStyles, fieldStyles } from './SalesReceipt.printStyles';
+import { paymentMethods } from '../../config/constants/OrderDetail.constants';
 import bgWhiteIcon from '../../assets/BG_White.svg';
+
+// Explicit default payment mode (Cash) so state === displayed === saved from the start,
+// instead of relying on an empty '' that the UI cosmetically renders as the first option.
+const DEFAULT_PAYMENT_MODE = paymentMethods[0];
+
+// Convert an arbitrary date value to the canonical ISO YYYY-MM-DD state format.
+// Returns '' for blank/invalid input so callers can fall back to their default.
+const normalizeIso = (v: string | undefined | null): string => {
+  const s = (v || '').trim();
+  if (!s) return '';
+  const parsed = dayjs(s);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+};
 
 const SalesReceipt: React.FC = () => {
   const navigate = useNavigate();
@@ -92,6 +114,10 @@ const SalesReceipt: React.FC = () => {
   const [updateSales, { isLoading: isUpdatingSale }] = useUpdateSalesMutation();
   const [deleteSales] = useDeleteSalesMutation();
   const [addCustomer] = useAddCustomerMutation();
+
+  const [createDraft, { isLoading: isSavingDraft }] = useCreateDraftMutation();
+  const [updateDraft, { isLoading: isUpdatingDraft }] = useUpdateDraftMutation();
+  const [deleteDraft] = useDeleteDraftMutation();
 
 
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
@@ -150,13 +176,32 @@ const SalesReceipt: React.FC = () => {
   // 🔒 Pause flag: prevents phone-lookup hook from overwriting the real ID while addCustomer is in flight
   const isAddingCustomerRef = useRef(false);
 
+  // Tracks the sanctioned receipt -> salepage hop ("Edit Cart"), which must keep
+  // the cart. Any other unmount clears the working cart/form data.
+  const goingToSalepageRef = useRef(false);
+
+  // Clear the working cart when leaving the sale-creation flow. "Edit Cart" is
+  // the only exit that keeps the cart (guarded by goingToSalepageRef); finalize/
+  // draft/abandon should all leave an empty cart. clearCart/clearFormData are
+  // idempotent, so a completed sale (already cleared) and StrictMode's double
+  // cleanup in dev are both harmless.
+  useEffect(() => {
+    return () => {
+      if (!goingToSalepageRef.current) {
+        dispatch(clearCart());
+        dispatch(clearFormData());
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [doctorName, setDoctorName] = useState('');
   const [doctorMobile, setDoctorMobile] = useState('');
   const [doctorEmail, setDoctorEmail] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
   const [availableDoctorInfo, setAvailableDoctorInfo] = useState<DoctorPhoneEmailInfo[]>([]);
 
-  const [paymentMode, setPaymentMode] = useState('');
+  const [paymentMode, setPaymentMode] = useState(DEFAULT_PAYMENT_MODE);
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => getTodayDate());
@@ -176,6 +221,9 @@ const SalesReceipt: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
+  // Per-medicine "not enough stock" list surfaced when submit-sale returns HTTP 409.
+  const [stockShortageLines, setStockShortageLines] = useState<string[]>([]);
+  const [stockShortageOpen, setStockShortageOpen] = useState(false);
   const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
@@ -183,6 +231,14 @@ const SalesReceipt: React.FC = () => {
   const editModeData = (location.state as any) || null;
   const isEditMode = editModeData?.isEditMode || false;
   const isReturnDetailsMode = editModeData?.isReturnDetailsMode || false;
+
+  // Server draft id — set when resuming a saved draft (via navigation state) or after
+  // the first "Save draft" of a fresh sale, so subsequent saves update in place.
+  const [activeDraftId, setActiveDraftId] = useState<number | undefined>(
+    editModeData?.draftId && !isNaN(Number(editModeData.draftId))
+      ? Number(editModeData.draftId)
+      : undefined
+  );
 
   // CRITICAL: Resolve database invoice ID from navigation state
   const rawInvoiceId = editModeData?.invoiceId || editModeData?.invoice_id || editModeData?.id;
@@ -481,9 +537,9 @@ const SalesReceipt: React.FC = () => {
                       'CREDIT': 'Credit',
                       'MULTIPLE': 'Multiple',
                     };
-                    return map[upper] || raw || 'Cash';
+                    return map[upper] || raw || DEFAULT_PAYMENT_MODE;
                   }
-                  return result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || 'Cash';
+                  return result.payment_mode || result.invoice?.payment_mode || editModeData.paymentMode || DEFAULT_PAYMENT_MODE;
                 })(),
                 insuranceCompany: result.insurance_company || result.invoice?.insurance_company || editModeData.insuranceCompany || '',
                 patientType: (() => {
@@ -499,36 +555,14 @@ const SalesReceipt: React.FC = () => {
                 })(),
                 invoiceNumber: (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || editModeData.invoiceNumber || '',
                 invoiceDate: (() => {
+                  // Canonical state format is ISO YYYY-MM-DD. The backend already
+                  // returns YYYY-MM-DD; normalize any fallback to ISO too (normalizeIso
+                  // is hoisted to module scope so restore paths reuse it).
                   const raw = invoice.invoice_date;
                   if (!raw) {
-                    const localDate = editModeData.invoiceDate;
-                    if (localDate) return localDate;
-                    return getTodayDate();
+                    return normalizeIso(editModeData.invoiceDate) || getTodayDate();
                   }
-
-                  // Handle YYYY-MM-DD from backend without timezone shift
-                  const dateParts = raw.split(/[-/]/);
-                  let d: Date;
-
-                  if (dateParts.length === 3) {
-                    if (dateParts[0].length === 4) {
-                      // YYYY-MM-DD
-                      d = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-                    } else {
-                      d = new Date(raw);
-                    }
-                  } else {
-                    d = new Date(raw);
-                  }
-
-                  if (isNaN(d.getTime())) return editModeData.invoiceDate || getTodayDate();
-
-                  // Revert to the original "DD MMM YYYY" format for consistency
-                  return d.toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                  });
+                  return normalizeIso(raw) || normalizeIso(editModeData.invoiceDate) || getTodayDate();
                 })(),
                 salesItems: mappedSalesItems,
                 // In Edit Mode, prefer the user's current cart (which may include newly-added
@@ -728,6 +762,17 @@ const SalesReceipt: React.FC = () => {
     }
   }, [salesItems]);
 
+  // Restore the split-payment breakdown once when resuming a saved draft (loss-free);
+  // the cart items + form fields are rehydrated via redux before navigation.
+  useEffect(() => {
+    const draftSplits = editModeData?.draftSplitPayments;
+    if (Array.isArray(draftSplits) && draftSplits.length > 0) {
+      setSplitPayments(draftSplits);
+    }
+    // Mount-only: navigation state is fixed for the life of this page instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleCustomerAutoFill = useCallback((customer: Customer) => {
     setCustomerMobile(customer.mobile);
     // Protect newly added customer with ID from being overwritten by id: 0 auto-fill during refetch
@@ -833,11 +878,15 @@ const SalesReceipt: React.FC = () => {
       setDoctorName(formData.doctorName);
       setDoctorMobile(formData.doctorMobile);
       setDoctorEmail(formData.doctorEmail);
-      // Set paymentMode from form data, or default to 'Cash' if empty
-      setPaymentMode(formData.paymentMode || 'Cash');
+      // Set paymentMode from form data, or the explicit default if empty
+      setPaymentMode(formData.paymentMode || DEFAULT_PAYMENT_MODE);
       setInsuranceCompany(formData.insuranceCompany);
       if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
-      if (formData.invoiceDate) setInvoiceDate(formData.invoiceDate);
+      // Normalize the restored value: a cart persisted before the ISO migration holds a
+      // legacy "DD MMM YYYY" string, which the strict save-validation would now reject.
+      // Empty/invalid → leave the ISO default already in state.
+      const restoredIso = normalizeIso(formData.invoiceDate);
+      if (restoredIso) setInvoiceDate(restoredIso);
     }, []),
     onCustomerRestored: useCallback((customer) => {
       if (!customer) return;
@@ -851,13 +900,6 @@ const SalesReceipt: React.FC = () => {
       });
     }, [])
   });
-
-  // Set default payment mode to 'Cash' if empty and not in edit mode
-  useEffect(() => {
-    if (!isEditMode && !paymentMode) {
-      setPaymentMode('Cash');
-    }
-  }, [isEditMode, paymentMode]);
 
   // Generate invoice number on mount (if not in edit mode and not already set)
   // PRIORITY ORDER:
@@ -1070,17 +1112,52 @@ const SalesReceipt: React.FC = () => {
     dispatch(setCartItems(cartItemsWithGst));
     // Mark this cart as belonging to an edit session
     setEditInvoiceId(resolvedInvoiceId || invoiceNumber);
+    // When resuming an existing draft, snapshot the receipt-owned values (the same
+    // ones executeSaveDraft persists) so salepage's abandon-UPDATE can preserve them
+    // instead of nulling them via the backend's full-replace PUT.
+    let draftPreserve: {
+      customer_id?: number;
+      invoice_number?: string;
+      invoice_date?: string;
+      financials: { totalValue: string; totalDiscount: string; taxAmount: string; totalPayableAmount: string };
+      splitPayments: any[];
+      doctorId?: number;
+      patientType: string;
+    } | undefined;
+    if (activeDraftId != null) {
+      const matchedDoctor = doctorNamesData.find((d: any) =>
+        (typeof d === 'string' ? d : d.name) === doctorName
+      );
+      const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
+      const customerId = (selectedCustomer?.id && selectedCustomer.id > 0) ? selectedCustomer.id : undefined;
+      const invoice_date = /^\d{4}-\d{2}-\d{2}$/.test((invoiceDate || '').trim())
+        ? invoiceDate.trim()
+        : undefined;
+      draftPreserve = {
+        customer_id: customerId,
+        invoice_number: invoiceNumber || undefined,
+        invoice_date,
+        financials: { totalValue, totalDiscount, taxAmount, totalPayableAmount },
+        splitPayments,
+        doctorId,
+        patientType,
+      };
+    }
     // Navigate to sales/new page to edit/add products to cart
     // Pass edit mode state so we can return to edit mode correctly
+    // Sanctioned receipt -> salepage hop: keep the cart populated.
+    goingToSalepageRef.current = true;
     navigate('/sales/new', {
       state: {
         isEditMode,
         invoiceId: resolvedInvoiceId,
         invoiceNumber,
-        originalInvoiceData
+        originalInvoiceData,
+        draftId: activeDraftId,
+        draftPreserve
       }
     });
-  }, [salesItems, dispatch, navigate, isEditMode, resolvedInvoiceId, invoiceNumber, originalInvoiceData]);
+  }, [salesItems, dispatch, navigate, isEditMode, resolvedInvoiceId, invoiceNumber, originalInvoiceData, activeDraftId, doctorNamesData, doctorName, selectedCustomer, invoiceDate, totalValue, totalDiscount, taxAmount, totalPayableAmount, splitPayments, patientType]);
 
   /**
    * Handle Print Button Click
@@ -1136,17 +1213,9 @@ const SalesReceipt: React.FC = () => {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-
-      // Handle cleanup for the print window
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-
-      // Trigger browser print dialog in the next tick to make it non-blocking
-      // for the main window's navigation logic
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
+      // The generated document self-paginates once fonts are ready, then calls
+      // window.print() and closes itself on afterprint — do NOT print from here
+      // (doing so would fire before pagination and print an unpaginated page).
 
       // IMMEDIATELY finalize the workflow on the main screen for a snappy experience
       // This fulfills the user's request to navigate to history table right after clicking print
@@ -1248,7 +1317,7 @@ const SalesReceipt: React.FC = () => {
     setDoctorEmail('');
     setSelectedDoctor(null);
     setAvailableDoctorInfo([]);
-    setPaymentMode('');
+    setPaymentMode(DEFAULT_PAYMENT_MODE);
     setInsuranceCompany('');
     setTotalValue('');
     setTotalDiscount('');
@@ -1496,10 +1565,75 @@ const SalesReceipt: React.FC = () => {
       originalSalesItems: originalInvoiceData?.salesItems,
       skipNavigation,
       onSuccess,
+      onStockShortage: (lines: string[]) => {
+        setStockShortageLines(lines);
+        setStockShortageOpen(true);
+      },
+      onSaleSaved: activeDraftId
+        ? async () => {
+            try {
+              await deleteDraft(activeDraftId).unwrap();
+            } catch {
+              // idempotent DELETE — ignore (draft may already be gone)
+            }
+            setActiveDraftId(undefined);
+          }
+        : undefined,
       splitPayments: effectiveSplitPayments,
       upsertInvoicePayments,
     });
-  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones]);
+  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft]);
+
+  const handleSaveDraft = useCallback(async () => {
+    const matchedDoctor = doctorNamesData.find((d: any) =>
+      (typeof d === 'string' ? d : d.name) === doctorName
+    );
+    const doctorId = matchedDoctor && typeof matchedDoctor === 'object' ? Number(matchedDoctor.id) : undefined;
+    const customerId = (selectedCustomer?.id && selectedCustomer.id > 0) ? selectedCustomer.id : undefined;
+
+    const formData: SalesFormData = {
+      customerName,
+      customerMobile,
+      customerCity,
+      customerDetails,
+      patientType,
+      doctorName,
+      doctorMobile,
+      doctorEmail,
+      paymentMode,
+      insuranceCompany,
+      invoiceNumber,
+      invoiceDate,
+      customerId,
+    };
+
+    const saved = await executeSaveDraft({
+      draftId: activeDraftId,
+      formData,
+      salesItems,
+      financials: { totalValue, totalDiscount, taxAmount, totalPayableAmount },
+      splitPayments,
+      doctorId,
+      patientType,
+      customerName,
+      customerMobile,
+      customerId,
+      invoiceNumber,
+      invoiceDate,
+      createDraft,
+      updateDraft,
+      showToast,
+      onCreated: setActiveDraftId,
+    });
+
+    // On a successful save (create or update), leave the creation flow and return
+    // to the sales homepage. The receipt's unmount-guard clears the working cart /
+    // formData automatically (draft is persisted server-side; drafts list refetches
+    // via the invalidated 'Drafts' tag). Empty-cart and error paths keep the user here.
+    if (saved) {
+      navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
+    }
+  }, [doctorNamesData, doctorName, selectedCustomer, customerName, customerMobile, customerCity, customerDetails, patientType, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, activeDraftId, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, splitPayments, createDraft, updateDraft, navigate]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {
@@ -1794,8 +1928,10 @@ const SalesReceipt: React.FC = () => {
             <ActionButtons
               onCancel={handleCancel}
               onSave={handleSave}
+              onSaveDraft={isEditMode ? undefined : handleSaveDraft}
               onPrint={handlePrint}
               isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
+              isSaveDraftDisabled={salesItems.length === 0 || isSavingDraft || isUpdatingDraft}
               hidePrintButton={isEditMode}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
@@ -1831,6 +1967,29 @@ const SalesReceipt: React.FC = () => {
           })()}
           onClose={handleCancelDelete}
           onConfirm={handleConfirmDelete}
+        />
+
+        <ConfirmationDialog
+          open={stockShortageOpen}
+          title="Not enough stock"
+          message={
+            <Box sx={{ textAlign: 'left' }}>
+              <Typography sx={{ mb: 1.5, fontSize: '15px', color: '#374151' }}>
+                These items don't have enough stock. Please reduce the quantities (or pick another
+                batch) and try again:
+              </Typography>
+              {stockShortageLines.map((line, idx) => (
+                <Typography key={idx} sx={{ fontSize: '14px', mb: 0.5, color: '#B91C1C', fontWeight: 500 }}>
+                  {line}
+                </Typography>
+              ))}
+            </Box>
+          }
+          confirmLabel="OK"
+          cancelLabel="Close"
+          onClose={() => setStockShortageOpen(false)}
+          onConfirm={() => setStockShortageOpen(false)}
+          onCancel={() => setStockShortageOpen(false)}
         />
 
         <CommonModal
@@ -1892,7 +2051,7 @@ const SalesReceipt: React.FC = () => {
         <PaymentSplitModal
           open={isPaymentSplitModalOpen}
           onClose={() => setIsPaymentSplitModalOpen(false)}
-          onSave={(payments) => { setSplitPayments(payments); setPaymentMode(''); }}
+          onSave={(payments) => { setSplitPayments(payments); setPaymentMode(DEFAULT_PAYMENT_MODE); }}
           totalAmount={parseFloat(totalPayableAmount) || 0}
           existingPayments={splitPayments}
         />

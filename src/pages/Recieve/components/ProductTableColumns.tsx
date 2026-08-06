@@ -1,13 +1,14 @@
 import React from "react";
-import { Box, TextField, IconButton, Tooltip } from "@mui/material";
+import { Box, TextField, IconButton, Tooltip, Autocomplete, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import dayjs, { Dayjs } from "dayjs";
 import { TableColumn } from "../../../components/PharmaTable";
-import { PharmaTableRow } from "../types";
+import { PharmaTableRow, ProductOption } from "../types";
 import { PharmaDatePicker } from "../../../components/Common";
 import { orderLabels } from "../../../config/label/OrderDetail.labels";
+import { formatCandidateMeta } from "../utils";
 import { orderDetailsStyles, TickMarkIcon } from "../styles";
 
 interface ProductTableColumnsParams {
@@ -18,6 +19,8 @@ interface ProductTableColumnsParams {
   saveRow: () => void;
   cancelEditing: () => void;
   deleteRow: (rowId: string) => void;
+  productOptions: ProductOption[];
+  onAddNewProduct: () => void;
 }
 
 export const getProductTableColumns = ({
@@ -28,7 +31,15 @@ export const getProductTableColumns = ({
   saveRow,
   cancelEditing,
   deleteRow,
+  productOptions,
+  onAddNewProduct,
 }: ProductTableColumnsParams): TableColumn<PharmaTableRow>[] => {
+  // Add-new sentinel appended to the edit-cell dropdown (mirrors the Find Product
+  // search). Selecting it opens the NewProductModal instead of picking a product.
+  const productEditOptions: ProductOption[] = [
+    ...productOptions,
+    { name: orderLabels.addProducts, id: -1 },
+  ];
   const inputFieldStyles = orderDetailsStyles.tableInputField;
   const numberInputStyles = orderDetailsStyles.tableNumberInput;
 
@@ -56,13 +67,81 @@ export const getProductTableColumns = ({
       sortable: false,
       render: (row) => (
         editingRowId === row.id ? (
-          <TextField
+          <Autocomplete
             size="small"
-            value={editingData.productId || ""}
-            onChange={(e) => updateEditingData("productId", e.target.value)}
-            variant="outlined"
+            options={productEditOptions}
+            value={editingData.productId || null}
+            inputValue={editingData.productId || ""}
+            getOptionLabel={(o) => (typeof o === "string" ? o : o.name)}
+            isOptionEqualToValue={(o, v) =>
+              (typeof o === "string" ? o : o.name) ===
+              (typeof v === "string" ? v : (v as ProductOption)?.name)
+            }
+            freeSolo
             fullWidth
-            sx={inputFieldStyles}
+            onChange={(_, newValue) => {
+              if (newValue == null) {
+                updateEditingData("productId", "");
+                updateEditingData("product_id", undefined);
+                return;
+              }
+              const name = typeof newValue === "string" ? newValue : newValue.name;
+              const id = typeof newValue === "string" ? undefined : newValue.id;
+              if (name === orderLabels.addProducts || id === -1) {
+                onAddNewProduct();
+                return;
+              }
+              // Set BOTH the display name and the resolved catalog id.
+              updateEditingData("productId", name);
+              updateEditingData("product_id", id);
+            }}
+            onInputChange={(_, newInput, reason) => {
+              // Free typing: track the name and drop any stale id so save re-resolves.
+              if (reason === "input") {
+                updateEditingData("productId", newInput);
+                updateEditingData("product_id", undefined);
+              }
+            }}
+            renderOption={(props, option) => {
+              const { key, ...optionProps } = props as any;
+              const isAdd = typeof option !== "string" && option.id === -1;
+              const secondary =
+                typeof option === "string"
+                  ? ""
+                  : formatCandidateMeta(option.type, option.brand_name);
+              return (
+                <Box
+                  key={key}
+                  component="li"
+                  {...optionProps}
+                  sx={{
+                    fontSize: "14px",
+                    fontFamily: "'Lexend', sans-serif",
+                    ...(isAdd
+                      ? { backgroundColor: "#5C17E5 !important", color: "#ffffff !important", fontWeight: 500 }
+                      : {}),
+                  }}
+                >
+                  {typeof option === "string" ? (
+                    option
+                  ) : (
+                    <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                      <Typography sx={{ fontSize: "14px", fontFamily: "'Lexend', sans-serif" }}>
+                        {option.name}
+                      </Typography>
+                      {!isAdd && secondary && (
+                        <Typography sx={{ fontSize: "12px", color: "#9CA3AF", fontFamily: "'Lexend', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {secondary}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              );
+            }}
+            renderInput={(params) => (
+              <TextField {...params} variant="outlined" fullWidth sx={inputFieldStyles} />
+            )}
           />
         ) : (
           <Tooltip title={row.productId} arrow placement="top">
@@ -79,6 +158,12 @@ export const getProductTableColumns = ({
           </Tooltip>
         )
       ),
+    },
+    {
+      key: "type",
+      header: orderLabels.type,
+      sortable: false,
+      render: (row) => <span>{row.type || '-'}</span>,
     },
     {
       key: "pack",

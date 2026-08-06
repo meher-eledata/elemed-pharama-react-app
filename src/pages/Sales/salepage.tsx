@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Typography, Snackbar, Alert } from "@mui/material";
 import { StandardButton } from "../../components/Common";
@@ -17,6 +17,7 @@ import {
   useGetBatchesForProductMutation
 } from "../../redux/slices/inventoryApi";
 import { useGetDoctorNamesQuery } from "../../redux/slices/salesApi";
+import { useCreateDraftMutation, useUpdateDraftMutation, DraftRequest } from "../../redux/slices/draftsApi";
 import { useGetProductsQuery, receiveApi } from "../../redux/slices/receiveApi";
 import { useUpdateProductMutation } from "../../redux/slices/masterApi";
 import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
@@ -162,11 +163,142 @@ export default function SalePage() {
   // Typed so cross-slice thunks (receiveApi.util.invalidateTags) dispatch cleanly.
   const dispatch = useDispatch<AppDispatch>();
 
+  // Tracks whether we are leaving this page via the "Next" button toward the
+  // receipt (a sanctioned flow that must keep the cart). Any other unmount
+  // (navigating away from the sale-creation flow) clears the working cart.
+  const goingToReceiptRef = useRef(false);
+
   // Redux selectors
   const cartItems = useSelector(selectCartItems);
   const cartTotal = useSelector(selectCartTotal);
   const cartItemsCount = useSelector(selectCartItemsCount);
   const formData = useSelector(selectFormData);
+
+  // Fire-and-forget create so a snapshot survives this component's unmount.
+  const [createDraft] = useCreateDraftMutation();
+  // Update-in-place when resuming an existing draft, so we don't duplicate it.
+  const [updateDraft] = useUpdateDraftMutation();
+
+  // Latest cart mirrored into refs every render so the empty-deps cleanup below
+  // reads the CURRENT cart at unmount — a direct capture would freeze the
+  // (empty) first-render values.
+  const cartItemsRef = useRef(cartItems);
+  const formDataRef = useRef(formData);
+  const cartTotalRef = useRef(cartTotal);
+  // Active draft id (present only when resuming/editing an existing draft),
+  // mirrored into a ref so the empty-deps cleanup below reads it reliably.
+  const draftIdRef = useRef<number | undefined>(undefined);
+  // Receipt-owned values threaded from SalesReceipt.handleEditCart (present only
+  // when resuming an existing draft). Merged over the salepage cart on the
+  // abandon-UPDATE path so the backend's full-replace PUT doesn't reset them.
+  const draftPreserveRef = useRef<any>(undefined);
+  useEffect(() => {
+    cartItemsRef.current = cartItems;
+    formDataRef.current = formData;
+    cartTotalRef.current = cartTotal;
+    const navDraftId = (location.state as any)?.draftId;
+    draftIdRef.current = (navDraftId != null && !isNaN(Number(navDraftId))) ? Number(navDraftId) : undefined;
+    draftPreserveRef.current = (location.state as any)?.draftPreserve ?? undefined;
+  });
+
+  // Snapshot the in-progress cart as a DraftRequest. Mirrors executeSaveDraft,
+  // but salepage's cartItems are already CartItem[] (== DraftPayload.items), so
+  // no transform is needed. Reads refs, so it is safe from the unmount cleanup.
+  const buildDraftBody = useCallback((): DraftRequest => {
+    const fd = formDataRef.current;
+    const items = cartItemsRef.current;
+    const total = cartTotalRef.current;
+    const rawDoctorId = (fd as { doctorId?: number } | null)?.doctorId;
+    const doctorId = typeof rawDoctorId === 'number' && rawDoctorId > 0 ? rawDoctorId : undefined;
+
+    return {
+      customer_name: fd?.customerName || undefined,
+      customer_phone: fd?.customerMobile || undefined,
+      total_amount: total,
+      item_count: items.length,
+      payload: {
+        formData: fd,
+        items,
+        // Payment/discount/tax are entered later on the receipt page, so these
+        // are the in-progress defaults derived from the running cart total.
+        financials: {
+          totalValue: String(total),
+          totalDiscount: '0',
+          taxAmount: '0',
+          totalPayableAmount: String(total),
+        },
+        splitPayments: [],
+        patientType: fd?.patientType || '',
+        doctorId,
+      },
+    };
+  }, []);
+
+  // Abandon-UPDATE body for a RESUMED draft: override ONLY items + totals +
+  // item_count from the current salepage cart, and preserve everything the
+  // receipt owns (financials discount/tax, splitPayments, invoice #/date,
+  // customer_id, doctorId, patientType) from the snapshot threaded in nav state.
+  // Falls back to the lean buildDraftBody when no snapshot rode along (edge:
+  // draftId present but no preserve) so the draft still updates in place.
+  const buildUpdateDraftBody = useCallback((): DraftRequest => {
+    const preserve = draftPreserveRef.current;
+    if (!preserve) return buildDraftBody();
+    const fd = formDataRef.current;
+    const items = cartItemsRef.current;
+    const total = cartTotalRef.current;
+    return {
+      customer_id: preserve.customer_id,
+      customer_name: fd?.customerName || undefined,
+      customer_phone: fd?.customerMobile || undefined,
+      invoice_number: preserve.invoice_number,
+      invoice_date: preserve.invoice_date,
+      total_amount: total,
+      item_count: items.length,
+      payload: {
+        formData: fd,
+        items,
+        financials: preserve.financials ?? {
+          totalValue: String(total),
+          totalDiscount: '0',
+          taxAmount: '0',
+          totalPayableAmount: String(total),
+        },
+        splitPayments: preserve.splitPayments ?? [],
+        doctorId: preserve.doctorId,
+        patientType: preserve.patientType ?? fd?.patientType ?? '',
+      },
+    };
+  }, [buildDraftBody]);
+
+  // Clear the working cart when leaving the sale-creation flow. The only
+  // sanctioned exit that keeps the cart is the "Next" hop to the receipt
+  // (guarded by goingToReceiptRef). For any other exit, a non-empty cart is
+  // silently persisted as a server draft before wiping. clearCart/clearFormData
+  // are idempotent, so StrictMode's double cleanup in dev is harmless.
+  useEffect(() => {
+    return () => {
+      if (goingToReceiptRef.current) return;          // sanctioned Next→receipt hop: keep cart, no save
+      const items = cartItemsRef.current;
+      if (items && items.length > 0) {
+        // Fire-and-forget snapshot: the request outlives this unmount. The wipe
+        // below must ALWAYS run, so guard both the async rejection (.catch) and
+        // any synchronous throw (try/catch) from the snapshot call.
+        try {
+          const id = draftIdRef.current;
+          if (id != null) {
+            updateDraft({ id, ...buildUpdateDraftBody() }).catch(() => {});   // editing an existing draft → update in place, preserving receipt-owned fields
+          } else {
+            createDraft(buildDraftBody()).catch(() => {});              // fresh in-progress cart → new draft
+          }
+        } catch {
+          /* ignore — a failed snapshot must never block the cart wipe */
+        }
+      }
+      dispatch(clearCart());
+      dispatch(clearFormData());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Form State
   const [productType, setProductType] = useState("");
@@ -519,7 +651,7 @@ export default function SalePage() {
       console.log('🔍 Product type:', newType);
 
       // Use sales API endpoint: sales/get-batch-numbers-by-product-id
-      let batchObjects: { batch_number: string; current_qty: number }[] = [];
+      let batchObjects: { batch_number: string; current_qty: number; expiry_date: string }[] = [];
 
       try {
         const batchesResult: any = await getBatchNumbersByProductId({ product_id: typeProductId }).unwrap();
@@ -789,6 +921,9 @@ export default function SalePage() {
     const totalAmount = cartTotal; // Use Redux selector
     const editState = (location.state as any) || {};
 
+    // Sanctioned new -> receipt hop: skip the unmount clear so the receipt can
+    // hydrate the cart from Redux.
+    goingToReceiptRef.current = true;
     navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
       state: {
         ...editState,

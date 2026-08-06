@@ -135,6 +135,7 @@ export const useOrderReceiveData = (activeTab: number) => {
           received: (receipt as any).invoice_date
             ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A')
             : dayjs(receipt.received_on).format('MMM DD, YYYY h:mm A'),
+          receivedRaw: (receipt as any).invoice_date || receipt.received_on,
           status: receipt.receipt_status,
           reBy: receipt.received_by,
           amt: totalAmount,

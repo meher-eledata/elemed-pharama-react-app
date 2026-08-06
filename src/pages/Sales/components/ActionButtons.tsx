@@ -6,8 +6,10 @@ import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels'
 interface ActionButtonsProps {
   onCancel: () => void;
   onSave: () => void;
+  onSaveDraft?: () => void;
   onPrint: () => void;
   isSaveDisabled?: boolean;
+  isSaveDraftDisabled?: boolean;
   hidePrintButton?: boolean;
   pageSize?: 'A4' | 'A5';
   onPageSizeChange?: (size: 'A4' | 'A5') => void;
@@ -19,8 +21,10 @@ interface ActionButtonsProps {
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onCancel,
   onSave,
+  onSaveDraft,
   onPrint,
   isSaveDisabled = false,
+  isSaveDraftDisabled = false,
   hidePrintButton = false,
   pageSize = 'A4',
   onPageSizeChange,
@@ -113,6 +117,29 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       >
         {SALES_RECEIPT_LABELS.CANCEL_BUTTON}
       </StandardButton>
+      {onSaveDraft && (
+        <StandardButton
+          variant="secondary"
+          onClick={onSaveDraft}
+          size="large"
+          disabled={isSaveDraftDisabled}
+          sx={{
+            ...buttonStyles,
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #5C17E5',
+            color: '#5C17E5',
+            fontWeight: 600,
+            '&:disabled': {
+              backgroundColor: '#F5F5F5',
+              border: '1px solid #E0E0E0',
+              color: '#9CA3AF',
+              cursor: 'not-allowed',
+            },
+          }}
+        >
+          {SALES_RECEIPT_LABELS.SAVE_DRAFT_BUTTON}
+        </StandardButton>
+      )}
       <StandardButton
         variant="primary"
         onClick={onSave}

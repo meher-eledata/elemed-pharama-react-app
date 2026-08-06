@@ -42,6 +42,15 @@ export const getTableColumns = ({
       )
     },
     {
+      key: 'type',
+      header: SALES_RECEIPT_LABELS.TABLE_HEADER_DOSAGE_TYPE,
+      render: (item) => (
+        <Typography sx={{ fontFamily: "'Lexend', sans-serif", fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#1A212B', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
+          {item.type}
+        </Typography>
+      )
+    },
+    {
       key: 'quantity',
       header: SALES_RECEIPT_LABELS.TABLE_HEADER_QUANTITY,
       render: (item) => (

@@ -20,6 +20,7 @@ export interface OrderReceiveRow {
   supplier: string;
   supplierId: number;
   received: string;
+  receivedRaw?: string;
   status: string;
   reBy: string;
   amt: number;
@@ -54,6 +55,7 @@ export interface PharmaTableRow {
   id?: string;
   productId: string;
   product_id?: number;
+  type?: string;
   batchNumber?: string;
   batch_id?: number;
   po_line_id?: number;

@@ -1,5 +1,5 @@
+import dayjs from 'dayjs';
 import { SalesReceiptItem } from './SalesReceipt.types';
-import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
 import { formatSchedule } from '../../config/constants/product.constants';
 
 /**
@@ -73,12 +73,20 @@ export const calculateFinancialSummary = (salesItems: SalesReceiptItem[]) => {
   };
 };
 
+// Canonical internal format for the invoiceDate STATE is ISO `YYYY-MM-DD`.
+// Human-readable formatting ("DD MMM YYYY") happens only at display edges.
 export const getTodayDate = (): string => {
-  const today = new Date();
-  return today.toLocaleDateString(
-    SALES_RECEIPT_CONSTANTS.DATE_LOCALE,
-    SALES_RECEIPT_CONSTANTS.DATE_FORMAT_OPTIONS
-  );
+  return dayjs().format('YYYY-MM-DD');
+};
+
+// Display-edge formatter: turn the ISO invoiceDate state into the app's
+// human-readable "DD MMM YYYY" convention. Tolerant of any dayjs-parseable
+// legacy value so stale strings never render as raw ISO.
+export const formatInvoiceDateForDisplay = (isoDate: string): string => {
+  const raw = (isoDate || '').trim();
+  if (!raw) return '';
+  const d = dayjs(raw);
+  return d.isValid() ? d.format('DD MMM YYYY') : raw;
 };
 
 export const generatePrintHTML = (data: {
@@ -109,7 +117,6 @@ export const generatePrintHTML = (data: {
     customerMobile,
     customerCity,
     doctorName,
-    doctorMobile,
     doctorEmail,
     paymentMode,
     insuranceCompany,
@@ -146,7 +153,7 @@ export const generatePrintHTML = (data: {
     lineHeight: '1.4', emailItem: '11px', itemsTitle: '14px', itemsTitleMb: '8px',
     thPad: '6px 8px', tdPad: '6px 8px', cell: '13px',
     summaryPad: '12px 20px', summaryGap: '60px', summaryItemGap: '6px', summaryFont: '14px',
-    summaryValue: '14px', summaryRightLabel: '16px', summaryRightValue: '22px',
+    summaryValue: '14px', summaryRightLabel: '16px', summaryRightValue: '22px', footerFont: '9px',
   } : pageWmm >= 210 ? {
     body: '11px', headerMb: '8px', headerPb: '5px', logoW: '70px',
     pharmacyName: '16px', pharmacySub: '8px', pharmacyAddr: '7.5px', addrMargin: '3px 0',
@@ -155,7 +162,7 @@ export const generatePrintHTML = (data: {
     lineHeight: '1.35', emailItem: '9px', itemsTitle: '11px', itemsTitleMb: '5px',
     thPad: '5px 6px', tdPad: '4px 6px', cell: '10px',
     summaryPad: '8px 14px', summaryGap: '36px', summaryItemGap: '3px', summaryFont: '11px',
-    summaryValue: '12px', summaryRightLabel: '12px', summaryRightValue: '17px',
+    summaryValue: '12px', summaryRightLabel: '12px', summaryRightValue: '17px', footerFont: '8px',
   } : {
     body: '10px', headerMb: '6px', headerPb: '4px', logoW: '55px',
     pharmacyName: '14px', pharmacySub: '8px', pharmacyAddr: '7px', addrMargin: '2px 0',
@@ -164,9 +171,158 @@ export const generatePrintHTML = (data: {
     lineHeight: '1.3', emailItem: '8px', itemsTitle: '10px', itemsTitleMb: '3px',
     thPad: '3px 4px', tdPad: '2px 4px', cell: '9px',
     summaryPad: '5px 10px', summaryGap: '24px', summaryItemGap: '2px', summaryFont: '9px',
-    summaryValue: '11px', summaryRightLabel: '10px', summaryRightValue: '14px',
+    summaryValue: '11px', summaryRightLabel: '10px', summaryRightValue: '14px', footerFont: '7px',
   };
   const bodyPad = isA5 ? '6mm' : '10mm';
+
+  // The print document paginates ITSELF at print time (see the inline <script> below).
+  // Chrome does NOT reliably repeat a tall <thead> or a position:fixed footer on pages 2+,
+  // so instead we lay out fixed-size ".sheet" divs — each carrying the full header, its own
+  // items table (column headers repeat per sheet), and an in-flow footer — and measure real
+  // layout to slice rows across pages. Totals/summary land only on the last sheet.
+  // These build-time fragments are serialized into the script and re-assembled per sheet.
+  const headerHTML = `
+    <div class="sheet-header">
+      <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: ${sz.headerPb}; gap: 0;">
+        <div style="flex: 1; display: flex; justify-content: flex-start;">
+          ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
+        </div>
+        <div style="flex: 3; text-align: center;">
+          <div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
+          <div style="font-size: ${sz.pharmacySub}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
+          <div style="font-size: ${sz.pharmacyAddr}; margin: ${sz.addrMargin}; line-height: 1.2; color: #4B5563;">
+            PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
+            DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
+            GSTIN No: 37AAQCS3213C2ZH<br />
+            (M): 0891-2554040, 8096655050
+          </div>
+        </div>
+        <div style="flex: 1;"></div>
+      </div>
+      <div class="doc-title">${labels.CUSTOMER_RECEIPT_TITLE}</div>
+      <div class="receipt-details">
+        <div class="detail-section">
+          <div class="detail-title">${labels.CUSTOMER_DETAILS_TITLE}</div>
+          <div class="detail-item">${labels.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}</div>
+          <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
+          <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
+          ${splitPayments && splitPayments.length > 0
+      ? splitPayments.map((p: any) => {
+        const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
+        const amount = p.payment_amount || p.amount || '0';
+        const details = p.details || p.notes || '';
+        return `<div class="detail-item">${method.toUpperCase()}: ${amount} ${details ? `(Details: ${details})` : ''}</div>`;
+      }).join('')
+      : `<div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>`
+    }
+          ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
+      ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
+      : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim()
+        ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
+        : ''
+    }
+        </div>
+        <div class="detail-section">
+          <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
+          <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
+          <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', formatInvoiceDateForDisplay(invoiceDate))}</div>
+        </div>
+      </div>
+      <div class="items-title">${labels.ITEMS_SECTION_TITLE}</div>
+    </div>`;
+
+  // A fresh table (with its own repeating <thead>) is emitted per sheet; the paginator fills <tbody>.
+  const tableOpenHTML = `
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width:30px">S.No</th>
+          <th>Product Name</th>
+          <th>Type</th>
+          <th>MFG</th>
+          <th>HSN</th>
+          <th>Sch</th>
+          <th>Batch</th>
+          <th>Pack</th>
+          <th>Exp</th>
+          <th>Qty</th>
+          <th>MRP</th>
+          <th>GST</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>`;
+
+  // In-flow footer at the bottom of every sheet (NOT position:fixed — that is unreliable in Chrome print).
+  const footerHTML = `
+    <div class="page-footer">
+      <span class="footer-left">Signature of Pharmacist</span>
+      <span class="footer-right">Powered by Elemed</span>
+    </div>`;
+
+  // Totals block — appended only to the final sheet by the paginator.
+  const summaryHTML = `
+    <div class="summary">
+      <div class="summary-left">
+        <div class="summary-item">
+          <div class="summary-label">${labels.TOTAL_VALUE_LABEL}</div>
+          <div class="summary-value">${totalValue}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">${labels.TOTAL_DISCOUNT_LABEL}</div>
+          <div class="summary-value">${totalDiscount}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">${labels.TAX_AMOUNT_LABEL}</div>
+          <div class="summary-value">${taxAmount}</div>
+        </div>
+      </div>
+      <div class="summary-right">
+        <div class="summary-right-label">${labels.TOTAL_PAYABLE_LABEL}</div>
+        <div class="summary-right-value">${totalPayableAmount}</div>
+      </div>
+    </div>`;
+
+  // Pre-derive every per-row display value here (reuses the exact original logic) so the
+  // browser-side paginator only concatenates strings — formatSchedule et al. are not shipped to the tab.
+  const projectedItems = salesItems.map((item, index) => {
+    const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
+    const hsn = (item as any).hsn || '';
+    const schedule = formatSchedule(item.schedule);
+    const pack = (item as any).pack || 'N/A';
+    const gst = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
+    let exp = 'N/A';
+    if (item.expiryDate) {
+      const dateParts = item.expiryDate.split('-');
+      exp = dateParts.length >= 2 ? `${dateParts[1]}/${dateParts[0]}` : item.expiryDate;
+    }
+    return {
+      sno: index + 1,
+      productName: item.productName,
+      type: item.type || '',
+      mfg,
+      hsn,
+      schedule,
+      batch: item.batch,
+      pack,
+      exp,
+      qty: item.quantity,
+      mrp: item.mrp || 'N/A',
+      gst,
+      amount: item.amount,
+    };
+  });
+
+  // Serialize for safe inlining inside <script>: escaping "<" prevents a stray "</script>"
+  // in any data field from prematurely closing the tag. < decodes back to "<" at runtime.
+  const serialize = (value: unknown): string => JSON.stringify(value).replace(/</g, '\\u003c');
 
   return `
     <!DOCTYPE html>
@@ -174,22 +330,10 @@ export const generatePrintHTML = (data: {
       <head>
         <title>${labels.CUSTOMER_RECEIPT_TITLE}</title>
         <style>
-          @media print {
-            /* Zero page margins suppress the browser's header/footer band
-               (title, URL, date); the visual margin comes from body padding. */
-            @page {
-              margin: 0;
-              size: ${pageWmm}mm ${pageHmm}mm;
-            }
-            html, body {
-              margin: 0;
-              overflow: visible;
-            }
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
+          @page {
+            /* Zero page margins suppress the browser's header/footer band (title, URL, date). */
+            margin: 0;
+            size: ${pageWmm}mm ${pageHmm}mm;
           }
           * {
             box-sizing: border-box;
@@ -197,19 +341,34 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          body {
-            font-family: 'Lexend', sans-serif;
+          html, body {
             margin: 0;
-            /* Match the print page box exactly so the tab rendering mirrors the print layout. */
-            width: ${pageWmm}mm;
-            box-sizing: border-box;
-            padding: ${bodyPad};
+            padding: 0;
             background-color: #FFFFFF;
             color: #1A212B;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
+            font-family: 'Lexend', sans-serif;
             font-size: ${sz.body};
+          }
+          /* Each .sheet is exactly one physical page; manual pagination slices rows into them. */
+          .sheet {
+            width: ${pageWmm}mm;
+            height: ${pageHmm}mm;
+            padding: ${bodyPad};
+            page-break-after: always;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #FFFFFF;
+          }
+          .sheet:last-child {
+            page-break-after: auto;
+          }
+          .sheet-header {
+            flex: 0 0 auto;
+          }
+          .items {
+            flex: 1 1 auto;
+            overflow: hidden;
           }
           .receipt-header {
             text-align: left;
@@ -231,13 +390,12 @@ export const generatePrintHTML = (data: {
             border: 1px solid #E5E7EB;
             border-radius: 8px;
             overflow: hidden;
-            page-break-inside: avoid;
           }
           .detail-section {
             flex: 1;
             background-color: #F9FAFB !important;
             padding: ${sz.sectionPad};
-            border-right: 2px solid #9CA3AF; 
+            border-right: 2px solid #9CA3AF;
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -261,21 +419,18 @@ export const generatePrintHTML = (data: {
           .detail-item.email-item {
             font-size: ${sz.emailItem};
           }
-          .items-section { 
-            margin-bottom: 0px;
-          }
           .items-title {
             font-weight: bold;
             margin-bottom: ${sz.itemsTitleMb};
             font-size: ${sz.itemsTitle};
             color: #1A212B;
           }
-          .items-table { 
-            width: 100%; 
+          .items-table {
+            width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            border: 2px solid #A5B4FC !important; 
-            border-radius: 8px; 
+            border: 2px solid #A5B4FC !important;
+            border-radius: 8px;
             overflow: hidden;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -294,20 +449,6 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          .items-table thead {
-            display: table-header-group;
-          }
-          .items-table tr {
-            page-break-inside: avoid;
-          }
-          @media print {
-            .items-table th {
-              background-color: #C7D2FE !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
-          }
           .items-table td {
             padding: ${sz.tdPad};
             font-size: ${sz.cell};
@@ -319,11 +460,6 @@ export const generatePrintHTML = (data: {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          .summary-td {
-            padding: 0 !important;
-            border: none !important;
-            background-color: transparent !important;
-          }
           .items-table tbody tr:first-child td {
             border-top: none;
           }
@@ -334,30 +470,14 @@ export const generatePrintHTML = (data: {
           .summary {
             background-color: #C7D2FE !important;
             padding: ${sz.summaryPad};
-            display: flex; 
-            justify-content: space-between; 
+            display: flex;
+            justify-content: space-between;
             align-items: flex-start;
-            margin-top: 0px;
+            margin-top: 8px;
+            border-radius: 8px;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
-          }
-          @media print {
-            .summary {
-              background-color: #C7D2FE !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
-            .detail-section {
-              background-color: #F9FAFB !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
-            .items-table {
-              border: 2px solid #A5B4FC !important;
-            }
           }
           .summary-left {
             display: flex;
@@ -396,181 +516,114 @@ export const generatePrintHTML = (data: {
             font-weight: 700;
             color: #1A212B;
           }
+          .page-footer {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: ${sz.footerFont};
+            color: #9CA3AF;
+            padding-top: 6px;
+            margin-top: 6px;
+            border-top: 1px solid #E5E7EB;
+          }
+          @media print {
+            html, body { overflow: visible; }
+            .items-table th { background-color: #C7D2FE !important; }
+            .summary { background-color: #C7D2FE !important; }
+            .detail-section { background-color: #F9FAFB !important; }
+            .items-table { border: 2px solid #A5B4FC !important; }
+          }
         </style>
       </head>
       <body>
-        <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: ${sz.headerPb}; gap: 0;">
-          <div style="flex: 1; display: flex; justify-content: flex-start;">
-            ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
-          </div>
-          <div style="flex: 3; text-align: center;">
-            <div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
-            <div style="font-size: ${sz.pharmacySub}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
-            <div style="font-size: ${sz.pharmacyAddr}; margin: ${sz.addrMargin}; line-height: 1.2; color: #4B5563;">
-              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
-              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
-              GSTIN No: 37AAQCS3213C2ZH<br />
-              (M): 0891-2554040, 8096655050
-            </div>
-          </div>
-          <div style="flex: 1;"></div>
-        </div>
-        <div class="doc-title">${labels.CUSTOMER_RECEIPT_TITLE}</div>
+        <div id="root"></div>
+        <script>
+          (function () {
+            var ITEMS = ${serialize(projectedItems)};
+            var HEADER = ${serialize(headerHTML)};
+            var TABLE_OPEN = ${serialize(tableOpenHTML)};
+            var FOOTER = ${serialize(footerHTML)};
+            var SUMMARY = ${serialize(summaryHTML)};
+            var root = document.getElementById('root');
 
-        <div class="receipt-details">
-          <!-- 1 Row Layout -->
-          <div class="detail-section">
-            <div class="detail-title">${labels.CUSTOMER_DETAILS_TITLE}</div>
-            <div class="detail-item">${labels.CUSTOMER_NAME_PRINT.replace('{name}', (customerName || '').trim())}</div>
-            <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (customerMobile || '').trim())}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
-            <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
-            <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
-            ${splitPayments && splitPayments.length > 0
-      ? splitPayments.map((p: any) => {
-        const method = p.payment_method || p.paymentMethod || p.mode || p.payment_type || 'Payment';
-        const amount = p.payment_amount || p.amount || '0';
-        const details = p.details || p.notes || '';
-        return `<div class="detail-item">${method.toUpperCase()}: ${amount} ${details ? `(Details: ${details})` : ''}</div>`;
-      }).join('')
-      : `<div class="detail-item">${labels.PAYMENT_MODE_PRINT.replace('{mode}', paymentMode && paymentMode.trim() ? paymentMode.trim() : 'Not specified')}</div>`
-    }
-            ${paymentMode === 'Insurance' && insuranceCompany && insuranceCompany.trim()
-      ? `<div class="detail-item">${labels.INSURANCE_PRINT.replace('{company}', insuranceCompany.trim())}</div>`
-      : paymentMode !== 'Insurance' && insuranceCompany && insuranceCompany.trim()
-        ? `<div class="detail-item">${labels.DETAILS_PRINT.replace('{details}', insuranceCompany.trim())}</div>`
-        : ''
-    }
-          </div>
-          <div class="detail-section">
-            <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
-            <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
-            <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}</div>
-          </div>
-        </div>
-        
-        <div class="items-section">
-          <div class="items-title">${labels.ITEMS_SECTION_TITLE}</div>
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th style="width:30px">S.No</th>
-                <th>Product Name</th>
-                <th>MFG</th>
-                <th>HSN</th>
-                <th>Sch</th>
-                <th>Batch</th>
-                <th>Pack</th>
-                <th>Exp</th>
-                <th>Qty</th>
-                <th>MRP</th>
-                <th>GST</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${salesItems.length > 1 ? salesItems.slice(0, -1).map((item, index) => {
-                const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
-                const hsn = (item as any).hsn || '';
-                const schedule = formatSchedule(item.schedule);
-                const pack = (item as any).pack || 'N/A';
-                const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
-                let formattedExp = 'N/A';
-                if (item.expiryDate) {
-                  const dateParts = item.expiryDate.split('-');
-                  if (dateParts.length >= 2) {
-                    formattedExp = `${dateParts[1]}/${dateParts[0]}`;
+            function buildRow(it) {
+              return '<tr>'
+                + '<td>' + it.sno + '</td>'
+                + '<td>' + it.productName + '</td>'
+                + '<td>' + (it.type || '') + '</td>'
+                + '<td>' + it.mfg + '</td>'
+                + '<td>' + it.hsn + '</td>'
+                + '<td>' + it.schedule + '</td>'
+                + '<td>' + it.batch + '</td>'
+                + '<td>' + it.pack + '</td>'
+                + '<td>' + it.exp + '</td>'
+                + '<td>' + it.qty + '</td>'
+                + '<td>' + it.mrp + '</td>'
+                + '<td>' + it.gst + '</td>'
+                + '<td><strong>' + it.amount + '</strong></td>'
+                + '</tr>';
+            }
+
+            function newItemsSheet() {
+              var s = document.createElement('div');
+              s.className = 'sheet';
+              s.innerHTML = HEADER + '<div class="items">' + TABLE_OPEN + '</div>' + FOOTER;
+              root.appendChild(s);
+              return s;
+            }
+
+            function paginate() {
+              var i = 0, guard = 0;
+              var sheet = newItemsSheet();
+              var itemsBox = sheet.querySelector('.items');
+              var tbody = sheet.querySelector('tbody');
+
+              while (i < ITEMS.length && guard < 200) {
+                guard++;
+                tbody.insertAdjacentHTML('beforeend', buildRow(ITEMS[i]));
+                if (itemsBox.scrollHeight > itemsBox.clientHeight) {
+                  if (tbody.children.length === 1) {
+                    // A single row taller than a full page: keep it so we always make progress.
+                    i++;
                   } else {
-                    formattedExp = item.expiryDate;
+                    // Overflowed this sheet — drop the last row and retry it on a fresh sheet.
+                    tbody.removeChild(tbody.lastElementChild);
+                    sheet = newItemsSheet();
+                    itemsBox = sheet.querySelector('.items');
+                    tbody = sheet.querySelector('tbody');
                   }
+                } else {
+                  i++;
                 }
-                return `
-                  <tr>
-                    <td>${index + 1}</td>
-                    <td>${item.productName}</td>
-                    <td>${mfg}</td>
-                    <td>${hsn}</td>
-                    <td>${schedule}</td>
-                    <td>${item.batch}</td>
-                    <td>${pack}</td>
-                    <td>${formattedExp}</td>
-                    <td>${item.quantity}</td>
-                    <td>${item.mrp || 'N/A'}</td>
-                    <td>${gstTotal}</td>
-                    <td><strong>${item.amount}</strong></td>
-                  </tr>
-                `;
-              }).join('') : ''}
-            </tbody>
-            <tbody>
-              ${salesItems.length > 0 ? (() => {
-                const item = salesItems[salesItems.length - 1];
-                const index = salesItems.length - 1;
-                const mfg = item.manufacturer ? item.manufacturer.substring(0, 3).toUpperCase() : 'N/A';
-                const hsn = (item as any).hsn || '';
-                const schedule = formatSchedule(item.schedule);
-                const pack = (item as any).pack || 'N/A';
-                const gstTotal = (parseFloat(item.cgstPercent || '0') + parseFloat(item.sgstPercent || '0') + parseFloat(item.igstPercent || '0')).toFixed(0) + '%';
-                let formattedExp = 'N/A';
-                if (item.expiryDate) {
-                  const dateParts = item.expiryDate.split('-');
-                  if (dateParts.length >= 2) {
-                    formattedExp = `${dateParts[1]}/${dateParts[0]}`;
-                  } else {
-                    formattedExp = item.expiryDate;
-                  }
-                }
-                return `
-                  <tr>
-                    <td>${index + 1}</td>
-                    <td>${item.productName}</td>
-                    <td>${mfg}</td>
-                    <td>${hsn}</td>
-                    <td>${schedule}</td>
-                    <td>${item.batch}</td>
-                    <td>${pack}</td>
-                    <td>${formattedExp}</td>
-                    <td>${item.quantity}</td>
-                    <td>${item.mrp || 'N/A'}</td>
-                    <td>${gstTotal}</td>
-                    <td><strong>${item.amount}</strong></td>
-                  </tr>
-                `;
-              })() : ''}
-              <tr>
-                <td colspan="12" class="summary-td">
-                  <div class="summary">
-                    <div class="summary-left">
-                      <div class="summary-item">
-                        <div class="summary-label">${labels.TOTAL_VALUE_LABEL}</div>
-                        <div class="summary-value">${totalValue}</div>
-                      </div>
-                      <div class="summary-item">
-                        <div class="summary-label">${labels.TOTAL_DISCOUNT_LABEL}</div>
-                        <div class="summary-value">${totalDiscount}</div>
-                      </div>
-                      <div class="summary-item">
-                        <div class="summary-label">${labels.TAX_AMOUNT_LABEL}</div>
-                        <div class="summary-value">${taxAmount}</div>
-                      </div>
-                    </div>
-                    <div class="summary-right">
-                      <div class="summary-right-label">${labels.TOTAL_PAYABLE_LABEL}</div>
-                      <div class="summary-right-value">${totalPayableAmount}</div>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              }
+
+              // Summary goes on the last items sheet if it fits, otherwise on a fresh final sheet.
+              itemsBox.insertAdjacentHTML('beforeend', SUMMARY);
+              if (itemsBox.scrollHeight > itemsBox.clientHeight) {
+                itemsBox.removeChild(itemsBox.lastElementChild);
+                var fs = document.createElement('div');
+                fs.className = 'sheet';
+                fs.innerHTML = HEADER + '<div class="items">' + SUMMARY + '</div>' + FOOTER;
+                root.appendChild(fs);
+              }
+            }
+
+            function runPaginateThenPrint() {
+              paginate();
+              window.print();
+            }
+
+            window.onafterprint = function () { window.close(); };
+            // Measurement needs the real font metrics, so paginate only after fonts settle.
+            if (document.fonts && document.fonts.ready) {
+              document.fonts.ready.then(runPaginateThenPrint);
+            } else {
+              runPaginateThenPrint();
+            }
+          })();
+        </script>
       </body>
     </html>
   `;
 };
-

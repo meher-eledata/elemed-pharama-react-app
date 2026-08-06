@@ -130,6 +130,7 @@ export interface ReceiptLine {
   po_number: string;
   product_id: number;
   product_name: string;
+  type?: string; // Dosage form / product type (backend adds this to the get-receipt-lines feed)
   receipt_line_id: number;
   received_qty: number;
   sgst: string;
@@ -220,6 +221,66 @@ export interface GetSupplierCreditBalanceResponse {
   supplier_id: number;
   available_credit: number;
   last_txn_id: number | null;
+}
+
+// ---- Invoice extraction (POST /api/receive/extract-invoice) ----
+// Confidence-scored DRAFT used to PRE-FILL the receive form. Persists nothing.
+// Every field carries a 0-1 `confidence`; the UI auto-fills at/above meta.threshold
+// and leaves below-threshold/unmatched fields BLANK (listed in unresolved_fields).
+export interface ExtractInvoiceCandidate {
+  id: number;
+  name: string;
+  score: number;
+  // Product candidates carry dosage-form + brand so same-named products are
+  // distinguishable in the review banner (supplier candidates omit these).
+  type?: string | null;
+  brand_name?: string | null;
+}
+
+export interface ExtractInvoiceField<T = string | null> {
+  value: T;
+  confidence: number;
+}
+
+export interface ExtractInvoiceSupplier {
+  id: number | null;
+  matched_name: string | null;
+  confidence: number;
+  candidates: ExtractInvoiceCandidate[];
+}
+
+export interface ExtractInvoiceProduct {
+  id: number | null;
+  name: string | null;
+  confidence: number;
+  candidates: ExtractInvoiceCandidate[];
+}
+
+export interface ExtractInvoiceLine {
+  raw_text: string;
+  product: ExtractInvoiceProduct;
+  batch_number: ExtractInvoiceField;
+  expiry_date: ExtractInvoiceField; // YYYY-MM-DD
+  received_qty: ExtractInvoiceField<string | number | null>;
+  free_qty: ExtractInvoiceField<string | number | null>;
+  purchase_price: ExtractInvoiceField<string | number | null>;
+  cgst: ExtractInvoiceField<string | number | null>;
+  sgst: ExtractInvoiceField<string | number | null>;
+  igst: ExtractInvoiceField<string | number | null>;
+  discount: ExtractInvoiceField<string | number | null>;
+  mrp: ExtractInvoiceField<string | number | null>;
+}
+
+export interface ExtractInvoiceDraft {
+  header: {
+    supplier: ExtractInvoiceSupplier;
+    invoice_number: ExtractInvoiceField;
+    invoice_date: ExtractInvoiceField; // YYYY-MM-DD
+    po_number: ExtractInvoiceField;
+  };
+  lines: ExtractInvoiceLine[];
+  unresolved_fields: string[]; // dotted/indexed paths below threshold or unmatched
+  meta: { driver: "textract" | "stub"; threshold: number };
 }
 
 import { createApi } from "@reduxjs/toolkit/query/react";
@@ -482,6 +543,25 @@ export const receiveApi = createApi({
       invalidatesTags: ['Receive'],
     }),
 
+    // Extract-invoice PREVIEW: uploads the supplier invoice and returns a
+    // confidence-scored DRAFT used to pre-fill the receive form. Persists nothing
+    // (no receipt is created), so it invalidates no tags. Multipart upload mirrors
+    // uploadReceiptFile; the bearer token is injected app-wide by
+    // baseQueryWithReauth's prepareHeaders (single-tenant — no location header).
+    extractInvoice: builder.mutation<ExtractInvoiceDraft, { file: File }>({
+      query: ({ file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return {
+          url: 'receive/extract-invoice',
+          method: 'POST',
+          body: formData,
+          // RTK Query sets the multipart Content-Type (with boundary) for FormData.
+        };
+      },
+    }),
+
     // Get receipt file URL (returns the URL to fetch the file)
     getReceiptFile: builder.query<Blob, number>({
       query: (receiptId) => ({
@@ -608,6 +688,7 @@ export const {
   useSubmitReceiptMutation,
   useGetProductsQuery,
   useUploadReceiptFileMutation,
+  useExtractInvoiceMutation,
   useGetReceiptFileQuery,
   useUpsertPurchaseOrderPaymentsMutation,
   useGetPurchaseOrderPaymentsMutation,

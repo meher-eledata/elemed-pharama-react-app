@@ -471,6 +471,54 @@ describe('Receive API Endpoints', () => {
     });
   });
 
+  describe('POST receive/extract-invoice (extractInvoice mutation)', () => {
+    const draft = {
+      header: {
+        supplier: { id: null, matched_name: null, confidence: 0, candidates: [] },
+        invoice_number: { value: 'INV-2026-0007', confidence: 0.98 },
+        invoice_date: { value: '2026-02-15', confidence: 0.95 },
+        po_number: { value: null, confidence: 0 },
+      },
+      lines: [],
+      unresolved_fields: ['header.supplier'],
+      meta: { driver: 'stub', threshold: 0.85 },
+    };
+
+    it('builds a FormData body with field "file" and POSTs to receive/extract-invoice', async () => {
+      mockOk(draft);
+      const store = makeStore();
+      const file = new File(['%PDF-1.4'], 'invoice.pdf', { type: 'application/pdf' });
+      const result = await store.dispatch(
+        receiveApi.endpoints.extractInvoice.initiate({ file })
+      );
+
+      // Typed draft flows straight back through.
+      expect((result.data as { meta: { driver: string } }).meta.driver).toBe('stub');
+      expect(result.data).toEqual(draft);
+
+      const callArg = mockBaseQuery.mock.calls[0][0] as {
+        url: string;
+        method: string;
+        body: FormData;
+      };
+      expect(callArg.url).toBe('receive/extract-invoice');
+      expect(callArg.method).toBe('POST');
+      expect(callArg.body).toBeInstanceOf(FormData);
+      expect((callArg.body as FormData).get('file')).toBe(file);
+    });
+
+    it('handles a 422 extraction-failed error', async () => {
+      mockErr(422);
+      const store = makeStore();
+      const file = new File(['%PDF-1.4'], 'invoice.pdf', { type: 'application/pdf' });
+      const result = await store.dispatch(
+        receiveApi.endpoints.extractInvoice.initiate({ file })
+      );
+      expect(result.error).toBeDefined();
+      expect((result.error as { status: number }).status).toBe(422);
+    });
+  });
+
   describe('GET receive/:receiptId/file/ (getReceiptFile query)', () => {
     it('interpolates receiptId and provides a responseHandler', async () => {
       const blob = new Blob(['x']);
@@ -629,6 +677,7 @@ describe('Receive API Endpoints', () => {
       expect(receiveApi.endpoints.submitReceipt).toBeDefined();
       expect(receiveApi.endpoints.getProducts).toBeDefined();
       expect(receiveApi.endpoints.uploadReceiptFile).toBeDefined();
+      expect(receiveApi.endpoints.extractInvoice).toBeDefined();
       expect(receiveApi.endpoints.getReceiptFile).toBeDefined();
       expect(receiveApi.endpoints.upsertPurchaseOrderPayments).toBeDefined();
       expect(receiveApi.endpoints.getPurchaseOrderPayments).toBeDefined();
@@ -651,6 +700,7 @@ describe('Receive API Endpoints', () => {
       expect(receiveApi.useSubmitReceiptMutation).toBeDefined();
       expect(receiveApi.useGetProductsQuery).toBeDefined();
       expect(receiveApi.useUploadReceiptFileMutation).toBeDefined();
+      expect(receiveApi.useExtractInvoiceMutation).toBeDefined();
       expect(receiveApi.useGetReceiptFileQuery).toBeDefined();
       expect(receiveApi.useUpsertPurchaseOrderPaymentsMutation).toBeDefined();
       expect(receiveApi.useGetPurchaseOrderPaymentsMutation).toBeDefined();

@@ -4,6 +4,7 @@ import { StandardButton } from '../../Common';
 import html2pdf from 'html2pdf.js';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { formatSchedule } from '../../../config/constants/product.constants';
+import { formatInvoiceDateForDisplay } from '../../../pages/Sales/SalesReceipt.utils';
 
 interface SalesReceiptItem {
   id: string;
@@ -57,7 +58,6 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   customerMobile,
   customerCity,
   doctorName,
-  doctorMobile,
   doctorEmail,
   paymentMode,
   insuranceCompany,
@@ -308,9 +308,6 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
               {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
             </Typography>
-            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-              {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
-            </Typography>
           </Box>
 
           {/* Payment Details */}
@@ -372,7 +369,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               {SALES_RECEIPT_LABELS.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}
             </Typography>
             <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-              {SALES_RECEIPT_LABELS.INVOICE_DATE_PRINT.replace('{date}', (invoiceDate || '').trim())}
+              {SALES_RECEIPT_LABELS.INVOICE_DATE_PRINT.replace('{date}', formatInvoiceDateForDisplay(invoiceDate))}
             </Typography>
           </Box>
         </Box>
@@ -528,6 +525,21 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               {totalPayableAmount}
             </Box>
           </Box>
+        </Box>
+
+        {/* Receipt footer. In this preview it renders once at the bottom of the
+            single continuous flow (and is captured by the html2pdf export).
+            True per-page repetition of the header/footer only manifests in the
+            actual window.print() output produced by generatePrintHTML. */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginTop: isA5 ? '10px' : '14px',
+          fontSize: isA5 ? '8px' : '9px',
+          color: '#6B7280',
+        }}>
+          <Box>Signature of Pharmacist</Box>
+          <Box sx={{ textAlign: 'right' }}>Powered by Elemed</Box>
         </Box>
       </Box>
 

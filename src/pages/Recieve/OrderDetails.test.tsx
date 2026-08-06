@@ -14,6 +14,7 @@ import {
   useSubmitReceiptMutation,
   useEditReceiptMutation,
   useUploadReceiptFileMutation,
+  useExtractInvoiceMutation,
   useGetReceiptsQuery,
 } from '../../redux/slices/receiveApi';
 
@@ -179,6 +180,7 @@ describe('OrderDetails', () => {
   const mockUseSubmitReceiptMutation = useSubmitReceiptMutation as jest.MockedFunction<typeof useSubmitReceiptMutation>;
   const mockUseEditReceiptMutation = useEditReceiptMutation as jest.MockedFunction<typeof useEditReceiptMutation>;
   const mockUseUploadReceiptFileMutation = useUploadReceiptFileMutation as jest.MockedFunction<typeof useUploadReceiptFileMutation>;
+  const mockUseExtractInvoiceMutation = useExtractInvoiceMutation as jest.MockedFunction<typeof useExtractInvoiceMutation>;
   const mockUseGetReceiptsQuery = useGetReceiptsQuery as jest.MockedFunction<typeof useGetReceiptsQuery>;
 
   beforeEach(() => {
@@ -224,6 +226,23 @@ describe('OrderDetails', () => {
     mockUseSubmitReceiptMutation.mockReturnValue(createMockMutation());
     mockUseEditReceiptMutation.mockReturnValue(createMockMutation());
     mockUseUploadReceiptFileMutation.mockReturnValue(createMockMutation());
+    // Invoice extraction only fires when a file is attached; tests attach none, so
+    // a resolved empty draft keeps the existing suite unaffected.
+    mockUseExtractInvoiceMutation.mockReturnValue(
+      createMockMutation(
+        jest.fn().mockResolvedValue({
+          header: {
+            supplier: { id: null, matched_name: null, confidence: 0, candidates: [] },
+            invoice_number: { value: null, confidence: 0 },
+            invoice_date: { value: null, confidence: 0 },
+            po_number: { value: null, confidence: 0 },
+          },
+          lines: [],
+          unresolved_fields: [],
+          meta: { driver: 'stub', threshold: 0.85 },
+        })
+      )
+    );
     mockUseGetReceiptsQuery.mockReturnValue({
       data: [],
       isLoading: false,

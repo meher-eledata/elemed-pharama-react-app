@@ -22,6 +22,7 @@ import { SALES_PAGE_LABELS } from '../../../config/label/SalesPage.labels';
 import { SALES_PAGE_CONSTANTS } from '../../../config/constants/SalesPage.constants';
 import { useGetDoctorNamesQuery } from '../../../redux/slices/salesApi';
 import { CircularProgress } from '@mui/material';
+import dayjs from 'dayjs';
 
 interface ProductSelectionFormProps {
   // Product Search
@@ -51,7 +52,7 @@ interface ProductSelectionFormProps {
 
   // Batch
   showBatchDropdown: boolean;
-  availableBatches: Array<{ batch_number: string; current_qty: number }>;
+  availableBatches: Array<{ batch_number: string; current_qty: number; expiry_date?: string }>;
   batch: string;
   onBatchChange: (value: string) => void;
   isBatchesLoading: boolean;
@@ -585,14 +586,25 @@ const ProductSelectionForm: React.FC<ProductSelectionFormProps> = ({
                     Loading batches...
                   </MenuItem>
                 ) : (
-                  availableBatches.map((batchItem) => (
-                    <MenuItem key={batchItem.batch_number} value={batchItem.batch_number} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>{batchItem.batch_number}</Typography>
-                      <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400 }}>
-                        {batchItem.current_qty ?? 0}
-                      </Typography>
-                    </MenuItem>
-                  ))
+                  availableBatches.map((batchItem) => {
+                    const expiry = batchItem.expiry_date ? dayjs(batchItem.expiry_date) : null;
+                    const expiryLabel = expiry && expiry.isValid() ? expiry.format('MMM YYYY') : '';
+                    return (
+                      <MenuItem key={batchItem.batch_number} value={batchItem.batch_number} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '8px' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                          <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>{batchItem.batch_number}</Typography>
+                          {expiryLabel && (
+                            <Typography sx={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                              {`Exp: ${expiryLabel}`}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Typography sx={{ fontSize: '14px', color: '#9CA3AF', whiteSpace: 'nowrap', ml: 2, fontWeight: 400 }}>
+                          {`Qty: ${batchItem.current_qty ?? 0}`}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })
                 )}
               </Select>
             </FormControl>

@@ -38,6 +38,7 @@ export const SALES_RECEIPT_LABELS = {
   TABLE_HEADER_PRODUCT: "Product",
   TABLE_HEADER_QUANTITY: "Units",
   TABLE_HEADER_TYPE: "Unit",
+  TABLE_HEADER_DOSAGE_TYPE: "Type",
   TABLE_HEADER_BATCH: "Batch",
   TABLE_HEADER_SCHEDULE: "Schedule",
   TABLE_HEADER_UNIT_PRICE: "Unit price",
@@ -64,6 +65,7 @@ export const SALES_RECEIPT_LABELS = {
 
   // Action Buttons
   SAVE_BUTTON: "Save",
+  SAVE_DRAFT_BUTTON: "Save draft",
   CANCEL_BUTTON: "Cancel",
   PRINT_BUTTON: "Save and Print",
   PRINT_ONLY_BUTTON: "Print",

@@ -5,6 +5,7 @@ import { PharmaTableRow, ProductOption } from "../types";
 export const useOrderDetailsTable = (
   productOptionsWithIds: ProductOption[],
   getProductIdFromName: (name: string) => number | null,
+  getExactProductIdFromName: (name: string) => number | null,
   showError: (msg: string) => void
 ) => {
   // Table data state
@@ -49,11 +50,13 @@ export const useOrderDetailsTable = (
 
   const addProductToTable = async (productName: string) => {
     const resolvedProductId = getProductIdFromName(productName);
+    const matchedOption = productOptionsWithIds.find((o) => o.name === productName);
 
     const newProduct: PharmaTableRow = {
       id: Date.now().toString(),
       productId: productName,
       product_id: resolvedProductId || undefined,
+      type: matchedOption?.type,
       batchNumber: batchNumber || "",
       qtyReceived: 0,
       qtyFree: 0,
@@ -108,10 +111,20 @@ export const useOrderDetailsTable = (
       return;
     }
 
+    // Guarantee the RIGHT catalog id on submit: prefer the id the edit-cell
+    // Autocomplete set on selection; otherwise re-resolve by EXACT name only, so a
+    // free-typed new name that overlaps an existing product doesn't grab its id.
+    // The add-new sentinel (id -1) is never a real product and must not be sent.
+    const selectedId =
+      editingData.product_id && editingData.product_id > 0 ? editingData.product_id : undefined;
+    const resolvedProductId =
+      selectedId ??
+      (editingData.productId ? getExactProductIdFromName(editingData.productId) ?? undefined : undefined);
+
     setPharmaTableData((prev) =>
       prev.map((row) =>
         row.id === editingRowId
-          ? { ...row, ...editingData, isEditing: false }
+          ? { ...row, ...editingData, product_id: resolvedProductId, isEditing: false }
           : row
       )
     );

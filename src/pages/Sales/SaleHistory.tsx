@@ -11,6 +11,7 @@ import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../redux/store';
@@ -25,6 +26,7 @@ import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/Sale
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
+import { paymentMethods } from '../../config/constants/OrderDetail.constants';
 import bgWhiteIcon from '../../assets/BG_White.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { generatePrintHTML } from './SalesReceipt.utils';
@@ -512,7 +514,7 @@ export default function SaleHistory() {
         doctorName: mergedItem.doctorName || 'N/A',
         doctorMobile: mergedItem.doctorMobile === 'N/A' ? '' : (mergedItem.doctorMobile || ''),
         doctorEmail: mergedItem.doctorEmail === 'N/A' ? '' : (mergedItem.doctorEmail || ''),
-        paymentMode: mergedItem.paymentMode || 'Cash',
+        paymentMode: mergedItem.paymentMode || paymentMethods[0],
         insuranceCompany: (mergedItem as any).insuranceCompany || '',
         invoiceNumber: mergedItem.invoiceNumber || '',
         invoiceDate: mergedItem.invoiceDate || '',
@@ -651,7 +653,8 @@ export default function SaleHistory() {
             paymentMode: derivePaymentMode(payments, inv.payment_mode || initialDetails.paymentMode),
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
             invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
-            invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('DD/MM/YYYY') : initialDetails.invoiceDate,
+            // Hand off the invoice date in the canonical ISO form the New Sale flow stores.
+            invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('YYYY-MM-DD') : initialDetails.invoiceDate,
             totalValue: calculatedTotalValue.toFixed(2),
             totalDiscount: (calculatedTotalDiscount + Number(inv.discount || 0)).toFixed(2),
             taxAmount: calculatedTotalTax.toFixed(2),
@@ -1251,14 +1254,8 @@ export default function SaleHistory() {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-
-      // Delay print slightly to allow images to load
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.onafterprint = () => {
-          printWindow.close();
-        };
-      }, 500);
+      // The generated document self-paginates once fonts are ready, then calls
+      // window.print() and closes itself on afterprint — do NOT print from here.
     }
   };
 
@@ -1350,7 +1347,7 @@ export default function SaleHistory() {
           doctorName: savedItem.doctorName || invoice.doctorName,
           doctorMobile: savedItem.doctorMobile || '',
           doctorEmail: savedItem.doctorEmail || '',
-          paymentMode: savedItem.paymentMode || 'Cash',
+          paymentMode: savedItem.paymentMode || paymentMethods[0],
           insuranceCompany: savedItem.insuranceCompany || '',
           invoiceNumber: savedItem.invoiceNumber || invoice.invoiceNumber,
           invoiceDate: savedItem.invoiceDate || invoice.invoiceDate,
@@ -1380,7 +1377,7 @@ export default function SaleHistory() {
           doctorName: invoice.doctorName,
           doctorMobile: '',
           doctorEmail: '',
-          paymentMode: 'Cash',
+          paymentMode: paymentMethods[0],
           insuranceCompany: '',
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
@@ -1449,7 +1446,7 @@ export default function SaleHistory() {
           username: invoice.username,
           totalAmount: invoice.totalAmount,
           items: invoiceItems, // Pass the invoice items
-          paymentMode: savedItem?.paymentMode || 'Cash'
+          paymentMode: savedItem?.paymentMode || paymentMethods[0]
         }
       });
     }
@@ -1492,27 +1489,29 @@ export default function SaleHistory() {
         <Typography variant="h4" fontWeight={700}>
           {SALES_HISTORY_LABELS.PAGE_TITLE}
         </Typography>
-        <StandardButton
-          onClick={handleStartNewSale}
-          variant="primary"
-          size="large"
-          startIcon={<AddIcon sx={{ fontSize: '1.125rem' }} />}
-          sx={{
-            minWidth: '10rem', // 160px = 10rem
-            borderRadius: '1.875rem', // 30px = 1.875rem
-            backgroundColor: '#5C17E5',
-            color: '#FFFFFF',
-            fontWeight: 700,
-            fontSize: '0.875rem', // 14px = 0.875rem
-            textTransform: 'none',
-            boxShadow: 'none',
-            '& .MuiButton-startIcon': {
-              marginRight: '0.5rem', // 8px = 0.5rem
-            },
-          }}
-        >
-          Start new sale
-        </StandardButton>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <StandardButton
+            onClick={handleStartNewSale}
+            variant="primary"
+            size="large"
+            startIcon={<AddIcon sx={{ fontSize: '1.125rem' }} />}
+            sx={{
+              minWidth: '10rem', // 160px = 10rem
+              borderRadius: '1.875rem', // 30px = 1.875rem
+              backgroundColor: '#5C17E5',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '0.875rem', // 14px = 0.875rem
+              textTransform: 'none',
+              boxShadow: 'none',
+              '& .MuiButton-startIcon': {
+                marginRight: '0.5rem', // 8px = 0.5rem
+              },
+            }}
+          >
+            Start new sale
+          </StandardButton>
+        </Box>
       </Box>
 
       {/* Search and Filter Section */}
@@ -1578,29 +1577,49 @@ export default function SaleHistory() {
             },
           }}
         />
-        <StandardButton
-          startIcon={
-            showFilters
-              ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
-              : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
-          }
-          onClick={handleShowFiltersToggle}
-          variant="secondary"
-          size="medium"
-          sx={{
-            minWidth: 160,
-            borderRadius: '12px',
-            bgcolor: '#EEF2F7',
-            color: '#1A212B',
-            border: '1px solid #D7DFEA',
-            boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
-            fontSize: '14px',
-            textTransform: 'none',
-            fontWeight: 600,
-          }}
-        >
-          {showFilters ? SALES_HISTORY_LABELS.HIDE_FILTERS : SALES_HISTORY_LABELS.SHOW_FILTERS}
-        </StandardButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Tooltip title="Sale Drafts">
+            <IconButton
+              aria-label="Sale Drafts"
+              onClick={() => navigate('/sales/drafts')}
+              sx={{
+                bgcolor: '#EEF2F7',
+                borderRadius: '12px',
+                color: '#1A212B',
+                border: '1px solid #D7DFEA',
+                boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
+                width: 44,
+                height: 44,
+                '&:hover': { bgcolor: '#E2E8F1' },
+              }}
+            >
+              <DescriptionOutlinedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+          <StandardButton
+            startIcon={
+              showFilters
+                ? <FilterListOffIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+                : <FilterAltIcon sx={{ color: '#1A212B', fontSize: 18 }} />
+            }
+            onClick={handleShowFiltersToggle}
+            variant="secondary"
+            size="medium"
+            sx={{
+              minWidth: 160,
+              borderRadius: '12px',
+              bgcolor: '#EEF2F7',
+              color: '#1A212B',
+              border: '1px solid #D7DFEA',
+              boxShadow: '0 2px 8px rgba(2, 6, 23, 0.08)',
+              fontSize: '14px',
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {showFilters ? SALES_HISTORY_LABELS.HIDE_FILTERS : SALES_HISTORY_LABELS.SHOW_FILTERS}
+          </StandardButton>
+        </Box>
       </Box>
 
       {/* Custom Filters Section */}

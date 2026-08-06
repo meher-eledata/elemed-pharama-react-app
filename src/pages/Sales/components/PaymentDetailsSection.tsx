@@ -42,25 +42,21 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   onOpenSplitPayment,
   hasSplitPayments = false,
 }) => {
-  // Convert invoice date string to Dayjs for the date picker
-  // Try multiple formats: "24 Nov 2025", "11/24/2025", "MM/DD/YYYY"
+  // The invoiceDate STATE is canonical ISO `YYYY-MM-DD`. Build the picker value
+  // from it (native ISO parse); the picker only *displays* DD/MM/YYYY.
   const parseInvoiceDate = (dateString: string): Dayjs | null => {
     if (!dateString) return dayjs();
-    // Try parsing different date formats
-    let parsed = dayjs(dateString, 'DD MMM YYYY');
-    if (!parsed.isValid()) {
-      parsed = dayjs(dateString, 'MM/DD/YYYY');
-    }
-    if (!parsed.isValid()) {
-      parsed = dayjs(dateString);
-    }
-    return parsed.isValid() ? parsed : dayjs();
+    const strict = dayjs(dateString, 'YYYY-MM-DD', true);
+    if (strict.isValid()) return strict;
+    // Tolerate any dayjs-parseable legacy value so the field still populates.
+    const loose = dayjs(dateString);
+    return loose.isValid() ? loose : dayjs();
   };
 
-  // Convert Dayjs to formatted string - use MM/DD/YYYY format
+  // On picker change, store the canonical ISO `YYYY-MM-DD` back into state.
   const formatInvoiceDate = (date: Dayjs | null): string => {
-    if (!date) return '';
-    return date.format('MM/DD/YYYY');
+    if (!date || !date.isValid()) return '';
+    return date.format('YYYY-MM-DD');
   };
 
   const handleDateChange = (newDate: Dayjs | null) => {
@@ -102,13 +98,11 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
       <SectionRow sx={{ gap: '20px', marginBottom: '0px', marginLeft: '-10px' }}>
         <Autocomplete
           options={paymentMethods}
-          value={paymentMode || (paymentMethods.length > 0 ? paymentMethods[0] : '')}
+          // paymentMode is always seeded to the explicit default (paymentMethods[0]),
+          // so the shown value is exactly what will be saved — no cosmetic fallback.
+          value={paymentMode}
           onChange={(_, newValue) => {
-            if (newValue) {
-              onPaymentModeChange(newValue);
-            } else {
-              onPaymentModeChange(paymentMethods.length > 0 ? paymentMethods[0] : '');
-            }
+            onPaymentModeChange(newValue || paymentMethods[0]);
           }}
           disableClearable
           forcePopupIcon
@@ -413,7 +407,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
               value={parseInvoiceDate(invoiceDate)}
               onChange={handleDateChange}
               label={SALES_RECEIPT_LABELS.INVOICE_DATE_LABEL}
-              placeholder="MM/DD/YYYY"
+              placeholder="DD/MM/YYYY"
               width="200px"
               height="48px"
             />

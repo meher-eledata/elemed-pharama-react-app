@@ -34,11 +34,14 @@ import { useOrderDetailsData } from "./hooks/useOrderDetailsData";
 import { useOrderDetailsForm } from "./hooks/useOrderDetailsForm";
 import { useOrderDetailsTable } from "./hooks/useOrderDetailsTable";
 import { useOrderDetailsSubmit } from "./hooks/useOrderDetailsSubmit";
+import { useInvoiceExtraction } from "./hooks/useInvoiceExtraction";
 
 // Components
 import SupplierSection from "./components/SupplierSection";
 import ProductSearchSection from "./components/ProductSearchSection";
+import InvoiceReviewBanner from "./components/InvoiceReviewBanner";
 import { getProductTableColumns } from "./components/ProductTableColumns";
+import { INVOICE_EXTRACTION } from "../../config/constants/OrderReceive.constants";
 
 const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const navigate = useNavigate();
@@ -54,7 +57,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning'>('success');
 
   // Initialize form hook first to get isEditMode and receiptId
   const form = useOrderDetailsForm();
@@ -66,12 +69,42 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
   const table = useOrderDetailsTable(
     data.productOptionsWithIds,
     data.getProductIdFromName,
+    data.getExactProductIdFromName,
     (msg: string) => {
       setSnackbarMessage(msg);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
   );
+
+  // Invoice auto-fill: attaching a file in create mode extracts a confidence-scored
+  // draft and pre-fills the form; below-threshold fields stay blank and surface in
+  // the review banner. Never runs in edit mode; failures fall back to manual entry.
+  const extraction = useInvoiceExtraction({
+    isEditMode: form.isEditMode,
+    setSupplierName: form.setSupplierName,
+    setSupplierSearchTerm: form.setSupplierSearchTerm,
+    setInvoiceNumber: form.setInvoiceNumber,
+    setInvoiceDate: form.setInvoiceDate,
+    setPoNumber: form.setPoNumber,
+    setPharmaTableData: table.setPharmaTableData,
+    updateRow: (rowId, patch) =>
+      table.setPharmaTableData((prev) =>
+        prev.map((row) => (row.id === rowId ? { ...row, ...patch } : row))
+      ),
+    onFallback: () => {
+      setSnackbarMessage(INVOICE_EXTRACTION.FALLBACK_TOAST);
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+    },
+  });
+
+  // Combined handler: keep the existing attach behaviour, then kick off extraction.
+  const handleInvoiceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    form.handleFileChange(event);
+    if (file) extraction.runExtraction(file);
+  };
 
   // Add-to-receipt gate: a product whose schedule is NULL (never attributed) asks
   // once via the popup; 'NONE' or a real code adds straight to the table. Products
@@ -238,6 +271,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           id: line.receipt_line_id?.toString() || index.toString(),
           productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
           product_id: line.product_id ? Number(line.product_id) : undefined,
+          type: line.type,
           batchNumber: line.batch_number || '',
           batch_id: line.batch_id || undefined,
           po_line_id: line.po_line_id ? Number(line.po_line_id) : undefined,
@@ -415,7 +449,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       form.setRowToDeleteId(rowId);
       form.setIsDeleteDialogOpen(true);
     },
-  }), [table.editingRowId, table.editingData]);
+    productOptions: data.productOptionsWithIds,
+    onAddNewProduct: () => form.setIsNewProductModalOpen(true),
+  }), [table.editingRowId, table.editingData, data.productOptionsWithIds]);
 
   // Calculate total amount for footer
   const calculateTotalAmount = () => {
@@ -478,9 +514,29 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         invoiceAttachmentUrl={form.invoiceAttachmentUrl}
         isExistingFile={form.isExistingFile}
         fileInputRef={form.fileInputRef}
-        handleFileChange={form.handleFileChange}
+        handleFileChange={handleInvoiceFileChange}
         handleRemoveFile={form.handleRemoveFile}
       />
+
+      {/* Invoice auto-fill: extraction progress + "needs your review" banner */}
+      {extraction.isExtracting && (
+        <Alert
+          severity="info"
+          icon={<CircularProgress size={18} />}
+          sx={{ mt: 2, borderRadius: "12px" }}
+        >
+          {INVOICE_EXTRACTION.EXTRACTING}
+        </Alert>
+      )}
+      {extraction.review && (
+        <InvoiceReviewBanner
+          review={extraction.review}
+          onSupplierCandidate={extraction.applySupplierCandidate}
+          onProductCandidate={extraction.applyProductCandidate}
+          onAddNewProduct={() => form.setIsNewProductModalOpen(true)}
+          onDismiss={extraction.dismissReview}
+        />
+      )}
 
       {/* Product Table */}
       <Box sx={{ 

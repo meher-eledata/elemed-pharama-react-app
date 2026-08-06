@@ -1,4 +1,5 @@
-import { Customer, AddCustomerRequest } from '../../redux/slices/salesApi';
+import dayjs from 'dayjs';
+import { Customer, AddCustomerRequest, InsufficientStockItem, SubmitSaleError } from '../../redux/slices/salesApi';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage, generateNextInvoiceNumber, saveInvoiceNumber, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
@@ -75,6 +76,10 @@ interface ExecuteSaveParams {
   originalSalesItems?: SalesReceiptItem[]; // For diff tracking in edit mode
   skipNavigation?: boolean; // Flag to skip navigation after save
   onSuccess?: () => void; // Optional callback after successful save
+  onSaleSaved?: () => void | Promise<void>; // Runs once the sale is persisted (before nav) — used to discard a resumed draft
+  // Renders a per-medicine "not enough stock" list (backend 409). When provided, the sale is
+  // aborted cleanly (cart + resumed draft preserved) instead of surfacing a generic toast.
+  onStockShortage?: (lines: string[]) => void;
 }
 
 export const executeSave = async ({
@@ -115,6 +120,8 @@ export const executeSave = async ({
   originalSalesItems,
   skipNavigation = false,
   onSuccess,
+  onSaleSaved,
+  onStockShortage,
   splitPayments = [],
 }: ExecuteSaveParams): Promise<void> => {
   try {
@@ -238,6 +245,15 @@ export const executeSave = async ({
 
     const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
 
+    // The invoiceDate state is canonical ISO YYYY-MM-DD. Validate strictly and,
+    // if it is not a real ISO date, block the save (never silently substitute today)
+    // and surface the error the same way as the other validations above.
+    const invoiceDateForBackend = (invoiceDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiceDateForBackend) || !dayjs(invoiceDateForBackend).isValid()) {
+      showToast('Please select a valid invoice date', 'warning');
+      return;
+    }
+
     // Helper to map UI payment modes to backend keys
     // Aligned with other modules to send UPPERCASE strings (e.g., "CASH", "CREDIT CARD")
     // This ensures backend report logic can correctly categorize the payment type.
@@ -268,19 +284,7 @@ export const executeSave = async ({
       doctor_email: doctorEmail,
       patient_type: patientTypeNumber,
       invoice_number: invoiceNumberForBackend,
-      invoice_date: (() => {
-        const raw = (invoiceDate && invoiceDate.trim()) ? invoiceDate.trim() : '';
-        if (!raw) return new Date().toISOString().slice(0, 10); // YYYY-MM-DD fallback to today
-        // Try parsing the date — it may come in as "24 Apr 2026" or "04/24/2026" or already "YYYY-MM-DD"
-        const d = new Date(raw);
-        if (isNaN(d.getTime())) return new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
-        
-        // Use local date parts to prevent timezone shift (don't use toISOString)
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-      })(),
+      invoice_date: invoiceDateForBackend,
       lines: lines,
       payments: splitPayments && splitPayments.length > 0 ? splitPayments.map(p => ({
         payment_method: getBackendPaymentMethod(p.paymentMethod || p.payment_method || 'CASH'),
@@ -368,17 +372,7 @@ export const executeSave = async ({
         doctor_email: doctorEmail,
         patient_type: patientTypeNumber,
         created_by: user?.username || 'meher',
-        invoice_date: (() => {
-          const raw = (invoiceDate && invoiceDate.trim()) ? invoiceDate.trim() : '';
-          if (!raw) return new Date().toISOString().slice(0, 10);
-          const d = new Date(raw);
-          if (isNaN(d.getTime())) return new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
-          
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, '0');
-          const dd = String(d.getDate()).padStart(2, '0');
-          return `${yyyy}-${mm}-${dd}`;
-        })(),
+        invoice_date: invoiceDateForBackend,
         Deleted: deletedLines,
         Added: addedLines,
         Edited: editedLines,
@@ -599,6 +593,34 @@ export const executeSave = async ({
         console.error('❌ Full error object:', JSON.stringify(submitError, null, 2));
         logError(submitError, 'SalesReceipt.submitSale');
 
+        // Structured out-of-stock response (HTTP 409): name each short medicine so the user
+        // can fix quantities. Abort cleanly — do NOT throw (that would hit the generic toast),
+        // and do NOT reach the success path, so the cart and any resumed draft are preserved.
+        const short = (submitError?.data as SubmitSaleError | undefined)?.insufficient_stock;
+        if (Array.isArray(short) && short.length) {
+          const resolveName = (it: InsufficientStockItem): string => {
+            if (it.product_name && it.product_name.trim()) return it.product_name;
+            // Fall back to the local cart line: match product_id (+ batch when it disambiguates).
+            const byIdAndBatch = salesItems.find(
+              li => li.product_id != null && Number(li.product_id) === Number(it.product_id)
+                && (li.batch || '').toString().trim() === it.batch_number
+            );
+            const match = byIdAndBatch
+              || salesItems.find(li => li.product_id != null && Number(li.product_id) === Number(it.product_id));
+            if (match?.productName && match.productName.trim()) return match.productName;
+            return `Product ${it.product_id}`;
+          };
+          const lines = short.map(
+            it => `• ${resolveName(it)} (batch ${it.batch_number}): need ${it.requested}, have ${it.available}`
+          );
+          if (onStockShortage) {
+            onStockShortage(lines);
+            return;
+          }
+          // Fallback when no dialog handler is wired: surface the list via the generic path.
+          throw new Error(`Not enough stock for these items:\n${lines.join('\n')}`);
+        }
+
         let errorMessage = 'Failed to submit sale. Please try again.';
 
         if (submitError?.data) {
@@ -618,6 +640,15 @@ export const executeSave = async ({
         // Format stock error messages to be more user-friendly
         const formattedErrorMessage = formatStockErrorMessage(errorMessage);
         throw new Error(formattedErrorMessage);
+      }
+    }
+
+    // Sale is now persisted — discard any resumed draft (non-fatal on failure).
+    if (onSaleSaved) {
+      try {
+        await onSaleSaved();
+      } catch (cleanupError) {
+        logError(cleanupError, 'SalesReceipt.executeSave.onSaleSaved');
       }
     }
 
