@@ -28,11 +28,6 @@ export const orgSlice = createSlice({
       state.activeModules = action.payload.activeModules;
       state.loaded = true;
     },
-    clearOrgContext: (state) => {
-      state.organization = null;
-      state.activeModules = [];
-      state.loaded = false;
-    },
   },
   // Reset org context whenever the user logs out, regardless of where logout is
   // dispatched (TopBar menu, baseQuery 401 handler, etc.).
@@ -45,7 +40,7 @@ export const orgSlice = createSlice({
   },
 });
 
-export const { setOrgContext, clearOrgContext } = orgSlice.actions;
+export const { setOrgContext } = orgSlice.actions;
 
 export const selectActiveModules = (state: { org: OrgState }) => state.org.activeModules;
 export const selectOrganization = (state: { org: OrgState }) => state.org.organization;

@@ -28,6 +28,7 @@ export const SETTINGS_LABELS = {
       DESC: 'Name, legal details and logo shown across the app and on printed invoices.',
       LOADING: 'Loading profile...',
       LOAD_ERROR: 'Could not load the pharmacy profile.',
+      NO_ORG_NOTE: 'No organization is linked to your account yet.',
       READ_ONLY_NOTE: 'Only an owner or admin can edit the pharmacy profile.',
       SAVE_BUTTON: 'Save Changes',
       SAVE_SUCCESS: 'Pharmacy profile updated.',

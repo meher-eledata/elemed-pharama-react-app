@@ -14,7 +14,13 @@ export const OrgBootstrap = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
-  const { data } = useGetMeQuery(undefined, { skip: !isAuthenticated });
+  // refetchOnMountOrArgChange forces a fresh /me whenever the subscription is
+  // re-established (e.g. logout → login), so a new user is never served the
+  // previous user's cached org context.
+  const { data } = useGetMeQuery(undefined, {
+    skip: !isAuthenticated,
+    refetchOnMountOrArgChange: true,
+  });
 
   useEffect(() => {
     if (data) {

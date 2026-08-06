@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
+import { selectActiveModules, selectOrgLoaded } from '../redux/slices/orgSlice';
 import type { ModuleKey } from '../config/modules.config';
 
 interface ModuleGuardProps {
@@ -16,7 +17,8 @@ interface ModuleGuardProps {
  */
 export const ModuleGuard = ({ module }: ModuleGuardProps) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { activeModules, loaded } = useSelector((state: RootState) => state.org);
+  const activeModules = useSelector(selectActiveModules);
+  const loaded = useSelector(selectOrgLoaded);
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;

@@ -84,7 +84,7 @@ import {
 
 import { getPrintStyles, fieldStyles } from './SalesReceipt.printStyles';
 import { paymentMethods } from '../../config/constants/OrderDetail.constants';
-import bgWhiteIcon from '../../assets/BG_White.svg';
+import elemedLogo from '../../assets/ElemedLogo.svg';
 
 // Explicit default payment mode (Cash) so state === displayed === saved from the start,
 // instead of relying on an empty '' that the UI cosmetically renders as the first option.
@@ -118,7 +118,7 @@ const SalesReceipt: React.FC = () => {
         phone: organization.phone,
       }
     : undefined;
-  const receiptBrandIcon = organization?.logo_url || bgWhiteIcon;
+  const receiptBrandIcon = organization?.logo_url || elemedLogo;
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();

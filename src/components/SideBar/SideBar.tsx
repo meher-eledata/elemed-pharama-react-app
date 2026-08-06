@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from 'react-redux';
 import { List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import ArrowIcon from '../../assets/Arrow.svg';
-import BgWhiteIcon from '../../assets/BG_White.svg';
+import ElemedLogo from '../../assets/ElemedLogo.svg';
 import CheckBoxIcon from '../../assets/CheckBox.svg';
 import GearIcon from '../../assets/Gear.svg';
 import GroupIcon from '../../assets/Group.svg';
@@ -23,9 +23,8 @@ import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
-import { RootState } from '../../redux/store';
 import { MODULES, ALL_MODULE_KEYS, ModuleKey } from '../../config/modules.config';
-import { selectOrganization } from '../../redux/slices/orgSlice';
+import { selectOrganization, selectActiveModules, selectOrgLoaded } from '../../redux/slices/orgSlice';
 interface SidebarItem {
   id: string;
   icon: string | React.ReactNode;
@@ -96,8 +95,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const location = useLocation();
   const user = useSelector((state: any) => state.auth.user);
   const organization = useSelector(selectOrganization);
-  const activeModules = useSelector((state: RootState) => state.org.activeModules);
-  const orgLoaded = useSelector((state: RootState) => state.org.loaded);
+  const activeModules = useSelector(selectActiveModules);
+  const orgLoaded = useSelector(selectOrgLoaded);
 
   // Non-admin sidebar = fixed Home + each active module's items in registry order.
   // Before /me resolves, optimistically show pharmacy items to avoid a flash.
@@ -204,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
           }}
         >
           <img
-            src={BgWhiteIcon}
+            src={organization?.logo_url || ElemedLogo}
             alt="Logo"
             style={{ width: '2.5rem', height: '2.5rem', cursor: 'pointer' }}
             onClick={(e) => {

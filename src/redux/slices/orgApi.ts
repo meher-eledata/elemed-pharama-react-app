@@ -114,7 +114,7 @@ export const orgApi = createApi({
       invalidatesTags: ['Org', 'Me'],
     }),
     // PUT /api/org/logo — owner/admin only. `image` is a base64 data URL.
-    updateOrgLogo: builder.mutation<GetOrgResponse, { image: string }>({
+    updateOrgLogo: builder.mutation<{ logo_url: string }, { image: string }>({
       query: (body) => ({
         url: 'org/logo',
         method: 'PUT',
@@ -123,7 +123,7 @@ export const orgApi = createApi({
       invalidatesTags: ['Org', 'Me'],
     }),
     // DELETE /api/org/logo — owner/admin only. Clears the org logo.
-    deleteOrgLogo: builder.mutation<GetOrgResponse, void>({
+    deleteOrgLogo: builder.mutation<{ logo_url: null }, void>({
       query: () => ({
         url: 'org/logo',
         method: 'DELETE',

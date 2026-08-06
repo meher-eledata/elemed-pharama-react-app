@@ -1,6 +1,7 @@
 
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer, { authApi } from "./slices/authSlice";
+import type { Middleware } from "@reduxjs/toolkit";
+import authReducer, { authApi, logout } from "./slices/authSlice";
 import { inventoryApi } from "./slices/inventoryApi"; 
 import { dashboardApi } from "./slices/dashboardApi";
 import { receiveApi } from "./slices/receiveApi";
@@ -17,6 +18,19 @@ import { draftsApi } from "./slices/draftsApi";
 import { orgApi } from "./slices/orgApi";
 import cartReducer from "./slices/cartSlice";
 import orgReducer from "./slices/orgSlice";
+
+// On logout (TopBar menu AND baseQuery's 401 handler both dispatch it), purge the
+// org API cache so a different user logging back in within keepUnusedDataFor can
+// never be served the previous user's cached /me (org branding, modules).
+// Done here — not in baseQuery.ts — because importing orgApi there would create a
+// module-init cycle (orgApi's createApi reads baseQueryWithReauth at load time).
+const resetOrgApiOnLogout: Middleware = (storeApi) => (next) => (action) => {
+  const result = next(action);
+  if (logout.match(action)) {
+    storeApi.dispatch(orgApi.util.resetApiState());
+  }
+  return result;
+};
 
 export const store = configureStore({
   reducer: {
@@ -56,6 +70,7 @@ export const store = configureStore({
       .concat(adminCreditApi.middleware)
       .concat(draftsApi.middleware)
       .concat(orgApi.middleware)
+      .concat(resetOrgApiOnLogout)
 });
 
 export type RootState = ReturnType<typeof store.getState>;

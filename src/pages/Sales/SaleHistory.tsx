@@ -27,7 +27,7 @@ import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
 import { paymentMethods } from '../../config/constants/OrderDetail.constants';
-import bgWhiteIcon from '../../assets/BG_White.svg';
+import elemedLogo from '../../assets/ElemedLogo.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 import { generatePrintHTML } from './SalesReceipt.utils';
@@ -179,7 +179,7 @@ export default function SaleHistory() {
         phone: organization.phone,
       }
     : undefined;
-  const receiptBrandIcon = organization?.logo_url || bgWhiteIcon;
+  const receiptBrandIcon = organization?.logo_url || elemedLogo;
 
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();

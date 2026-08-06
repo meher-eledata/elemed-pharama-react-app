@@ -207,7 +207,7 @@ export const generatePrintHTML = (data: {
     <div class="sheet-header">
       <div class="receipt-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1A212B; padding-bottom: ${sz.headerPb}; gap: 0;">
         <div style="flex: 1; display: flex; justify-content: flex-start;">
-          ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
+          ${brandIcon ? `<img src="${escapeHtml(brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon)}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
         </div>
         <div style="flex: 3; text-align: center;">
           ${orgHeader?.name ? `<div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">${escapeHtml(orgHeader.name)}</div>` : ''}

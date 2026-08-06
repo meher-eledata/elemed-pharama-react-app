@@ -107,11 +107,13 @@ const Settings: React.FC = () => {
   } = useGetMeQuery();
   const [toggleModule] = useToggleModuleMutation();
 
+  // Skip until /me resolves — legacy/no-org admins would otherwise fire a
+  // guaranteed-failing GET /api/org during the bootstrap window.
   const {
     data: orgData,
     isLoading: isLoadingOrg,
     isError: isOrgError,
-  } = useGetOrgQuery(undefined, { skip: !!meData && !meData.organization });
+  } = useGetOrgQuery(undefined, { skip: !meData?.organization });
   const [updateOrg, { isLoading: isSavingProfile }] = useUpdateOrgMutation();
   const [updateOrgLogo, { isLoading: isSavingLogo }] = useUpdateOrgLogoMutation();
   const [deleteOrgLogo, { isLoading: isRemovingLogo }] = useDeleteOrgLogoMutation();
@@ -685,20 +687,22 @@ const Settings: React.FC = () => {
         </AccordionSummary>
         <AccordionDetails sx={{ padding: `0 ${SETTINGS_CONSTANTS.ACCORDION.PADDING} ${SETTINGS_CONSTANTS.ACCORDION.PADDING}` }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {isLoadingOrg && (
+            {meData && !meData.organization ? (
+              <Typography sx={{ fontSize: '14px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>
+                {PROFILE.NO_ORG_NOTE}
+              </Typography>
+            ) : (isLoadingModules || isLoadingOrg) ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#6B7280' }}>
                 <CircularProgress size={18} />
                 <Typography sx={{ fontSize: '14px', fontFamily: "'Lexend', sans-serif" }}>
                   {PROFILE.LOADING}
                 </Typography>
               </Box>
-            )}
-            {!isLoadingOrg && (isOrgError || !organization) && (
+            ) : (isOrgError || !organization) ? (
               <Typography sx={{ fontSize: '14px', color: '#EF4444', fontFamily: "'Lexend', sans-serif" }}>
                 {PROFILE.LOAD_ERROR}
               </Typography>
-            )}
-            {!isLoadingOrg && !isOrgError && organization && (
+            ) : (
               <>
                 {!canEditProfile && (
                   <Typography sx={{ fontSize: '13px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>
