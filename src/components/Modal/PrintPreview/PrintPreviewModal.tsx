@@ -4,7 +4,7 @@ import { StandardButton } from '../../Common';
 import html2pdf from 'html2pdf.js';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { formatSchedule } from '../../../config/constants/product.constants';
-import { formatInvoiceDateForDisplay } from '../../../pages/Sales/SalesReceipt.utils';
+import { formatInvoiceDateForDisplay, OrgPrintHeader } from '../../../pages/Sales/SalesReceipt.utils';
 
 interface SalesReceiptItem {
   id: string;
@@ -45,6 +45,8 @@ interface PrintPreviewModalProps {
   patientType?: string;
   onAfterSave?: () => void; // Optional callback after successful save
   brandIcon?: string;
+  // Org branding for the letterhead; null/absent fields are omitted.
+  orgHeader?: OrgPrintHeader;
   pageSize?: 'A4' | 'A5';
   onPageSizeChange?: (size: 'A4' | 'A5') => void;
   orientation?: 'landscape' | 'portrait';
@@ -74,6 +76,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   orientation = 'landscape',
   onOrientationChange,
   brandIcon,
+  orgHeader,
   splitPayments = [],
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
@@ -237,18 +240,24 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             )}
           </Box>
           <Box sx={{ flex: 3, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: isA5 ? '16px' : '20px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
-              ELITE PHARMACY
-            </Typography>
-            <Typography sx={{ fontSize: isA5 ? '8px' : '9px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
-              (SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)
-            </Typography>
-            <Typography sx={{ fontSize: isA5 ? '7px' : '8px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
-              PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
-              DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
-              GSTIN No: 37AAQCS3213C2ZH<br />
-              (M): 0891-2554040, 8096655050
-            </Typography>
+            {orgHeader?.name && (
+              <Typography sx={{ fontSize: isA5 ? '16px' : '20px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
+                {orgHeader.name}
+              </Typography>
+            )}
+            {orgHeader?.legal_name && (
+              <Typography sx={{ fontSize: isA5 ? '8px' : '9px', fontWeight: 500, margin: '2px 0', color: '#374151' }}>
+                ({orgHeader.legal_name})
+              </Typography>
+            )}
+            {(orgHeader?.address || orgHeader?.dl_numbers || orgHeader?.gstin || orgHeader?.phone) && (
+              <Typography sx={{ fontSize: isA5 ? '7px' : '8px', margin: '4px 0', lineHeight: 1.2, color: '#4B5563' }}>
+                {orgHeader.address && <>{orgHeader.address}<br /></>}
+                {orgHeader.dl_numbers && <>{SALES_RECEIPT_LABELS.ORG_DL_PREFIX}{orgHeader.dl_numbers}<br /></>}
+                {orgHeader.gstin && <>{SALES_RECEIPT_LABELS.ORG_GSTIN_PREFIX}{orgHeader.gstin}<br /></>}
+                {orgHeader.phone && <>{SALES_RECEIPT_LABELS.ORG_PHONE_PREFIX}{orgHeader.phone}</>}
+              </Typography>
+            )}
           </Box>
           <Box sx={{ flex: 1, textAlign: 'right' }}></Box>
         </Box>

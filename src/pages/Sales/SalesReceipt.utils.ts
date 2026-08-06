@@ -89,6 +89,26 @@ export const formatInvoiceDateForDisplay = (isoDate: string): string => {
   return d.isValid() ? d.format('DD MMM YYYY') : raw;
 };
 
+// Org branding printed in the receipt letterhead. Null/absent fields are
+// omitted entirely (no empty lines/artifacts).
+export interface OrgPrintHeader {
+  name: string;
+  legal_name: string | null;
+  address: string | null;
+  dl_numbers: string | null;
+  gstin: string | null;
+  phone: string | null;
+}
+
+// Org fields are DB-sourced free text injected into raw print HTML — escape them.
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 export const generatePrintHTML = (data: {
   customerName: string;
   customerMobile: string;
@@ -110,6 +130,7 @@ export const generatePrintHTML = (data: {
   pageSize?: 'A4' | 'A5';
   orientation?: 'landscape' | 'portrait';
   brandIcon?: string;
+  orgHeader?: OrgPrintHeader;
   splitPayments?: any[];
 }): string => {
   const {
@@ -132,6 +153,7 @@ export const generatePrintHTML = (data: {
     pageSize = 'A4',
     orientation = 'landscape',
     brandIcon,
+    orgHeader,
     splitPayments,
   } = data;
 
@@ -188,14 +210,19 @@ export const generatePrintHTML = (data: {
           ${brandIcon ? `<img src="${brandIcon.startsWith('http') || brandIcon.startsWith('data:') ? brandIcon : window.location.origin + brandIcon}" alt="Logo" style="width: ${sz.logoW}; height: auto;" />` : ''}
         </div>
         <div style="flex: 3; text-align: center;">
-          <div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">ELITE PHARMACY</div>
-          <div style="font-size: ${sz.pharmacySub}; font-weight: 500; margin: 2px 0; color: #374151;">(SKE SUSRUTA INSTITUTE OF MEDICAL SCIENCES PVT LTD)</div>
-          <div style="font-size: ${sz.pharmacyAddr}; margin: ${sz.addrMargin}; line-height: 1.2; color: #4B5563;">
-            PLOT NO:14A, HEALTH CITY, CHINAGADHILI, 530040<br />
-            DL No: FORM 20:AP/03/01/2015-124907, FORM 21:AP/03/01/2015-124908<br />
-            GSTIN No: 37AAQCS3213C2ZH<br />
-            (M): 0891-2554040, 8096655050
-          </div>
+          ${orgHeader?.name ? `<div style="font-size: ${sz.pharmacyName}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; color: #000;">${escapeHtml(orgHeader.name)}</div>` : ''}
+          ${orgHeader?.legal_name ? `<div style="font-size: ${sz.pharmacySub}; font-weight: 500; margin: 2px 0; color: #374151;">(${escapeHtml(orgHeader.legal_name)})</div>` : ''}
+          ${(() => {
+            const addrLines = [
+              orgHeader?.address ? escapeHtml(orgHeader.address) : '',
+              orgHeader?.dl_numbers ? `${labels.ORG_DL_PREFIX}${escapeHtml(orgHeader.dl_numbers)}` : '',
+              orgHeader?.gstin ? `${labels.ORG_GSTIN_PREFIX}${escapeHtml(orgHeader.gstin)}` : '',
+              orgHeader?.phone ? `${labels.ORG_PHONE_PREFIX}${escapeHtml(orgHeader.phone)}` : '',
+            ].filter(Boolean);
+            return addrLines.length
+              ? `<div style="font-size: ${sz.pharmacyAddr}; margin: ${sz.addrMargin}; line-height: 1.2; color: #4B5563;">${addrLines.join('<br />')}</div>`
+              : '';
+          })()}
         </div>
         <div style="flex: 1;"></div>
       </div>

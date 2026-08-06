@@ -71,6 +71,11 @@ export const SALES_RECEIPT_LABELS = {
   PRINT_ONLY_BUTTON: "Print",
 
   // Print Options
+  // Printed org header line prefixes
+  ORG_DL_PREFIX: "DL No: ",
+  ORG_GSTIN_PREFIX: "GSTIN No: ",
+  ORG_PHONE_PREFIX: "(M): ",
+
   ORIENTATION_LABEL: "Orientation:",
   ORIENTATION_LANDSCAPE: "Landscape",
   ORIENTATION_PORTRAIT: "Portrait",

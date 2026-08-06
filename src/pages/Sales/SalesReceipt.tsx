@@ -44,6 +44,7 @@ import {
   SalesFormData
 } from '../../redux/slices/cartSlice';
 import { RootState } from '../../redux/store';
+import { selectOrganization } from '../../redux/slices/orgSlice';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
 import { clearCartFromStorage, clearFormDataFromStorage, generateNextInvoiceNumber, setEditInvoiceId } from '../../utils/cartStorage';
@@ -105,6 +106,19 @@ const SalesReceipt: React.FC = () => {
 
   const cartTotal = useSelector(selectCartTotal);
   const user = useSelector((state: RootState) => state.auth.user);
+  const organization = useSelector(selectOrganization);
+  // Org branding for the printed letterhead; undefined for legacy/no-org users.
+  const orgHeader = organization
+    ? {
+        name: organization.name,
+        legal_name: organization.legal_name,
+        address: organization.address,
+        dl_numbers: organization.dl_numbers,
+        gstin: organization.gstin,
+        phone: organization.phone,
+      }
+    : undefined;
+  const receiptBrandIcon = organization?.logo_url || bgWhiteIcon;
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
@@ -1172,7 +1186,8 @@ const SalesReceipt: React.FC = () => {
         totalPayableAmount,
         patientType,
         labels: SALES_RECEIPT_LABELS,
-        brandIcon: bgWhiteIcon,
+        brandIcon: receiptBrandIcon,
+        orgHeader: orgHeader,
         pageSize: pageSize,
         orientation: orientation,
         splitPayments: splitPayments,
@@ -1981,7 +1996,8 @@ const SalesReceipt: React.FC = () => {
               totalPayableAmount={totalPayableAmount}
               patientType={patientType}
               splitPayments={splitPayments}
-              brandIcon={bgWhiteIcon}
+              brandIcon={receiptBrandIcon}
+              orgHeader={orgHeader}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
               orientation={orientation}

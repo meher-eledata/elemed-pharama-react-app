@@ -29,6 +29,7 @@ import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.con
 import { paymentMethods } from '../../config/constants/OrderDetail.constants';
 import bgWhiteIcon from '../../assets/BG_White.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
+import { selectOrganization } from '../../redux/slices/orgSlice';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
@@ -166,6 +167,19 @@ export default function SaleHistory() {
   const dispatch = useDispatch();
 
   const user = useSelector((state: RootState) => state.auth.user);
+  const organization = useSelector(selectOrganization);
+  // Org branding for the printed letterhead; undefined for legacy/no-org users.
+  const orgHeader = organization
+    ? {
+        name: organization.name,
+        legal_name: organization.legal_name,
+        address: organization.address,
+        dl_numbers: organization.dl_numbers,
+        gstin: organization.gstin,
+        phone: organization.phone,
+      }
+    : undefined;
+  const receiptBrandIcon = organization?.logo_url || bgWhiteIcon;
 
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
@@ -1247,7 +1261,8 @@ export default function SaleHistory() {
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
         splitPayments: invoiceDetails.splitPayments || [],
         labels: SALES_RECEIPT_LABELS,
-        brandIcon: bgWhiteIcon,
+        brandIcon: receiptBrandIcon,
+        orgHeader: orgHeader,
         pageSize: pageSize,
         orientation: orientation,
       });
@@ -1912,7 +1927,8 @@ export default function SaleHistory() {
               totalDiscount={invoiceDetails.totalDiscount || '0'}
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
-              brandIcon={bgWhiteIcon}
+              brandIcon={receiptBrandIcon}
+              orgHeader={orgHeader}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
               orientation={orientation}
