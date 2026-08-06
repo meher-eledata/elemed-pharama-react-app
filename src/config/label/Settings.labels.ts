@@ -57,7 +57,7 @@ export const SETTINGS_LABELS = {
         INVALID_TYPE: 'Unsupported file type. Use PNG, JPEG, WebP or SVG.',
         OVERSIZE: 'Image is too large. Maximum size is 1MB.',
         READ_ERROR: 'Could not read the selected file.',
-        REMOVE_CONFIRM_TITLE: 'Remove logo',
+        REMOVE_CONFIRM_TITLE: 'Remove logo?',
         REMOVE_CONFIRM_MESSAGE: 'Remove the current logo? The default logo will be shown instead.',
       },
     },

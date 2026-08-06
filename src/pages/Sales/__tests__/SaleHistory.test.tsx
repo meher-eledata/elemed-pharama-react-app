@@ -53,10 +53,24 @@ jest.mock('../../../utils/cartStorage', () => ({
   clearEditInvoiceId: jest.fn(),
 }));
 
+// Org context drives the printed receipt letterhead (name/legal/GSTIN lines).
+const TEST_ORG = {
+  id: 1,
+  name: 'Test Pharmacy',
+  slug: 'test-pharmacy',
+  logo_url: null,
+  legal_name: 'Testco Pvt Ltd',
+  address: '1 Test Street',
+  dl_numbers: 'DL-1, DL-2',
+  gstin: 'GSTIN123',
+  phone: '000-111',
+};
+
 const createMockStore = (initialState = {}) => {
   return configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      org: (state = { organization: TEST_ORG, activeModules: ['pharmacy'], loaded: true }) => state,
       cart: (state = {
         items: [],
         totalAmount: 0,
@@ -271,10 +285,11 @@ describe('SaleHistory', () => {
 
     // Wait for modal and PrintPreviewModal content.
     // The "Customer receipt" title was removed from PrintPreviewModal; the
-    // pharmacy header ("ELITE PHARMACY") is now the stable receipt content.
+    // org-driven letterhead (from the store's org context) is now the stable
+    // receipt content.
     await waitFor(() => {
       expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
-      expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+      expect(screen.getByText('Test Pharmacy')).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 

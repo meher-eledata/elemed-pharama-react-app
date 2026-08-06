@@ -48,6 +48,7 @@ const createMockStore = (initialState = {}) => {
   return configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
       cart: (state = {
         items: [],
         totalAmount: 0,

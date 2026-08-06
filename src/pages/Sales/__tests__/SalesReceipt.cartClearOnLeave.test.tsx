@@ -54,6 +54,7 @@ const createStore = (cart?: Partial<CartState>) =>
   configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
       cart: cartReducer,
     },
     preloadedState: cart

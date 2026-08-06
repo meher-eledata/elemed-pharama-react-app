@@ -101,7 +101,7 @@ describe('LogInLeft (LoginForm)', () => {
     it('renders login form with all elements', () => {
       renderWithProviders(<LogInLeft />);
 
-      expect(screen.getByText(/Elite\s+Pharmacy/)).toBeInTheDocument();
+      expect(screen.getByText('Elemed')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Enter your username')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
       expect(screen.getByText('Forgot Password?')).toBeInTheDocument();
