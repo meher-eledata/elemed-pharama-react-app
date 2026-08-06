@@ -2,7 +2,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import type { Middleware } from "@reduxjs/toolkit";
 import authReducer, { authApi, logout } from "./slices/authSlice";
-import { inventoryApi } from "./slices/inventoryApi"; 
+import { inventoryApi } from "./slices/inventoryApi";
 import { dashboardApi } from "./slices/dashboardApi";
 import { receiveApi } from "./slices/receiveApi";
 import { salesApi } from "./slices/salesApi";
@@ -19,15 +19,39 @@ import { orgApi } from "./slices/orgApi";
 import cartReducer from "./slices/cartSlice";
 import orgReducer from "./slices/orgSlice";
 
-// On logout (TopBar menu AND baseQuery's 401 handler both dispatch it), purge the
-// org API cache so a different user logging back in within keepUnusedDataFor can
-// never be served the previous user's cached /me (org branding, modules).
-// Done here — not in baseQuery.ts — because importing orgApi there would create a
-// module-init cycle (orgApi's createApi reads baseQueryWithReauth at load time).
-const resetOrgApiOnLogout: Middleware = (storeApi) => (next) => (action) => {
+// Every RTK Query api in the app — the single source of truth used for BOTH the
+// middleware chain and the logout cache purge below, so a future api added here
+// is automatically covered by both. The reducer map must list the same apis
+// explicitly (a derived map would destroy RootState type inference).
+export const allApis = [
+  authApi,
+  inventoryApi,
+  dashboardApi,
+  receiveApi,
+  salesApi,
+  adminApi,
+  masterApi,
+  reportsApi,
+  historicalFilesApi,
+  activityApi,
+  profileApi,
+  alertsApi,
+  adminCreditApi,
+  draftsApi,
+  orgApi,
+] as const;
+
+// On logout (TopBar menu AND baseQuery's 401 handler both dispatch it), purge
+// EVERY api slice's cache so a different user logging back in within
+// keepUnusedDataFor can never be served the previous org's data (sales rows,
+// reports, inventory, /me branding, ...) without a refetch.
+// Done here — not in baseQuery.ts — because importing the apis there would
+// create a module-init cycle (each createApi reads baseQueryWithReauth at load
+// time).
+const resetApiStateOnLogout: Middleware = (storeApi) => (next) => (action) => {
   const result = next(action);
   if (logout.match(action)) {
-    storeApi.dispatch(orgApi.util.resetApiState());
+    allApis.forEach((api) => storeApi.dispatch(api.util.resetApiState()));
   }
   return result;
 };
@@ -37,8 +61,9 @@ export const store = configureStore({
     auth: authReducer,
     cart: cartReducer,
     org: orgReducer,
+    // Must mirror `allApis` above (kept explicit for RootState inference).
     [authApi.reducerPath]: authApi.reducer,
-    [inventoryApi.reducerPath]: inventoryApi.reducer,  
+    [inventoryApi.reducerPath]: inventoryApi.reducer,
     [dashboardApi.reducerPath]: dashboardApi.reducer,
     [receiveApi.reducerPath]: receiveApi.reducer,
     [salesApi.reducerPath]: salesApi.reducer,
@@ -55,22 +80,8 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
-      .concat(authApi.middleware)
-      .concat(inventoryApi.middleware) 
-      .concat(dashboardApi.middleware)
-      .concat(receiveApi.middleware)
-      .concat(salesApi.middleware)
-      .concat(adminApi.middleware)
-      .concat(masterApi.middleware)
-      .concat(reportsApi.middleware)
-      .concat(historicalFilesApi.middleware)
-      .concat(activityApi.middleware)
-      .concat(profileApi.middleware)
-      .concat(alertsApi.middleware)
-      .concat(adminCreditApi.middleware)
-      .concat(draftsApi.middleware)
-      .concat(orgApi.middleware)
-      .concat(resetOrgApiOnLogout)
+      .concat(allApis.map((api) => api.middleware as Middleware))
+      .concat(resetApiStateOnLogout),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
