@@ -19,6 +19,11 @@ export const SETTINGS_CONSTANTS = {
     COLOR: '#EF4444',
     SIZE: 20,
   },
+  LOGO: {
+    ACCEPTED_TYPES: ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'],
+    ACCEPT_ATTR: 'image/png,image/jpeg,image/webp,image/svg+xml',
+    MAX_BYTES: 1024 * 1024,
+  },
   SAVE_BUTTON: {
     HEIGHT: '48px',
     MIN_WIDTH: '160px',

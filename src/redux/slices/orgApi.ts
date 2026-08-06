@@ -16,6 +16,14 @@ export interface MeOrganization {
   id: number;
   name: string;
   slug: string;
+  // Base64 data URL of the org's logo, or null when unset.
+  logo_url: string | null;
+  // Branding fields used on printed invoices/receipts; null when unset.
+  legal_name: string | null;
+  address: string | null;
+  dl_numbers: string | null;
+  gstin: string | null;
+  phone: string | null;
 }
 
 export interface MeResponse {
@@ -36,10 +44,44 @@ export interface ToggleModuleResponse {
   activeModules: string[];
 }
 
+// GET /api/org — the viewer's organization profile.
+export interface OrgProfile {
+  id: number;
+  name: string;
+  slug: string;
+  status: string;
+  country: string | null;
+  timezone: string | null;
+  currency: string | null;
+  logo_url: string | null;
+  legal_name: string | null;
+  address: string | null;
+  dl_numbers: string | null;
+  gstin: string | null;
+  phone: string | null;
+}
+
+export interface GetOrgResponse {
+  organization: OrgProfile;
+}
+
+// PUT /api/org — owner/admin only. Partial update; branding fields are nullable.
+export interface UpdateOrgRequest {
+  name?: string;
+  country?: string;
+  timezone?: string;
+  currency?: string;
+  legal_name?: string | null;
+  address?: string | null;
+  dl_numbers?: string | null;
+  gstin?: string | null;
+  phone?: string | null;
+}
+
 export const orgApi = createApi({
   reducerPath: 'orgApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Me'] as const,
+  tagTypes: ['Me', 'Org'] as const,
   endpoints: (builder) => ({
     getMe: builder.query<MeResponse, void>({
       query: () => ({
@@ -56,7 +98,46 @@ export const orgApi = createApi({
       }),
       invalidatesTags: ['Me'],
     }),
+    getOrg: builder.query<GetOrgResponse, void>({
+      query: () => ({
+        url: 'org',
+        method: 'GET',
+      }),
+      providesTags: ['Org'],
+    }),
+    updateOrg: builder.mutation<GetOrgResponse, UpdateOrgRequest>({
+      query: (body) => ({
+        url: 'org',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Org', 'Me'],
+    }),
+    // PUT /api/org/logo — owner/admin only. `image` is a base64 data URL.
+    updateOrgLogo: builder.mutation<GetOrgResponse, { image: string }>({
+      query: (body) => ({
+        url: 'org/logo',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Org', 'Me'],
+    }),
+    // DELETE /api/org/logo — owner/admin only. Clears the org logo.
+    deleteOrgLogo: builder.mutation<GetOrgResponse, void>({
+      query: () => ({
+        url: 'org/logo',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Org', 'Me'],
+    }),
   }),
 });
 
-export const { useGetMeQuery, useToggleModuleMutation } = orgApi;
+export const {
+  useGetMeQuery,
+  useToggleModuleMutation,
+  useGetOrgQuery,
+  useUpdateOrgMutation,
+  useUpdateOrgLogoMutation,
+  useDeleteOrgLogoMutation,
+} = orgApi;
