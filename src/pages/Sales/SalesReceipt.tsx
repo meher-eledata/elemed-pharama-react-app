@@ -1574,7 +1574,7 @@ const SalesReceipt: React.FC = () => {
       customerId,
     };
 
-    await executeSaveDraft({
+    const saved = await executeSaveDraft({
       draftId: activeDraftId,
       formData,
       salesItems,
@@ -1592,7 +1592,15 @@ const SalesReceipt: React.FC = () => {
       showToast,
       onCreated: setActiveDraftId,
     });
-  }, [doctorNamesData, doctorName, selectedCustomer, customerName, customerMobile, customerCity, customerDetails, patientType, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, activeDraftId, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, splitPayments, createDraft, updateDraft]);
+
+    // On a successful save (create or update), leave the creation flow and return
+    // to the sales homepage. The receipt's unmount-guard clears the working cart /
+    // formData automatically (draft is persisted server-side; drafts list refetches
+    // via the invalidated 'Drafts' tag). Empty-cart and error paths keep the user here.
+    if (saved) {
+      navigate(SALES_RECEIPT_CONSTANTS.ROUTE_SALES);
+    }
+  }, [doctorNamesData, doctorName, selectedCustomer, customerName, customerMobile, customerCity, customerDetails, patientType, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, activeDraftId, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, splitPayments, createDraft, updateDraft, navigate]);
 
   const handleCancel = () => {
     if (salesItems.length > 0) {

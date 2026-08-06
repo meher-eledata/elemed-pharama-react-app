@@ -50,11 +50,13 @@ export const useOrderDetailsTable = (
 
   const addProductToTable = async (productName: string) => {
     const resolvedProductId = getProductIdFromName(productName);
+    const matchedOption = productOptionsWithIds.find((o) => o.name === productName);
 
     const newProduct: PharmaTableRow = {
       id: Date.now().toString(),
       productId: productName,
       product_id: resolvedProductId || undefined,
+      type: matchedOption?.type,
       batchNumber: batchNumber || "",
       qtyReceived: 0,
       qtyFree: 0,

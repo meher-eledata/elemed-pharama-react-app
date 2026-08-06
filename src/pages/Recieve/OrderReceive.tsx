@@ -612,7 +612,7 @@ const OrderReceive: React.FC = () => {
                     return {
                       lineId: line.receipt_line_id,
                       productName: productName,
-                      type: 'Medicine',
+                      type: line.type || 'N/A',
                       quantity: line.received_qty,
                       hsnCode: line.hsn_id || line.hsn_code || 'N/A',
                       batchNumber: line.batch_number ?? '',

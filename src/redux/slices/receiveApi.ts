@@ -130,6 +130,7 @@ export interface ReceiptLine {
   po_number: string;
   product_id: number;
   product_name: string;
+  type?: string; // Dosage form / product type (backend adds this to the get-receipt-lines feed)
   receipt_line_id: number;
   received_qty: number;
   sgst: string;

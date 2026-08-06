@@ -160,6 +160,12 @@ export const getProductTableColumns = ({
       ),
     },
     {
+      key: "type",
+      header: orderLabels.type,
+      sortable: false,
+      render: (row) => <span>{row.type || '-'}</span>,
+    },
+    {
       key: "pack",
       header: orderLabels.packageQty,
       sortable: false,

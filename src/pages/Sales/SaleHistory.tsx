@@ -1505,7 +1505,7 @@ export default function SaleHistory() {
               boxShadow: 'none',
             }}
           >
-            View drafts
+            Sale Drafts
           </StandardButton>
           <StandardButton
             onClick={handleStartNewSale}

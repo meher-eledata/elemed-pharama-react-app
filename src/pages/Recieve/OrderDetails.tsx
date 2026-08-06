@@ -271,6 +271,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           id: line.receipt_line_id?.toString() || index.toString(),
           productId: line.product_name || line.product || `Product ID: ${line.product_id || 'Unknown'}`,
           product_id: line.product_id ? Number(line.product_id) : undefined,
+          type: line.type,
           batchNumber: line.batch_number || '',
           batch_id: line.batch_id || undefined,
           po_line_id: line.po_line_id ? Number(line.po_line_id) : undefined,

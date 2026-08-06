@@ -246,6 +246,7 @@ export const generatePrintHTML = (data: {
         <tr>
           <th style="width:30px">S.No</th>
           <th>Product Name</th>
+          <th>Type</th>
           <th>MFG</th>
           <th>HSN</th>
           <th>Sch</th>
@@ -265,7 +266,7 @@ export const generatePrintHTML = (data: {
   const footerHTML = `
     <div class="page-footer">
       <span class="footer-left">Signature of Pharmacist</span>
-      <span class="footer-right">Powered by Elemed. Contact us at hr@elemed.com</span>
+      <span class="footer-right">Powered by Elemed</span>
     </div>`;
 
   // Totals block — appended only to the final sheet by the paginator.
@@ -307,6 +308,7 @@ export const generatePrintHTML = (data: {
     return {
       sno: index + 1,
       productName: item.productName,
+      type: item.type || '',
       mfg,
       hsn,
       schedule,
@@ -551,6 +553,7 @@ export const generatePrintHTML = (data: {
               return '<tr>'
                 + '<td>' + it.sno + '</td>'
                 + '<td>' + it.productName + '</td>'
+                + '<td>' + (it.type || '') + '</td>'
                 + '<td>' + it.mfg + '</td>'
                 + '<td>' + it.hsn + '</td>'
                 + '<td>' + it.schedule + '</td>'

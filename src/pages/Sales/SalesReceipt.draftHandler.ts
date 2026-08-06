@@ -48,11 +48,11 @@ export const executeSaveDraft = async ({
   updateDraft,
   showToast,
   onCreated,
-}: ExecuteSaveDraftParams): Promise<void> => {
+}: ExecuteSaveDraftParams): Promise<boolean> => {
   try {
     if (!salesItems || salesItems.length === 0) {
       showToast('Cannot save an empty draft. Add at least one product first.', 'warning');
-      return;
+      return false;
     }
 
     // Loss-free item snapshot — same reverse transform the edit flow uses to
@@ -93,8 +93,10 @@ export const executeSaveDraft = async ({
       if (result?.id && onCreated) onCreated(result.id);
       showToast('Draft saved successfully!', 'success');
     }
+    return true;
   } catch (error: unknown) {
     logError(error, 'SalesReceipt.executeSaveDraft');
     showToast(extractErrorMessage(error, 'Failed to save draft. Please try again.'), 'error');
+    return false;
   }
 };
