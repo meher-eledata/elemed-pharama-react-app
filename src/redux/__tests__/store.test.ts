@@ -11,6 +11,26 @@ import { alertsApi } from '../slices/alertsApi';
 // The store's resetApiStateOnLogout middleware must purge EVERY api slice on
 // logout, and the in-memory working cart must clear too.
 describe('store logout purge', () => {
+  // Every cartStorage.ts artifact (localStorage entries are browser-global and
+  // account-agnostic — the root cause of the stale sales row after an account
+  // switch: SaleHistory merges pharma_sales_history into its table).
+  const SESSION_KEYS = [
+    'pharma_sales_cart',
+    'pharma_sales_cart_timestamp',
+    'pharma_sales_form_data',
+    'pharma_edit_invoice_id',
+  ];
+  const LOCAL_KEYS = ['pharma_sales_history', 'pharma_invoice_number_counter'];
+
+  const seedSalesStorage = () => {
+    sessionStorage.setItem('pharma_sales_cart', JSON.stringify({ cartItems: [{ id: 'x' }], totalAmount: 10, timestamp: Date.now() }));
+    sessionStorage.setItem('pharma_sales_cart_timestamp', String(Date.now()));
+    sessionStorage.setItem('pharma_sales_form_data', JSON.stringify({ customerName: 'Old', timestamp: Date.now() }));
+    sessionStorage.setItem('pharma_edit_invoice_id', '42');
+    localStorage.setItem('pharma_sales_history', JSON.stringify([{ id: 1, invoiceNumber: 'INV11' }]));
+    localStorage.setItem('pharma_invoice_number_counter', '12');
+  };
+
   const seedCaches = () => {
     // Seed a representative sample of api caches with fake "previous user" data.
     store.dispatch(
@@ -57,6 +77,7 @@ describe('store logout purge', () => {
 
   it('resets every api slice state and clears the cart on logout', () => {
     seedCaches();
+    seedSalesStorage();
     store.dispatch(
       setCartItems([
         {
@@ -91,10 +112,12 @@ describe('store logout purge', () => {
       }),
     );
 
-    // Sanity: the caches and cart really are populated before logout.
+    // Sanity: the caches, cart and browser storage really are populated.
     expect(seededQueryCount()).toBeGreaterThanOrEqual(3);
     expect(store.getState().cart.items).toHaveLength(1);
     expect(store.getState().cart.formData).not.toBeNull();
+    SESSION_KEYS.forEach((key) => expect(sessionStorage.getItem(key)).not.toBeNull());
+    LOCAL_KEYS.forEach((key) => expect(localStorage.getItem(key)).not.toBeNull());
 
     store.dispatch(logout());
 
@@ -114,6 +137,10 @@ describe('store logout purge', () => {
     expect(store.getState().org.organization).toBeNull();
     expect(store.getState().org.activeModules).toHaveLength(0);
     expect(store.getState().org.loaded).toBe(false);
+
+    // Every persisted sales artifact is gone (session + local storage).
+    SESSION_KEYS.forEach((key) => expect(sessionStorage.getItem(key)).toBeNull());
+    LOCAL_KEYS.forEach((key) => expect(localStorage.getItem(key)).toBeNull());
   });
 
   it('does not purge caches on unrelated actions', () => {

@@ -18,6 +18,7 @@ import { draftsApi } from "./slices/draftsApi";
 import { orgApi } from "./slices/orgApi";
 import cartReducer from "./slices/cartSlice";
 import orgReducer from "./slices/orgSlice";
+import { clearAllSalesStorage } from "../utils/cartStorage";
 
 // Every RTK Query api in the app — the single source of truth used for BOTH the
 // middleware chain and the logout cache purge below, so a future api added here
@@ -44,7 +45,10 @@ export const allApis = [
 // On logout (TopBar menu AND baseQuery's 401 handler both dispatch it), purge
 // EVERY api slice's cache so a different user logging back in within
 // keepUnusedDataFor can never be served the previous org's data (sales rows,
-// reports, inventory, /me branding, ...) without a refetch.
+// reports, inventory, /me branding, ...) without a refetch. Also clear the
+// browser-global sales storage (localStorage sales history / invoice counter,
+// sessionStorage cart artifacts) — SaleHistory merges the locally-saved rows
+// into its table, so they too would leak across accounts.
 // Done here — not in baseQuery.ts — because importing the apis there would
 // create a module-init cycle (each createApi reads baseQueryWithReauth at load
 // time).
@@ -52,6 +56,7 @@ const resetApiStateOnLogout: Middleware = (storeApi) => (next) => (action) => {
   const result = next(action);
   if (logout.match(action)) {
     allApis.forEach((api) => storeApi.dispatch(api.util.resetApiState()));
+    clearAllSalesStorage();
   }
   return result;
 };

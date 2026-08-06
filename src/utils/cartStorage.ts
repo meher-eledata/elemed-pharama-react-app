@@ -3,6 +3,7 @@ const CART_TIMESTAMP_KEY = 'pharma_sales_cart_timestamp';
 const FORM_DATA_STORAGE_KEY = 'pharma_sales_form_data';
 const SALES_HISTORY_STORAGE_KEY = 'pharma_sales_history';
 const INVOICE_NUMBER_COUNTER_KEY = 'pharma_invoice_number_counter';
+const EDIT_INVOICE_ID_KEY = 'pharma_edit_invoice_id';
 const CART_EXPIRY_HOURS = 24;
 
 export interface CartData {
@@ -69,21 +70,40 @@ export const clearCartFromStorage = (): void => {
   try {
     sessionStorage.removeItem(CART_STORAGE_KEY);
     sessionStorage.removeItem(CART_TIMESTAMP_KEY);
-    sessionStorage.removeItem('pharma_edit_invoice_id');
+    sessionStorage.removeItem(EDIT_INVOICE_ID_KEY);
   } catch (error) {
   }
 };
 
 export const setEditInvoiceId = (id: string | number): void => {
-  sessionStorage.setItem('pharma_edit_invoice_id', id.toString());
+  sessionStorage.setItem(EDIT_INVOICE_ID_KEY, id.toString());
 };
 
 export const getEditInvoiceId = (): string | null => {
-  return sessionStorage.getItem('pharma_edit_invoice_id');
+  return sessionStorage.getItem(EDIT_INVOICE_ID_KEY);
 };
 
 export const clearEditInvoiceId = (): void => {
-  sessionStorage.removeItem('pharma_edit_invoice_id');
+  sessionStorage.removeItem(EDIT_INVOICE_ID_KEY);
+};
+
+/**
+ * Clears EVERY sales artifact this module persists — the working cart, form
+ * data and edit-invoice id (sessionStorage) plus the locally-saved sales
+ * history and invoice-number counter (localStorage, browser-global and
+ * account-agnostic). Called on logout so the next account can never see or
+ * merge the previous account's locally-saved sales data.
+ */
+export const clearAllSalesStorage = (): void => {
+  try {
+    sessionStorage.removeItem(CART_STORAGE_KEY);
+    sessionStorage.removeItem(CART_TIMESTAMP_KEY);
+    sessionStorage.removeItem(FORM_DATA_STORAGE_KEY);
+    sessionStorage.removeItem(EDIT_INVOICE_ID_KEY);
+    localStorage.removeItem(SALES_HISTORY_STORAGE_KEY);
+    localStorage.removeItem(INVOICE_NUMBER_COUNTER_KEY);
+  } catch (error) {
+  }
 };
 
 export const hasCartInStorage = (): boolean => {
