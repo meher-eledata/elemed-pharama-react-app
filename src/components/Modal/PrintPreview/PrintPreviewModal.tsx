@@ -58,7 +58,6 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   customerMobile,
   customerCity,
   doctorName,
-  doctorMobile,
   doctorEmail,
   paymentMode,
   insuranceCompany,
@@ -309,9 +308,6 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             <Typography sx={{ fontSize: sectionTextSize, color: '#374151', marginBottom: '2px', lineHeight: 1.2 }}>
               {SALES_RECEIPT_LABELS.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}
             </Typography>
-            <Typography sx={{ fontSize: sectionTextSize, color: '#374151', lineHeight: 1.2 }}>
-              {SALES_RECEIPT_LABELS.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}
-            </Typography>
           </Box>
 
           {/* Payment Details */}
@@ -543,7 +539,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
           color: '#6B7280',
         }}>
           <Box>Signature of Pharmacist</Box>
-          <Box sx={{ textAlign: 'right' }}>Powered by Elemed. Contact us at hr@elemed.com</Box>
+          <Box sx={{ textAlign: 'right' }}>Powered by Elemed</Box>
         </Box>
       </Box>
 

@@ -117,7 +117,6 @@ export const generatePrintHTML = (data: {
     customerMobile,
     customerCity,
     doctorName,
-    doctorMobile,
     doctorEmail,
     paymentMode,
     insuranceCompany,
@@ -210,7 +209,6 @@ export const generatePrintHTML = (data: {
         <div class="detail-section">
           <div class="detail-title">${labels.DOCTOR_DETAILS_TITLE}</div>
           <div class="detail-item">${labels.DOCTOR_NAME_PRINT.replace('{name}', (doctorName || '').trim())}</div>
-          <div class="detail-item">${labels.MOBILE_NUMBER_PRINT.replace('{mobile}', (doctorMobile || '').trim())}</div>
         </div>
         <div class="detail-section">
           <div class="detail-title">${labels.PAYMENT_DETAILS_TITLE}</div>
