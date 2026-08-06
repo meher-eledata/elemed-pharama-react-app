@@ -4,12 +4,19 @@ import { Pages } from './pages';
 // Removed useDisplayScale - rem units now handle scaling naturally
 // import { useDisplayScale } from './hooks/useDisplayScale';
 import ErrorBoundary from './components/ErrorBoundary';
+import { OrgBootstrap } from './components/OrgBootstrap';
 
 const AppContent = () => {
   // Rem units now handle scaling automatically - no need for manual scaling
   // useDisplayScale(); // Removed - conflicts with rem-based scaling
 
-  return <Pages />;
+  return (
+    <>
+      {/* Fetches /me once authenticated and populates org context (modules). */}
+      <OrgBootstrap />
+      <Pages />
+    </>
+  );
 };
 
 function App() {

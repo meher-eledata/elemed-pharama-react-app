@@ -79,6 +79,8 @@ export interface User {
     first_name: string;
     last_name: string;
     role?: number | string;
+    org_id?: number;
+    org_role?: 'owner' | 'admin' | 'staff' | string;
 }
 
 interface LoginResponse {

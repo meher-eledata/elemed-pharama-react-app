@@ -13,6 +13,16 @@ export const SETTINGS_LABELS = {
       TITLE: 'Data & Privacy',
       DESC: 'Manage your data and privacy settings.',
     },
+    MODULES: {
+      TITLE: 'Modules',
+      DESC: 'Enable or disable modules for your organization.',
+      CORE_TAG: 'Always on',
+      LOADING: 'Loading modules...',
+      LOAD_ERROR: 'Could not load modules.',
+      TOGGLE_ERROR: 'Could not update the module. Please try again.',
+      ENABLED_SUCCESS: (label: string) => `${label} enabled.`,
+      DISABLED_SUCCESS: (label: string) => `${label} disabled.`,
+    },
     DAILY_REPORTS: {
       TITLE: 'Daily Report Recipients',
       DESC: 'Manage who receives automated daily activity reports.',
