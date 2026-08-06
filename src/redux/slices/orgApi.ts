@@ -9,7 +9,8 @@ export interface MeUser {
   first_name: string;
   last_name: string;
   role?: number | string;
-  org_role?: 'owner' | 'admin' | 'staff' | string;
+  // Explicit null for legacy users with no org membership.
+  org_role?: 'owner' | 'admin' | 'staff' | string | null;
 }
 
 export interface MeOrganization {
@@ -53,6 +54,7 @@ export interface OrgProfile {
   country: string | null;
   timezone: string | null;
   currency: string | null;
+  created_at: string;
   logo_url: string | null;
   legal_name: string | null;
   address: string | null;
