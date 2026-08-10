@@ -387,6 +387,56 @@ describe('SalesReceipt', () => {
         expect.objectContaining({ customer_details: '' })
       );
     });
+
+    describe('submit-sale 409 discrimination', () => {
+      const reject409 = (data: any) =>
+        jest.fn(() => ({ unwrap: jest.fn().mockRejectedValue({ status: 409, data }) }));
+
+      it('duplicate invoice 409 shows the backend message and does NOT open the shortfall UI', async () => {
+        const showToast = jest.fn();
+        const onStockShortage = jest.fn();
+
+        await executeSave({
+          ...baseSaveParams,
+          showToast,
+          onStockShortage,
+          submitSale: reject409({
+            error: 'DUPLICATE_INVOICE_NUMBER',
+            message: 'Invoice number 7 is already used in this pharmacy',
+          }),
+          editSale: jest.fn(),
+        });
+
+        expect(showToast).toHaveBeenCalledWith(
+          'Invoice number 7 is already used in this pharmacy',
+          'error'
+        );
+        expect(onStockShortage).not.toHaveBeenCalled();
+      });
+
+      it('stock-shortage 409 still opens the shortfall UI and does NOT toast an error', async () => {
+        const showToast = jest.fn();
+        const onStockShortage = jest.fn();
+
+        await executeSave({
+          ...baseSaveParams,
+          showToast,
+          onStockShortage,
+          submitSale: reject409({
+            message: 'Not enough stock for one or more items',
+            insufficient_stock: [
+              { product_id: 1, product_name: 'Product A', batch_number: 'B001', requested: 10, available: 2 },
+            ],
+          }),
+          editSale: jest.fn(),
+        });
+
+        expect(onStockShortage).toHaveBeenCalledWith([
+          '• Product A (batch B001): need 10, have 2',
+        ]);
+        expect(showToast).not.toHaveBeenCalledWith(expect.anything(), 'error');
+      });
+    });
   });
 });
 

@@ -113,5 +113,8 @@ export const SALES_RECEIPT_LABELS = {
   // Delete Confirmation
   DELETE_ITEMS_TITLE: "Delete Items",
   DELETE_ITEMS_MESSAGE: "Are you sure you want to delete {count} item(s)?",
+
+  // Submit-sale 409 (duplicate invoice number) — fallback when the backend omits `message`
+  DUPLICATE_INVOICE_NUMBER_ERROR: "This invoice number is already used in this pharmacy. Please use a different invoice number.",
 };
 

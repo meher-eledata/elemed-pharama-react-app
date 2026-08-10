@@ -4,6 +4,7 @@ import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage, generateNextInvoiceNumber, saveInvoiceNumber, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
+import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 
 
 // Helper function to format stock error messages in a user-friendly way
@@ -593,10 +594,23 @@ export const executeSave = async ({
         console.error('❌ Full error object:', JSON.stringify(submitError, null, 2));
         logError(submitError, 'SalesReceipt.submitSale');
 
+        const errorData = submitError?.data as SubmitSaleError | undefined;
+
+        // Duplicate invoice number (HTTP 409, { error: 'DUPLICATE_INVOICE_NUMBER', message }):
+        // discriminated from the stock 409 by the error code (that one carries
+        // insufficient_stock instead). Show the backend's human-readable message — never the
+        // raw code or the shortfall UI — and abort so the cart and any resumed draft are
+        // preserved. Toast directly (not throw): extractErrorMessage hides Error messages in
+        // PROD builds, which would swallow the specific message.
+        if (errorData?.error === 'DUPLICATE_INVOICE_NUMBER') {
+          showToast(errorData.message || SALES_RECEIPT_LABELS.DUPLICATE_INVOICE_NUMBER_ERROR, 'error');
+          return;
+        }
+
         // Structured out-of-stock response (HTTP 409): name each short medicine so the user
         // can fix quantities. Abort cleanly — do NOT throw (that would hit the generic toast),
         // and do NOT reach the success path, so the cart and any resumed draft are preserved.
-        const short = (submitError?.data as SubmitSaleError | undefined)?.insufficient_stock;
+        const short = errorData?.insufficient_stock;
         if (Array.isArray(short) && short.length) {
           const resolveName = (it: InsufficientStockItem): string => {
             if (it.product_name && it.product_name.trim()) return it.product_name;

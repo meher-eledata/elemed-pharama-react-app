@@ -227,9 +227,13 @@ export interface InsufficientStockItem {
   available: number;
 }
 
-// Error body for POST /api/sales/submit-sale when stock is short (HTTP 409).
+// Error body for the two distinct POST /api/sales/submit-sale HTTP 409s.
 // RTK Query surfaces HTTP errors as `error.data`, so this types `error.data`.
+// - duplicate invoice number: { error: 'DUPLICATE_INVOICE_NUMBER', message } (no insufficient_stock)
+// - stock shortage: { message, insufficient_stock: [...] } (no error code)
+// Clients discriminate on error === 'DUPLICATE_INVOICE_NUMBER' vs presence of insufficient_stock.
 export interface SubmitSaleError {
+  error?: string;
   message?: string;
   insufficient_stock?: InsufficientStockItem[];
 }
@@ -265,7 +269,8 @@ export interface SubmitSaleRequest {
   doctor_mobile?: string; // Mobile of the doctor
   doctor_email?: string; // Email of the doctor
   // REQUIRED (2026-07-29): backend 400s when missing/blank and 409s on a duplicate
-  // ("invoice_number <n> already exists"). Always generated client-side (cartStorage).
+  // ({ error: 'DUPLICATE_INVOICE_NUMBER', message } — see SubmitSaleError).
+  // Always generated client-side (cartStorage).
   invoice_number: string;
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   patient_type?: number; // 1 for "In Patient", 0 for "Out Patient"
