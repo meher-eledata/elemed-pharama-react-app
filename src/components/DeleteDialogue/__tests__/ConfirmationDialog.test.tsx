@@ -133,6 +133,28 @@ describe('ConfirmationDialog', () => {
     });
   });
 
+  describe('Loading state', () => {
+    it('disables the confirm button when isLoading is true', () => {
+      renderWithTheme(<ConfirmationDialog {...defaultProps} isLoading />);
+
+      const yesButton = screen.getByRole('button', { name: 'Yes' });
+      expect(yesButton).toBeDisabled();
+
+      fireEvent.click(yesButton);
+      expect(mockOnConfirm).not.toHaveBeenCalled();
+    });
+
+    it('leaves the confirm button enabled by default (backward compatible)', () => {
+      renderWithTheme(<ConfirmationDialog {...defaultProps} />);
+
+      const yesButton = screen.getByRole('button', { name: 'Yes' });
+      expect(yesButton).toBeEnabled();
+
+      fireEvent.click(yesButton);
+      expect(mockOnConfirm).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Accessibility', () => {
     it('has proper dialog role', () => {
       renderWithTheme(<ConfirmationDialog {...defaultProps} />);
