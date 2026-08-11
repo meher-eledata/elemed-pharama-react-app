@@ -270,8 +270,8 @@ export interface SubmitSaleRequest {
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   patient_type?: number; // 1 for "In Patient", 0 for "Out Patient"
   lines: SubmitSaleLine[];
-  // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
-  // stored outcome of the first attempt (see useIdempotencyKey).
+  // OPTIONAL (≤64 chars): a duplicate submit with the same key replays the stored
+  // outcome of the first attempt (same status + body, e.g. 201) (see useIdempotencyKey).
   idempotency_key?: string;
 }
 
@@ -351,8 +351,8 @@ export interface EditSaleRequest {
   Deleted?: number[];
   Added?: SubmitSaleLine[];
   Edited?: EditSaleLine[];
-  // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
-  // stored outcome of the first attempt (see useIdempotencyKey).
+  // OPTIONAL (≤64 chars): a duplicate submit with the same key replays the stored
+  // outcome of the first attempt (same status + body, e.g. 201) (see useIdempotencyKey).
   idempotency_key?: string;
 }
 
@@ -666,8 +666,8 @@ export const salesApi = createApi({
         quantity: number;
         restock_action: string;
       }>;
-      // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
-      // stored outcome of the first attempt (see useIdempotencyKey).
+      // OPTIONAL (≤64 chars): a duplicate submit with the same key replays the stored
+      // outcome of the first attempt (same status + body, e.g. 201) (see useIdempotencyKey).
       idempotency_key?: string;
     }>({
       query: (body) => ({
