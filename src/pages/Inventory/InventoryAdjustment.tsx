@@ -1517,6 +1517,7 @@ const InventoryAdjustment: React.FC = () => {
         onConfirm={handleConfirmAdjustment}
         confirmLabel="Confirm"
         cancelLabel="Cancel"
+        isLoading={isSaving}
       />
 
       <ConfirmationDialog

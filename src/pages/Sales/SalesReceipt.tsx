@@ -180,6 +180,10 @@ const SalesReceipt: React.FC = () => {
   // 🔒 Pause flag: prevents phone-lookup hook from overwriting the real ID while addCustomer is in flight
   const isAddingCustomerRef = useRef(false);
 
+  // 🔒 Synchronous guard for the sale-confirmation dialog: blocks a sub-frame
+  // double click from starting the submit flow twice.
+  const isConfirmingRef = useRef(false);
+
   // Tracks the sanctioned receipt -> salepage hop ("Edit Cart"), which must keep
   // the cart. Any other unmount clears the working cart/form data.
   const goingToSalepageRef = useRef(false);
@@ -1241,6 +1245,20 @@ const SalesReceipt: React.FC = () => {
    * - If action is 'print': Open Print Preview Modal (shows customer receipt for review before printing)
    */
   const handleConfirmDialogConfirm = async () => {
+    // Synchronous re-entry guard: a sub-frame double click must not start the
+    // submit flow twice (state updates like setIsConfirmDialogOpen are async).
+    if (isConfirmingRef.current) {
+      return;
+    }
+    isConfirmingRef.current = true;
+    try {
+      await runConfirmedAction();
+    } finally {
+      isConfirmingRef.current = false;
+    }
+  };
+
+  const runConfirmedAction = async () => {
     if (pendingAction === 'save') {
       // Close dialog first
       setIsConfirmDialogOpen(false);
