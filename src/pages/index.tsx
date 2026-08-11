@@ -9,6 +9,9 @@ import InventoryAdjustment from "./Inventory/InventoryAdjustment";
 import OrderReceive from "../pages/Recieve/OrderReceive";
 import OrderDetails from "../pages/Recieve/OrderDetails";
 import PaymentDetails from "../pages/Recieve/PaymentDetails";
+import PurchaseReturn from "../pages/Recieve/PurchaseReturn/PurchaseReturn";
+import PurchaseReturnDetails from "../pages/Recieve/PurchaseReturn/PurchaseReturnDetails";
+import ReturnsLog from "../pages/Recieve/PurchaseReturn/ReturnsLog";
 import DashboardMain from "../pages/DashboardMain/DashboardMain"
 import Masterpage from "./Masters/MasterPage";
 import Sale from "./Sales/salepage";
@@ -62,6 +65,9 @@ export const Pages = () => {
           <Route path="order-receive" element={<OrderReceive />} />
           <Route path="order-details" element={<OrderDetails labels={orderLabels} />} />
           <Route path="payment-details" element={<PaymentDetails />} />
+          <Route path="purchase-return" element={<PurchaseReturn />} />
+          <Route path="purchase-return/details" element={<PurchaseReturnDetails />} />
+          <Route path="purchase-return/log" element={<ReturnsLog />} />
         </Route>
 
         <Route path="/master" element={<DashboardLayout />}>

@@ -15,13 +15,16 @@ const createMockStore = () => {
 
 describe('PaymentDetailsSection', () => {
   const mockProps = {
-    paymentMode: '',
+    // The app always seeds paymentMode to a paymentMethods member
+    // (DEFAULT_PAYMENT_MODE = paymentMethods[0] in SalesReceipt.tsx); '' is never
+    // passed and made MUI's Autocomplete warn "None of the options match" on
+    // every default render. Keep the fixture aligned with the options list.
+    paymentMode: 'Cash',
     insuranceCompany: '',
     invoiceNumber: 'INV001',
     invoiceDate: '01/01/2024',
     onPaymentModeChange: jest.fn(),
     onInsuranceCompanyChange: jest.fn(),
-    onInvoiceNumberChange: jest.fn(),
     onInvoiceDateChange: jest.fn(),
   };
 
@@ -71,6 +74,20 @@ describe('PaymentDetailsSection', () => {
 
     // Invoice number is rendered as a TextField value, not free text.
     expect(screen.getByDisplayValue('INV123')).toBeInTheDocument();
+  });
+
+  it('renders the invoice number field read-only (backend assigns the number)', () => {
+    renderComponent({ invoiceNumber: 'INV123' });
+
+    expect(screen.getByLabelText(/invoice number/i)).toBeDisabled();
+  });
+
+  it('shows the Auto-generated placeholder for a new sale (no number yet)', () => {
+    renderComponent({ invoiceNumber: '' });
+
+    const input = screen.getByLabelText(/invoice number/i);
+    expect(input).toHaveAttribute('placeholder', 'Auto-generated');
+    expect(input).toHaveValue('');
   });
 
   it('displays invoice date field when provided', () => {

@@ -22,12 +22,6 @@ const makeMutation = (resolved: any = { data: {} }) =>
     { isLoading: false },
   ]);
 
-const makeLazyQuery = (resolved: any = { data: [] }) =>
-  jest.fn(() => [
-    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
-    { data: undefined, isLoading: false },
-  ]);
-
 // Mock dependencies (mirrors SalesReceipt.test.tsx)
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -42,10 +36,8 @@ jest.mock('../../../utils/cartStorage', () => ({
   clearFormDataFromStorage: jest.fn(),
   getCartFromStorage: jest.fn(() => ({ items: [], total: 0 })),
   getFormDataFromStorage: jest.fn(() => null),
-  generateNextInvoiceNumber: jest.fn(() => 'INV001'),
   setEditInvoiceId: jest.fn(),
   saveSalesHistoryToStorage: jest.fn(),
-  saveInvoiceNumber: jest.fn(),
 }));
 
 // Real cart reducer so the guarded cleanup can actually mutate the store and be
@@ -164,7 +156,6 @@ describe('SalesReceipt — clears cart when leaving the receipt step', () => {
     (salesApi.useUpsertInvoicePaymentsMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useDeleteInvoiceMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation({ data: {} });
-    (salesApi.useLazyGetInvoicesQuery as jest.Mock) = makeLazyQuery({ data: [] });
   });
 
   const renderComponent = (store: ReturnType<typeof createStore>) =>

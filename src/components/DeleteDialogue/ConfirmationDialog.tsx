@@ -24,6 +24,8 @@ interface ConfirmationDialogProps {
   // Disables the confirm button while the confirmed action is in flight,
   // preventing double-click double submits.
   isLoading?: boolean;
+  /** Optional: disables the confirm button (e.g. while a submit is in flight). */
+  confirmDisabled?: boolean;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -37,6 +39,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   cancelLabel = 'Cancel',
   itemName,
   isLoading = false,
+  confirmDisabled = false,
 }) => {
   return (
     <Dialog
@@ -129,7 +132,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         </StandardButton>
         <StandardButton
           onClick={onConfirm}
-          disabled={isLoading}
+          disabled={isLoading || confirmDisabled}
           variant="primary"
           size="medium"
           sx={{

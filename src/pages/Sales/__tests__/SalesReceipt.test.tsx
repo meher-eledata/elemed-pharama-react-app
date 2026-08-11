@@ -8,6 +8,7 @@ import SalesReceipt from '../SalesReceipt';
 import { executeSave } from '../SalesReceipt.saveHandler';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
+import { saveSalesHistoryToStorage } from '../../../utils/cartStorage';
 
 const theme = createTheme();
 
@@ -16,12 +17,6 @@ const makeMutation = (resolved: any = { data: {} }) =>
   jest.fn(() => [
     jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
     { isLoading: false },
-  ]);
-
-const makeLazyQuery = (resolved: any = { data: [] }) =>
-  jest.fn(() => [
-    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
-    { data: undefined, isLoading: false },
   ]);
 
 // Mock dependencies
@@ -38,10 +33,8 @@ jest.mock('../../../utils/cartStorage', () => ({
   clearFormDataFromStorage: jest.fn(),
   getCartFromStorage: jest.fn(() => ({ items: [], total: 0 })),
   getFormDataFromStorage: jest.fn(() => null),
-  generateNextInvoiceNumber: jest.fn(() => 'INV001'),
   setEditInvoiceId: jest.fn(),
   saveSalesHistoryToStorage: jest.fn(),
-  saveInvoiceNumber: jest.fn(),
 }));
 
 const createMockStore = (initialState = {}) => {
@@ -140,7 +133,6 @@ describe('SalesReceipt', () => {
     (salesApi.useUpsertInvoicePaymentsMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useDeleteInvoiceMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation({ data: {} });
-    (salesApi.useLazyGetInvoicesQuery as jest.Mock) = makeLazyQuery({ data: [] });
   });
 
   const renderComponent = (store = createMockStore()) => {
@@ -302,9 +294,8 @@ describe('SalesReceipt', () => {
     expect(screen.getByText('Schedule')).toBeInTheDocument();
   });
 
-  describe('executeSave payloads (customer_details)', () => {
-    // Minimal, valid save inputs shared by the submit and edit payload assertions.
-    const baseSaveParams = {
+  // Minimal, valid save inputs shared by the executeSave payload assertions.
+  const baseSaveParams = {
       customerName: 'John Doe',
       customerMobile: '1234567890',
       customerCity: 'Mumbai',
@@ -335,9 +326,10 @@ describe('SalesReceipt', () => {
       skipNavigation: true,
     };
 
+  describe('executeSave payloads (customer_details)', () => {
     it('includes trimmed customer_details in the submit-sale payload', async () => {
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '1' }),
       }));
 
       await executeSave({
@@ -371,7 +363,7 @@ describe('SalesReceipt', () => {
 
     it('sends an empty customer_details when the Details field is blank', async () => {
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '1' }),
       }));
 
       await executeSave({
@@ -384,6 +376,63 @@ describe('SalesReceipt', () => {
       // Backend trims and stores blank as NULL — the client sends the empty string.
       expect(submitTrigger).toHaveBeenCalledWith(
         expect.objectContaining({ customer_details: '' })
+      );
+    });
+  });
+
+  describe('executeSave server-assigned invoice number', () => {
+    it('does not send invoice_number in the submit-sale payload (even when stale state exists)', async () => {
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '947' }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        invoiceNumber: 'INV999', // e.g. a stale value carried by a resumed draft
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+      });
+
+      expect(submitTrigger).toHaveBeenCalledTimes(1);
+      expect((submitTrigger.mock.calls[0] as any[])[0]).not.toHaveProperty('invoice_number');
+    });
+
+    it('uses the response-assigned number for the history entry and notifies the UI', async () => {
+      const onInvoiceNumberAssigned = jest.fn();
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 12, invoice_number: '947' }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+        onInvoiceNumberAssigned,
+      });
+
+      // "INV" prefix is added on the display layer.
+      expect(onInvoiceNumberAssigned).toHaveBeenCalledWith('INV947');
+      expect(saveSalesHistoryToStorage).toHaveBeenCalledWith(
+        expect.objectContaining({ invoiceNumber: 'INV947' }),
+        12
+      );
+    });
+
+    it('edit mode still sends invoice_number as the read-only lookup key', async () => {
+      const editTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'ok', invoice_id: 5 }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        submitSale: jest.fn(),
+        editSale: editTrigger,
+        isEditMode: true,
+        invoiceId: 5,
+      });
+
+      expect(editTrigger).toHaveBeenCalledWith(
+        expect.objectContaining({ invoice_number: 'INV1' })
       );
     });
   });
