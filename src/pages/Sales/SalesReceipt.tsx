@@ -30,7 +30,6 @@ import {
 
   useGetCustomerPhonesMutation,
   useGetCustomerOptionsQuery,
-  useLazyGetInvoicesQuery,
   Customer,
   CustomerOption,
   DoctorPhoneEmailInfo
@@ -46,7 +45,7 @@ import {
 import { RootState } from '../../redux/store';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
-import { clearCartFromStorage, clearFormDataFromStorage, generateNextInvoiceNumber, setEditInvoiceId } from '../../utils/cartStorage';
+import { clearCartFromStorage, clearFormDataFromStorage, setEditInvoiceId } from '../../utils/cartStorage';
 
 import CustomerDetailsSection from './components/CustomerDetailsSection';
 import DoctorDetailsSection from './components/DoctorDetailsSection';
@@ -122,7 +121,6 @@ const SalesReceipt: React.FC = () => {
 
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
 
-  const [fetchInvoicesList] = useLazyGetInvoicesQuery();
   const [getCustomerPhones] = useGetCustomerPhonesMutation();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
 
@@ -881,7 +879,8 @@ const SalesReceipt: React.FC = () => {
       // Set paymentMode from form data, or the explicit default if empty
       setPaymentMode(formData.paymentMode || DEFAULT_PAYMENT_MODE);
       setInsuranceCompany(formData.insuranceCompany);
-      if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
+      // invoiceNumber is deliberately NOT restored: the backend assigns it at submit,
+      // so a persisted/draft value is stale — the field stays "Auto-generated".
       // Normalize the restored value: a cart persisted before the ISO migration holds a
       // legacy "DD MMM YYYY" string, which the strict save-validation would now reject.
       // Empty/invalid → leave the ISO default already in state.
@@ -901,41 +900,8 @@ const SalesReceipt: React.FC = () => {
     }, [])
   });
 
-  // Generate invoice number on mount (if not in edit mode and not already set)
-  // PRIORITY ORDER:
-  //   1. Derive from the existing invoices list (max invoice_number + 1)
-  //   2. localStorage counter (fallback if list fetch fails)
-  useEffect(() => {
-    if (!isEditMode && !invoiceNumber) {
-      (async () => {
-        // Priority 1: Derive from the existing invoices list (max invoice_number + 1)
-        try {
-          const invoices = await fetchInvoicesList().unwrap();
-          if (invoices && invoices.length > 0) {
-            const maxInvoiceNum = invoices.reduce((max: number, inv: any) => {
-              const raw = String(inv.invoice_number ?? inv.invoiceNumber ?? '0').replace(/[^0-9]/g, '');
-              const num = parseInt(raw, 10);
-              return (!isNaN(num) && num > max) ? num : max;
-            }, 0);
-            if (maxInvoiceNum > 0) {
-              const nextInvoiceNumber = `INV${maxInvoiceNum + 1}`;
-              setInvoiceNumber(nextInvoiceNumber);
-              console.log('📝 Invoice number derived from invoices list (max + 1):', nextInvoiceNumber);
-              return;
-            }
-          }
-        } catch (err) {
-          console.warn('⚠️ Could not fetch invoices list, falling back to localStorage counter...', err);
-        }
-
-        // Priority 2: localStorage counter (last resort — only reliable on single-device)
-        const nextInvoiceNumber = generateNextInvoiceNumber();
-        setInvoiceNumber(nextInvoiceNumber);
-        console.log('📝 Invoice number generated from localStorage (fallback):', nextInvoiceNumber);
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  // NOTE: no client-side invoice-number generation. The backend assigns the number at
+  // submit and returns it in the response (executeSave → onInvoiceNumberAssigned).
 
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
@@ -1565,6 +1531,8 @@ const SalesReceipt: React.FC = () => {
       originalSalesItems: originalInvoiceData?.salesItems,
       skipNavigation,
       onSuccess,
+      // Show the server-assigned number in the UI (print preview / printed receipt).
+      onInvoiceNumberAssigned: setInvoiceNumber,
       onStockShortage: (lines: string[]) => {
         setStockShortageLines(lines);
         setStockShortageOpen(true);
@@ -1745,7 +1713,6 @@ const SalesReceipt: React.FC = () => {
             invoiceDate={invoiceDate}
             onPaymentModeChange={(mode: string) => { setPaymentMode(mode); setSplitPayments([]); }}
             onInsuranceCompanyChange={setInsuranceCompany}
-            onInvoiceNumberChange={setInvoiceNumber}
             onInvoiceDateChange={setInvoiceDate}
             isReturnDetailsMode={isReturnDetailsMode}
             returnDate={returnDate}

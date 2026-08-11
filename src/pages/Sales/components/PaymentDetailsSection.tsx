@@ -19,7 +19,6 @@ interface PaymentDetailsSectionProps {
   invoiceDate: string;
   onPaymentModeChange: (value: string) => void;
   onInsuranceCompanyChange: (value: string) => void;
-  onInvoiceNumberChange: (value: string) => void;
   onInvoiceDateChange: (value: string) => void;
 
   isReturnDetailsMode?: boolean;
@@ -35,7 +34,6 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   invoiceDate,
   onPaymentModeChange,
   onInsuranceCompanyChange,
-  onInvoiceNumberChange,
   onInvoiceDateChange,
   isReturnDetailsMode = false,
   returnDate,
@@ -184,12 +182,14 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
             />
           )}
         />
+        {/* Read-only: the backend assigns the invoice number at submit. A new sale shows
+            the "Auto-generated" placeholder; edit/return modes show the real number. */}
         <TextField
           label={SALES_RECEIPT_LABELS.INVOICE_NUMBER_LABEL}
           variant="outlined"
-          placeholder={SALES_RECEIPT_LABELS.INVOICE_NUMBER_LABEL}
+          placeholder={SALES_RECEIPT_LABELS.INVOICE_NUMBER_AUTO_PLACEHOLDER}
           value={invoiceNumber}
-          onChange={(e) => onInvoiceNumberChange(e.target.value)}
+          disabled
           sx={{
             width: '200px',
             marginLeft: '30px',
@@ -206,12 +206,21 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
               '&.Mui-focused fieldset': {
                 borderColor: '#5C17E5',
               },
+              '&.Mui-disabled': {
+                backgroundColor: '#FFFFFF',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  border: '1px solid #9AA8BC',
+                },
+              },
             },
             '& .MuiOutlinedInput-input': {
               padding: '12px 16px',
               fontFamily: "'Lexend', sans-serif",
               fontSize: '16px',
               color: '#1A212B',
+              '&.Mui-disabled': {
+                WebkitTextFillColor: '#1A212B',
+              },
               '&::placeholder': {
                 color: '#728197',
                 fontSize: '16px',
