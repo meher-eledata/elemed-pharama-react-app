@@ -109,6 +109,7 @@ const makeSelectionState = (
         type: 'Tablet',
         brand_name: 'Acme',
         quantity: 5,
+        receipt_qty: 10,
         pack_qty: 10,
         purchase_price_per_unit: 10,
         mrp: 5.5,

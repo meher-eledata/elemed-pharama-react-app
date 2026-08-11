@@ -26,6 +26,13 @@ jest.mock('../../../../components/PharmaTable', () => ({
   ReusableTable: ({ data, columns }: any) => (
     <div data-testid="reusable-table">
       <div data-testid="table-data-count">{data?.length || 0}</div>
+      <div data-testid="table-headers">
+        {columns.map((col: any) => (
+          <div key={col.key} data-testid={`header-${col.key}`}>
+            {col.header}
+          </div>
+        ))}
+      </div>
       {data?.map((row: any, idx: number) => (
         <div key={row.batch_id ?? idx} data-testid={`table-row-${idx}`}>
           {columns.map((col: any) => (
@@ -47,6 +54,7 @@ const makeBatch = (over: Partial<ReturnableBatch> = {}): ReturnableBatch => ({
   type: 'Tablet',
   brand_name: 'Acme',
   quantity: 5,
+  receipt_qty: 10,
   pack_qty: 10,
   purchase_price_per_unit: 10,
   mrp: 5.5,
@@ -85,6 +93,7 @@ const batches: ReturnableBatch[] = [
     supplier_invoice_number: null,
     po_number: null,
     receipt_line_id: null,
+    receipt_qty: null,
     purchase_price_per_unit: null,
     expiry_status: 'EXPIRED',
     days_until_expiry: -10,
@@ -167,6 +176,30 @@ describe('PurchaseReturn (landing)', () => {
       expect(screen.getByText('Fresh Vitamin C')).toBeInTheDocument();
     });
 
+    it('renders the renamed / new column headers', () => {
+      renderPage();
+      const headers = within(screen.getByTestId('table-headers'));
+      expect(headers.getByText('Invoice Number')).toBeInTheDocument();
+      expect(headers.getByText('Purchase Price')).toBeInTheDocument();
+      expect(headers.getByText('Qty on Hand')).toBeInTheDocument();
+      expect(headers.getByText('Receipt Qty')).toBeInTheDocument();
+    });
+
+    it('shows invoice number with an RA<receipt_id> subtext and no PO number', () => {
+      renderPage();
+      const receiptCell = within(screen.getByTestId('cell-receipt-0'));
+      expect(receiptCell.getByText('INV-77')).toBeInTheDocument();
+      expect(receiptCell.getByText('RA7')).toBeInTheDocument();
+      expect(receiptCell.queryByText('PO-9')).not.toBeInTheDocument();
+    });
+
+    it('renders receipt qty, with an em dash when null', () => {
+      renderPage();
+      expect(within(screen.getByTestId('cell-receipt_qty-0')).getByText('10')).toBeInTheDocument();
+      // Unattributable row (index 2) has receipt_qty null.
+      expect(within(screen.getByTestId('cell-receipt_qty-2')).getByText('—')).toBeInTheDocument();
+    });
+
     it('shows the loading state', () => {
       mockUseGetReturnableBatchesQuery.mockReturnValue(queryResult(undefined, true));
       renderPage();
@@ -184,6 +217,36 @@ describe('PurchaseReturn (landing)', () => {
       expect(screen.getByText('Server error')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Retry'));
       expect(refetch).toHaveBeenCalled();
+    });
+  });
+
+  describe('supplier filter', () => {
+    const supplierInput = () =>
+      screen.getByPlaceholderText('All suppliers') as HTMLInputElement;
+
+    const pickSupplier = (label: string) => {
+      fireEvent.mouseDown(supplierInput());
+      fireEvent.click(within(screen.getByRole('listbox')).getByText(label));
+    };
+
+    it('filters rows to the chosen supplier', () => {
+      renderPage();
+      expect(screen.getByTestId('table-data-count')).toHaveTextContent('3');
+
+      pickSupplier('SupCo');
+      expect(screen.getByTestId('table-data-count')).toHaveTextContent('1');
+      expect(screen.getByText('Paracetamol 500')).toBeInTheDocument();
+      expect(screen.queryByText('Ibuprofen 200')).not.toBeInTheDocument();
+      expect(screen.queryByText('Orphan Syrup')).not.toBeInTheDocument();
+    });
+
+    it('is clearable, restoring all rows', () => {
+      renderPage();
+      pickSupplier('OtherCo');
+      expect(screen.getByTestId('table-data-count')).toHaveTextContent('1');
+
+      fireEvent.click(screen.getByLabelText('Clear'));
+      expect(screen.getByTestId('table-data-count')).toHaveTextContent('3');
     });
   });
 

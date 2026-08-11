@@ -9,6 +9,7 @@ import {
   Chip,
   Tooltip,
   Alert,
+  Autocomplete,
   CircularProgress,
   InputAdornment,
 } from '@mui/material';
@@ -57,6 +58,7 @@ const PurchaseReturn: React.FC = () => {
   const [productSearch, setProductSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [brandFilter, setBrandFilter] = useState('ALL');
+  const [supplierFilter, setSupplierFilter] = useState<string | null>(null);
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilterValue>(DEFAULT_EXPIRY_FILTER);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -66,6 +68,13 @@ const PurchaseReturn: React.FC = () => {
   );
   const brands = useMemo(
     () => Array.from(new Set(batches.map((b) => b.brand_name).filter((b): b is string => !!b))).sort(),
+    [batches],
+  );
+  const supplierNames = useMemo(
+    () =>
+      Array.from(
+        new Set(batches.map((b) => b.supplier_name).filter((s): s is string => !!s)),
+      ).sort(),
     [batches],
   );
 
@@ -139,13 +148,14 @@ const PurchaseReturn: React.FC = () => {
       if (search && !b.product_name.toLowerCase().includes(search)) return false;
       if (typeFilter !== 'ALL' && b.type !== typeFilter) return false;
       if (brandFilter !== 'ALL' && b.brand_name !== brandFilter) return false;
+      if (supplierFilter && b.supplier_name !== supplierFilter) return false;
       if (expiryFilter === 'ATTENTION') {
         return b.expiry_status === 'EXPIRED' || b.expiry_status === 'NEAR_EXPIRY';
       }
       if (expiryFilter !== 'ALL') return b.expiry_status === expiryFilter;
       return true;
     });
-  }, [batches, productSearch, typeFilter, brandFilter, expiryFilter]);
+  }, [batches, productSearch, typeFilter, brandFilter, supplierFilter, expiryFilter]);
 
   // Wraps cell content so locked/unattributable rows render visually muted.
   const mute = (b: ReturnableBatch, node: React.ReactNode) => (
@@ -241,7 +251,22 @@ const PurchaseReturn: React.FC = () => {
       key: 'quantity',
       header: L.TABLE.STOCK,
       sortable: false,
-      render: (b) => mute(b, <Typography sx={{ fontSize: 14 }}>{b.quantity}</Typography>),
+      headerAlign: 'right',
+      render: (b) =>
+        mute(b, <Typography sx={{ fontSize: 14, textAlign: 'right' }}>{b.quantity}</Typography>),
+    },
+    {
+      key: 'receipt_qty',
+      header: L.TABLE.RECEIPT_QTY,
+      sortable: false,
+      headerAlign: 'right',
+      render: (b) =>
+        mute(
+          b,
+          <Typography sx={{ fontSize: 14, textAlign: 'right' }}>
+            {b.receipt_qty != null ? b.receipt_qty : '—'}
+          </Typography>,
+        ),
     },
     {
       key: 'purchase_price_per_unit',
@@ -270,8 +295,8 @@ const PurchaseReturn: React.FC = () => {
           b,
           <>
             <Typography sx={{ fontSize: 14 }}>{b.supplier_invoice_number ?? '—'}</Typography>
-            {b.po_number && (
-              <Typography sx={{ fontSize: 12, color: '#728197' }}>{b.po_number}</Typography>
+            {b.receipt_id != null && (
+              <Typography sx={{ fontSize: 12, color: '#728197' }}>{`RA${b.receipt_id}`}</Typography>
             )}
           </>,
         ),
@@ -415,6 +440,30 @@ const PurchaseReturn: React.FC = () => {
               </MenuItem>
             ))}
           </Select>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography sx={{ fontSize: '12px', color: '#728197' }}>{L.FILTERS.SUPPLIER}</Typography>
+          <Autocomplete<string>
+            value={supplierFilter}
+            onChange={(_e, v) => {
+              setSupplierFilter(v);
+              setCurrentPage(1);
+            }}
+            options={supplierNames}
+            sx={{
+              width: '13rem',
+              '& .MuiOutlinedInput-root': {
+                height: '2.5rem',
+                borderRadius: '12px',
+                backgroundColor: '#fff',
+                fontSize: '14px',
+                '& fieldset': { border: '1px solid #D1D5DB' },
+              },
+            }}
+            renderInput={(params) => (
+              <TextField {...params} placeholder={L.FILTERS.SUPPLIER_PLACEHOLDER} />
+            )}
+          />
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Typography sx={{ fontSize: '12px', color: '#728197' }}>{L.FILTERS.EXPIRY_STATUS}</Typography>

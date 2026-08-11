@@ -27,6 +27,7 @@ export interface ReturnableBatch {
   type: string;
   brand_name: string | null;
   quantity: number; // UNITS on hand
+  receipt_qty: number | null; // UNITS originally received (comparable with quantity)
   pack_qty: number;
   purchase_price_per_unit: number | null; // per UNIT; null = no attributed purchase price
   mrp: number; // per unit
