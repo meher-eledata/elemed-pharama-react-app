@@ -72,6 +72,9 @@ export const PURCHASE_RETURN_LABELS = {
     CASH_REFERENCE_PLACEHOLDER: 'Enter receipt / voucher note (optional)',
     CREDIT_NOTE_INFO:
       'The amount will be posted as a credit entry against the supplier in the Supplier Credit module and tracked in the Returns Log.',
+    CREDIT_NOTE_UPLOAD_LABEL: 'Credit note photo/scan (optional)',
+    UPLOAD_FAILED_NONFATAL:
+      'Return recorded, but the credit note attachment failed to upload. You can add it from the Returns Log.',
     REASON: 'Reason',
     REASON_PLACEHOLDER: 'Reason for this return (optional)',
     NOTES: 'Notes',
@@ -111,10 +114,19 @@ export const PURCHASE_RETURN_LABELS = {
       CREDIT_BANNER: (balance: string) =>
         `A credit note was posted against the supplier. New supplier credit balance: ${balance}.`,
       CREDIT_BANNER_NO_BALANCE: 'A credit note was posted against the supplier.',
+      ATTACHMENT: 'Credit note attachment',
+      ATTACHMENT_UPLOADED: 'Uploaded ✓',
+      ATTACHMENT_NOT_ATTACHED: 'Not attached',
       START_NEW: 'Start new return',
       VIEW_LOG: 'View Returns Log',
     },
     SUBMIT_FAILED: 'Failed to submit the purchase return.',
+  },
+  UPLOAD: {
+    PROMPT: 'Upload credit note',
+    FILE_TOO_LARGE: (maxMb: number) => `File must be ${maxMb} MB or smaller.`,
+    INVALID_TYPE: 'Only PNG, JPEG or PDF files are allowed.',
+    REMOVE: 'Remove file',
   },
   LOG: {
     TITLE: 'Purchase Returns Log',
@@ -149,7 +161,13 @@ export const PURCHASE_RETURN_LABELS = {
       SUCCESS: 'Credit received recorded.',
       AMOUNT_ERROR: 'Enter an amount greater than 0.',
       FAILED: 'Failed to record credit received.',
+      ATTACHMENT: 'Credit note photo/scan',
+      ATTACHMENT_REPLACE: 'Replace credit note photo/scan',
+      EXISTING_FILE: 'Attached credit note',
+      VIEW: 'View',
+      UPLOAD_FAILED_NONFATAL: 'Credit recorded, but the attachment failed to upload.',
     },
+    VIEW_FILE_FAILED: 'Failed to open the credit note file.',
     DETAILS_MODAL: {
       TITLE: 'Return Details',
       LOADING: 'Loading return details...',
@@ -163,6 +181,7 @@ export const PURCHASE_RETURN_LABELS = {
       REASON: 'Reason',
       NOTES: 'Notes',
       CREDIT_RECEIVED: 'Credit received',
+      CREDIT_NOTE_FILE: 'Credit note file',
       TAXABLE: 'Taxable value',
       CGST: 'CGST',
       SGST: 'SGST',

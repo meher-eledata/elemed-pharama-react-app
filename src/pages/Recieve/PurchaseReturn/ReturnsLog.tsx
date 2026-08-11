@@ -37,9 +37,13 @@ import {
   useListReturnsQuery,
   useGetReturnDetailsQuery,
   useRecordCreditReceivedMutation,
+  useUploadCreditNoteFileMutation,
+  useLazyGetCreditNoteFileLinkQuery,
+  useLazyGetCreditNoteFileQuery,
   SupplierReturnRow,
   ReturnStatus,
 } from '../../../redux/slices/supplierReturnsApi';
+import CreditNoteUpload from './CreditNoteUpload';
 
 const L = PURCHASE_RETURN_LABELS.LOG;
 
@@ -78,27 +82,51 @@ const ReturnsLog: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error';
+    severity: 'success' | 'error' | 'warning';
   }>({ open: false, message: '', severity: 'success' });
+
+  // ---- Credit-note file view (presigned link, else authenticated blob fallback) ----
+  const [triggerFileLink] = useLazyGetCreditNoteFileLinkQuery();
+  const [triggerFileBlob] = useLazyGetCreditNoteFileQuery();
+  const viewCreditNote = async (supplierReturnId: number) => {
+    try {
+      const link = await triggerFileLink(supplierReturnId).unwrap();
+      if (link?.url) {
+        window.open(link.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    } catch {
+      // fall through to the blob fetch
+    }
+    try {
+      const blob = await triggerFileBlob(supplierReturnId).unwrap();
+      window.open(URL.createObjectURL(blob), '_blank', 'noopener,noreferrer');
+    } catch {
+      setSnackbar({ open: true, message: L.VIEW_FILE_FAILED, severity: 'error' });
+    }
+  };
 
   // ---- Record credit modal ----
   const [creditRow, setCreditRow] = useState<SupplierReturnRow | null>(null);
   const [creditAmount, setCreditAmount] = useState('');
   const [creditDate, setCreditDate] = useState<Dayjs | null>(dayjs());
   const [creditReference, setCreditReference] = useState('');
+  const [creditNoteFile, setCreditNoteFile] = useState<File | null>(null);
   const [creditError, setCreditError] = useState('');
   const [recordCredit, { isLoading: isRecording }] = useRecordCreditReceivedMutation();
+  const [uploadCreditNoteFile, { isLoading: isUploading }] = useUploadCreditNoteFileMutation();
 
   const openCreditModal = (row: SupplierReturnRow) => {
     setCreditRow(row);
     setCreditAmount(row.total_amount != null ? String(row.total_amount) : '');
     setCreditDate(dayjs());
     setCreditReference('');
+    setCreditNoteFile(null);
     setCreditError('');
   };
 
   const handleRecordCredit = async () => {
-    if (!creditRow) return;
+    if (!creditRow || isRecording || isUploading) return;
     const amountNum = Number(creditAmount);
     if (!Number.isFinite(amountNum) || amountNum <= 0) {
       setCreditError(L.CREDIT_MODAL.AMOUNT_ERROR);
@@ -111,11 +139,28 @@ const ReturnsLog: React.FC = () => {
         date: (creditDate ?? dayjs()).format('YYYY-MM-DD'),
         ...(creditReference.trim() ? { reference: creditReference.trim() } : {}),
       }).unwrap();
-      setCreditRow(null);
-      setSnackbar({ open: true, message: L.CREDIT_MODAL.SUCCESS, severity: 'success' });
     } catch (err) {
       setCreditError(extractErrorMessage(err, L.CREDIT_MODAL.FAILED));
+      return;
     }
+    // Credit is recorded — an attachment failure past this point is NON-FATAL.
+    let uploadFailed = false;
+    if (creditNoteFile) {
+      try {
+        await uploadCreditNoteFile({
+          supplierReturnId: creditRow.supplier_return_id,
+          file: creditNoteFile,
+        }).unwrap();
+      } catch (uploadError) {
+        uploadFailed = true;
+      }
+    }
+    setCreditRow(null);
+    setSnackbar(
+      uploadFailed
+        ? { open: true, message: L.CREDIT_MODAL.UPLOAD_FAILED_NONFATAL, severity: 'warning' }
+        : { open: true, message: L.CREDIT_MODAL.SUCCESS, severity: 'success' },
+    );
   };
 
   // ---- Details modal ----
@@ -405,6 +450,39 @@ const ReturnsLog: React.FC = () => {
                 placeholder={L.CREDIT_MODAL.REFERENCE_PLACEHOLDER}
               />
             </Box>
+            {creditRow?.credit_note_file_name && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Typography sx={{ fontSize: '13px', color: '#728197' }}>
+                  {L.CREDIT_MODAL.EXISTING_FILE}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: '13px', color: '#374151' }}>
+                    {creditRow.credit_note_file_name}
+                  </Typography>
+                  <Typography
+                    onClick={() => viewCreditNote(creditRow.supplier_return_id)}
+                    sx={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#5C17E5',
+                      cursor: 'pointer',
+                      '&:hover': { textDecoration: 'underline' },
+                    }}
+                  >
+                    {L.CREDIT_MODAL.VIEW}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+            <CreditNoteUpload
+              label={
+                creditRow?.credit_note_file_name
+                  ? L.CREDIT_MODAL.ATTACHMENT_REPLACE
+                  : L.CREDIT_MODAL.ATTACHMENT
+              }
+              file={creditNoteFile}
+              onFileSelect={setCreditNoteFile}
+            />
             {creditError && (
               <Alert severity="error" sx={{ borderRadius: '8px' }}>
                 {creditError}
@@ -417,9 +495,9 @@ const ReturnsLog: React.FC = () => {
             variant="primary"
             size="medium"
             onClick={handleRecordCredit}
-            disabled={isRecording}
+            disabled={isRecording || isUploading}
           >
-            {isRecording ? (
+            {isRecording || isUploading ? (
               <CircularProgress size={20} sx={{ color: '#fff' }} />
             ) : (
               L.CREDIT_MODAL.SUBMIT
@@ -497,6 +575,23 @@ const ReturnsLog: React.FC = () => {
                       formatReportDate(details.credit_received_date),
                       details.credit_received_reference ?? '',
                     ),
+                  )}
+                {details.credit_note_file_name &&
+                  detailField(
+                    L.DETAILS_MODAL.CREDIT_NOTE_FILE,
+                    <Typography
+                      component="span"
+                      onClick={() => viewCreditNote(details.supplier_return_id)}
+                      sx={{
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        color: '#5C17E5',
+                        cursor: 'pointer',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      {details.credit_note_file_name}
+                    </Typography>,
                   )}
               </Box>
               <Table size="small">

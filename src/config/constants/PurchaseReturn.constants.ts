@@ -66,6 +66,11 @@ export const RETURN_STATUS_FILTER_OPTIONS: ReturnStatus[] = [
 
 export const PURCHASE_RETURN_CONSTANTS = {
   ROWS_PER_PAGE: 10,
+  CREDIT_NOTE_FILE: {
+    MAX_MB: 15,
+    ACCEPT: 'image/*,.pdf',
+    ALLOWED_TYPES: ['image/png', 'image/jpeg', 'application/pdf'],
+  },
   LOG_FETCH_LIMIT: 200, // list-returns caps limit at 200
   REASON_MAX_LENGTH: 255,
   SEARCH_DEBOUNCE_MS: 400,

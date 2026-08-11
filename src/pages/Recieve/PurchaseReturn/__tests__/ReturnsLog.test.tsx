@@ -10,6 +10,9 @@ import {
   useListReturnsQuery,
   useGetReturnDetailsQuery,
   useRecordCreditReceivedMutation,
+  useUploadCreditNoteFileMutation,
+  useLazyGetCreditNoteFileLinkQuery,
+  useLazyGetCreditNoteFileQuery,
   SupplierReturnRow,
 } from '../../../../redux/slices/supplierReturnsApi';
 
@@ -91,6 +94,8 @@ const makeRow = (over: Partial<SupplierReturnRow> = {}): SupplierReturnRow => ({
   credit_received_amount: null,
   credit_received_date: null,
   credit_received_reference: null,
+  credit_note_file_name: null,
+  credit_note_file_uploaded_at: null,
   line_count: 1,
   units_count: 3,
   ...over,
@@ -122,11 +127,29 @@ const mockUseGetReturnDetailsQuery = useGetReturnDetailsQuery as jest.MockedFunc
 >;
 const mockUseRecordCreditReceivedMutation =
   useRecordCreditReceivedMutation as jest.MockedFunction<typeof useRecordCreditReceivedMutation>;
+const mockUseUploadCreditNoteFileMutation =
+  useUploadCreditNoteFileMutation as jest.MockedFunction<typeof useUploadCreditNoteFileMutation>;
+const mockUseLazyGetCreditNoteFileLinkQuery =
+  useLazyGetCreditNoteFileLinkQuery as jest.MockedFunction<typeof useLazyGetCreditNoteFileLinkQuery>;
+const mockUseLazyGetCreditNoteFileQuery =
+  useLazyGetCreditNoteFileQuery as jest.MockedFunction<typeof useLazyGetCreditNoteFileQuery>;
 
 const listResult = (data: any, extra: Record<string, unknown> = {}) =>
   ({ data, isLoading: false, isFetching: false, error: null, refetch: jest.fn(), ...extra } as any);
 
+// jsdom lacks the object-URL APIs; the blob-fallback view path and the upload
+// control's image preview/cleanup need them.
+if (typeof URL.createObjectURL !== 'function') {
+  (URL as any).createObjectURL = () => 'blob:mock-url';
+}
+if (typeof URL.revokeObjectURL !== 'function') {
+  (URL as any).revokeObjectURL = () => { };
+}
+
 let recordCreditTrigger: jest.Mock;
+let uploadTrigger: jest.Mock;
+let fileLinkTrigger: jest.Mock;
+let fileBlobTrigger: jest.Mock;
 
 const wireDefaults = ({ total = rows.length }: { total?: number } = {}) => {
   mockUseListReturnsQuery.mockReturnValue(listResult({ rows, total }));
@@ -138,6 +161,21 @@ const wireDefaults = ({ total = rows.length }: { total?: number } = {}) => {
     recordCreditTrigger,
     { isLoading: false },
   ] as any);
+  uploadTrigger = jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue({}) }));
+  mockUseUploadCreditNoteFileMutation.mockReturnValue([
+    uploadTrigger,
+    { isLoading: false },
+  ] as any);
+  fileLinkTrigger = jest.fn(() => ({
+    unwrap: jest
+      .fn()
+      .mockResolvedValue({ url: 'https://s3/presigned-cn', name: 'cn.png', type: 'image/png' }),
+  }));
+  mockUseLazyGetCreditNoteFileLinkQuery.mockReturnValue([fileLinkTrigger, {} as any] as any);
+  fileBlobTrigger = jest.fn(() => ({
+    unwrap: jest.fn().mockResolvedValue(new Blob(['x'], { type: 'image/png' })),
+  }));
+  mockUseLazyGetCreditNoteFileQuery.mockReturnValue([fileBlobTrigger, {} as any] as any);
 };
 
 const createMockStore = () =>
@@ -297,6 +335,173 @@ describe('ReturnsLog', () => {
         await screen.findByText(/Credit can only be recorded while status is AWAITING_CREDIT/)
       ).toBeInTheDocument();
       expect(screen.getByTestId('common-modal')).toBeInTheDocument();
+    });
+  });
+
+  describe('credit-note attachment', () => {
+    const cnFile = () => new File(['scan'], 'cn.png', { type: 'image/png' });
+    const openModal = () => fireEvent.click(screen.getByText('Record credit received'));
+    const selectFile = () =>
+      fireEvent.change(screen.getByTestId('credit-note-file-input'), {
+        target: { files: [cnFile()] },
+      });
+    const submitButton = () =>
+      within(screen.getByTestId('common-modal')).getByText('Record Credit');
+
+    let openSpy: jest.SpyInstance;
+    beforeEach(() => {
+      openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+    });
+    afterEach(() => openSpy.mockRestore());
+
+    it('uploads the selected file with the return id after recording credit', async () => {
+      renderPage();
+      openModal();
+      selectFile();
+      expect(within(screen.getByTestId('common-modal')).getByText('cn.png')).toBeInTheDocument();
+      fireEvent.click(submitButton());
+
+      await waitFor(() => expect(recordCreditTrigger).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(uploadTrigger).toHaveBeenCalledWith({
+          supplierReturnId: 42,
+          file: expect.any(File),
+        })
+      );
+      expect((uploadTrigger.mock.calls[0][0].file as File).name).toBe('cn.png');
+      await waitFor(() =>
+        expect(screen.queryByTestId('common-modal')).not.toBeInTheDocument()
+      );
+      expect(screen.getByText('Credit received recorded.')).toBeInTheDocument();
+    });
+
+    it('does not upload when no file is selected', async () => {
+      renderPage();
+      openModal();
+      fireEvent.click(submitButton());
+      await waitFor(() => expect(recordCreditTrigger).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(screen.queryByTestId('common-modal')).not.toBeInTheDocument()
+      );
+      expect(uploadTrigger).not.toHaveBeenCalled();
+    });
+
+    it('a failed upload is NON-FATAL: credit still recorded, warning snackbar shown', async () => {
+      uploadTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockRejectedValue({ status: 500, data: { error: 'Server error' } }),
+      }));
+      mockUseUploadCreditNoteFileMutation.mockReturnValue([
+        uploadTrigger,
+        { isLoading: false },
+      ] as any);
+
+      renderPage();
+      openModal();
+      selectFile();
+      fireEvent.click(submitButton());
+
+      await waitFor(() => expect(recordCreditTrigger).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(
+          screen.getByText('Credit recorded, but the attachment failed to upload.')
+        ).toBeInTheDocument()
+      );
+      expect(screen.queryByTestId('common-modal')).not.toBeInTheDocument();
+    });
+
+    it('shows an existing file with View + replace affordance, opening the presigned link', async () => {
+      mockUseListReturnsQuery.mockReturnValue(
+        listResult({
+          rows: [
+            makeRow({
+              credit_note_file_name: 'cn-42.png',
+              credit_note_file_uploaded_at: '2026-08-11T10:00:00.000Z',
+            }),
+          ],
+          total: 1,
+        })
+      );
+      renderPage();
+      openModal();
+
+      const modal = within(screen.getByTestId('common-modal'));
+      expect(modal.getByText('Attached credit note')).toBeInTheDocument();
+      expect(modal.getByText('cn-42.png')).toBeInTheDocument();
+      expect(modal.getByText('Replace credit note photo/scan')).toBeInTheDocument();
+
+      fireEvent.click(modal.getByText('View'));
+      await waitFor(() => expect(fileLinkTrigger).toHaveBeenCalledWith(42));
+      await waitFor(() =>
+        expect(openSpy).toHaveBeenCalledWith(
+          'https://s3/presigned-cn',
+          '_blank',
+          'noopener,noreferrer'
+        )
+      );
+      expect(fileBlobTrigger).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the authenticated blob fetch when the link url is null (disk driver)', async () => {
+      fileLinkTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ url: null, name: 'cn-42.png', type: 'image/png' }),
+      }));
+      mockUseLazyGetCreditNoteFileLinkQuery.mockReturnValue([fileLinkTrigger, {} as any] as any);
+      mockUseListReturnsQuery.mockReturnValue(
+        listResult({ rows: [makeRow({ credit_note_file_name: 'cn-42.png' })], total: 1 })
+      );
+      renderPage();
+      openModal();
+
+      fireEvent.click(within(screen.getByTestId('common-modal')).getByText('View'));
+      await waitFor(() => expect(fileBlobTrigger).toHaveBeenCalledWith(42));
+      await waitFor(() =>
+        expect(openSpy).toHaveBeenCalledWith(
+          expect.stringContaining('blob:'),
+          '_blank',
+          'noopener,noreferrer'
+        )
+      );
+    });
+
+    it('shows a "View credit note" link in the return-details modal when a file exists', async () => {
+      mockUseGetReturnDetailsQuery.mockReturnValue(
+        ({
+          data: {
+            id: 42,
+            supplier_return_id: 42,
+            return_number: 'SR-000042',
+            supplier_name: 'SupCo',
+            return_date: '2026-08-11T09:00:00.000Z',
+            created_by: 'currentUser',
+            return_status: 'AWAITING_CREDIT',
+            gst_treatment: 'WITH_GST',
+            value_basis: 'PURCHASE_PRICE',
+            settlement_mode: 'CREDIT_NOTE',
+            settlement_reference: null,
+            taxable_value: 30,
+            cgst_amount: 1.8,
+            sgst_amount: 1.8,
+            total_amount: 33.6,
+            credit_received_date: null,
+            credit_received_reference: null,
+            credit_note_file_name: 'cn-42.png',
+            credit_note_file_uploaded_at: '2026-08-11T10:00:00.000Z',
+            reason: null,
+            notes: null,
+            lines: [],
+          },
+          isFetching: false,
+          error: null,
+        } as any)
+      );
+      renderPage();
+      fireEvent.click(screen.getByText('SR-000042'));
+
+      const modal = within(await screen.findByTestId('common-modal'));
+      expect(modal.getByText('Credit note file')).toBeInTheDocument();
+      fireEvent.click(modal.getByText('cn-42.png'));
+      await waitFor(() => expect(fileLinkTrigger).toHaveBeenCalledWith(42));
+      await waitFor(() => expect(openSpy).toHaveBeenCalled());
     });
   });
 

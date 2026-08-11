@@ -30,12 +30,14 @@ import {
 } from '../../../config/constants/PurchaseReturn.constants';
 import {
   useSubmitReturnMutation,
+  useUploadCreditNoteFileMutation,
   GstTreatment,
   ValueBasis,
   SettlementMode,
   SubmitReturnResponse,
 } from '../../../redux/slices/supplierReturnsApi';
 import { PurchaseReturnSelectionState } from './PurchaseReturn';
+import CreditNoteUpload from './CreditNoteUpload';
 
 const L = PURCHASE_RETURN_LABELS.DETAILS;
 
@@ -72,12 +74,16 @@ const PurchaseReturnDetails: React.FC = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [result, setResult] = useState<SubmitReturnResponse | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
-    open: false,
-    message: '',
-  });
+  const [creditNoteFile, setCreditNoteFile] = useState<File | null>(null);
+  const [attachmentUploaded, setAttachmentUploaded] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'error' | 'warning';
+  }>({ open: false, message: '', severity: 'error' });
 
   const [submitReturn, { isLoading: isSubmitting }] = useSubmitReturnMutation();
+  const [uploadCreditNoteFile, { isLoading: isUploading }] = useUploadCreditNoteFileMutation();
 
   // One idempotency key per details-page entry: a retried/duplicated submit with
   // the same key is answered by the backend with the original result (200) instead
@@ -116,6 +122,7 @@ const PurchaseReturnDetails: React.FC = () => {
 
   const canFinalize =
     !isSubmitting &&
+    !isUploading &&
     !hasMissingPurchasePrice &&
     (settlementMode !== 'UPI' || settlementReference.trim().length > 0);
 
@@ -202,7 +209,7 @@ const PurchaseReturnDetails: React.FC = () => {
   ];
 
   const handleFinalize = async () => {
-    if (isSubmitting) return; // double-submit guard
+    if (isSubmitting || isUploading) return; // double-submit guard
     if (!supplier) return;
     try {
       const response = await submitReturn({
@@ -219,11 +226,26 @@ const PurchaseReturnDetails: React.FC = () => {
         lines: lines.map((l) => ({ batch_id: l.batch.batch_id, quantity: l.quantity })),
       }).unwrap();
       setIsConfirmOpen(false);
+      // Two-step flow (like receipt submit + invoice upload): the return is already
+      // committed, so an attachment failure is NON-FATAL.
+      let uploaded = false;
+      if (settlementMode === 'CREDIT_NOTE' && creditNoteFile) {
+        try {
+          await uploadCreditNoteFile({
+            supplierReturnId: response.supplier_return_id,
+            file: creditNoteFile,
+          }).unwrap();
+          uploaded = true;
+        } catch (uploadError) {
+          setSnackbar({ open: true, message: L.UPLOAD_FAILED_NONFATAL, severity: 'warning' });
+        }
+      }
+      setAttachmentUploaded(uploaded);
       setResult(response);
     } catch (err) {
       // 409s (insufficient stock / supplier mismatch / no purchase price) surface here.
       setIsConfirmOpen(false);
-      setSnackbar({ open: true, message: extractErrorMessage(err, L.SUBMIT_FAILED) });
+      setSnackbar({ open: true, message: extractErrorMessage(err, L.SUBMIT_FAILED), severity: 'error' });
     }
   };
 
@@ -263,6 +285,16 @@ const PurchaseReturnDetails: React.FC = () => {
               : []),
             [L.SUCCESS.TOTAL, formatCurrency(result.totals.total_amount)],
             [L.SUCCESS.SETTLEMENT, SETTLEMENT_MODE_TEXT[settlementMode]],
+            ...(settlementMode === 'CREDIT_NOTE'
+              ? [
+                  [
+                    L.SUCCESS.ATTACHMENT,
+                    attachmentUploaded
+                      ? L.SUCCESS.ATTACHMENT_UPLOADED
+                      : L.SUCCESS.ATTACHMENT_NOT_ATTACHED,
+                  ],
+                ]
+              : []),
           ].map(([label, value]) => (
             <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography sx={{ fontSize: 14, color: '#728197' }}>{label}</Typography>
@@ -301,6 +333,20 @@ const PurchaseReturnDetails: React.FC = () => {
             {L.SUCCESS.START_NEW}
           </StandardButton>
         </Box>
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={PURCHASE_RETURN_CONSTANTS.SNACKBAR.AUTOHIDE_MS}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={PURCHASE_RETURN_CONSTANTS.SNACKBAR.ANCHOR}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     );
   }
@@ -452,9 +498,16 @@ const PurchaseReturnDetails: React.FC = () => {
         />
       )}
       {settlementMode === 'CREDIT_NOTE' && (
-        <Alert severity="info" sx={{ borderRadius: '12px' }}>
-          {L.CREDIT_NOTE_INFO}
-        </Alert>
+        <>
+          <Alert severity="info" sx={{ borderRadius: '12px' }}>
+            {L.CREDIT_NOTE_INFO}
+          </Alert>
+          <CreditNoteUpload
+            label={L.CREDIT_NOTE_UPLOAD_LABEL}
+            file={creditNoteFile}
+            onFileSelect={setCreditNoteFile}
+          />
+        </>
       )}
 
       {/* Reason / notes */}
@@ -564,7 +617,7 @@ const PurchaseReturnDetails: React.FC = () => {
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity="error"
+          severity={snackbar.severity}
           sx={{ width: '100%' }}
         >
           {snackbar.message}

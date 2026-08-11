@@ -70,6 +70,13 @@ if (typeof globalThis.crypto.randomUUID !== 'function') {
   (globalThis.crypto as any).randomUUID = () =>
     `test-uuid-${Math.random().toString(16).slice(2)}`;
 }
+// jsdom lacks the object-URL APIs (credit-note upload image preview/cleanup).
+if (typeof URL.createObjectURL !== 'function') {
+  (URL as any).createObjectURL = () => 'blob:mock-url';
+}
+if (typeof URL.revokeObjectURL !== 'function') {
+  (URL as any).revokeObjectURL = () => { };
+}
 
 const mockBaseQuery = baseQueryWithReauth as jest.MockedFunction<typeof baseQueryWithReauth>;
 
@@ -297,6 +304,19 @@ describe('PurchaseReturnDetails', () => {
       expect(screen.getByText('Awaiting credit')).toBeInTheDocument();
     });
 
+    it('shows "Not attached" on the success view when no credit-note file was chosen', async () => {
+      mockBaseQuery.mockResolvedValue({ data: submitResponse, meta: okMeta });
+      renderPage();
+      fireEvent.click(finalizeButton());
+      fireEvent.click(screen.getByText('Dialog Confirm'));
+
+      await waitFor(() =>
+        expect(screen.getByText('Purchase return submitted')).toBeInTheDocument()
+      );
+      expect(screen.getByText('Not attached')).toBeInTheDocument();
+      expect(mockBaseQuery).toHaveBeenCalledTimes(1); // no upload call
+    });
+
     it('surfaces a 409 conflict in the error snackbar and closes the dialog', async () => {
       mockBaseQuery.mockResolvedValue({
         error: {
@@ -318,6 +338,97 @@ describe('PurchaseReturnDetails', () => {
       expect(screen.queryByTestId('confirmation-dialog')).not.toBeInTheDocument();
       // Still on the form — no success view.
       expect(screen.queryByText('Purchase return submitted')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('credit-note attachment', () => {
+    const cnFile = () => new File(['scan'], 'cn.png', { type: 'image/png' });
+    const selectFile = () =>
+      fireEvent.change(screen.getByTestId('credit-note-file-input'), {
+        target: { files: [cnFile()] },
+      });
+
+    it('shows the upload control ONLY for Credit note settlement mode', () => {
+      renderPage();
+      expect(screen.getByText('Credit note photo/scan (optional)')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cash' }));
+      expect(screen.queryByText('Credit note photo/scan (optional)')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'UPI' }));
+      expect(screen.queryByText('Credit note photo/scan (optional)')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Credit note' }));
+      expect(screen.getByText('Credit note photo/scan (optional)')).toBeInTheDocument();
+    });
+
+    it('uploads the file (multipart, "file" field) with the RETURNED id after a 201, then shows Uploaded', async () => {
+      mockBaseQuery.mockImplementation(async (arg: any) => {
+        if (typeof arg === 'object' && String(arg.url).includes('credit-note-file')) {
+          return {
+            data: {
+              message: 'Credit note file uploaded',
+              credit_note_file: {
+                name: 'cn.png',
+                type: 'image/png',
+                uploaded_at: '2026-08-11T10:00:00.000Z',
+                uploaded_by: 'testuser',
+              },
+            },
+            meta: okMeta,
+          } as any;
+        }
+        return { data: submitResponse, meta: okMeta } as any;
+      });
+      renderPage();
+      selectFile();
+      expect(screen.getByText('cn.png')).toBeInTheDocument();
+
+      fireEvent.click(finalizeButton());
+      fireEvent.click(screen.getByText('Dialog Confirm'));
+
+      await waitFor(() =>
+        expect(screen.getByText('Purchase return submitted')).toBeInTheDocument()
+      );
+      expect(mockBaseQuery).toHaveBeenCalledTimes(2);
+
+      const uploadArg = mockBaseQuery.mock.calls[1][0] as {
+        url: string;
+        method: string;
+        body: FormData;
+      };
+      // Uses the supplier_return_id RETURNED by submit-return (42).
+      expect(uploadArg.url).toBe('supplier-returns/42/credit-note-file');
+      expect(uploadArg.method).toBe('POST');
+      expect(uploadArg.body).toBeInstanceOf(FormData);
+      expect((uploadArg.body.get('file') as File).name).toBe('cn.png');
+
+      expect(screen.getByText('Uploaded ✓')).toBeInTheDocument();
+    });
+
+    it('a failed upload is NON-FATAL: success view still shows, with a warning snackbar', async () => {
+      mockBaseQuery.mockImplementation(async (arg: any) => {
+        if (typeof arg === 'object' && String(arg.url).includes('credit-note-file')) {
+          return { error: { status: 500, data: { error: 'Server error' } }, meta: okMeta } as any;
+        }
+        return { data: submitResponse, meta: okMeta } as any;
+      });
+      renderPage();
+      selectFile();
+
+      fireEvent.click(finalizeButton());
+      fireEvent.click(screen.getByText('Dialog Confirm'));
+
+      await waitFor(() =>
+        expect(screen.getByText('Purchase return submitted')).toBeInTheDocument()
+      );
+      expect(screen.getByText('SR-000042')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Return recorded, but the credit note attachment failed to upload. You can add it from the Returns Log.'
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByText('Not attached')).toBeInTheDocument();
     });
   });
 });

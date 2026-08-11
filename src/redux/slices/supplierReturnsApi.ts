@@ -103,6 +103,8 @@ export interface SupplierReturnRow {
   credit_received_amount: number | null;
   credit_received_date: string | null; // 'YYYY-MM-DD'
   credit_received_reference: string | null; // added 2026-08-11 (same field as the get-return-details header)
+  credit_note_file_name: string | null;
+  credit_note_file_uploaded_at: string | null;
   line_count: number;
   units_count: number;
 }
@@ -165,9 +167,28 @@ export interface ReturnDetailsResponse {
   credit_received_reference: string | null;
   credit_received_by: string | null;
   credit_received_at: string | null;
+  credit_note_file_name: string | null;
+  credit_note_file_uploaded_at: string | null;
   created_at: string;
   updated_at: string;
   lines: ReturnDetailsLine[];
+}
+
+// ---- Credit-note file (photo/scan) endpoints — mirrors the receipt-file pattern ----
+export interface UploadCreditNoteFileResponse {
+  message: string;
+  credit_note_file: {
+    name: string;
+    type: string;
+    uploaded_at: string;
+    uploaded_by: string;
+  };
+}
+
+export interface CreditNoteFileLinkResponse {
+  url: string | null; // null = disk driver → fall back to the authenticated blob fetch
+  name: string | null;
+  type: string | null;
 }
 
 // ---- POST /supplier-returns/record-credit-received ----
@@ -250,6 +271,46 @@ export const supplierReturnsApi = createApi({
       ],
     }),
 
+    // Optional credit-note photo/scan (png/jpeg/pdf, 15 MB); replace allowed.
+    // 409 when the return is not CREDIT_NOTE.
+    uploadCreditNoteFile: builder.mutation<
+      UploadCreditNoteFileResponse,
+      { supplierReturnId: number; file: File }
+    >({
+      query: ({ supplierReturnId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `supplier-returns/${supplierReturnId}/credit-note-file`,
+          method: 'POST',
+          body: formData,
+          // RTK Query sets the multipart Content-Type (with boundary) for FormData.
+        };
+      },
+      invalidatesTags: (_res, _err, arg) => [
+        'SupplierReturns',
+        { type: 'SupplierReturnDetails', id: arg.supplierReturnId },
+      ],
+    }),
+
+    // Presigned link resolver; url null on the local-disk driver (use the blob route).
+    getCreditNoteFileLink: builder.query<CreditNoteFileLinkResponse, number>({
+      query: (supplierReturnId) => `supplier-returns/${supplierReturnId}/credit-note-file-link`,
+    }),
+
+    // Authenticated byte stream — never link to it with a plain <a href> (needs Bearer).
+    getCreditNoteFile: builder.query<Blob, number>({
+      query: (supplierReturnId) => ({
+        url: `supplier-returns/${supplierReturnId}/credit-note-file`,
+        responseHandler: async (response) => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch file');
+          }
+          return await response.blob();
+        },
+      }),
+    }),
+
     recordCreditReceived: builder.mutation<
       RecordCreditReceivedResponse,
       RecordCreditReceivedRequest
@@ -273,4 +334,7 @@ export const {
   useListReturnsQuery,
   useGetReturnDetailsQuery,
   useRecordCreditReceivedMutation,
+  useUploadCreditNoteFileMutation,
+  useLazyGetCreditNoteFileLinkQuery,
+  useLazyGetCreditNoteFileQuery,
 } = supplierReturnsApi;
