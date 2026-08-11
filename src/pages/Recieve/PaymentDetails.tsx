@@ -30,6 +30,7 @@ import {
   useGetSupplierCreditBalanceQuery,
   useAdjustSupplierCreditMutation
 } from "../../redux/slices/receiveApi";
+import { useIdempotencyKey } from "../../hooks/useIdempotencyKey";
 
 const TickMarkIcon = (props: any) => (
   <svg
@@ -95,6 +96,9 @@ const PaymentDetails: React.FC = () => {
 
   // Adjust Supplier Credit State
   const [adjustSupplierCredit, { isLoading: isAdjustingCredit }] = useAdjustSupplierCreditMutation();
+  // One idempotency key per pending credit adjustment: reused on retry of the
+  // same failed payload, cleared after success.
+  const { getKey: getIdempotencyKey, reset: resetIdempotencyKey } = useIdempotencyKey();
   const [creditDirection, setCreditDirection] = useState<"IN" | "OUT">("IN");
   const [creditAmount, setCreditAmount] = useState<string>("");
   const [creditNotes, setCreditNotes] = useState<string>("");
@@ -513,6 +517,7 @@ const PaymentDetails: React.FC = () => {
   };
 
   const handleSaveCredit = async () => {
+    if (isAdjustingCredit) return; // in-flight guard (confirm button is also disabled)
     if (!supplierId) {
       return;
     }
@@ -524,14 +529,19 @@ const PaymentDetails: React.FC = () => {
 
     try {
       const createdBy = user?.username || user?.first_name || "meher";
-      await adjustSupplierCredit({
+      const adjustPayload = {
         supplier_id: Number(supplierId),
         direction: creditDirection,
         amount: amountVal,
         credit_type: "ADJUSTMENT",
         notes: creditNotes,
         created_by: createdBy
+      };
+      await adjustSupplierCredit({
+        ...adjustPayload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(adjustPayload)),
       }).unwrap();
+      resetIdempotencyKey();
 
       setIsCreditModalOpen(false);
       setIsCreditManuallyEdited(false);
@@ -1240,6 +1250,7 @@ const PaymentDetails: React.FC = () => {
         onClose={() => setIsCreditModalOpen(false)}
         onConfirm={handleSaveCredit}
         title="Adjust Supplier Credit"
+        isLoading={isAdjustingCredit}
         confirmLabel={isAdjustingCredit ? "Saving..." : "Save Adjustment"}
         cancelLabel="Cancel"
         message={
