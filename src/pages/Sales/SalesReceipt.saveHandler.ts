@@ -441,47 +441,26 @@ export const executeSave = async ({
           throw new Error('No response received from server. Sale may not have been saved to database.');
         }
 
-        // Check if response indicates success (has message or invoice/invoice_number)
-        // Backend response structure: { invoice: { id, invoice_number, ... }, lines: [...], ... }
-        const hasInvoice = result.invoice && (result.invoice.id !== undefined || result.invoice.invoice_number !== undefined);
+        // Check if response indicates success (has message or the assigned invoice_number).
+        // 201 shape: { message, invoice_id, invoice_number, patient_type, totals, lines }
         const hasMessage = result.message;
         const hasTopLevelInvoiceNumber = result.invoice_number !== undefined;
 
-        if (hasMessage || hasInvoice || hasTopLevelInvoiceNumber) {
-          // PRIORITY 1: Get database invoice ID from response (this is the actual database ID)
-          // Backend response structure: { invoice: { id: 1, invoice_number: "1", ... }, ... }
+        if (hasMessage || hasTopLevelInvoiceNumber) {
+          // Database id of the created invoice (top-level invoice_id on the 201).
           let dbInvoiceId: number | undefined = undefined;
-
-          // Check nested invoice.id first (most common structure)
-          if (result.invoice && result.invoice.id !== undefined && result.invoice.id !== null) {
-            dbInvoiceId = typeof result.invoice.id === 'number'
-              ? result.invoice.id
-              : parseInt(String(result.invoice.id), 10);
-            console.log('✅ Found invoice.id in response:', dbInvoiceId);
-          }
-          // Check for top-level invoice_id
-          else if (result.invoice_id !== undefined && result.invoice_id !== null) {
+          if (result.invoice_id !== undefined && result.invoice_id !== null) {
             dbInvoiceId = typeof result.invoice_id === 'number'
               ? result.invoice_id
               : parseInt(String(result.invoice_id), 10);
             console.log('✅ Found invoice_id in response:', dbInvoiceId);
           }
-          // Check for top-level id as fallback
-          else if (result.id !== undefined && result.id !== null) {
-            dbInvoiceId = typeof result.id === 'number'
-              ? result.id
-              : parseInt(String(result.id), 10);
-            console.log('✅ Found id in response:', dbInvoiceId);
-          }
 
-          // Read the SERVER-ASSIGNED invoice number (plain numeric string, e.g. "947")
-          // from the response — nested invoice payload first, then top-level. The "INV"
-          // display prefix is added here (display-layer concern only).
+          // Read the SERVER-ASSIGNED invoice number (top-level, plain numeric string,
+          // e.g. "947"). The "INV" display prefix is added here (display-layer concern only).
           let savedInvoiceNumber = '';
           let numericInvoiceNumber = 0;
-          const rawAssigned = (result.invoice && result.invoice.invoice_number !== undefined && result.invoice.invoice_number !== null)
-            ? result.invoice.invoice_number
-            : result.invoice_number;
+          const rawAssigned = result.invoice_number;
           const parsedAssigned = typeof rawAssigned === 'number'
             ? rawAssigned
             : parseInt(String(rawAssigned ?? ''), 10);

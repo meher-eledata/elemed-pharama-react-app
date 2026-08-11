@@ -287,11 +287,16 @@ export interface SubmitSaleLineResponse {
 
 export interface SubmitSaleResponse {
   message: string;
+  invoice_id: number; // Database id of the created invoice
   // Server-ASSIGNED at submit (2026-08-11): the authoritative invoice number as a plain
   // numeric string (e.g. "947"). The "INV" prefix is a display-layer concern only.
-  invoice_number: string | null;
-  // Created invoice payload; also carries the assigned invoice_number.
-  invoice?: { id: number; invoice_number: string; [key: string]: any };
+  invoice_number: string;
+  patient_type: number;
+  totals: {
+    lines_total: number;
+    header_discount: number;
+    invoice_total: number;
+  };
   lines: SubmitSaleLineResponse[];
 }
 

@@ -329,7 +329,7 @@ describe('SalesReceipt', () => {
   describe('executeSave payloads (customer_details)', () => {
     it('includes trimmed customer_details in the submit-sale payload', async () => {
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '1' }),
       }));
 
       await executeSave({
@@ -363,7 +363,7 @@ describe('SalesReceipt', () => {
 
     it('sends an empty customer_details when the Details field is blank', async () => {
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '1' }),
       }));
 
       await executeSave({
@@ -383,7 +383,7 @@ describe('SalesReceipt', () => {
   describe('executeSave server-assigned invoice number', () => {
     it('does not send invoice_number in the submit-sale payload (even when stale state exists)', async () => {
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '947' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '947' }),
       }));
 
       await executeSave({
@@ -400,7 +400,7 @@ describe('SalesReceipt', () => {
     it('uses the response-assigned number for the history entry and notifies the UI', async () => {
       const onInvoiceNumberAssigned = jest.fn();
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 12, invoice_number: '947' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 12, invoice_number: '947' }),
       }));
 
       await executeSave({
@@ -415,26 +415,6 @@ describe('SalesReceipt', () => {
       expect(saveSalesHistoryToStorage).toHaveBeenCalledWith(
         expect.objectContaining({ invoiceNumber: 'INV947' }),
         12
-      );
-    });
-
-    it('reads a top-level invoice_number when the response has no nested invoice', async () => {
-      const onInvoiceNumberAssigned = jest.fn();
-      const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ message: 'ok', invoice_id: 7, invoice_number: '31' }),
-      }));
-
-      await executeSave({
-        ...baseSaveParams,
-        submitSale: submitTrigger,
-        editSale: jest.fn(),
-        onInvoiceNumberAssigned,
-      });
-
-      expect(onInvoiceNumberAssigned).toHaveBeenCalledWith('INV31');
-      expect(saveSalesHistoryToStorage).toHaveBeenCalledWith(
-        expect.objectContaining({ invoiceNumber: 'INV31' }),
-        7
       );
     });
 

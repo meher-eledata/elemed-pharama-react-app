@@ -1292,6 +1292,9 @@ const SalesReceipt: React.FC = () => {
     setSelectedRows([]);
     setEditingRowId(null);
     setSplitPayments([]); // Reset split payments
+    // Drop the server-assigned number from the finished sale so the next sale (and any
+    // draft saved from this mount — draftHandler / draftPreserve) starts Auto-generated.
+    setInvoiceNumber('');
     setInvoiceDate(getTodayDate()); // Always default new sales to today's date
 
     dispatch(clearCart());
