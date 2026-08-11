@@ -46,6 +46,10 @@ export interface AdjustSupplierCreditRequest {
   amount: number; // > 0
   credit_type?: string; // default 'ADJUSTMENT'
   notes?: string; // reason
+  // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
+  // stored outcome of the first attempt (see useIdempotencyKey). Same handler /
+  // idempotency identity as receive/adjust-supplier-credit.
+  idempotency_key?: string;
 }
 
 export interface AdjustSupplierCreditResponse {
