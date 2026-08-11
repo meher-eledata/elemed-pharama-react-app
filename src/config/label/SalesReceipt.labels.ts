@@ -116,6 +116,8 @@ export const SALES_RECEIPT_LABELS = {
   DELETE_ITEMS_MESSAGE: "Are you sure you want to delete {count} item(s)?",
 
   // Submit-sale 409 (duplicate invoice number) — fallback when the backend omits `message`
-  DUPLICATE_INVOICE_NUMBER_ERROR: "This invoice number is already used in this pharmacy. Please use a different invoice number.",
+  // Fallback for the DUPLICATE_INVOICE_NUMBER 409 backstop (numbers are server-assigned,
+  // so the user cannot pick a different one — retrying gets a fresh number).
+  DUPLICATE_INVOICE_NUMBER_ERROR: "A duplicate invoice number was detected. Please try saving the sale again.",
 };
 
