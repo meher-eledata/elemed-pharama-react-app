@@ -15,7 +15,11 @@ const createMockStore = () => {
 
 describe('PaymentDetailsSection', () => {
   const mockProps = {
-    paymentMode: '',
+    // The app always seeds paymentMode to a paymentMethods member
+    // (DEFAULT_PAYMENT_MODE = paymentMethods[0] in SalesReceipt.tsx); '' is never
+    // passed and made MUI's Autocomplete warn "None of the options match" on
+    // every default render. Keep the fixture aligned with the options list.
+    paymentMode: 'Cash',
     insuranceCompany: '',
     invoiceNumber: 'INV001',
     invoiceDate: '01/01/2024',
