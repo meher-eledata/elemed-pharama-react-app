@@ -21,6 +21,8 @@ interface ConfirmationDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   itemName?: string;
+  /** Optional: disables the confirm button (e.g. while a submit is in flight). */
+  confirmDisabled?: boolean;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -33,6 +35,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   confirmLabel = 'Yes',
   cancelLabel = 'Cancel',
   itemName,
+  confirmDisabled = false,
 }) => {
   return (
     <Dialog
@@ -125,6 +128,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         </StandardButton>
         <StandardButton
           onClick={onConfirm}
+          disabled={confirmDisabled}
           variant="primary"
           size="medium"
           sx={{
