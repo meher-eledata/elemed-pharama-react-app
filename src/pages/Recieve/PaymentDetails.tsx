@@ -517,6 +517,7 @@ const PaymentDetails: React.FC = () => {
   };
 
   const handleSaveCredit = async () => {
+    if (isAdjustingCredit) return; // in-flight guard (confirm button is also disabled)
     if (!supplierId) {
       return;
     }
@@ -1249,6 +1250,7 @@ const PaymentDetails: React.FC = () => {
         onClose={() => setIsCreditModalOpen(false)}
         onConfirm={handleSaveCredit}
         title="Adjust Supplier Credit"
+        isLoading={isAdjustingCredit}
         confirmLabel={isAdjustingCredit ? "Saving..." : "Save Adjustment"}
         cancelLabel="Cancel"
         message={
