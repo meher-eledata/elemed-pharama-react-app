@@ -28,12 +28,6 @@ const makeMutation = (resolved: any = {}) =>
     { isLoading: false },
   ]);
 
-const makeLazyQuery = (resolved: any = []) =>
-  jest.fn(() => [
-    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
-    { data: undefined, isLoading: false },
-  ]);
-
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
@@ -47,7 +41,6 @@ jest.mock('../../../utils/cartStorage', () => ({
   clearFormDataFromStorage: jest.fn(),
   getCartFromStorage: jest.fn(() => ({ items: [], total: 0 })),
   getFormDataFromStorage: jest.fn(() => null),
-  generateNextInvoiceNumber: jest.fn(() => 'INV001'),
   setEditInvoiceId: jest.fn(),
 }));
 
@@ -92,7 +85,6 @@ describe('SalesReceipt crash regression (form-persistence feedback loop)', () =>
     (salesApi.useUpsertInvoicePaymentsMutation as jest.Mock) = makeMutation();
     (salesApi.useDeleteInvoiceMutation as jest.Mock) = makeMutation();
     (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation();
-    (salesApi.useLazyGetInvoicesQuery as jest.Mock) = makeLazyQuery();
     (receiveApi.useGetProductsQuery as jest.Mock) = jest.fn(() => ({
       data: [],
       isLoading: false,

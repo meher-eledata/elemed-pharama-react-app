@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import { Customer, AddCustomerRequest, InsufficientStockItem, SubmitSaleError } from '../../redux/slices/salesApi';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
-import { saveSalesHistoryToStorage, generateNextInvoiceNumber, saveInvoiceNumber, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
+import { saveSalesHistoryToStorage, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 
@@ -77,6 +77,9 @@ interface ExecuteSaveParams {
   originalSalesItems?: SalesReceiptItem[]; // For diff tracking in edit mode
   skipNavigation?: boolean; // Flag to skip navigation after save
   onSuccess?: () => void; // Optional callback after successful save
+  // New-sale only: receives the server-assigned display number ("INV<n>") from the
+  // submit-sale response so the UI (print preview / receipt) can show it.
+  onInvoiceNumberAssigned?: (displayNumber: string) => void;
   onSaleSaved?: () => void | Promise<void>; // Runs once the sale is persisted (before nav) — used to discard a resumed draft
   // Renders a per-medicine "not enough stock" list (backend 409). When provided, the sale is
   // aborted cleanly (cart + resumed draft preserved) instead of surfacing a generic toast.
@@ -121,6 +124,7 @@ export const executeSave = async ({
   originalSalesItems,
   skipNavigation = false,
   onSuccess,
+  onInvoiceNumberAssigned,
   onSaleSaved,
   onStockShortage,
   splitPayments = [],
@@ -229,20 +233,10 @@ export const executeSave = async ({
       return lineItem;
     });
 
-    // Use the invoice number from state (should already be generated on mount)
-    // If for some reason it's not set, generate it now
-    let finalInvoiceNumber = invoiceNumber;
-    if (!isEditMode && (!finalInvoiceNumber || !finalInvoiceNumber.trim())) {
-      finalInvoiceNumber = generateNextInvoiceNumber();
-      console.log('📝 Generated invoice number during save (should not happen normally):', finalInvoiceNumber);
-    }
-
-
-    // Strip "INV" prefix if present - backend expects only numeric part
-    let invoiceNumberForBackend = finalInvoiceNumber.toString().toUpperCase().startsWith('INV')
-      ? finalInvoiceNumber.toString().replace(/^INV/i, '').trim()
-      : finalInvoiceNumber.toString().trim();
-
+    // Display number used for the local history entry. Edit mode keeps the existing
+    // number; for a new sale the backend assigns it at submit and we read it from the
+    // response below ("INV" prefix stays a display-layer concern).
+    let finalInvoiceNumber = isEditMode ? invoiceNumber : '';
 
     const patientTypeNumber = patientType === 'In Patient' ? 0 : 1;
 
@@ -284,7 +278,8 @@ export const executeSave = async ({
       doctor_mobile: doctorMobile,
       doctor_email: doctorEmail,
       patient_type: patientTypeNumber,
-      invoice_number: invoiceNumberForBackend,
+      // invoice_number is intentionally NOT sent — the backend assigns it at submit
+      // and returns it in the 201 response.
       invoice_date: invoiceDateForBackend,
       lines: lines,
       payments: splitPayments && splitPayments.length > 0 ? splitPayments.map(p => ({
@@ -447,89 +442,40 @@ export const executeSave = async ({
           throw new Error('No response received from server. Sale may not have been saved to database.');
         }
 
-        // Check if response indicates success (has message or invoice/invoice_number)
-        // Backend response structure: { invoice: { id, invoice_number, ... }, lines: [...], ... }
-        const hasInvoice = result.invoice && (result.invoice.id !== undefined || result.invoice.invoice_number !== undefined);
+        // Check if response indicates success (has message or the assigned invoice_number).
+        // 201 shape: { message, invoice_id, invoice_number, patient_type, totals, lines }
         const hasMessage = result.message;
         const hasTopLevelInvoiceNumber = result.invoice_number !== undefined;
 
-        if (hasMessage || hasInvoice || hasTopLevelInvoiceNumber) {
-          // PRIORITY 1: Get database invoice ID from response (this is the actual database ID)
-          // Backend response structure: { invoice: { id: 1, invoice_number: "1", ... }, ... }
+        if (hasMessage || hasTopLevelInvoiceNumber) {
+          // Database id of the created invoice (top-level invoice_id on the 201).
           let dbInvoiceId: number | undefined = undefined;
-
-          // Check nested invoice.id first (most common structure)
-          if (result.invoice && result.invoice.id !== undefined && result.invoice.id !== null) {
-            dbInvoiceId = typeof result.invoice.id === 'number'
-              ? result.invoice.id
-              : parseInt(String(result.invoice.id), 10);
-            console.log('✅ Found invoice.id in response:', dbInvoiceId);
-          }
-          // Check for top-level invoice_id
-          else if (result.invoice_id !== undefined && result.invoice_id !== null) {
+          if (result.invoice_id !== undefined && result.invoice_id !== null) {
             dbInvoiceId = typeof result.invoice_id === 'number'
               ? result.invoice_id
               : parseInt(String(result.invoice_id), 10);
             console.log('✅ Found invoice_id in response:', dbInvoiceId);
           }
-          // Check for top-level id as fallback
-          else if (result.id !== undefined && result.id !== null) {
-            dbInvoiceId = typeof result.id === 'number'
-              ? result.id
-              : parseInt(String(result.id), 10);
-            console.log('✅ Found id in response:', dbInvoiceId);
-          }
 
-          // Use invoice number from response if provided, otherwise use the one we generated
-          let savedInvoiceNumber: string;
-          let numericInvoiceNumber: number = 0;
-
-          // Check nested invoice.invoice_number first
-          if (result.invoice && result.invoice.invoice_number !== undefined && result.invoice.invoice_number !== null) {
-            // Backend returns invoice_number as string (e.g., "1"), format it as "INV1"
-            const parsed = typeof result.invoice.invoice_number === 'number'
-              ? result.invoice.invoice_number
-              : parseInt(String(result.invoice.invoice_number), 10);
-
-            if (!isNaN(parsed) && parsed > 0) {
-              numericInvoiceNumber = parsed;
-              savedInvoiceNumber = `INV${numericInvoiceNumber}`;
-              console.log('✅ Found valid invoice.invoice_number in response:', savedInvoiceNumber);
-            } else {
-              savedInvoiceNumber = finalInvoiceNumber;
-              console.warn('⚠️ Invalid invoice.invoice_number in response, using generated:', savedInvoiceNumber);
+          // Read the SERVER-ASSIGNED invoice number (top-level, plain numeric string,
+          // e.g. "947"). The "INV" display prefix is added here (display-layer concern only).
+          let savedInvoiceNumber = '';
+          let numericInvoiceNumber = 0;
+          const rawAssigned = result.invoice_number;
+          const parsedAssigned = typeof rawAssigned === 'number'
+            ? rawAssigned
+            : parseInt(String(rawAssigned ?? ''), 10);
+          if (!isNaN(parsedAssigned) && parsedAssigned > 0) {
+            numericInvoiceNumber = parsedAssigned;
+            savedInvoiceNumber = `INV${numericInvoiceNumber}`;
+            console.log('✅ Server-assigned invoice number:', savedInvoiceNumber);
+            if (onInvoiceNumberAssigned) {
+              onInvoiceNumberAssigned(savedInvoiceNumber);
             }
+          } else {
+            console.warn('⚠️ No assigned invoice_number found in submit-sale response');
           }
-          // Check top-level invoice_number
-          else if (result.invoice_number !== undefined && result.invoice_number !== null) {
-            const parsed = typeof result.invoice_number === 'number'
-              ? result.invoice_number
-              : parseInt(String(result.invoice_number), 10);
-
-            if (!isNaN(parsed) && parsed > 0) {
-              numericInvoiceNumber = parsed;
-              savedInvoiceNumber = `INV${numericInvoiceNumber}`;
-              console.log('✅ Found valid invoice_number in response:', savedInvoiceNumber);
-            } else {
-              savedInvoiceNumber = finalInvoiceNumber;
-              console.warn('⚠️ Invalid invoice_number in response, using generated:', savedInvoiceNumber);
-            }
-          }
-          // Fallback to generated invoice number
-          else {
-            savedInvoiceNumber = finalInvoiceNumber;
-            // Extract numeric part from finalInvoiceNumber for fallback
-            const cleaned = finalInvoiceNumber.replace(/^INV/i, '').trim();
-            numericInvoiceNumber = parseInt(cleaned, 10) || 0;
-            console.log('⚠️ Using generated invoice number:', savedInvoiceNumber);
-          }
-
-          // Save the invoice number to ensure counter is at least this number
-          // (This is a safety check - the counter should already be incremented from mount)
-          saveInvoiceNumber(savedInvoiceNumber);
-          console.log('💾 Verified invoice number in storage:', savedInvoiceNumber);
           console.log('💾 Database invoice ID from response:', dbInvoiceId);
-          console.log('💾 Numeric invoice number:', numericInvoiceNumber);
 
           // Update finalInvoiceNumber for use in history
           finalInvoiceNumber = savedInvoiceNumber;
@@ -580,9 +526,6 @@ export const executeSave = async ({
           }
 
         } else {
-          // Even if response doesn't have invoice_number, verify the one we generated is saved
-          saveInvoiceNumber(finalInvoiceNumber);
-          console.log('💾 Verified generated invoice number in storage:', finalInvoiceNumber);
           console.warn('⚠️ API response does not indicate clear success:', result);
           console.warn('⚠️ Response missing expected fields (message or invoice_number)');
           // Still continue, but log a warning
@@ -598,10 +541,12 @@ export const executeSave = async ({
 
         // Duplicate invoice number (HTTP 409, { error: 'DUPLICATE_INVOICE_NUMBER', message }):
         // discriminated from the stock 409 by the error code (that one carries
-        // insufficient_stock instead). Show the backend's human-readable message — never the
-        // raw code or the shortfall UI — and abort so the cart and any resumed draft are
-        // preserved. Toast directly (not throw): extractErrorMessage hides Error messages in
-        // PROD builds, which would swallow the specific message.
+        // insufficient_stock instead). With server-assigned numbering (2026-08-11) this is
+        // the DB-constraint backstop and should never fire in practice, but it stays wired.
+        // Show the backend's human-readable message — never the raw code or the shortfall
+        // UI — and abort so the cart and any resumed draft are preserved. Toast directly
+        // (not throw): extractErrorMessage hides Error messages in PROD builds, which would
+        // swallow the specific message.
         if (errorData?.error === 'DUPLICATE_INVOICE_NUMBER') {
           showToast(errorData.message || SALES_RECEIPT_LABELS.DUPLICATE_INVOICE_NUMBER_ERROR, 'error');
           return;
@@ -667,7 +612,7 @@ export const executeSave = async ({
     }
 
     const historyItem = {
-      invoiceNumber: finalInvoiceNumber, // Use the final invoice number (generated or from API)
+      invoiceNumber: finalInvoiceNumber, // Edit: existing number; new sale: server-assigned ("INV<n>")
       invoiceDate,
       customerName,
       customerMobile,

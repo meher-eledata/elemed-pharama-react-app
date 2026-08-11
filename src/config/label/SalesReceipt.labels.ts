@@ -32,6 +32,7 @@ export const SALES_RECEIPT_LABELS = {
   DETAILS_LABEL: "Details",
   DETAILS_PLACEHOLDER: "Enter comments (optional)",
   INVOICE_NUMBER_LABEL: "Invoice number",
+  INVOICE_NUMBER_AUTO_PLACEHOLDER: "Auto-generated",
   INVOICE_DATE_LABEL: "Invoice date",
 
   // Table Headers

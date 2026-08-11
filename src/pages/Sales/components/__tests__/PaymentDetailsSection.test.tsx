@@ -21,7 +21,6 @@ describe('PaymentDetailsSection', () => {
     invoiceDate: '01/01/2024',
     onPaymentModeChange: jest.fn(),
     onInsuranceCompanyChange: jest.fn(),
-    onInvoiceNumberChange: jest.fn(),
     onInvoiceDateChange: jest.fn(),
   };
 
@@ -71,6 +70,20 @@ describe('PaymentDetailsSection', () => {
 
     // Invoice number is rendered as a TextField value, not free text.
     expect(screen.getByDisplayValue('INV123')).toBeInTheDocument();
+  });
+
+  it('renders the invoice number field read-only (backend assigns the number)', () => {
+    renderComponent({ invoiceNumber: 'INV123' });
+
+    expect(screen.getByLabelText(/invoice number/i)).toBeDisabled();
+  });
+
+  it('shows the Auto-generated placeholder for a new sale (no number yet)', () => {
+    renderComponent({ invoiceNumber: '' });
+
+    const input = screen.getByLabelText(/invoice number/i);
+    expect(input).toHaveAttribute('placeholder', 'Auto-generated');
+    expect(input).toHaveValue('');
   });
 
   it('displays invoice date field when provided', () => {

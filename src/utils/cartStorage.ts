@@ -2,6 +2,9 @@ const CART_STORAGE_KEY = 'pharma_sales_cart';
 const CART_TIMESTAMP_KEY = 'pharma_sales_cart_timestamp';
 const FORM_DATA_STORAGE_KEY = 'pharma_sales_form_data';
 const SALES_HISTORY_STORAGE_KEY = 'pharma_sales_history';
+// LEGACY (2026-08-11): the client-side invoice-number counter was removed when the
+// backend took over numbering — no code writes this key anymore. Kept ONLY so
+// clearAllSalesStorage can purge the stale value from existing browsers on logout.
 const INVOICE_NUMBER_COUNTER_KEY = 'pharma_invoice_number_counter';
 const EDIT_INVOICE_ID_KEY = 'pharma_edit_invoice_id';
 const CART_EXPIRY_HOURS = 24;
@@ -90,8 +93,8 @@ export const clearEditInvoiceId = (): void => {
 /**
  * Clears EVERY sales artifact this module persists — the working cart, form
  * data and edit-invoice id (sessionStorage) plus the locally-saved sales
- * history and invoice-number counter (localStorage, browser-global and
- * account-agnostic). Called on logout so the next account can never see or
+ * history and the legacy invoice-number counter (localStorage, browser-global
+ * and account-agnostic). Called on logout so the next account can never see or
  * merge the previous account's locally-saved sales data.
  */
 export const clearAllSalesStorage = (): void => {
@@ -281,78 +284,6 @@ export const clearSalesHistoryFromStorage = (): void => {
   }
 };
 
-export const getCurrentInvoiceNumber = (): number => {
-  try {
-    const stored = localStorage.getItem(INVOICE_NUMBER_COUNTER_KEY);
-    let nextNum = 11; // Start from 11 due to 10 default invoices
-
-    if (stored) {
-      nextNum = parseInt(stored, 10);
-      if (isNaN(nextNum) || nextNum < 11) nextNum = 11;
-    }
-
-    // SELF-HEALING: Check sales history to ensure we never generate a duplicate
-    // especially if the user cleared their browser storage but NOT their database.
-    const history = getSalesHistoryFromStorage();
-    if (history.length > 0) {
-      const highestInHistory = history.reduce((max, item) => {
-        // Extract numeric part (handles "6", "INV-6", "RB6", etc.)
-        const num = parseInt(String(item.invoiceNumber || '').replace(/[^0-9]/g, ''), 10);
-        return (!isNaN(num) && num > max) ? num : max;
-      }, 0);
-
-      // If history has a higher number than our counter, jump ahead!
-      if (highestInHistory >= nextNum) {
-        nextNum = highestInHistory + 1;
-        localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, nextNum.toString());
-      }
-    }
-
-    return nextNum;
-  } catch (error) {
-    return 1;
-  }
-};
-
-/**
- * Generates the next invoice number and saves it
- * Format: Simple number (e.g., "6", "7", etc.) to match backend strict numeric expectation
- * @returns The next unique invoice number string
- */
-export const generateNextInvoiceNumber = (): string => {
-  try {
-    const nextNumber = getCurrentInvoiceNumber();
-    localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, (nextNumber + 1).toString());
-
-    // Include the "INV" prefix for frontend representation
-    return `INV${nextNumber}`;
-  } catch (error) {
-    // Fallback: if storage fails, return a random sequence to minimize collision risks
-    return `INV${Math.floor(Date.now() / 1000)}`;
-  }
-};
-
-
-/**
- * Saves an invoice number to ensure the counter is at least that number
- * This is useful when loading existing invoices to prevent duplicates
- * @param invoiceNumber - The invoice number string (e.g., "INV123")
- */
-export const saveInvoiceNumber = (invoiceNumber: string): void => {
-  try {
-    // Extract numeric part from invoice number (e.g., "INV123" -> 123)
-    const numericPart = invoiceNumber.replace(/^INV/i, '').trim();
-    const number = parseInt(numericPart, 10);
-
-    if (!isNaN(number) && number > 0) {
-      const currentNumber = getCurrentInvoiceNumber();
-      // Update counter to be at least this number
-      if (number >= currentNumber) {
-        localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, (number + 1).toString());
-      }
-    }
-  } catch (error) {
-    // Silently fail if there's an error
-  }
-};
+// Invoice-number counter helpers removed (2026-08-11): the backend assigns invoice
+// numbers at submit-sale, so the client no longer generates or tracks them.
 

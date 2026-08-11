@@ -232,6 +232,8 @@ export interface InsufficientStockItem {
 // - duplicate invoice number: { error: 'DUPLICATE_INVOICE_NUMBER', message } (no insufficient_stock)
 // - stock shortage: { message, insufficient_stock: [...] } (no error code)
 // Clients discriminate on error === 'DUPLICATE_INVOICE_NUMBER' vs presence of insufficient_stock.
+// With server-assigned numbering (2026-08-11) the duplicate 409 is a DB-constraint
+// backstop only and should never fire in practice.
 export interface SubmitSaleError {
   error?: string;
   message?: string;
@@ -268,10 +270,11 @@ export interface SubmitSaleRequest {
   doctor_name?: string; // Name of the doctor
   doctor_mobile?: string; // Mobile of the doctor
   doctor_email?: string; // Email of the doctor
-  // REQUIRED (2026-07-29): backend 400s when missing/blank and 409s on a duplicate
-  // ({ error: 'DUPLICATE_INVOICE_NUMBER', message } — see SubmitSaleError).
-  // Always generated client-side (cartStorage).
-  invoice_number: string;
+  // invoice_number REMOVED (2026-08-11, server-side numbering): the backend now assigns
+  // the number at submit and IGNORES any client value; the assigned number is returned
+  // in the 201 response (see SubmitSaleResponse). Do not send it. The
+  // DUPLICATE_INVOICE_NUMBER 409 (see SubmitSaleError) remains as the DB-constraint
+  // backstop but should never fire now that the server generates numbers.
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   patient_type?: number; // 1 for "In Patient", 0 for "Out Patient"
   lines: SubmitSaleLine[];
@@ -292,7 +295,16 @@ export interface SubmitSaleLineResponse {
 
 export interface SubmitSaleResponse {
   message: string;
-  invoice_number: number | null;
+  invoice_id: number; // Database id of the created invoice
+  // Server-ASSIGNED at submit (2026-08-11): the authoritative invoice number as a plain
+  // numeric string (e.g. "947"). The "INV" prefix is a display-layer concern only.
+  invoice_number: string;
+  patient_type: number;
+  totals: {
+    lines_total: number;
+    header_discount: number;
+    invoice_total: number;
+  };
   lines: SubmitSaleLineResponse[];
 }
 
