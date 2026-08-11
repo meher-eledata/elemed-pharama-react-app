@@ -98,6 +98,9 @@ export interface EditReceiptRequest {
     selling_price: string;
     pack_qty?: string;
   }>;
+  // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
+  // stored outcome of the first attempt (see useIdempotencyKey).
+  idempotency_key?: string;
 }
 
 export interface EditReceiptResponse {
@@ -445,6 +448,9 @@ export const receiveApi = createApi({
           selling_price?: number;
           pack_qty?: string;
         }>;
+        // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
+        // stored outcome of the first attempt (see useIdempotencyKey).
+        idempotency_key?: string;
       }
     >({
       query: (body) => ({
@@ -660,6 +666,9 @@ export const receiveApi = createApi({
         credit_type: string;
         notes: string;
         created_by: string;
+        // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
+        // stored outcome of the first attempt (see useIdempotencyKey).
+        idempotency_key?: string;
       }
     >({
       query: (body) => ({

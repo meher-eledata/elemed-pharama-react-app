@@ -66,6 +66,7 @@ import { useCustomerPhones } from './hooks/useCustomerPhones';
 import { useDoctorPhonesAndEmails } from './hooks/useDoctorPhonesAndEmails';
 import { handleCustomerSubmit } from './SalesReceipt.customerHandler';
 import { executeSave } from './SalesReceipt.saveHandler';
+import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { executeSaveDraft } from './SalesReceipt.draftHandler';
 import {
   useCreateDraftMutation,
@@ -108,6 +109,9 @@ const SalesReceipt: React.FC = () => {
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
+  // One idempotency key per pending logical submission (submit-sale / edit-sale):
+  // reused on retry of the same failed payload, cleared after success.
+  const idempotency = useIdempotencyKey();
   const [deleteInvoice, { isLoading: isDeletingInvoice }] = useDeleteInvoiceMutation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [upsertInvoicePayments] = useUpsertInvoicePaymentsMutation();
@@ -1548,8 +1552,9 @@ const SalesReceipt: React.FC = () => {
         : undefined,
       splitPayments: effectiveSplitPayments,
       upsertInvoicePayments,
+      idempotency,
     });
-  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft]);
+  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft, idempotency]);
 
   const handleSaveDraft = useCallback(async () => {
     const matchedDoctor = doctorNamesData.find((d: any) =>

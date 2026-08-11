@@ -7,6 +7,7 @@ import {
   useEditReceiptMutation,
   useUploadReceiptFileMutation,
 } from "../../../redux/slices/receiveApi";
+import { useIdempotencyKey } from "../../../hooks/useIdempotencyKey";
 import { PharmaTableRow, SupplierOption, ProductOption } from "../types";
 
 interface SubmitHookParams {
@@ -48,6 +49,9 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
   const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
   const [uploadReceiptFile] = useUploadReceiptFileMutation();
+  // One key per pending logical submission: reused on retry of the same failed
+  // payload, regenerated when the payload changes, cleared after success.
+  const { getKey: getIdempotencyKey, reset: resetIdempotencyKey } = useIdempotencyKey();
 
   const {
     supplierName,
@@ -350,7 +354,11 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
       if (isEditMode && receiptId) {
         const editPayload = transformFormDataToEditPayload();
-        result = await editReceipt(editPayload).unwrap();
+        result = await editReceipt({
+          ...editPayload,
+          idempotency_key: getIdempotencyKey(JSON.stringify(editPayload)),
+        }).unwrap();
+        resetIdempotencyKey();
         finalReceiptId = receiptId;
       } else {
         let submitPayload;
@@ -364,7 +372,11 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
         // Never re-submit on error (a timeout-after-commit was duplicating stock);
         // the outer catch surfaces the error to the user via setSaveError.
-        result = await submitReceipt(submitPayload).unwrap();
+        result = await submitReceipt({
+          ...submitPayload,
+          idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+        }).unwrap();
+        resetIdempotencyKey();
         finalReceiptId = result.receipt_id || (result as any).receiptId;
       }
 
@@ -438,7 +450,11 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
       // Never re-submit on error (a timeout-after-commit was duplicating stock);
       // the outer catch surfaces the error to the user via setSaveError.
-      const result = await submitReceipt(submitPayload).unwrap();
+      const result = await submitReceipt({
+        ...submitPayload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+      }).unwrap();
+      resetIdempotencyKey();
       const newReceiptId: number | null = result.receipt_id || (result as any).receiptId;
 
       if (newReceiptId) {
@@ -532,7 +548,11 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
       // Never re-submit on error (a timeout-after-commit was duplicating stock);
       // the outer catch surfaces the error to the user via setSaveError.
-      const result = await submitReceipt(submitPayload).unwrap();
+      const result = await submitReceipt({
+        ...submitPayload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+      }).unwrap();
+      resetIdempotencyKey();
       const newReceiptId: number | null = result.receipt_id || (result as any).receiptId;
 
       if (newReceiptId) {
