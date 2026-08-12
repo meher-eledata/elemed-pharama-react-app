@@ -64,6 +64,10 @@ const TEST_ORG = {
   dl_numbers: 'DL-1, DL-2',
   gstin: 'GSTIN123',
   phone: '000-111',
+  invoice_number_enabled: false,
+  invoice_number_template: null,
+  invoice_number_reset: 'none',
+  invoice_seq_start: null,
 };
 
 const createMockStore = (initialState = {}) => {
@@ -225,9 +229,37 @@ describe('SaleHistory', () => {
     expect(screen.getByText(/customer name/i)).toBeInTheDocument();
   });
 
+  it('shows a schemed invoice_number VERBATIM (no INV prefix) when the org scheme is enabled', async () => {
+    // Stable reference so effects keyed on invoicesData do not loop (mirrors beforeEach).
+    const schemedInvoices = [{ ...mockInvoices[0], invoice_number: 'SI-EL-26-002296' }];
+    const stableRefetch = jest.fn();
+    (salesApi.useGetInvoicesQuery as jest.Mock) = jest.fn(() => ({
+      data: schemedInvoices,
+      isLoading: false,
+      error: null,
+      refetch: stableRefetch,
+    }));
+    const schemedStore = createMockStore({
+      org: {
+        organization: {
+          ...TEST_ORG,
+          invoice_number_enabled: true,
+          invoice_number_template: 'SI-EL-{YY}-{SEQ:6}',
+        },
+        activeModules: ['pharmacy'],
+        loaded: true,
+      },
+    });
+    renderComponent(schemedStore);
+
+    expect(await screen.findByText('SI-EL-26-002296')).toBeInTheDocument();
+    // Never the legacy "INV<custom>" mangling.
+    expect(screen.queryByText(/INVSI-EL/i)).not.toBeInTheDocument();
+  });
+
   it('opens invoice modal when eye icon is clicked', async () => {
     renderComponent();
-    
+
     // Wait for table to render with mock data (invoice numbers should appear)
     await waitFor(() => {
       expect(screen.getByText(/inv7896/i)).toBeInTheDocument();

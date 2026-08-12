@@ -469,6 +469,31 @@ describe('SalesReceipt', () => {
       );
     });
 
+    it('with the org scheme enabled uses the rendered invoice_number VERBATIM (no INV prefix)', async () => {
+      const onInvoiceNumberAssigned = jest.fn();
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({
+          message: 'Sale submitted',
+          invoice_id: 12,
+          invoice_number: 'SI-EL-26-002296',
+        }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        schemeEnabled: true,
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+        onInvoiceNumberAssigned,
+      });
+
+      expect(onInvoiceNumberAssigned).toHaveBeenCalledWith('SI-EL-26-002296');
+      expect(saveSalesHistoryToStorage).toHaveBeenCalledWith(
+        expect.objectContaining({ invoiceNumber: 'SI-EL-26-002296' }),
+        12
+      );
+    });
+
     it('edit mode still sends invoice_number as the read-only lookup key', async () => {
       const editTrigger = jest.fn(() => ({
         unwrap: jest.fn().mockResolvedValue({ message: 'ok', invoice_id: 5 }),

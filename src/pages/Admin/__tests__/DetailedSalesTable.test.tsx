@@ -101,6 +101,8 @@ const createStore = () =>
   configureStore({
     reducer: {
       auth: (state = { token: 'JWT123', user: null }) => state,
+      // selectOrganization reads state.org.organization (INV-cosmetic gating).
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
       [reportsApi.reportsApi.reducerPath]: reportsApi.reportsApi.reducer,
     },
     middleware: (gDM) => gDM().concat(reportsApi.reportsApi.middleware),
