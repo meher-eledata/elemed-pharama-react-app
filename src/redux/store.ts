@@ -16,6 +16,7 @@ import { alertsApi } from "./slices/alertsApi";
 import { adminCreditApi } from "./slices/adminCreditApi";
 import { draftsApi } from "./slices/draftsApi";
 import { orgApi } from "./slices/orgApi";
+import { supplierReturnsApi } from "./slices/supplierReturnsApi";
 import cartReducer from "./slices/cartSlice";
 import orgReducer from "./slices/orgSlice";
 import { clearAllSalesStorage } from "../utils/cartStorage";
@@ -40,6 +41,7 @@ export const allApis = [
   adminCreditApi,
   draftsApi,
   orgApi,
+  supplierReturnsApi,
 ] as const;
 
 // On logout (TopBar menu AND baseQuery's 401 handler both dispatch it), purge
@@ -82,6 +84,7 @@ export const store = configureStore({
     [adminCreditApi.reducerPath]: adminCreditApi.reducer,
     [draftsApi.reducerPath]: draftsApi.reducer,
     [orgApi.reducerPath]: orgApi.reducer,
+    [supplierReturnsApi.reducerPath]: supplierReturnsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()

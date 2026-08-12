@@ -23,6 +23,7 @@ import ProductDetailsModalContent from "./ProductDetailsModalContent";
 import {
   ORDER_RECEIVE_TITLE,
   ADD_RECEIVE_BUTTON,
+  PURCHASE_RETURN_BUTTON,
   ORDER_RECEIVE_MESSAGES,
   ORDER_RECEIVE_DIALOG,
   ORDER_RECEIVE_MODAL,
@@ -272,6 +273,13 @@ const OrderReceive: React.FC = () => {
           {ORDER_RECEIVE_TITLE}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <StandardButton
+            onClick={() => navigate('/receive/purchase-return')}
+            variant="secondary"
+            size="large"
+          >
+            {PURCHASE_RETURN_BUTTON}
+          </StandardButton>
           <StandardButton
             startIcon={<AddIcon />}
             onClick={() => navigate('/receive/order-details')}

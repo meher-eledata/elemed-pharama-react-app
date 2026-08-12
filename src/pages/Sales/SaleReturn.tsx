@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSubmitSalesReturnMutation, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
+import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 
@@ -57,6 +58,9 @@ export default function SaleReturn() {
 
   const user = useSelector((state: RootState) => state.auth.user);
   const [submitSalesReturn, { isLoading: isSubmittingReturn }] = useSubmitSalesReturnMutation();
+  // One idempotency key per pending return submission: reused on retry of the
+  // same failed payload, cleared after success.
+  const { getKey: getIdempotencyKey, reset: resetIdempotencyKey } = useIdempotencyKey();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
 
   const [returnDate, setReturnDate] = useState<Dayjs | null>(dayjs());
@@ -771,7 +775,11 @@ export default function SaleReturn() {
       console.log('Prepared payload for submission:', payload);
       console.log('🌐 Endpoint: POST /sales/submit-sales-return/');
 
-      const result = await submitSalesReturn(payload).unwrap();
+      const result = await submitSalesReturn({
+        ...payload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(payload)),
+      }).unwrap();
+      resetIdempotencyKey();
 
       console.log('✅ Return submitted successfully:', result);
       setIsConfirmDialogOpen(false);

@@ -84,6 +84,9 @@ interface ExecuteSaveParams {
   // Renders a per-medicine "not enough stock" list (backend 409). When provided, the sale is
   // aborted cleanly (cart + resumed draft preserved) instead of surfacing a generic toast.
   onStockShortage?: (lines: string[]) => void;
+  // Idempotency-key handle (useIdempotencyKey): key is attached to submit-sale/edit-sale,
+  // reused on retry of the same failed payload, and reset after a successful submit.
+  idempotency?: { getKey: (fingerprint: string) => string; reset: () => void };
 }
 
 export const executeSave = async ({
@@ -127,6 +130,7 @@ export const executeSave = async ({
   onInvoiceNumberAssigned,
   onSaleSaved,
   onStockShortage,
+  idempotency,
   splitPayments = [],
 }: ExecuteSaveParams): Promise<void> => {
   try {
@@ -376,7 +380,12 @@ export const executeSave = async ({
 
       console.log('📡 Calling backend API: POST /api/sales/edit-sale');
       console.log('📦 Payload:', JSON.stringify(editSalePayload, null, 2));
-      const result = await editSale(editSalePayload).unwrap();
+      const result = await editSale(
+        idempotency
+          ? { ...editSalePayload, idempotency_key: idempotency.getKey(JSON.stringify(editSalePayload)) }
+          : editSalePayload
+      ).unwrap();
+      idempotency?.reset();
       console.log('✅ Backend API Response (edit-sale):', result);
 
       // Synchronize payments in Edit Mode (covers both split and single-payment cases).
@@ -431,7 +440,12 @@ export const executeSave = async ({
         console.log('🔄 Calling backend API: POST /api/sales/submit-sale');
         console.log('📦 Payload:', JSON.stringify(submitSalePayload, null, 2));
 
-        result = await submitSale(submitSalePayload).unwrap();
+        result = await submitSale(
+          idempotency
+            ? { ...submitSalePayload, idempotency_key: idempotency.getKey(JSON.stringify(submitSalePayload)) }
+            : submitSalePayload
+        ).unwrap();
+        idempotency?.reset();
 
         console.log('✅ Backend API Response:', JSON.stringify(result, null, 2));
         console.log('📊 Response status: Success');

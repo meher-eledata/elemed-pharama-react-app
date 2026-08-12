@@ -33,6 +33,7 @@ import {
   CreditTransaction,
   CreditDirection,
 } from '../../redux/slices/adminCreditApi';
+import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -206,6 +207,9 @@ const SupplierCredit: React.FC = () => {
   const [formError, setFormError] = useState('');
 
   const [adjustCredit, { isLoading: isAdjusting }] = useAdjustSupplierCreditMutation();
+  // One idempotency key per pending credit adjustment: reused on retry of the
+  // same failed payload, cleared after success.
+  const { getKey: getIdempotencyKey, reset: resetIdempotencyKey } = useIdempotencyKey();
 
   const { data: balanceData, isFetching: isBalanceLoading } = useGetSupplierCreditBalanceQuery(
     { supplier_id: dlgSupplier?.id as number },
@@ -227,6 +231,7 @@ const SupplierCredit: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (isAdjusting) return; // in-flight guard (button is also disabled)
     const amountNum = Number(dlgAmount);
     if (!dlgSupplier) {
       setFormError(L.DIALOG.VALIDATION.SUPPLIER_REQUIRED);
@@ -242,12 +247,17 @@ const SupplierCredit: React.FC = () => {
     }
     setFormError('');
     try {
-      await adjustCredit({
+      const adjustPayload = {
         supplier_id: dlgSupplier.id,
         direction: dlgDirection,
         amount: amountNum,
         notes: dlgReason.trim(),
+      };
+      await adjustCredit({
+        ...adjustPayload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(adjustPayload)),
       }).unwrap();
+      resetIdempotencyKey();
       // Tag invalidation refreshes the table and the dialog balance automatically.
       setDialogOpen(false);
       setSnackbar({ open: true, message: L.DIALOG.SUCCESS, severity: 'success' });
