@@ -37,13 +37,17 @@ interface SalesData {
 const DetailedSalesTable: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
+  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
+  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
   const [logDownload] = useLogDownloadMutation();
 
   const { data: apiData, isLoading, isError } = useGetDailySalesTableQuery(
-    { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
     {
-      skip: !selectedDate,
+      start_date: (startDate ?? dayjs()).format('YYYY-MM-DD'),
+      end_date: (endDate ?? dayjs()).format('YYYY-MM-DD'),
+    },
+    {
+      skip: !startDate || !endDate,
       refetchOnMountOrArgChange: true
     }
   );
@@ -447,8 +451,12 @@ const DetailedSalesTable: React.FC = () => {
     }));
   }, [sortedData]);
 
-  // Generate filename with current date
-  const csvFilename = `detailed_sales_table_${selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')}.csv`;
+  // Generate filename with the selected date range
+  const csvFilename = (() => {
+    const s = (startDate ?? dayjs()).format('YYYY-MM-DD');
+    const e = (endDate ?? dayjs()).format('YYYY-MM-DD');
+    return s === e ? `detailed_sales_table_${s}.csv` : `detailed_sales_table_${s}_to_${e}.csv`;
+  })();
 
   if (isLoading) {
     return (
@@ -596,8 +604,16 @@ const DetailedSalesTable: React.FC = () => {
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <PharmaDatePicker
-            value={selectedDate}
-            onChange={setSelectedDate}
+            value={startDate}
+            onChange={setStartDate}
+            maxDate={endDate ?? undefined}
+            width={200}
+            height={40}
+          />
+          <PharmaDatePicker
+            value={endDate}
+            onChange={setEndDate}
+            minDate={startDate ?? undefined}
             width={200}
             height={40}
           />

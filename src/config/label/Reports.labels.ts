@@ -6,7 +6,7 @@ export const REPORTS_LABELS = {
     DETAILED_VIEW: 'Detailed View Reports',
   },
   DAILY_SALES_REPORT: {
-    TITLE: 'Daily Sales Report',
+    TITLE: 'Sales Report',
     METRICS: {
       TOTAL_BILLS: 'Total Bills',
       TOTAL_SALES: 'Total Sales',

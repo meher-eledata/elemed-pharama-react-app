@@ -99,8 +99,8 @@ const DetailedReportsView: React.FC = () => {
   }[] = [
     {
       id: 'daily-sales',
-      title: 'Daily Sales Report',
-      description: 'View detailed daily sales information including payment methods, taxes, and trends',
+      title: 'Sales Report',
+      description: 'View detailed sales information including payment methods, taxes, and trends',
     },
     {
       id: 'supplier-receipt',
@@ -223,22 +223,26 @@ const DetailedReportsView: React.FC = () => {
 
 const DailySalesReport: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
+  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
+  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
   const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
 
   const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
-    { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
     {
-      skip: !selectedDate,
+      start_date: (startDate ?? dayjs()).format('YYYY-MM-DD'),
+      end_date: (endDate ?? dayjs()).format('YYYY-MM-DD'),
+    },
+    {
+      skip: !startDate || !endDate,
       refetchOnMountOrArgChange: true
     }
   );
 
   const { data: weeklyApiData } = useGetWeeklyBillCountsQuery(
-    { end_date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
+    { end_date: (endDate ?? dayjs()).format('YYYY-MM-DD') },
     {
-      skip: !selectedDate,
+      skip: !endDate,
       refetchOnMountOrArgChange: true
     }
   );
@@ -269,13 +273,6 @@ const DailySalesReport: React.FC = () => {
 
   const reportData = useMemo(() => {
     if (!apiData) return null;
-
-    // Diagnostic log to verify if cash numbers are updating from backend
-    console.log('📊 Daily Sales Report API Data:', {
-      total_sales: apiData.total_sales,
-      cash_in_hand: apiData.cash_in_hand_total,
-      breakdown: apiData.payment_method_breakdown
-    });
 
     const parseVal = (val: any) => {
       if (val === null || val === undefined) return 0;
@@ -420,15 +417,16 @@ const DailySalesReport: React.FC = () => {
     return csvRows;
   }, [reportData, totalPaymentValue]);
 
-  // Generate filename with selected date
+  // Generate filename with selected date range
   const csvFilename = useMemo(() => {
-    const dateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
-    return `daily_sales_report_${dateStr}.csv`;
-  }, [selectedDate]);
+    const s = (startDate ?? dayjs()).format('YYYY-MM-DD');
+    const e = (endDate ?? dayjs()).format('YYYY-MM-DD');
+    return s === e ? `sales_report_${s}.csv` : `sales_report_${s}_to_${e}.csv`;
+  }, [startDate, endDate]);
 
   const handleDownloadCSV = () => {
     csvLinkRef.current?.link?.click();
-    logDownload({ category: 'report', name: 'Daily Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
+    logDownload({ category: 'report', name: 'Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
   if (isLoading) {
@@ -443,10 +441,17 @@ const DailySalesReport: React.FC = () => {
     return (
       <Box sx={{ textAlign: 'center', mt: 4 }}>
         <Typography color="error">Failed to load report data. Please try again later.</Typography>
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 1 }}>
           <PharmaDatePicker
-            value={selectedDate}
-            onChange={setSelectedDate}
+            value={startDate}
+            onChange={setStartDate}
+            maxDate={endDate ?? undefined}
+            width={200}
+          />
+          <PharmaDatePicker
+            value={endDate}
+            onChange={setEndDate}
+            minDate={startDate ?? undefined}
             width={200}
           />
         </Box>
@@ -479,8 +484,16 @@ const DailySalesReport: React.FC = () => {
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <PharmaDatePicker
-            value={selectedDate}
-            onChange={setSelectedDate}
+            value={startDate}
+            onChange={setStartDate}
+            maxDate={endDate ?? undefined}
+            width={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.WIDTH}
+            height={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.HEIGHT}
+          />
+          <PharmaDatePicker
+            value={endDate}
+            onChange={setEndDate}
+            minDate={startDate ?? undefined}
             width={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.WIDTH}
             height={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.HEIGHT}
           />
