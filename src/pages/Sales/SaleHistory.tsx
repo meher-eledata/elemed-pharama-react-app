@@ -953,7 +953,7 @@ export default function SaleHistory() {
       key: 'invoiceNumber',
       header: SALES_HISTORY_LABELS.TABLE.INVOICE,
       sortable: true,
-      columnWidth: '140px',
+      columnWidth: '210px',
       headerAlign: 'center',
       render: (item) => {
         const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';

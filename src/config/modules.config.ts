@@ -1,11 +1,9 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import StorageIcon from '@mui/icons-material/Storage';
-import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
 import DollarIcon from '../assets/Dollor.svg';
 import BoxIcon from '../assets/Box.svg';
 import MailIcon from '../assets/Mail.svg';
-import { PURCHASE_RETURN_ROUTES } from './constants/PurchaseReturn.constants';
 
 // Client-side module registry. Mirrors the backend `config/modules.js`.
 // An org enables a subset of these; the UI is gated by `state.org.activeModules`.
@@ -67,7 +65,6 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
       { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: 'Sales', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales' },
       { id: 'box', icon: BoxIcon, alt: 'Box', label: 'Inventory', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
       { id: 'mail', icon: MailIcon, alt: 'Mail', label: 'Order Receive', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive' },
-      { id: 'purchase-return', icon: React.createElement(WhiteIcon, null, React.createElement(AssignmentReturnOutlinedIcon, { sx: { fontSize: 24 } })), alt: 'Purchase Return', label: 'Purchase Return', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: PURCHASE_RETURN_ROUTES.LANDING, isComponent: true },
       { id: 'master', icon: React.createElement(WhiteIcon, null, React.createElement(StorageIcon, { sx: { fontSize: 24 } })), alt: 'Master', label: 'Master', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/master', isComponent: true },
     ],
   },

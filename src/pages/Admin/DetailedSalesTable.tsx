@@ -250,6 +250,7 @@ const DetailedSalesTable: React.FC = () => {
       key: 'invoiceNumber',
       header: DETAILED_SALES_TABLE_LABELS.TABLE.INVOICE_NUMBER,
       sortable: true,
+      columnWidth: '190px',
       render: (item) => (
         <Typography sx={{
           fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
