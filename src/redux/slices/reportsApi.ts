@@ -1,8 +1,13 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "../baseQuery";
 
+// All three daily-sales endpoints accept an optional inclusive [start_date, end_date]
+// range ("YYYY-MM-DD"). `date` is the legacy single-day field kept for backward compat;
+// with all three omitted the backend defaults to today.
 export interface DailySalesReportRequest {
-  date: string;
+  start_date?: string;
+  end_date?: string;
+  date?: string;
 }
 
 export interface WeeklyBillCountsRequest {
@@ -10,7 +15,9 @@ export interface WeeklyBillCountsRequest {
 }
 
 export interface DailySalesTableRequest {
-  date: string;
+  start_date?: string;
+  end_date?: string;
+  date?: string;
 }
 
 export interface DailySalesTableItem {

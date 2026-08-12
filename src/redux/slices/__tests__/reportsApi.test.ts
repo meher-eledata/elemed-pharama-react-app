@@ -34,7 +34,8 @@ describe('Reports API Endpoints', () => {
   });
 
   describe('POST reports/dailySalesReport/get-daily-sales-report (getDailySalesReport)', () => {
-    const body = { date: '2026-06-16' };
+    // Range request: inclusive [start_date, end_date]
+    const body = { start_date: '2026-06-16', end_date: '2026-06-18' };
 
     it('should successfully fetch the daily sales report', async () => {
       const mockResponse = {
@@ -138,7 +139,8 @@ describe('Reports API Endpoints', () => {
   });
 
   describe('POST reports/dailySalesReport/get-daily-sales-table (getDailySalesTable)', () => {
-    const body = { date: '2026-06-16' };
+    // Range request: inclusive [start_date, end_date]
+    const body = { start_date: '2026-06-16', end_date: '2026-06-18' };
 
     it('should successfully fetch the daily sales table', async () => {
       const mockResponse = [
