@@ -64,6 +64,10 @@ const ORG_PROFILE = {
   dl_numbers: 'DL-1, DL-2',
   gstin: 'GSTIN123',
   phone: '000-111',
+  invoice_number_enabled: false,
+  invoice_number_template: null,
+  invoice_number_reset: 'none',
+  invoice_seq_start: null,
 };
 
 // id is a BIGINT serialized as a STRING (see adminSlice Recipient type).
@@ -384,5 +388,137 @@ describe('Settings — Pharmacy Profile', () => {
     await waitFor(() => {
       expect(screen.getByText(PROFILE.LOGO.REMOVE_SUCCESS)).toBeInTheDocument();
     });
+  });
+});
+
+describe('Settings — Invoice Numbering', () => {
+  const INVOICE = SETTINGS_LABELS.SECTIONS.INVOICE_NUMBERING;
+
+  const openInvoiceSection = async () => {
+    renderSettings();
+    fireEvent.click(screen.getByText(INVOICE.TITLE));
+    await waitFor(() => {
+      expect(screen.getByLabelText(INVOICE.TEMPLATE_LABEL)).toBeInTheDocument();
+    });
+  };
+
+  it('renders the section and seeds fields from getOrg', async () => {
+    mockUseGetOrg.mockReturnValue(
+      createMockQueryResult({
+        organization: {
+          ...ORG_PROFILE,
+          invoice_number_enabled: true,
+          invoice_number_template: 'SI-EL-{YY}-{SEQ:6}',
+          invoice_number_reset: 'yearly',
+          invoice_seq_start: 2296,
+        },
+      }) as any,
+    );
+    await openInvoiceSection();
+    expect(screen.getByLabelText(INVOICE.TEMPLATE_LABEL)).toHaveValue('SI-EL-{YY}-{SEQ:6}');
+    expect(screen.getByLabelText(INVOICE.START_LABEL)).toHaveValue(2296);
+  });
+
+  it('shows a live preview mirroring the backend token rules', async () => {
+    mockUseGetOrg.mockReturnValue(
+      createMockQueryResult({
+        organization: {
+          ...ORG_PROFILE,
+          invoice_number_enabled: true,
+          invoice_number_template: 'SI-EL-{YY}-{SEQ:6}',
+          invoice_seq_start: 2296,
+        },
+      }) as any,
+    );
+    await openInvoiceSection();
+    const yy = String(new Date().getFullYear() % 100).padStart(2, '0');
+    expect(screen.getByText(`SI-EL-${yy}-002296`)).toBeInTheDocument();
+  });
+
+  it('saves only the scheme fields as a partial update', async () => {
+    const user = userEvent.setup();
+    mockUseGetOrg.mockReturnValue(
+      createMockQueryResult({
+        organization: {
+          ...ORG_PROFILE,
+          invoice_number_enabled: true,
+          invoice_number_template: 'ELMD/{YYYY}/{SEQ:5}',
+          invoice_number_reset: 'yearly',
+          invoice_seq_start: 100,
+        },
+      }) as any,
+    );
+    await openInvoiceSection();
+    await user.click(screen.getByText(INVOICE.SAVE_BUTTON));
+
+    await waitFor(() => {
+      expect(updateOrgTrigger).toHaveBeenCalledWith({
+        invoice_number_enabled: true,
+        invoice_number_template: 'ELMD/{YYYY}/{SEQ:5}',
+        invoice_number_reset: 'yearly',
+        invoice_seq_start: 100,
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByText(INVOICE.SAVE_SUCCESS)).toBeInTheDocument();
+    });
+  });
+
+  it('blocks save when enabled but the template is empty', async () => {
+    const user = userEvent.setup();
+    mockUseGetOrg.mockReturnValue(
+      createMockQueryResult({
+        organization: {
+          ...ORG_PROFILE,
+          invoice_number_enabled: true,
+          invoice_number_template: '',
+          invoice_seq_start: 1,
+        },
+      }) as any,
+    );
+    await openInvoiceSection();
+    await user.click(screen.getByText(INVOICE.SAVE_BUTTON));
+
+    await waitFor(() => {
+      expect(screen.getByText(INVOICE.TEMPLATE_REQUIRED)).toBeInTheDocument();
+    });
+    expect(updateOrgTrigger).not.toHaveBeenCalled();
+  });
+
+  it('blocks save when the template has no SEQ token and surfaces the reason', async () => {
+    const user = userEvent.setup();
+    mockUseGetOrg.mockReturnValue(
+      createMockQueryResult({
+        organization: {
+          ...ORG_PROFILE,
+          invoice_number_enabled: true,
+          invoice_number_template: 'NO-SEQ-{YY}',
+          invoice_seq_start: 1,
+        },
+      }) as any,
+    );
+    await openInvoiceSection();
+    await user.click(screen.getByText(INVOICE.SAVE_BUTTON));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('invoice_number_template must contain exactly one SEQ token'),
+      ).toBeInTheDocument();
+    });
+    expect(updateOrgTrigger).not.toHaveBeenCalled();
+  });
+
+  it('staff org_role sees a read-only note and no save button', async () => {
+    mockUseGetMe.mockReturnValue(
+      createMockQueryResult({
+        user: { id: 2, username: 'staff', email: 's@x.com', first_name: 'S', last_name: 'T', org_role: 'staff' },
+        organization: { id: 1, name: 'Test Pharmacy', slug: 'test-pharmacy' },
+        activeModules: ['pharmacy'],
+      }) as any,
+    );
+    await openInvoiceSection();
+    expect(screen.getByText(INVOICE.READ_ONLY_NOTE)).toBeInTheDocument();
+    expect(screen.getByLabelText(INVOICE.TEMPLATE_LABEL)).toBeDisabled();
+    expect(screen.queryByText(INVOICE.SAVE_BUTTON)).not.toBeInTheDocument();
   });
 });

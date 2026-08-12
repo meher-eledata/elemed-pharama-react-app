@@ -47,6 +47,7 @@ import { selectOrganization } from '../../redux/slices/orgSlice';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
 import { clearCartFromStorage, clearFormDataFromStorage, setEditInvoiceId } from '../../utils/cartStorage';
+import { decorateInvoiceNumber, invoiceLookupKey } from '../../utils/invoiceNumberPreview';
 
 import CustomerDetailsSection from './components/CustomerDetailsSection';
 import DoctorDetailsSection from './components/DoctorDetailsSection';
@@ -119,6 +120,9 @@ const SalesReceipt: React.FC = () => {
       }
     : undefined;
   const receiptBrandIcon = organization?.logo_url || elemedLogo;
+  // When the org's custom invoice-number scheme is on, invoice_number is stored/rendered
+  // in full (prefix included) — so we skip the legacy "INV" cosmetic prepend/strip.
+  const schemeEnabled = !!organization?.invoice_number_enabled;
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
@@ -301,11 +305,13 @@ const SalesReceipt: React.FC = () => {
     if ((isEditMode || isReturnDetailsMode) && editModeData) {
       let fetchInvoiceNumber: string | null = null;
 
-      // CRITICAL: Always use invoice_number if available - it's the source of truth
+      // CRITICAL: Always use invoice_number if available - it's the source of truth.
+      // When the org's custom scheme is enabled the stored invoice_number is the full
+      // rendered value (e.g. "SI-EL-26-002296") and is looked up verbatim; otherwise the
+      // legacy "INV"/"RB" cosmetic prefix is stripped (backend expects the numeric part).
       if (editModeData.invoiceNumber) {
-        // Strip "INV" or "RB" prefix if present - backend expects only numeric part
-        let fullInvoiceNumber = editModeData.invoiceNumber.toString().trim();
-        fetchInvoiceNumber = fullInvoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim() || fullInvoiceNumber;
+        const fullInvoiceNumber = editModeData.invoiceNumber.toString().trim();
+        fetchInvoiceNumber = invoiceLookupKey(fullInvoiceNumber, schemeEnabled);
         console.log('📝 Prepared invoice number for API fetch. Original:', fullInvoiceNumber, '→ Sending:', fetchInvoiceNumber);
       }
 
@@ -573,7 +579,14 @@ const SalesReceipt: React.FC = () => {
                   }
                   return 'Out Patient';
                 })(),
-                invoiceNumber: (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || editModeData.invoiceNumber || '',
+                // When the org scheme is enabled invoice_number already carries the full
+                // rendered value (prefix included) → shown verbatim; otherwise the legacy
+                // cosmetic "INV" prepend is applied.
+                invoiceNumber:
+                  decorateInvoiceNumber(invoice.invoice_number, schemeEnabled) ||
+                  decorateInvoiceNumber(result.invoice_number, schemeEnabled) ||
+                  editModeData.invoiceNumber ||
+                  '',
                 invoiceDate: (() => {
                   // Canonical state format is ISO YYYY-MM-DD. The backend already
                   // returns YYYY-MM-DD; normalize any fallback to ISO too (normalizeIso
@@ -1534,6 +1547,7 @@ const SalesReceipt: React.FC = () => {
     }
 
     await executeSave({
+      schemeEnabled,
       customerName,
       customerMobile,
       customerCity,

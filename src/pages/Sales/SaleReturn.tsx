@@ -22,6 +22,8 @@ import { useSubmitSalesReturnMutation, useGetInvoiceDetailsMutation } from '../.
 import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
+import { selectOrganization } from '../../redux/slices/orgSlice';
+import { invoiceLookupKey } from '../../utils/invoiceNumberPreview';
 
 interface ReturnItem extends SalesReceiptItem {
   returnQuantity: string;
@@ -57,6 +59,10 @@ export default function SaleReturn() {
   } | null;
 
   const user = useSelector((state: RootState) => state.auth.user);
+  // With the custom scheme on, a sale invoice_number is stored/looked-up in full (any
+  // prefix included) — so we must NOT strip an "INV" prefix off it. RB (return-bill)
+  // handling is out of scope and stays intact either way.
+  const schemeEnabled = !!useSelector(selectOrganization)?.invoice_number_enabled;
   const [submitSalesReturn, { isLoading: isSubmittingReturn }] = useSubmitSalesReturnMutation();
   // One idempotency key per pending return submission: reused on retry of the
   // same failed payload, cleared after success.
@@ -171,13 +177,13 @@ export default function SaleReturn() {
             lastError = err;
             console.log('❌ Invoice not found by invoice_id, trying with invoice_number...');
             if (invoiceNumber && err?.status === 404) {
-              // Backend expects numeric part only (e.g., "26" instead of "INV26")
-              // Strip the "INV" prefix before sending to backend
-              let numericInvoiceNumber = invoiceNumber;
-              if (typeof invoiceNumber === 'string') {
-                const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-                numericInvoiceNumber = cleaned || invoiceNumber;
-              }
+              // Legacy: strip the "INV"/"RB" cosmetic so the backend gets the numeric part.
+              // With the custom scheme on, look the invoice_number up verbatim (a schemed
+              // number is the real invoice_number, even if it starts with "INV"/"RB").
+              const numericInvoiceNumber =
+                typeof invoiceNumber === 'string'
+                  ? invoiceLookupKey(invoiceNumber, schemeEnabled)
+                  : invoiceNumber;
 
               console.log('🔍 Trying with numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
               try {
@@ -192,13 +198,13 @@ export default function SaleReturn() {
             }
           }
         } else if (invoiceNumber) {
-          // Backend expects numeric part only (e.g., "26" instead of "INV26")
-          // Strip the "INV" prefix before sending to backend
-          let numericInvoiceNumber = invoiceNumber;
-          if (typeof invoiceNumber === 'string') {
-            const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-            numericInvoiceNumber = cleaned || invoiceNumber;
-          }
+          // Legacy: strip the "INV"/"RB" cosmetic so the backend gets the numeric part.
+          // With the custom scheme on, look the invoice_number up verbatim (a schemed
+          // number is the real invoice_number, even if it starts with "INV"/"RB").
+          const numericInvoiceNumber =
+            typeof invoiceNumber === 'string'
+              ? invoiceLookupKey(invoiceNumber, schemeEnabled)
+              : invoiceNumber;
 
           console.log('🔍 Fetching invoice details using numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
           try {

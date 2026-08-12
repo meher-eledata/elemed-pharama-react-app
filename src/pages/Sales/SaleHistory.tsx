@@ -33,6 +33,7 @@ import { selectOrganization } from '../../redux/slices/orgSlice';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
+import { decorateInvoiceNumber, invoiceLookupKey } from '../../utils/invoiceNumberPreview';
 import { clearCart, clearFormData } from '../../redux/slices/cartSlice';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 
@@ -168,6 +169,9 @@ export default function SaleHistory() {
 
   const user = useSelector((state: RootState) => state.auth.user);
   const organization = useSelector(selectOrganization);
+  // When the org's custom invoice-number scheme is on, invoice_number is stored/rendered
+  // in full (prefix included) — skip the legacy "INV" cosmetic prepend/strip everywhere.
+  const schemeEnabled = !!organization?.invoice_number_enabled;
   // Org branding for the printed letterhead; undefined for legacy/no-org users.
   const orgHeader = organization
     ? {
@@ -303,24 +307,29 @@ export default function SaleHistory() {
       // CRITICAL: Identify the actual database primary key from ALL possible field names
       const databaseId = Number(invoice.id || invoice.invoice_id || invoice.InvoiceID || invoice.invoiceId || 0);
 
-      // For the table's internal "id" (used for row selection and keys), 
+      // For the table's internal "id" (used for row selection and keys),
       // we need something unique. If no database ID exists, we'll generate one.
-      const tableRowId = databaseId || (invoice.invoice_number ? (parseInt(numericPart) || (index + 500000)) : (index + 500000));
+      // A schemed invoice_number is non-numeric, so never parseInt it into a row id.
+      const tableRowId = databaseId
+        || (invoice.invoice_number && !schemeEnabled ? (parseInt(numericPart) || (index + 500000)) : (index + 500000));
 
       const numValue = Number(numericPart);
+      // A present, non-"null" invoice_number is valid. Legacy additionally requires it to be
+      // a positive number (the numeric invoice id); a schemed number is a free-form string.
       const hasValidInvoiceNumber = invoiceNum !== null
         && invoiceNum !== undefined
         && invoiceNum !== ''
         && invoiceNumStr.toLowerCase() !== 'null'
-        && !isNaN(numValue)
-        && numValue > 0; // Must be a positive number
+        && (schemeEnabled || (!isNaN(numValue) && numValue > 0));
 
       if (hasValidInvoiceNumber) {
-        formattedInvoiceNumber = hasInvPrefix ? invoiceNumStr : `INV${numericPart}`;
+        // Enabled: show invoice_number verbatim. Disabled: legacy "INV<n>" cosmetic
+        // (decorateInvoiceNumber re-prepends after the numericPart strip, matching before).
+        formattedInvoiceNumber = decorateInvoiceNumber(schemeEnabled ? invoiceNumStr : numericPart, schemeEnabled);
       } else if (invoice.id) {
-        formattedInvoiceNumber = `INV${invoice.id}`;
+        formattedInvoiceNumber = decorateInvoiceNumber(invoice.id, schemeEnabled);
       } else {
-        formattedInvoiceNumber = `INV${index + 1000}`;
+        formattedInvoiceNumber = decorateInvoiceNumber(index + 1000, schemeEnabled);
       }
 
       const rawReturnStatus = invoice.return_status || invoice.last_return_status || 'No Return';
@@ -428,7 +437,7 @@ export default function SaleHistory() {
       }
       return item;
     });
-  }, [savedHistory, invoicesData, returnInfoMap]);
+  }, [savedHistory, invoicesData, returnInfoMap, schemeEnabled]);
 
   // Fetch return information for all invoices
   // TODO: Enable this when the API is ready
@@ -458,7 +467,7 @@ export default function SaleHistory() {
           if (invoiceId) {
             result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
           } else if (invoiceNumber) {
-            const numericInvoiceNumber = String(invoiceNumber).replace(/^INV/i, '').trim();
+            const numericInvoiceNumber = invoiceLookupKey(String(invoiceNumber), schemeEnabled);
             result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
           }
 
@@ -477,7 +486,10 @@ export default function SaleHistory() {
             // Check if all items are returned: returnedItems should equal or exceed totalItems
             // Using >= to handle edge cases, but typically they should be equal
             const isFullReturn = totalItems > 0 && returnedItems > 0 && returnedItems >= totalItems;
-            const mapKey = invoiceId || parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0;
+            // Map is keyed by the numeric database id. A schemed invoice_number is not
+            // numeric, so never parseInt it into a key — rely on invoiceId (item.id).
+            const mapKey = invoiceId
+              || (schemeEnabled ? 0 : (parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0));
             newReturnInfoMap.set(mapKey, {
               totalItems: Math.round(totalItems),
               returnedItems: Math.round(returnedItems),
@@ -506,7 +518,7 @@ export default function SaleHistory() {
     };
 
     fetchReturnInfo();
-  }, [invoicesData, getInvoiceDetails, refreshKey, ENABLE_RETURN_STATUS_API]);
+  }, [invoicesData, getInvoiceDetails, refreshKey, ENABLE_RETURN_STATUS_API, schemeEnabled]);
 
 
   useEffect(() => {
@@ -666,7 +678,7 @@ export default function SaleHistory() {
             // payments here is already filtered to active rows; derive the mode from it.
             paymentMode: derivePaymentMode(payments, inv.payment_mode || initialDetails.paymentMode),
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
-            invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
+            invoiceNumber: decorateInvoiceNumber(inv.invoice_number, schemeEnabled) || initialDetails.invoiceNumber,
             // Hand off the invoice date in the canonical ISO form the New Sale flow stores.
             invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('YYYY-MM-DD') : initialDetails.invoiceDate,
             totalValue: calculatedTotalValue.toFixed(2),
@@ -704,7 +716,7 @@ export default function SaleHistory() {
     };
 
     fetchFullDetails();
-  }, [selectedInvoiceId, salesHistoryData, savedHistory, getInvoiceDetails]);
+  }, [selectedInvoiceId, salesHistoryData, savedHistory, getInvoiceDetails, schemeEnabled]);
 
   const filteredData = useMemo(() => {
     let filtered = [...salesHistoryData];

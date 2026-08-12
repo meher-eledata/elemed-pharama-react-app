@@ -12,6 +12,8 @@ import {
   Snackbar,
   Alert,
   Switch,
+  MenuItem,
+  FormControlLabel,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -39,12 +41,32 @@ import { setOrgContext } from '../../redux/slices/orgSlice';
 import { MODULES, ALL_MODULE_KEYS } from '../../config/modules.config';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
+import {
+  renderInvoiceNumberPreview,
+  validateInvoiceTemplate,
+} from '../../utils/invoiceNumberPreview';
 import elemedLogo from '../../assets/ElemedLogo.svg';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DAILY = SETTINGS_LABELS.SECTIONS.DAILY_REPORTS;
 const MODULES_LABELS = SETTINGS_LABELS.SECTIONS.MODULES;
 const PROFILE = SETTINGS_LABELS.SECTIONS.PHARMACY_PROFILE;
+const INVOICE = SETTINGS_LABELS.SECTIONS.INVOICE_NUMBERING;
+
+// Editable invoice-numbering scheme fields (seq_start kept as text for the input).
+interface SchemeForm {
+  invoice_number_enabled: boolean;
+  invoice_number_template: string;
+  invoice_seq_start: string;
+  invoice_number_reset: 'none' | 'yearly';
+}
+
+const EMPTY_SCHEME: SchemeForm = {
+  invoice_number_enabled: false,
+  invoice_number_template: '',
+  invoice_seq_start: '',
+  invoice_number_reset: 'none',
+};
 
 // Editable org profile fields (branding fields are nullable server-side).
 interface ProfileForm {
@@ -140,9 +162,76 @@ const Settings: React.FC = () => {
     }
   }, [organization]);
 
+  const [schemeForm, setSchemeForm] = useState<SchemeForm>(EMPTY_SCHEME);
+
+  // Seed the scheme form whenever the org profile (re)loads.
+  useEffect(() => {
+    if (organization) {
+      setSchemeForm({
+        invoice_number_enabled: !!organization.invoice_number_enabled,
+        invoice_number_template: organization.invoice_number_template ?? '',
+        invoice_seq_start:
+          organization.invoice_seq_start === null || organization.invoice_seq_start === undefined
+            ? ''
+            : String(organization.invoice_seq_start),
+        invoice_number_reset: organization.invoice_number_reset ?? 'none',
+      });
+    }
+  }, [organization]);
+
   // The page is admin-gated; org_role additionally restricts edits to owner/admin.
   const orgRole = meData?.user?.org_role;
   const canEditProfile = orgRole === 'owner' || orgRole === 'admin';
+
+  // Live preview: sequence = the configured starting number (0 when blank), today's date.
+  const schemeStartNum = schemeForm.invoice_seq_start.trim() === ''
+    ? 0
+    : Number(schemeForm.invoice_seq_start);
+  const schemePreview =
+    schemeForm.invoice_number_template.trim() &&
+    validateInvoiceTemplate(schemeForm.invoice_number_template).valid
+      ? renderInvoiceNumberPreview(
+          schemeForm.invoice_number_template,
+          Number.isFinite(schemeStartNum) ? schemeStartNum : 0,
+          new Date(),
+        )
+      : null;
+
+  const handleSaveScheme = async () => {
+    const template = schemeForm.invoice_number_template.trim();
+    const startRaw = schemeForm.invoice_seq_start.trim();
+    const startNum = startRaw === '' ? null : Number(startRaw);
+
+    // Instant client-side feedback (server still validates and its 400s are surfaced).
+    if (startRaw !== '' && (!Number.isInteger(startNum) || (startNum as number) < 0)) {
+      showToast(INVOICE.START_INVALID, 'error');
+      return;
+    }
+    if (schemeForm.invoice_number_enabled && !template) {
+      showToast(INVOICE.TEMPLATE_REQUIRED, 'error');
+      return;
+    }
+    if (template) {
+      const check = validateInvoiceTemplate(template);
+      if (!check.valid) {
+        showToast(check.error ?? INVOICE.SAVE_ERROR, 'error');
+        return;
+      }
+    }
+
+    try {
+      await updateOrg({
+        invoice_number_enabled: schemeForm.invoice_number_enabled,
+        invoice_number_template: template || null,
+        invoice_number_reset: schemeForm.invoice_number_reset,
+        invoice_seq_start: startNum,
+      }).unwrap();
+      showToast(INVOICE.SAVE_SUCCESS, 'success');
+    } catch (err) {
+      logError(err, 'Settings.updateOrgScheme');
+      showToast(extractErrorMessage(err, INVOICE.SAVE_ERROR), 'error');
+    }
+  };
 
   const recipients = recipientsData?.recipients ?? [];
   const activeModules = meData?.activeModules ?? [];
@@ -855,6 +944,199 @@ const Settings: React.FC = () => {
                       )}
                     </Box>
                   </>
+                )}
+              </>
+            )}
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Invoice Numbering */}
+      <Accordion
+        expanded={expanded === 'invoice-numbering'}
+        onChange={handleAccordionChange('invoice-numbering')}
+        sx={{
+          borderRadius: SETTINGS_CONSTANTS.ACCORDION.RADIUS,
+          boxShadow: SETTINGS_CONSTANTS.ACCORDION.SHADOW,
+          backgroundColor: SETTINGS_CONSTANTS.ACCORDION.BG,
+          '&:before': { display: 'none' },
+          '&.Mui-expanded': {
+            margin: 0,
+          },
+        }}
+      >
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon sx={{ color: '#1A212B' }} />}
+          sx={{
+            padding: SETTINGS_CONSTANTS.ACCORDION.PADDING,
+            '&.Mui-expanded': {
+              minHeight: '48px',
+            },
+            '& .MuiAccordionSummary-content': {
+              margin: 0,
+              '&.Mui-expanded': {
+                margin: 0,
+              },
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1 }}>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                fontSize: '18px',
+                color: '#1A212B',
+                fontFamily: "'Lexend', sans-serif",
+              }}
+            >
+              {INVOICE.TITLE}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                color: '#6B7280',
+                fontFamily: "'Lexend', sans-serif",
+              }}
+            >
+              {INVOICE.DESC}
+            </Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails sx={{ padding: `0 ${SETTINGS_CONSTANTS.ACCORDION.PADDING} ${SETTINGS_CONSTANTS.ACCORDION.PADDING}` }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {meData && !meData.organization ? (
+              <Typography sx={{ fontSize: '14px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>
+                {PROFILE.NO_ORG_NOTE}
+              </Typography>
+            ) : (isLoadingModules || isLoadingOrg) ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#6B7280' }}>
+                <CircularProgress size={18} />
+                <Typography sx={{ fontSize: '14px', fontFamily: "'Lexend', sans-serif" }}>
+                  {PROFILE.LOADING}
+                </Typography>
+              </Box>
+            ) : (isOrgError || !organization) ? (
+              <Typography sx={{ fontSize: '14px', color: '#EF4444', fontFamily: "'Lexend', sans-serif" }}>
+                {PROFILE.LOAD_ERROR}
+              </Typography>
+            ) : (
+              <>
+                {!canEditProfile && (
+                  <Typography sx={{ fontSize: '13px', color: '#6B7280', fontFamily: "'Lexend', sans-serif" }}>
+                    {INVOICE.READ_ONLY_NOTE}
+                  </Typography>
+                )}
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={schemeForm.invoice_number_enabled}
+                      disabled={!canEditProfile}
+                      onChange={(e) =>
+                        setSchemeForm((f) => ({ ...f, invoice_number_enabled: e.target.checked }))
+                      }
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': { color: '#5C17E5' },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#5C17E5',
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontSize: '14px', color: '#1A212B', fontFamily: "'Lexend', sans-serif" }}>
+                      {INVOICE.ENABLE_LABEL}
+                    </Typography>
+                  }
+                />
+
+                <TextField
+                  fullWidth
+                  label={INVOICE.TEMPLATE_LABEL}
+                  value={schemeForm.invoice_number_template}
+                  onChange={(e) =>
+                    setSchemeForm((f) => ({ ...f, invoice_number_template: e.target.value }))
+                  }
+                  disabled={!canEditProfile}
+                  helperText={`${INVOICE.TEMPLATE_HELP} ${INVOICE.TEMPLATE_EXAMPLE}`}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: SETTINGS_CONSTANTS.EMAIL_INPUT.RADIUS,
+                      backgroundColor: '#FFFFFF',
+                      fontFamily: "'Lexend', sans-serif",
+                    },
+                    '& .MuiInputBase-input': { fontSize: '14px', color: '#1A212B' },
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  type="number"
+                  label={INVOICE.START_LABEL}
+                  value={schemeForm.invoice_seq_start}
+                  onChange={(e) =>
+                    setSchemeForm((f) => ({ ...f, invoice_seq_start: e.target.value }))
+                  }
+                  disabled={!canEditProfile}
+                  inputProps={{ min: 0, step: 1 }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: SETTINGS_CONSTANTS.EMAIL_INPUT.RADIUS,
+                      backgroundColor: '#FFFFFF',
+                      fontFamily: "'Lexend', sans-serif",
+                    },
+                    '& .MuiInputBase-input': { fontSize: '14px', color: '#1A212B' },
+                  }}
+                />
+
+                <TextField
+                  select
+                  fullWidth
+                  label={INVOICE.RESET_LABEL}
+                  value={schemeForm.invoice_number_reset}
+                  onChange={(e) =>
+                    setSchemeForm((f) => ({
+                      ...f,
+                      invoice_number_reset: e.target.value as 'none' | 'yearly',
+                    }))
+                  }
+                  disabled={!canEditProfile}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: SETTINGS_CONSTANTS.EMAIL_INPUT.RADIUS,
+                      backgroundColor: '#FFFFFF',
+                      fontFamily: "'Lexend', sans-serif",
+                    },
+                    '& .MuiInputBase-input': { fontSize: '14px', color: '#1A212B' },
+                  }}
+                >
+                  <MenuItem value="none">{INVOICE.RESET_NONE}</MenuItem>
+                  <MenuItem value="yearly">{INVOICE.RESET_YEARLY}</MenuItem>
+                </TextField>
+
+                {schemePreview && (
+                  <Typography sx={{ fontSize: '14px', color: '#1A212B', fontFamily: "'Lexend', sans-serif" }}>
+                    {INVOICE.PREVIEW_PREFIX}
+                    <Box component="span" sx={{ fontWeight: 700 }}>{schemePreview}</Box>
+                  </Typography>
+                )}
+
+                {canEditProfile && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <StandardButton
+                      onClick={handleSaveScheme}
+                      disabled={isSavingProfile}
+                      variant="primary"
+                      size="medium"
+                      sx={{
+                        minWidth: '140px',
+                        height: SETTINGS_CONSTANTS.EMAIL_INPUT.HEIGHT,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {INVOICE.SAVE_BUTTON}
+                    </StandardButton>
+                  </Box>
                 )}
               </>
             )}

@@ -25,6 +25,11 @@ export interface MeOrganization {
   dl_numbers: string | null;
   gstin: string | null;
   phone: string | null;
+  // Per-org custom invoice-numbering scheme (see api-contract CUSTOM INVOICE NUMBERING).
+  invoice_number_enabled: boolean;
+  invoice_number_template: string | null;
+  invoice_number_reset: 'none' | 'yearly';
+  invoice_seq_start: number | null;
 }
 
 export interface MeResponse {
@@ -61,6 +66,11 @@ export interface OrgProfile {
   dl_numbers: string | null;
   gstin: string | null;
   phone: string | null;
+  // Per-org custom invoice-numbering scheme (see api-contract CUSTOM INVOICE NUMBERING).
+  invoice_number_enabled: boolean;
+  invoice_number_template: string | null;
+  invoice_number_reset: 'none' | 'yearly';
+  invoice_seq_start: number | null;
 }
 
 export interface GetOrgResponse {
@@ -78,6 +88,11 @@ export interface UpdateOrgRequest {
   dl_numbers?: string | null;
   gstin?: string | null;
   phone?: string | null;
+  // Per-org custom invoice-numbering scheme; partial-update, owner/admin gated.
+  invoice_number_enabled?: boolean;
+  invoice_number_template?: string | null;
+  invoice_number_reset?: 'none' | 'yearly';
+  invoice_seq_start?: number | null;
 }
 
 export const orgApi = createApi({

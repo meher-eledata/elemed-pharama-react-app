@@ -4,6 +4,7 @@ import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
+import { decorateInvoiceNumber } from '../../utils/invoiceNumberPreview';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 
 
@@ -77,8 +78,11 @@ interface ExecuteSaveParams {
   originalSalesItems?: SalesReceiptItem[]; // For diff tracking in edit mode
   skipNavigation?: boolean; // Flag to skip navigation after save
   onSuccess?: () => void; // Optional callback after successful save
-  // New-sale only: receives the server-assigned display number ("INV<n>") from the
-  // submit-sale response so the UI (print preview / receipt) can show it.
+  // Org's custom invoice-number scheme flag. When true, the server-assigned invoice_number
+  // is the full rendered value (shown verbatim); when false the legacy "INV" prefix applies.
+  schemeEnabled?: boolean;
+  // New-sale only: receives the server-assigned display number ("INV<n>" or the full schemed
+  // value) from the submit-sale response so the UI (print preview / receipt) can show it.
   onInvoiceNumberAssigned?: (displayNumber: string) => void;
   onSaleSaved?: () => void | Promise<void>; // Runs once the sale is persisted (before nav) — used to discard a resumed draft
   // Renders a per-medicine "not enough stock" list (backend 409). When provided, the sale is
@@ -127,6 +131,7 @@ export const executeSave = async ({
   originalSalesItems,
   skipNavigation = false,
   onSuccess,
+  schemeEnabled = false,
   onInvoiceNumberAssigned,
   onSaleSaved,
   onStockShortage,
@@ -471,17 +476,27 @@ export const executeSave = async ({
             console.log('✅ Found invoice_id in response:', dbInvoiceId);
           }
 
-          // Read the SERVER-ASSIGNED invoice number (top-level, plain numeric string,
-          // e.g. "947"). The "INV" display prefix is added here (display-layer concern only).
+          // Read the SERVER-ASSIGNED invoice number (top-level). When the org scheme is on
+          // it is the full rendered value (e.g. "SI-EL-26-002296"), shown verbatim; otherwise
+          // it is a plain numeric string ("947") given the legacy "INV" display prefix.
           let savedInvoiceNumber = '';
           let numericInvoiceNumber = 0;
           const rawAssigned = result.invoice_number;
-          const parsedAssigned = typeof rawAssigned === 'number'
-            ? rawAssigned
-            : parseInt(String(rawAssigned ?? ''), 10);
-          if (!isNaN(parsedAssigned) && parsedAssigned > 0) {
-            numericInvoiceNumber = parsedAssigned;
-            savedInvoiceNumber = `INV${numericInvoiceNumber}`;
+          if (schemeEnabled) {
+            const assignedStr = rawAssigned === null || rawAssigned === undefined ? '' : String(rawAssigned).trim();
+            if (assignedStr !== '' && assignedStr.toLowerCase() !== 'null') {
+              savedInvoiceNumber = decorateInvoiceNumber(assignedStr, true);
+            }
+          } else {
+            const parsedAssigned = typeof rawAssigned === 'number'
+              ? rawAssigned
+              : parseInt(String(rawAssigned ?? ''), 10);
+            if (!isNaN(parsedAssigned) && parsedAssigned > 0) {
+              numericInvoiceNumber = parsedAssigned;
+              savedInvoiceNumber = decorateInvoiceNumber(numericInvoiceNumber, false);
+            }
+          }
+          if (savedInvoiceNumber) {
             console.log('✅ Server-assigned invoice number:', savedInvoiceNumber);
             if (onInvoiceNumberAssigned) {
               onInvoiceNumberAssigned(savedInvoiceNumber);

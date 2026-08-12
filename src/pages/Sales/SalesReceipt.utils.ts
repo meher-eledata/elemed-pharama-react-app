@@ -257,7 +257,7 @@ export const generatePrintHTML = (data: {
         </div>
         <div class="detail-section">
           <div class="detail-title">${labels.INVOICE_DETAILS_TITLE}</div>
-          <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', (invoiceNumber || '').trim())}</div>
+          <div class="detail-item">${labels.INVOICE_NUMBER_PRINT.replace('{number}', escapeHtml((invoiceNumber || '').trim()))}</div>
           <div class="detail-item">${labels.INVOICE_DATE_PRINT.replace('{date}', formatInvoiceDateForDisplay(invoiceDate))}</div>
         </div>
       </div>
