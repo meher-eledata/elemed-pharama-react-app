@@ -162,6 +162,7 @@ export const getProductTableColumns = ({
     {
       key: "type",
       header: orderLabels.type,
+      columnWidth: "110px",
       sortable: false,
       render: (row) => <span>{row.type || '-'}</span>,
     },
