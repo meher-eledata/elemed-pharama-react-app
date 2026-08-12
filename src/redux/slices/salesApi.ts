@@ -437,6 +437,14 @@ export const salesApi = createApi({
       providesTags: ["Sales"],
     }),
 
+    // Customer-scoped invoice list — same bare Invoice[] row shape as get-invoices,
+    // filtered to one customer and ordered invoice_date DESC (newest-first). The UI
+    // derives "last purchase date" from row[0].invoice_date. Powers customer history.
+    getCustomerInvoices: builder.query<Invoice[], { customer_id: number }>({
+      query: ({ customer_id }) => `sales/get-customer-invoices?customer_id=${customer_id}`,
+      providesTags: ["Sales"],
+    }),
+
     // Get sales by ID
     getSalesById: builder.query<any, { id: number }>({
       query: ({ id }) => `sales/${id}`,
@@ -749,6 +757,8 @@ export const {
   useGetSalesHistoryQuery,
   useGetInvoicesQuery,
   useLazyGetInvoicesQuery,
+  useGetCustomerInvoicesQuery,
+  useLazyGetCustomerInvoicesQuery,
   useGetSalesByIdQuery,
   useUpdateSalesMutation,
   useDeleteSalesMutation,
