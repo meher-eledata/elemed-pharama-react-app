@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
+import dayjs from 'dayjs';
 import SalePage from '../salepage';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
@@ -431,6 +432,191 @@ describe('SalePage', () => {
 
       fireEvent.click(screen.getByText('Skip for now'));
       expect(await screen.findByText('Product added to cart successfully!')).toBeInTheDocument();
+      expect(updateProductFn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('expired-batch guard (warn + override)', () => {
+    // Cascade auto-resolves (single brand -> single type product_id 42 -> single batch
+    // carrying `expiry`) and validateSale resolves, so Add to Cart becomes actionable.
+    // schedule 'NONE' keeps the schedule popup out of the way to isolate the expiry gate.
+    const setupCascade = (expiry: string, schedule: string | null = 'NONE') => {
+      (receiveApi.useGetProductsQuery as jest.Mock) = jest.fn(() => ({
+        data: [{ id: 42, name: 'Product A', currentQuantity: 100, schedule }],
+        isLoading: false,
+        error: null,
+        isFetching: false,
+      }));
+      (inventoryApi.useGetBrandsFromProductNameMutation as jest.Mock) = jest.fn(() => [
+        jest.fn(() => ({
+          unwrap: jest.fn().mockResolvedValue([{ id: 1, brand_name: 'BrandA', currentQuantity: 100 }]),
+        })),
+        { isLoading: false },
+      ]);
+      (inventoryApi.useGetTypesForBrandAndProductMutation as jest.Mock) = jest.fn(() => [
+        jest.fn(() => ({
+          unwrap: jest.fn().mockResolvedValue([{ type: 'Capsule', product_id: 42, currentQuantity: 100 }]),
+        })),
+        { isLoading: false },
+      ]);
+      (salesApi.useGetBatchNumbersByProductIdMutation as jest.Mock) = jest.fn(() => [
+        jest.fn(() => ({
+          unwrap: jest.fn().mockResolvedValue({
+            batches: [{ batch_number: 'B-1', current_qty: 10, expiry_date: expiry }],
+          }),
+        })),
+        { isLoading: false },
+      ]);
+      const validateFn = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ mrp: 100, selling_price: 90, pack_qty: 1 }),
+      }));
+      (salesApi.useValidateSaleMutation as jest.Mock) = jest.fn(() => [validateFn, { isLoading: false }]);
+      // Schedule-attribution deps (used by the combined expired-AND-scheduled path).
+      const updateProductFn = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'updated', product_id: 42 }),
+      }));
+      (masterApi.useUpdateProductMutation as jest.Mock) = jest.fn(() => [updateProductFn, { isLoading: false }]);
+      const invalidateTagsFn = jest.fn(() => ({ type: 'test/invalidateTags' }));
+      (receiveApi as any).receiveApi = { util: { invalidateTags: invalidateTagsFn } };
+      return { validateFn, updateProductFn };
+    };
+
+    const selectProductAndValidate = async (validateFn: jest.Mock) => {
+      const productInput = screen.getByPlaceholderText(/search for a product/i);
+      productInput.focus();
+      fireEvent.change(productInput, { target: { value: 'Product A' } });
+      const option = await screen.findByRole('option', { name: /Product A/i });
+      fireEvent.click(option);
+      const zeroInputs = screen.getAllByDisplayValue('0');
+      fireEvent.change(zeroInputs[0], { target: { value: '2' } });
+      await waitFor(() => expect(validateFn).toHaveBeenCalled());
+    };
+
+    const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+    const today = dayjs().format('YYYY-MM-DD');
+    const nextYear = dayjs().add(1, 'year').format('YYYY-MM-DD');
+
+    it('(a) opens the confirm dialog for an expired batch and does NOT add until confirmed', async () => {
+      const { validateFn } = setupCascade(yesterday);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Expired batch')).toBeInTheDocument();
+      });
+      // Named batch + formatted expiry in the message; nothing added yet.
+      expect(screen.getByText(/Batch B-1 expired on/)).toBeInTheDocument();
+      expect(screen.queryByText('Product added to cart successfully!')).not.toBeInTheDocument();
+    });
+
+    it('(b) "Add anyway" adds the expired batch to the cart', async () => {
+      const { validateFn } = setupCascade(yesterday);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Expired batch')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Add anyway'));
+      expect(await screen.findByText('Product added to cart successfully!')).toBeInTheDocument();
+    });
+
+    it('(c) Cancel does not add the expired batch', async () => {
+      const { validateFn } = setupCascade(yesterday);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Expired batch')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Cancel'));
+      await waitFor(() => expect(screen.queryByText('Expired batch')).not.toBeInTheDocument());
+      expect(screen.queryByText('Product added to cart successfully!')).not.toBeInTheDocument();
+    });
+
+    it('(d) a batch expiring TODAY does NOT trigger the popup (calendar-day rule)', async () => {
+      const { validateFn } = setupCascade(today);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Product added to cart successfully!')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Expired batch')).not.toBeInTheDocument();
+    });
+
+    it('(e) a non-expired batch adds with no popup', async () => {
+      const { validateFn } = setupCascade(nextYear);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Product added to cart successfully!')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Expired batch')).not.toBeInTheDocument();
+    });
+
+    it('(f) expired AND scheduled: expiry dialog first, then "Add anyway" opens the schedule modal (adds once)', async () => {
+      // schedule null → the schedule modal would fire; batch also expired.
+      const { validateFn, updateProductFn } = setupCascade(yesterday, null);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Expired batch')).toBeInTheDocument();
+      });
+      // Expiry comes FIRST; schedule modal not yet shown, nothing added.
+      expect(screen.queryByText('Assign Drug Schedule')).not.toBeInTheDocument();
+      expect(screen.queryByText('Product added to cart successfully!')).not.toBeInTheDocument();
+
+      // "Add anyway" acknowledges expiry → schedule modal opens, expiry dialog gone,
+      // still nothing added and the expiry dialog does NOT re-appear.
+      fireEvent.click(screen.getByText('Add anyway'));
+      await waitFor(() => expect(screen.getByText('Assign Drug Schedule')).toBeInTheDocument());
+      // Expiry dialog closes (MUI transition) and does not re-appear; nothing added yet.
+      await waitFor(() => expect(screen.queryByText('Expired batch')).not.toBeInTheDocument());
+      expect(screen.queryByText('Product added to cart successfully!')).not.toBeInTheDocument();
+
+      // Completing the attribution adds the item exactly once.
+      fireEvent.mouseDown(screen.getByLabelText('Schedule'));
+      const listbox = await screen.findByRole('listbox');
+      fireEvent.click(within(listbox).getByText('H'));
+      fireEvent.click(screen.getByText('Save & Add'));
+      await waitFor(() =>
+        expect(updateProductFn).toHaveBeenCalledWith({ product_id: 42, schedule: 'H' })
+      );
+      expect(await screen.findByText('Product added to cart successfully!')).toBeInTheDocument();
+    });
+
+    it('(g) expired AND scheduled: Cancel on expiry never opens the schedule modal and adds nothing', async () => {
+      const { validateFn, updateProductFn } = setupCascade(yesterday, null);
+      renderComponent();
+      await selectProductAndValidate(validateFn);
+
+      const addBtn = screen.getByText(/add to cart/i);
+      await waitFor(() => {
+        fireEvent.click(addBtn);
+        expect(screen.getByText('Expired batch')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Cancel'));
+      await waitFor(() => expect(screen.queryByText('Expired batch')).not.toBeInTheDocument());
+      expect(screen.queryByText('Assign Drug Schedule')).not.toBeInTheDocument();
+      expect(screen.queryByText('Product added to cart successfully!')).not.toBeInTheDocument();
       expect(updateProductFn).not.toHaveBeenCalled();
     });
   });

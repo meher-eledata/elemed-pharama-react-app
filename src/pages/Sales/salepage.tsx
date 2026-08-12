@@ -41,6 +41,7 @@ import { RootState, AppDispatch } from "../../redux/store";
 import { SALES_PAGE_LABELS } from "../../config/label/SalesPage.labels";
 import { SALES_PAGE_CONSTANTS } from "../../config/constants/SalesPage.constants";
 import { useDebounce } from "../../hooks/useDebounce";
+import dayjs from "dayjs";
 
 // Import Types
 import { Product } from "./SalesPage.types";
@@ -334,6 +335,16 @@ export default function SalePage() {
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
   // One-time schedule attribution popup: holds the cart item waiting on a choice.
   const [pendingScheduleItem, setPendingScheduleItem] = useState<Product | null>(null);
+  // Expired-batch warn+override popup: holds the cart item deferred until the
+  // pharmacist confirms adding an already-expired batch. Frontend-only guard;
+  // once acknowledged the normal flow (incl. the schedule popup) resumes.
+  const [pendingExpiredItem, setPendingExpiredItem] = useState<{
+    item: Product;
+    apiProduct: any;
+    productSchedule: string | null;
+    batchNumber: string;
+    expiryDate: string;
+  } | null>(null);
   const [updateProduct, { isLoading: isSavingSchedule }] = useUpdateProductMutation();
   // Informational modal shown when the fetched batches contain duplicate batch numbers
   // (data-migration dupes). Lists the offending batch number(s); dismissible — does NOT block the sale.
@@ -834,13 +845,52 @@ export default function SalePage() {
       productSchedule
     );
 
-    if (apiProduct && productSchedule === null) {
-      // Not yet attributed — ask once before adding to cart (never blocks the sale).
-      setPendingScheduleItem(newCartItem);
+    // Expired-batch guard (frontend-only warn + override; backend stays permissive).
+    // Ask FIRST — before the schedule popup — then resume the normal flow once
+    // acknowledged. A missing/invalid expiry, or one expiring today, is NOT expired.
+    // Reads the FIRST entry when duplicate batch_numbers exist (that data-migration
+    // case is already surfaced by the separate duplicate-batch modal on batch load).
+    const selectedBatch = availableBatches.find((b) => b.batch_number === batch);
+    const expiryDate = selectedBatch?.expiry_date || "";
+    if (isBatchExpired(expiryDate)) {
+      setPendingExpiredItem({ item: newCartItem, apiProduct, productSchedule, batchNumber: batch, expiryDate });
       return;
     }
 
-    finalizeAddToCart(newCartItem);
+    proceedAddAfterExpiry(newCartItem, apiProduct, productSchedule);
+  };
+
+  // A batch is expired only when its expiry calendar-day is strictly BEFORE today
+  // (day-to-day compare). "Expires today" is still sellable. Guards invalid/blank input.
+  const isBatchExpired = (expiry?: string): boolean => {
+    if (!expiry) return false;
+    const d = dayjs(expiry);
+    if (!d.isValid()) return false;
+    return d.startOf("day").isBefore(dayjs().startOf("day"));
+  };
+
+  // Continues the add once the expiry guard is cleared: still runs the one-time
+  // schedule attribution popup when applicable, otherwise finalizes.
+  const proceedAddAfterExpiry = (item: Product, apiProduct: any, productSchedule: string | null) => {
+    if (apiProduct && productSchedule === null) {
+      // Not yet attributed — ask once before adding to cart (never blocks the sale).
+      setPendingScheduleItem(item);
+      return;
+    }
+    finalizeAddToCart(item);
+  };
+
+  // "Add anyway": clear the expiry prompt and resume the normal flow (schedule check).
+  const handleExpiredConfirm = () => {
+    const pending = pendingExpiredItem;
+    if (!pending) return;
+    setPendingExpiredItem(null);
+    proceedAddAfterExpiry(pending.item, pending.apiProduct, pending.productSchedule);
+  };
+
+  // Cancel: drop the deferred item; the cart stays unchanged.
+  const handleExpiredCancel = () => {
+    setPendingExpiredItem(null);
   };
 
   const finalizeAddToCart = (item: Product) => {
@@ -1132,6 +1182,24 @@ export default function SalePage() {
         onConfirm={() => setDuplicateBatchNumbers([])}
         confirmLabel="OK"
         cancelLabel="Close"
+      />
+
+      {/* Expired-batch warning (warn + allow override; does NOT block the sale) */}
+      <ConfirmationDialog
+        open={pendingExpiredItem !== null}
+        title="Expired batch"
+        message={
+          pendingExpiredItem
+            ? `Batch ${pendingExpiredItem.batchNumber} expired on ` +
+              `${dayjs(pendingExpiredItem.expiryDate).format('DD MMM YYYY')}. ` +
+              `Add it to the invoice anyway?`
+            : ''
+        }
+        onClose={handleExpiredCancel}
+        onCancel={handleExpiredCancel}
+        onConfirm={handleExpiredConfirm}
+        confirmLabel="Add anyway"
+        cancelLabel="Cancel"
       />
 
       {/* One-time drug-schedule attribution popup (schedule NULL only) */}
