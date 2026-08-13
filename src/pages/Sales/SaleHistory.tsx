@@ -1,6 +1,6 @@
 import React, { useState, useMemo, ChangeEvent, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip, Chip, FormControl, Autocomplete } from '@mui/material';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip, Chip, FormControl, Autocomplete, Tabs, Tab } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import dayjs, { Dayjs } from 'dayjs';
@@ -35,6 +35,7 @@ import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
 import { decorateInvoiceNumber, invoiceLookupKey } from '../../utils/invoiceNumberPreview';
 import { clearCart, clearFormData } from '../../redux/slices/cartSlice';
+import SalesReturnsLog from './components/SalesReturnsLog';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 
 // Load the customParseFormat plugin once at module scope so strict format strings
@@ -190,6 +191,18 @@ export default function SaleHistory() {
 
 
   const [returnInfoMap, setReturnInfoMap] = useState<Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
+
+  // 0 = Invoices (the sales history table), 1 = Returns (the sales-returns log).
+  // Held in the URL (`/sales?tab=returns`) so the tab is shareable and survives the
+  // round trip to a return's original invoice; no param = Invoices, as before.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get(SALES_HISTORY_CONSTANTS.TAB_PARAM) === SALES_HISTORY_CONSTANTS.TAB_RETURNS ? 1 : 0;
+  const handleTabChange = (value: number) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 1) next.set(SALES_HISTORY_CONSTANTS.TAB_PARAM, SALES_HISTORY_CONSTANTS.TAB_RETURNS);
+    else next.delete(SALES_HISTORY_CONSTANTS.TAB_PARAM);
+    setSearchParams(next, { replace: true });
+  };
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -1541,6 +1554,35 @@ export default function SaleHistory() {
         </Box>
       </Box>
 
+      {/* Invoices / Returns tabs */}
+      <Tabs
+        value={activeTab}
+        onChange={(_, value: number) => handleTabChange(value)}
+        sx={{
+          mb: 3,
+          minHeight: '2.5rem',
+          borderBottom: '0.0625rem solid #E6ECF5',
+          '& .MuiTabs-indicator': { backgroundColor: '#5C17E5', height: '0.1875rem' },
+          '& .MuiTab-root': {
+            minHeight: '2.5rem',
+            padding: '0 1rem',
+            fontFamily: "'Lexend', sans-serif",
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            textTransform: 'none',
+            color: '#728197',
+          },
+          '& .Mui-selected': { color: '#5C17E5' },
+        }}
+      >
+        <Tab label={SALES_HISTORY_LABELS.TABS.INVOICES} />
+        <Tab label={SALES_HISTORY_LABELS.TABS.RETURNS} />
+      </Tabs>
+
+      {activeTab === 1 && <SalesReturnsLog />}
+
+      {activeTab === 0 && (
+        <>
       {/* Search and Filter Section */}
       <Box sx={{
         display: 'flex',
@@ -1967,6 +2009,8 @@ export default function SaleHistory() {
         onClose={handleConfirmDialogClose}
         onConfirm={handleConfirmDialogConfirm}
       />
+        </>
+      )}
 
     </Box>
   );

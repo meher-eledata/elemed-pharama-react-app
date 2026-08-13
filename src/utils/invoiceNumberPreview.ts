@@ -103,19 +103,31 @@ export function renderInvoiceNumberPreview(
   });
 }
 
-// Legacy "INV" cosmetic for DISPLAY: when the org's custom scheme is OFF the numeric
-// invoice_number is shown as `INV<n>`; when ON, invoice_number already carries the full
-// rendered value (prefix included) and is shown verbatim. Empty/nullish → ''.
+// A DECORATED legacy invoice number: the cosmetic "INV"/"RB" prefix on an otherwise BARE
+// NUMBER ("INV947", "RB-12"). Anchored on digits on purpose — an imported/historical
+// invoice_number such as "INV-2026-000007" is a REAL stored value, not a decoration, so it
+// is neither re-decorated nor stripped. decorateInvoiceNumber and invoiceLookupKey both gate
+// on this shape, which makes them exact inverses: what is DISPLAYED always maps back to what
+// is STORED (search terms and edit-mode lookups included).
+const DECORATED_INVOICE_RE = /^(?:INV|RB)-?(\d+)$/i;
+
+// Legacy "INV" cosmetic for DISPLAY: when the org's custom scheme is OFF a bare numeric
+// invoice_number is shown as `INV<n>`; a stored value that is not a bare number (schemed, or
+// legacy data that already carries its own prefix) is shown verbatim — never "INVINV-...".
+// Empty/nullish → ''.
 export function decorateInvoiceNumber(n: unknown, schemeEnabled: boolean): string {
   if (n === null || n === undefined || n === '') return '';
-  return schemeEnabled ? String(n) : `INV${n}`;
+  const value = String(n);
+  if (schemeEnabled) return value;
+  return /^\d+$/.test(value) ? `INV${value}` : value;
 }
 
-// Prepare a stored invoice_number for the edit-mode LOOKUP. Legacy numbers carry an
-// "INV"/"RB" cosmetic prefix the backend does not expect; a schemed number is looked up
-// verbatim (its prefix is part of the real invoice_number).
+// Prepare a DISPLAYED invoice number for the edit-mode LOOKUP / server search — the inverse
+// of decorateInvoiceNumber. Only the cosmetic prefix added to a bare number is stripped; a
+// schemed number, and any stored value carrying its own prefix, is looked up verbatim.
 export function invoiceLookupKey(raw: string, schemeEnabled: boolean): string {
   const full = raw.trim();
   if (schemeEnabled) return full;
-  return full.replace(/^(INV-?|RB-?)/i, '').trim() || full;
+  const decorated = DECORATED_INVOICE_RE.exec(full);
+  return decorated ? decorated[1] : full;
 }

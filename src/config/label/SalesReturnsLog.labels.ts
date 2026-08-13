@@ -1,0 +1,45 @@
+export const SALES_RETURNS_LOG_LABELS = {
+  SEARCH_PLACEHOLDER: 'Search by return ID, invoice number or customer',
+  TABLE: {
+    RETURN_ID: 'Return ID',
+    DATE: 'Date',
+    INVOICE: 'Invoice',
+    CUSTOMER: 'Customer',
+    ITEMS: 'Items',
+    UNITS: 'Units',
+    REFUND: 'Refund', // values carry the ₹ symbol (formatWholeCurrency)
+    RETURNED_BY: 'Returned by',
+  },
+  LOADING: 'Loading sales returns...',
+  LOAD_FAILED: 'Failed to load sales returns.',
+  EMPTY: 'No sales returns yet',
+  EMPTY_FILTERED: 'No returns match your filters', // a search/date filter matched nothing
+
+  TRUNCATED: (shown: number, total: number) => `Showing first ${shown} of ${total} returns`,
+  EMPTY_VALUE: '—',
+  DETAILS_MODAL: {
+    TITLE: 'Sales Return Details',
+    LOADING: 'Loading return details...',
+    FAILED: 'Failed to load return details.',
+    RETURN_ID: 'Return ID',
+    DATE: 'Date',
+    INVOICE: 'Invoice',
+    CUSTOMER: 'Customer',
+    RETURNED_BY: 'Returned by',
+    REFUND_METHOD: 'Refund method',
+    STATUS: 'Status',
+    REASON: 'Reason',
+    NOTES: 'Notes',
+    TOTAL_REFUND: 'Total refund',
+    VIEW_INVOICE: 'View original invoice',
+    LINES: {
+      PRODUCT: 'Product',
+      BATCH: 'Batch',
+      QTY: 'Quantity returned',
+      REFUND: 'Refund amount',
+      RESTOCK: 'Restock action',
+    },
+    TOTAL_ROW: 'Total',
+    TOTAL_UNITS: (units: number) => `${units} unit${units === 1 ? '' : 's'}`,
+  },
+} as const;

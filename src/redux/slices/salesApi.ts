@@ -390,10 +390,64 @@ export interface InvoiceDetailsResponse {
 }
 
 
+// ---------------------------------------------------------------------------
+// Sales-returns log (POST sales/list-sales-returns, POST sales/get-sales-return-details).
+// Shapes per api-contract.md. All money/qty fields are Number()-converted
+// server-side, so they arrive as real numbers (not pg DECIMAL strings).
+// ---------------------------------------------------------------------------
+export interface SalesReturnRow {
+  sales_return_id: number;
+  return_number: string | null;
+  invoice_id: number;
+  invoice_number: string | null; // LEFT JOIN — nullable
+  customer_id: number;
+  customer_name: string | null; // LEFT JOIN — nullable
+  return_date: string; // ISO timestamp
+  created_by: string;
+  reason: string | null;
+  notes: string | null;
+  return_type: string;
+  return_status: string;
+  refund_method: string | null;
+  total_amount: number | null;
+  line_count: number;
+  units_count: number;
+}
+
+export interface ListSalesReturnsRequest {
+  search?: string; // matches return_number OR invoice_number OR customer name
+  start_date?: string; // 'YYYY-MM-DD' (inclusive)
+  end_date?: string; // 'YYYY-MM-DD' (inclusive)
+  limit?: number; // default 50, capped at 200
+  offset?: number; // default 0
+}
+
+export interface ListSalesReturnsResponse {
+  rows: SalesReturnRow[];
+  total: number; // ignores limit/offset
+}
+
+export interface SalesReturnLine {
+  id: number;
+  sales_return_id: number;
+  invoice_line_id: number | null;
+  product_id: number;
+  product_name: string | null;
+  batch_number: string;
+  quantity: number;
+  refund_amount: number | null;
+  restock_action: string;
+}
+
+// Flat header (identical field set to a list row) plus the returned lines.
+export interface SalesReturnDetailsResponse extends SalesReturnRow {
+  lines: SalesReturnLine[]; // ordered id ASC
+}
+
 export const salesApi = createApi({
   reducerPath: "salesApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Sales", "ProductType", "Inventory", "Dashboard"] as const,
+  tagTypes: ["Sales", "ProductType", "Inventory", "Dashboard", "SalesReturns"] as const,
   endpoints: (builder) => ({
     // Get product types by product ID (can return multiple types)
     getProductType: builder.query<ProductTypesResponse, GetProductTypeRequest>({
@@ -476,7 +530,9 @@ export const salesApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Sales", "Inventory"],
+      // SalesReturns too: the backend's recalcSalesReturnHeader rewrites sales_return
+      // total_amount and line refund_amount when an invoice with returns is edited.
+      invalidatesTags: ["Sales", "Inventory", "SalesReturns"],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -691,7 +747,7 @@ export const salesApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Sales", "Inventory"],
+      invalidatesTags: ["Sales", "Inventory", "SalesReturns"],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -701,6 +757,25 @@ export const salesApi = createApi({
           dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
+    }),
+
+    // Sales-returns log (Sale History "Returns" tab)
+    listSalesReturns: builder.query<ListSalesReturnsResponse, ListSalesReturnsRequest>({
+      query: (body) => ({
+        url: "sales/list-sales-returns",
+        method: "POST",
+        body,
+      }),
+      providesTags: ["SalesReturns"],
+    }),
+
+    getSalesReturnDetails: builder.query<SalesReturnDetailsResponse, { sales_return_id: number }>({
+      query: (body) => ({
+        url: "sales/get-sales-return-details",
+        method: "POST",
+        body,
+      }),
+      providesTags: (_res, _err, arg) => [{ type: "SalesReturns", id: arg.sales_return_id }],
     }),
 
     // Upsert invoice payments
@@ -723,7 +798,9 @@ export const salesApi = createApi({
 
     // Permanently delete an invoice with a reason. Backend restores stock
     // and recalculates totals; we invalidate Sales + Inventory so the table
-    // and stock counts refresh automatically.
+    // and stock counts refresh automatically. No SalesReturns tag: the backend
+    // 409s (and rolls back) on any invoice that has returns, so a successful
+    // delete can never change sales-return data.
     deleteInvoice: builder.mutation<{ message: string } & Record<string, any>, {
       invoice_id: number;
       deleted_by: string;
@@ -783,6 +860,8 @@ export const {
   useGetBatchNumbersByProductIdMutation,
   useGetInvoiceDetailsMutation,
   useSubmitSalesReturnMutation,
+  useListSalesReturnsQuery,
+  useGetSalesReturnDetailsQuery,
   useEditSaleMutation,
   useUpsertInvoicePaymentsMutation,
   useDeleteInvoiceMutation,

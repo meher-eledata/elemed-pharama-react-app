@@ -152,7 +152,12 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               width: "242px",
               maxWidth: "242px",
               minWidth: "272px",
-              height: "312px",
+              // Sized by its content, floored at the old fixed height: a month spanning SIX
+              // calendar weeks (e.g. August 2026) used to render its last row outside the card.
+              // The day grid below reserves six rows, so the card height never changes between
+              // months — only between the day / month / year views.
+              height: "auto",
+              minHeight: "312px",
               position: "relative",
               zIndex: 9999,
               "&::-webkit-scrollbar": {
@@ -194,8 +199,6 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                     width: "242px",
                     maxWidth: "242px",
                     marginTop:"-6px",
-                    height: "300px !important",
-                    minHeight: "300px !important",
                   },
                   "& .MuiYearCalendar-root": {
                     marginLeft: "-20px",
@@ -259,8 +262,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                     display: "block",
                     position: "relative",
                     overflowX: "hidden",
+                    // Six week-rows: 6 * (DAY_SIZE 36 + 2 * DAY_MARGIN 2) = 240px. Reserving
+                    // them keeps every month the same height and keeps the 6th week INSIDE
+                    // the card; the grid is free to grow past it rather than overflow.
                     minHeight: "242px",
-                    height: "300px !important",
                     width: "242px",
                     maxWidth: "242px",
                   },

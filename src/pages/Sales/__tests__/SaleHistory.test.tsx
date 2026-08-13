@@ -123,6 +123,21 @@ describe('SaleHistory', () => {
       stableTrigger,
       stableOptions,
     ]);
+
+    // Sales Returns log (the "Returns" tab, 2026-08-13). Only mounted on tab 1,
+    // but the automocked hooks must still return a destructurable result.
+    (salesApi.useListSalesReturnsQuery as jest.Mock) = jest.fn(() => ({
+      data: { rows: [], total: 0 },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+      refetch: jest.fn(),
+    }));
+    (salesApi.useGetSalesReturnDetailsQuery as jest.Mock) = jest.fn(() => ({
+      data: undefined,
+      isFetching: false,
+      error: null,
+    }));
   });
 
   const renderComponent = (store = createMockStore()) => {
@@ -591,6 +606,89 @@ describe('SaleHistory', () => {
         expect(screen.getByText(/inv1001/i)).toBeInTheDocument();
         expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
         expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  // =========================================================================
+  // Invoices / Returns tabs (Sales Returns log feature, 2026-08-13). The open
+  // tab lives in the URL (`/sales?tab=returns`) so it is shareable and survives
+  // the round trip to a return's original invoice; no param = Invoices.
+  // useSearchParams resolves against the real jsdom history under BrowserRouter,
+  // so each case drives window.history directly.
+  // =========================================================================
+  describe('Invoices / Returns tabs', () => {
+    const setUrl = (url: string) => window.history.pushState({}, '', url);
+    afterEach(() => setUrl('/'));
+
+    const tab = (name: 'Invoices' | 'Returns') => screen.getByRole('tab', { name });
+
+    it('renders both tabs', () => {
+      setUrl('/sales');
+      renderComponent();
+      expect(tab('Invoices')).toBeInTheDocument();
+      expect(tab('Returns')).toBeInTheDocument();
+    });
+
+    it('lands on Invoices by default (no tab param) and shows the invoices table', () => {
+      setUrl('/sales');
+      renderComponent();
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('Returns')).toHaveAttribute('aria-selected', 'false');
+      // The invoices toolbar is present, the returns log is not.
+      expect(screen.getByText(/show filters/i)).toBeInTheDocument();
+      expect(salesApi.useListSalesReturnsQuery).not.toHaveBeenCalled();
+    });
+
+    it('an unknown tab value falls back to Invoices', () => {
+      setUrl('/sales?tab=bogus');
+      renderComponent();
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(salesApi.useListSalesReturnsQuery).not.toHaveBeenCalled();
+    });
+
+    it('?tab=returns lands directly on the Returns tab and mounts the returns log', () => {
+      setUrl('/sales?tab=returns');
+      renderComponent();
+      expect(tab('Returns')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'false');
+      expect(salesApi.useListSalesReturnsQuery).toHaveBeenCalled();
+      expect(
+        screen.getByPlaceholderText('Search by return ID, invoice number or customer')
+      ).toBeInTheDocument();
+      // The invoices toolbar is unmounted while Returns is open.
+      expect(screen.queryByText(/show filters/i)).not.toBeInTheDocument();
+    });
+
+    it('switching to Returns sets ?tab=returns in the URL', async () => {
+      setUrl('/sales');
+      renderComponent();
+      fireEvent.click(tab('Returns'));
+
+      await waitFor(() => expect(window.location.search).toBe('?tab=returns'));
+      expect(tab('Returns')).toHaveAttribute('aria-selected', 'true');
+      await waitFor(() => expect(salesApi.useListSalesReturnsQuery).toHaveBeenCalled());
+    });
+
+    it('switching back to Invoices REMOVES the param rather than setting tab=invoices', async () => {
+      setUrl('/sales?tab=returns');
+      renderComponent();
+      fireEvent.click(tab('Invoices'));
+
+      await waitFor(() => expect(window.location.search).toBe(''));
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText(/show filters/i)).toBeInTheDocument();
+    });
+
+    it('preserves any other query params when switching tabs', async () => {
+      setUrl('/sales?ref=dashboard');
+      renderComponent();
+      fireEvent.click(tab('Returns'));
+
+      await waitFor(() => {
+        const params = new URLSearchParams(window.location.search);
+        expect(params.get('tab')).toBe('returns');
+        expect(params.get('ref')).toBe('dashboard');
       });
     });
   });
