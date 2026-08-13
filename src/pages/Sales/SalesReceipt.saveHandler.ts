@@ -3,7 +3,7 @@ import { Customer, AddCustomerRequest, InsufficientStockItem, SubmitSaleError } 
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getProductIdFromName } from './SalesReceipt.handlers';
 import { saveSalesHistoryToStorage, clearCartFromStorage, clearFormDataFromStorage } from '../../utils/cartStorage';
-import { extractErrorMessage, logError } from '../../utils/errorUtils';
+import { duplicateDocumentNumberMessage, extractErrorMessage, logError } from '../../utils/errorUtils';
 import { decorateInvoiceNumber } from '../../utils/invoiceNumberPreview';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 
@@ -576,8 +576,12 @@ export const executeSave = async ({
         // UI — and abort so the cart and any resumed draft are preserved. Toast directly
         // (not throw): extractErrorMessage hides Error messages in PROD builds, which would
         // swallow the specific message.
-        if (errorData?.error === 'DUPLICATE_INVOICE_NUMBER') {
-          showToast(errorData.message || SALES_RECEIPT_LABELS.DUPLICATE_INVOICE_NUMBER_ERROR, 'error');
+        const duplicateNumber = duplicateDocumentNumberMessage(
+          submitError,
+          SALES_RECEIPT_LABELS.DUPLICATE_INVOICE_NUMBER_ERROR,
+        );
+        if (duplicateNumber) {
+          showToast(duplicateNumber, 'error');
           return;
         }
 

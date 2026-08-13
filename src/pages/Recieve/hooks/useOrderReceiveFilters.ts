@@ -79,6 +79,8 @@ export const useOrderReceiveFilters = (
         const lowerSearch = searchTerm.toLowerCase();
         sortableItems = sortableItems.filter(item =>
           item.reNo.toLowerCase().includes(lowerSearch) ||
+          (item.receipt_number ?? '').toLowerCase().includes(lowerSearch) ||
+          (item.invoice_number ?? '').toLowerCase().includes(lowerSearch) ||
           item.supplier.toLowerCase().includes(lowerSearch) ||
           item.reBy.toLowerCase().includes(lowerSearch)
         );

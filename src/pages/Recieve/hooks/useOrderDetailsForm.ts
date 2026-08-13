@@ -81,6 +81,9 @@ export const useOrderDetailsForm = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  // The GRN number the server issued for the receipt just submitted (null in edit mode /
+  // before any submit), named in the success snackbar.
+  const [savedReceiptNumber, setSavedReceiptNumber] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<boolean>(false);
@@ -214,6 +217,8 @@ export const useOrderDetailsForm = () => {
     setSaveError,
     saveSuccess,
     setSaveSuccess,
+    savedReceiptNumber,
+    setSavedReceiptNumber,
     isDeleting,
     setIsDeleting,
     deleteError,

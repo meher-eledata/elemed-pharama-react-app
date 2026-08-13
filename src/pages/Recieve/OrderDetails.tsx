@@ -164,6 +164,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setIsSaving: form.setIsSaving,
     setSaveError: form.setSaveError,
     setSaveSuccess: form.setSaveSuccess,
+    setSavedReceiptNumber: form.setSavedReceiptNumber,
     setIsDeleting: form.setIsDeleting,
     setDeleteError: form.setDeleteError,
     setDeleteSuccess: form.setDeleteSuccess,
@@ -760,7 +761,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
       </Snackbar>
 
       <Snackbar open={form.saveSuccess} autoHideDuration={3000} onClose={() => form.setSaveSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
-        <Alert onClose={() => form.setSaveSuccess(false)} severity="success" sx={{ width: '100%' }}>Receipt submitted successfully!</Alert>
+        <Alert onClose={() => form.setSaveSuccess(false)} severity="success" sx={{ width: '100%' }}>
+          {form.savedReceiptNumber
+            ? orderLabels.receiptSubmittedWithNumber(form.savedReceiptNumber)
+            : orderLabels.receiptSubmitted}
+        </Alert>
       </Snackbar>
 
       <Snackbar open={!!form.deleteError} autoHideDuration={6000} onClose={() => form.setDeleteError(null)} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>

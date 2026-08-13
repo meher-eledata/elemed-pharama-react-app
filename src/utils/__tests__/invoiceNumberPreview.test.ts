@@ -30,6 +30,72 @@ describe('renderInvoiceNumberPreview — faithful mirror of backend renderInvoic
   });
 });
 
+// The year/month tokens render the PERIOD BUCKET's year (backend periodTokensFor), so
+// the preview can never disagree with the number the allocator issues. Dates are built
+// with the LOCAL Date constructor on purpose: an ISO 'YYYY-MM-DD' string parses as UTC
+// midnight and would slide the bucket by a day in a negative-offset timezone.
+describe('renderInvoiceNumberPreview — period-bucket year/month tokens', () => {
+  const FY = { cycle: 'annual', anchorMonth: 4, anchorDay: 1 };
+  const T = 'SI-EL-{YY}-{SEQ:6}';
+
+  it('annual + 1-April anchor: 31 March belongs to the PREVIOUS financial year', () => {
+    expect(renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), FY)).toBe('SI-EL-25-000001');
+  });
+
+  it('annual + 1-April anchor: 1 April opens the new financial year', () => {
+    expect(renderInvoiceNumberPreview(T, 1, new Date(2026, 3, 1), FY)).toBe('SI-EL-26-000001');
+  });
+
+  it('annual keeps the DOCUMENT month in {MM} (the bucket spans 12 months)', () => {
+    expect(
+      renderInvoiceNumberPreview('{YYYY}/{MM}/{SEQ:3}', 9, new Date(2026, 1, 15), FY),
+    ).toBe('2025/02/009');
+  });
+
+  // LEGACY IDENTITY — migrated reset='yearly' orgs must render exactly as before.
+  it('annual anchored 1 January is byte-identical to document-date rendering', () => {
+    const jan = { cycle: 'annual', anchorMonth: 1, anchorDay: 1 };
+    for (const date of [new Date(2026, 0, 1), new Date(2026, 2, 31), new Date(2026, 11, 31)]) {
+      expect(renderInvoiceNumberPreview('{YYYY}-{MM}-{SEQ:4}', 5, date, jan)).toBe(
+        renderInvoiceNumberPreview('{YYYY}-{MM}-{SEQ:4}', 5, date),
+      );
+    }
+  });
+
+  it('monthly renders the document year/month, anchor ignored', () => {
+    expect(
+      renderInvoiceNumberPreview('{YY}{MM}-{SEQ:3}', 2, new Date(2026, 2, 31), {
+        cycle: 'monthly',
+        anchorMonth: 4,
+        anchorDay: 1,
+      }),
+    ).toBe('2603-002');
+  });
+
+  it("cycle 'none' renders the document year/month", () => {
+    expect(
+      renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), { cycle: 'none', anchorMonth: 4, anchorDay: 1 }),
+    ).toBe('SI-EL-26-000001');
+  });
+
+  it('omitting the period context renders from the document date (unchanged callers)', () => {
+    expect(renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31))).toBe('SI-EL-26-000001');
+  });
+
+  it('falls back to the 1-April default anchor when the anchor is absent or out of range', () => {
+    expect(
+      renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), { cycle: 'annual' }),
+    ).toBe('SI-EL-25-000001');
+    expect(
+      renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), {
+        cycle: 'annual',
+        anchorMonth: NaN,
+        anchorDay: 0,
+      }),
+    ).toBe('SI-EL-25-000001');
+  });
+});
+
 describe('validateInvoiceTemplate — mirrors backend validateTemplate messages', () => {
   it('accepts a valid single-SEQ template', () => {
     expect(validateInvoiceTemplate('SI-EL-{YY}-{SEQ:6}')).toEqual({ valid: true });
@@ -42,19 +108,26 @@ describe('validateInvoiceTemplate — mirrors backend validateTemplate messages'
   it('rejects an unknown token with the backend message', () => {
     expect(validateInvoiceTemplate('{DD}-{SEQ}')).toEqual({
       valid: false,
-      error: 'unknown token {DD} in invoice_number_template',
+      error: 'unknown token {DD} in template',
     });
   });
 
   it('rejects zero SEQ tokens', () => {
     expect(validateInvoiceTemplate('NO-SEQ-{YY}')).toEqual({
       valid: false,
-      error: 'invoice_number_template must contain exactly one SEQ token',
+      error: 'template must contain exactly one SEQ token',
     });
   });
 
   it('rejects multiple SEQ tokens', () => {
     expect(validateInvoiceTemplate('{SEQ}-{SEQ}')).toEqual({
+      valid: false,
+      error: 'template must contain exactly one SEQ token',
+    });
+  });
+
+  it('names the caller\'s request field, like the backend validator', () => {
+    expect(validateInvoiceTemplate('NO-SEQ-{YY}', 'invoice_number_template')).toEqual({
       valid: false,
       error: 'invoice_number_template must contain exactly one SEQ token',
     });
@@ -71,11 +144,11 @@ describe('validateInvoiceTemplate — mirrors backend validateTemplate messages'
   it('rejects a template containing < or > with the backend message', () => {
     expect(validateInvoiceTemplate('<img>-{SEQ}')).toEqual({
       valid: false,
-      error: 'invoice_number_template must not contain < or >',
+      error: 'template must not contain < or >',
     });
     expect(validateInvoiceTemplate('{SEQ}>')).toEqual({
       valid: false,
-      error: 'invoice_number_template must not contain < or >',
+      error: 'template must not contain < or >',
     });
   });
 });

@@ -8,7 +8,23 @@ import {
   useUploadReceiptFileMutation,
 } from "../../../redux/slices/receiveApi";
 import { useIdempotencyKey } from "../../../hooks/useIdempotencyKey";
+import { duplicateDocumentNumberMessage } from "../../../utils/errorUtils";
 import { PharmaTableRow, SupplierOption, ProductOption } from "../types";
+
+// Every submit/edit failure surfaces through setSaveError. The 409 DUPLICATE_RECEIPT_NUMBER
+// is a retryable counter anomaly rather than bad input, so it is named ahead of the generic
+// unwrapping (mirrors SalesReceipt.saveHandler's DUPLICATE_INVOICE_NUMBER branch).
+const resolveReceiptSaveError = (error: any): string => {
+  const duplicateNumber = duplicateDocumentNumberMessage(error);
+  if (duplicateNumber) return duplicateNumber;
+  if (error?.data) {
+    if (typeof error.data === 'string') return error.data;
+    if (error.data.message) return error.data.message;
+    if (error.data.error) return error.data.error;
+    if (Array.isArray(error.data.errors) && error.data.errors.length > 0) return error.data.errors[0];
+  }
+  return error?.message || 'Failed to submit receipt';
+};
 
 interface SubmitHookParams {
   supplierName: string;
@@ -29,6 +45,7 @@ interface SubmitHookParams {
   setIsSaving: (val: boolean) => void;
   setSaveError: (val: string | null) => void;
   setSaveSuccess: (val: boolean) => void;
+  setSavedReceiptNumber: (val: string | null) => void;
   setIsDeleting: (val: boolean) => void;
   setDeleteError: (val: string | null) => void;
   setDeleteSuccess: (val: boolean) => void;
@@ -72,6 +89,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     setIsSaving,
     setSaveError,
     setSaveSuccess,
+    setSavedReceiptNumber,
     setIsDeleting,
     setDeleteError,
     setDeleteSuccess,
@@ -341,6 +359,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       setIsSaving(true);
       setSaveError(null);
       setSaveSuccess(false);
+      // An edit issues no new number, so never carry one over from a previous submit.
+      setSavedReceiptNumber(null);
 
       const validationError = validateForm();
       if (validationError) {
@@ -378,6 +398,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         }).unwrap();
         resetIdempotencyKey();
         finalReceiptId = result.receipt_id || (result as any).receiptId;
+        // The server-issued GRN number, shown in the success snackbar.
+        setSavedReceiptNumber(result.receipt_number ?? null);
       }
 
       // Upload file if selected
@@ -411,16 +433,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       }, 2000);
 
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-        else if (error.data.error) errorMessage = error.data.error;
-        else if (Array.isArray(error.data.errors) && error.data.errors.length > 0) errorMessage = error.data.errors[0];
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      setSaveError(resolveReceiptSaveError(error));
     } finally {
       setIsSaving(false);
     }
@@ -510,14 +523,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         });
       }
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      setSaveError(resolveReceiptSaveError(error));
       setIsSaving(false);
     } finally {
       setIsSaving(false);
@@ -554,6 +560,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       }).unwrap();
       resetIdempotencyKey();
       const newReceiptId: number | null = result.receipt_id || (result as any).receiptId;
+      // The server-issued GRN number, shown in the success snackbar.
+      setSavedReceiptNumber(result.receipt_number ?? null);
 
       if (newReceiptId) {
         if (invoiceFile) {
@@ -577,14 +585,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         }, 1500);
       }
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      setSaveError(resolveReceiptSaveError(error));
     } finally {
       setIsSaving(false);
     }

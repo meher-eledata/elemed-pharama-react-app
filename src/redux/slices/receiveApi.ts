@@ -17,6 +17,9 @@ export interface ReceiptLineItem {
 
 export interface Receipt {
   receipt_id: number;
+  // OUR goods-receipt number (legacy `GRN-000123` or the org's `receipt` scheme).
+  // NOT the same as `invoice_number` below, which is the SUPPLIER's invoice number.
+  receipt_number: string | null;
   po_id: number;
   po_number: string;
   supplier_id: number;
@@ -41,8 +44,8 @@ export interface Receipt {
   total_amount?: number; // Alias for po_total_amount (converted to number)
   transaction_number?: string; // Alias for last_transaction_number
   payment_vendor?: string; // Alias for last_payment_vendor
-  invoice_date?: string; // Invoice date from form
-  invoice_number?: string; // Invoice number from form
+  invoice_date?: string; // Supplier invoice date from form
+  invoice_number?: string; // The SUPPLIER's invoice number (r.supplier_invoice_number, aliased)
   invoice_attachment?: string; // Invoice attachment (base64 data URL)
 }
 
@@ -121,6 +124,8 @@ export interface EditReceiptResponse {
 // New types for receipt lines
 export interface ReceiptLine {
   batch_id: number;
+  // The receipt header's own number, repeated on every line (see Receipt.receipt_number).
+  receipt_number: string | null;
   cgst: string;
   discount: string;
   free_qty: number;
@@ -417,6 +422,9 @@ export const receiveApi = createApi({
         message: string;
         po_id: number;
         receipt_id: number;
+        // OUR goods-receipt number (legacy `GRN-000123` or the org's `receipt` scheme);
+        // opaque — never parsed or derived client-side. See Receipt.receipt_number.
+        receipt_number: string | null;
         total_amount: number;
         amount_paid: number;
         amount_due: number;

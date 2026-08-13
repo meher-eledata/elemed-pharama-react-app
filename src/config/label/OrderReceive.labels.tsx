@@ -10,6 +10,8 @@ export const RECEIVE_HISTORY_PLACEHOLDER = "Receive History content here...";
 
 export const ORDER_RECEIVE_TABLE_HEADERS = {
   RECEIPT_NUMBER: "Receipt number",
+  // The supplier's own invoice number — deliberately distinct from RECEIPT_NUMBER above.
+  SUPPLIER_INVOICE_NUMBER: "Supplier invoice no.",
   PO_NUMBER: "PO number",
   SUPPLIER_NAME: "Supplier name",
   RECEIVED_ON: "Received on",

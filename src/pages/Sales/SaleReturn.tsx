@@ -24,6 +24,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 import { invoiceLookupKey } from '../../utils/invoiceNumberPreview';
+import { duplicateDocumentNumberMessage } from '../../utils/errorUtils';
 
 interface ReturnItem extends SalesReceiptItem {
   returnQuantity: string;
@@ -800,7 +801,13 @@ export default function SaleReturn() {
         message: error?.message,
         error: error?.error,
       });
-      const errorMessage = error?.data?.error || error?.message || 'Failed to submit return. Please try again.';
+      // 409 DUPLICATE_RETURN_NUMBER: retryable counter anomaly, not bad input — say so
+      // instead of showing the raw error code.
+      const errorMessage =
+        duplicateDocumentNumberMessage(error)
+        || error?.data?.error
+        || error?.message
+        || 'Failed to submit return. Please try again.';
       alert(errorMessage);
     }
   };

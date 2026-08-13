@@ -71,6 +71,7 @@ const makeParams = () => ({
   setIsSaving: jest.fn(),
   setSaveError: jest.fn(),
   setSaveSuccess: jest.fn(),
+  setSavedReceiptNumber: jest.fn(),
   setIsDeleting: jest.fn(),
   setDeleteError: jest.fn(),
   setDeleteSuccess: jest.fn(),
@@ -157,5 +158,63 @@ describe("useOrderDetailsSubmit — no re-submit on RTK error", () => {
     expect(keys[1]).toBe(keys[0]);
     // …but after a successful submit the key is reset.
     expect(keys[2]).not.toBe(keys[1]);
+  });
+
+  it("names the server-issued receipt number on success", async () => {
+    mockSubmitReceipt.mockReturnValue({
+      unwrap: () => Promise.resolve({ receipt_id: 42, receipt_number: "GRN-2608-0042" }),
+    });
+    const params = makeParams();
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.handleSaveAndPayLater();
+    });
+
+    expect(params.setSavedReceiptNumber).toHaveBeenCalledWith("GRN-2608-0042");
+  });
+
+  // A response WITHOUT receipt_number is the legacy shape (a backend that predates
+  // migration 019, or a rollback to it). It must degrade to null — never to the string
+  // "undefined" and never left holding a previous submit's number — so the success
+  // banner falls back to its generic wording instead of naming a number that does not
+  // exist.
+  it.each([
+    ["the field is absent", { receipt_id: 42 }],
+    ["the field is explicitly null", { receipt_id: 42, receipt_number: null }],
+  ])("sets the saved receipt number to null when %s", async (_label, response) => {
+    mockSubmitReceipt.mockReturnValue({ unwrap: () => Promise.resolve(response) });
+    const params = makeParams();
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.handleSaveAndPayLater();
+    });
+
+    expect(params.setSavedReceiptNumber).toHaveBeenCalledWith(null);
+    expect(params.setSaveSuccess).toHaveBeenCalledWith(true);
+  });
+
+  it("surfaces the duplicate-receipt-number 409 as its own message", async () => {
+    mockSubmitReceipt.mockReturnValue({
+      unwrap: () =>
+        Promise.reject({
+          status: 409,
+          data: {
+            error: "DUPLICATE_RECEIPT_NUMBER",
+            message: "This receipt number is already used in this pharmacy",
+          },
+        }),
+    });
+    const params = makeParams();
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith(
+      "This receipt number is already used in this pharmacy",
+    );
   });
 });

@@ -95,10 +95,56 @@ export interface UpdateOrgRequest {
   invoice_seq_start?: number | null;
 }
 
+// Document numbering — GET/PUT /api/org/document-numbering. Generalizes the four
+// DEPRECATED organization.invoice_number_* columns into four independent series.
+// A sales_invoice save is mirrored back onto those legacy columns server-side, which is
+// why the PUT also invalidates 'Org' and 'Me'.
+export type DocType = 'sales_invoice' | 'sales_return' | 'receipt' | 'purchase_return';
+
+export interface DocumentNumberScheme {
+  doc_type: DocType;
+  enabled: boolean;
+  template: string | null;
+  // BIGINTs, but Number()d server-side — never a string here. One-time cutover for the
+  // CURRENT period only; null = no cutover.
+  seq_start: number | null;
+  reset_cycle: 'none' | 'monthly' | 'annual';
+  // Used by 'annual' only; default 4/1 (Indian financial year).
+  reset_anchor_month: number;
+  reset_anchor_day: number;
+  // What EVERY subsequent period restarts at. Never null.
+  reset_to: number;
+  // Sample number rendered by the backend for a document dated today; null when template is null.
+  preview: string | null;
+}
+
+export interface GetDocumentNumberingResponse {
+  // Always exactly four entries, ordered sales_invoice, sales_return, receipt, purchase_return.
+  // A doc type with no row yet comes back as a disabled default.
+  schemes: DocumentNumberScheme[];
+}
+
+// PUT is owner/admin only. `doc_type` identifies the row; every other field is an
+// optional partial update. `reset_to` is NOT nullable server-side.
+export interface UpdateDocumentNumberingRequest {
+  doc_type: DocType;
+  enabled?: boolean;
+  template?: string | null;
+  seq_start?: number | null;
+  reset_cycle?: 'none' | 'monthly' | 'annual';
+  reset_anchor_month?: number;
+  reset_anchor_day?: number;
+  reset_to?: number;
+}
+
+export interface UpdateDocumentNumberingResponse {
+  scheme: DocumentNumberScheme;
+}
+
 export const orgApi = createApi({
   reducerPath: 'orgApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Me', 'Org'] as const,
+  tagTypes: ['Me', 'Org', 'DocumentNumbering'] as const,
   endpoints: (builder) => ({
     getMe: builder.query<MeResponse, void>({
       query: () => ({
@@ -139,6 +185,26 @@ export const orgApi = createApi({
       }),
       invalidatesTags: ['Org', 'Me'],
     }),
+    // GET /api/org/document-numbering — any org member.
+    getDocumentNumbering: builder.query<GetDocumentNumberingResponse, void>({
+      query: () => ({
+        url: 'org/document-numbering',
+        method: 'GET',
+      }),
+      providesTags: ['DocumentNumbering'],
+    }),
+    // PUT /api/org/document-numbering — owner/admin only. One doc_type per call.
+    updateDocumentNumbering: builder.mutation<
+      UpdateDocumentNumberingResponse,
+      UpdateDocumentNumberingRequest
+    >({
+      query: (body) => ({
+        url: 'org/document-numbering',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['DocumentNumbering', 'Org', 'Me'],
+    }),
     // DELETE /api/org/logo — owner/admin only. Clears the org logo.
     deleteOrgLogo: builder.mutation<{ logo_url: null }, void>({
       query: () => ({
@@ -157,4 +223,6 @@ export const {
   useUpdateOrgMutation,
   useUpdateOrgLogoMutation,
   useDeleteOrgLogoMutation,
+  useGetDocumentNumberingQuery,
+  useUpdateDocumentNumberingMutation,
 } = orgApi;

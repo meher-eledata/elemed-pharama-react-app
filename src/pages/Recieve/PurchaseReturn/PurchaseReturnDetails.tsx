@@ -17,7 +17,7 @@ import { StandardButton } from '../../../components/Common';
 import { ReusableTable, TableColumn } from '../../../components/PharmaTable';
 import ConfirmationDialog from '../../../components/DeleteDialogue/ConfirmationDialog';
 import { formatReportDate, formatCurrency } from '../../../utils/reportFormat';
-import { extractErrorMessage } from '../../../utils/errorUtils';
+import { duplicateDocumentNumberMessage, extractErrorMessage } from '../../../utils/errorUtils';
 import { PURCHASE_RETURN_LABELS } from '../../../config/label/PurchaseReturn.labels';
 import {
   PURCHASE_RETURN_ROUTES,
@@ -244,8 +244,14 @@ const PurchaseReturnDetails: React.FC = () => {
       setResult(response);
     } catch (err) {
       // 409s (insufficient stock / supplier mismatch / no purchase price) surface here.
+      // DUPLICATE_RETURN_NUMBER is a retryable counter anomaly rather than bad input, so
+      // it gets its own actionable wording ahead of the generic message.
       setIsConfirmOpen(false);
-      setSnackbar({ open: true, message: extractErrorMessage(err, L.SUBMIT_FAILED), severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: duplicateDocumentNumberMessage(err) || extractErrorMessage(err, L.SUBMIT_FAILED),
+        severity: 'error',
+      });
     }
   };
 

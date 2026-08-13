@@ -1,4 +1,4 @@
-import { extractErrorMessage, logError } from '../errorUtils';
+import { extractErrorMessage, logError, duplicateDocumentNumberMessage } from '../errorUtils';
 
 // NOTE: In this jest setup `import.meta.env` is rewritten to `process.env`
 // by jest.preprocessor.cjs, so `import.meta.env.PROD` reads `process.env.PROD`.
@@ -139,6 +139,63 @@ describe('errorUtils', () => {
     it('is a no-op that returns undefined and does not throw', () => {
       expect(logError(new Error('x'), 'ctx')).toBeUndefined();
       expect(() => logError('anything')).not.toThrow();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // The 409 duplicate-document-number backstop, shared by all four series (sales
+  // invoice, sales return, receipt/GRN, purchase return). The screens branch on
+  // THIS helper, so it is the single client-side point where the backend's
+  // { error: '<CODE>', message } contract is honoured — and it is discriminated on
+  // the CODE, never the wording (the supplier-return message differs from the
+  // other three, so a message-based check would silently miss it).
+  // ---------------------------------------------------------------------------
+  describe('duplicateDocumentNumberMessage', () => {
+    const dup = (error: string, message?: string) => ({
+      status: 409,
+      data: message === undefined ? { error } : { error, message },
+    });
+
+    it.each([
+      ['DUPLICATE_INVOICE_NUMBER', 'Invoice number 946 is already used in this pharmacy'],
+      ['DUPLICATE_RETURN_NUMBER', 'This return number is already used in this pharmacy'],
+      ['DUPLICATE_RETURN_NUMBER', 'This return number is already used'], // supplier-return wording
+      ['DUPLICATE_RECEIPT_NUMBER', 'This receipt number is already used in this pharmacy'],
+    ])('returns the server message verbatim for %s', (code, message) => {
+      expect(duplicateDocumentNumberMessage(dup(code, message))).toBe(message);
+    });
+
+    it('falls back to the retry-guidance message when the 409 carries no message', () => {
+      const out = duplicateDocumentNumberMessage(dup('DUPLICATE_INVOICE_NUMBER'));
+      expect(out).toMatch(/submit again/i);
+    });
+
+    it('uses a caller-supplied fallback when the 409 carries no message', () => {
+      expect(duplicateDocumentNumberMessage(dup('DUPLICATE_RECEIPT_NUMBER'), 'Try once more')).toBe(
+        'Try once more',
+      );
+    });
+
+    // Returning null is what makes the caller fall through to its NORMAL error
+    // handling; anything else here would relabel unrelated failures as a
+    // retryable duplicate number.
+    it.each([
+      ['a different 409 code', { status: 409, data: { error: 'DUPLICATE_IDEMPOTENCY_KEY', message: 'x' } }],
+      ['a plain server error', { status: 500, data: { error: 'Server error' } }],
+      ['a 400 with only a message', { status: 400, data: { message: 'lines must be a non-empty array' } }],
+      ['a string body', { status: 502, data: 'Bad Gateway' }],
+      ['no data at all', { status: 409 }],
+      ['an Error instance', new Error('network down')],
+      ['null', null],
+      ['undefined', undefined],
+    ])('returns null for %s', (_label, error) => {
+      expect(duplicateDocumentNumberMessage(error)).toBeNull();
+    });
+
+    // Case matters: the codes are exact contract literals.
+    it('does not match a lower-cased or partial code', () => {
+      expect(duplicateDocumentNumberMessage(dup('duplicate_invoice_number', 'x'))).toBeNull();
+      expect(duplicateDocumentNumberMessage(dup('DUPLICATE_INVOICE_NUMBER_V2', 'x'))).toBeNull();
     });
   });
 });

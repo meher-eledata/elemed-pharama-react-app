@@ -64,7 +64,9 @@ export const getOrderReceiveColumns = (
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap'
           }}>
-            {row.reNo}
+            {/* OUR receipt (GRN) number; falls back to the internal RA-key when a row
+                predates the numbering backfill. Never the supplier's invoice number. */}
+            {row.receipt_number || row.reNo}
           </span>
         </Box>
       )
@@ -86,8 +88,8 @@ export const getOrderReceiveColumns = (
       )
     },
     {
-      key: "invoice_number", // Add Invoice Number column
-      header: "Invoice Number",
+      key: "invoice_number", // The SUPPLIER's invoice number — distinct from our receipt number
+      header: ORDER_RECEIVE_TABLE_HEADERS.SUPPLIER_INVOICE_NUMBER,
       render: (row) => (
         <span>{row.invoice_number || '-'}</span>
       )
