@@ -44,6 +44,7 @@ import {
 } from '../../redux/slices/cartSlice';
 import { RootState } from '../../redux/store';
 import { selectOrganization } from '../../redux/slices/orgSlice';
+import { orgApi, useGetNextDocumentNumberQuery } from '../../redux/slices/orgApi';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
 import { clearCartFromStorage, clearFormDataFromStorage, setEditInvoiceId } from '../../utils/cartStorage';
@@ -937,6 +938,46 @@ const SalesReceipt: React.FC = () => {
 
   // NOTE: no client-side invoice-number generation. The backend assigns the number at
   // submit and returns it in the response (executeSave → onInvoiceNumberAssigned).
+  // Before that, a NEW sale shows a server-computed PEEK of the next number so the till has
+  // something to quote. It is provisional, never reserved: allocation happens in the save
+  // transaction, so a concurrent sale can take it (the field says so). Edit/return mode is
+  // skipped entirely — the persisted number is authoritative there.
+  const isNewSale = !isEditMode && !isReturnDetailsMode;
+  const {
+    data: nextInvoiceNumber,
+    isFetching: isNextInvoiceNumberFetching,
+  } = useGetNextDocumentNumberQuery(
+    // The date drives BOTH the counter bucket and the {YY}/{MM} tokens, so changing the
+    // invoice date re-queries.
+    { doc_type: 'sales_invoice', date: invoiceDate },
+    {
+      skip: !isNewSale || !/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate),
+      // Contract: re-fetch on page open. Without this, returning to the new-sale page
+      // within RTK Query's 60s cache window would quote a stale number.
+      refetchOnMountOrArgChange: true,
+    }
+  );
+  // Same decoration the save path applies to the assigned number, so what is quoted before
+  // the save matches what the Sales Log shows after it (legacy scheme off → "INV401").
+  // The peek's own per-doc-type `enabled` is authoritative over the legacy org-level flag.
+  const provisionalInvoiceNumber = useMemo(
+    () => (isNewSale
+      ? {
+          number: nextInvoiceNumber
+            ? decorateInvoiceNumber(nextInvoiceNumber.number, nextInvoiceNumber.enabled)
+            : '',
+          loading: isNextInvoiceNumberFetching,
+        }
+      : undefined),
+    [isNewSale, nextInvoiceNumber, isNextInvoiceNumberFetching]
+  );
+
+  // The peeked number is consumed by the save, so drop it — a follow-on sale on this same
+  // mount must peek again instead of quoting the number it just used.
+  const handleInvoiceNumberAssigned = useCallback((assigned: string) => {
+    setInvoiceNumber(assigned);
+    dispatch(orgApi.util.invalidateTags(['NextDocumentNumber']));
+  }, [dispatch]);
 
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
@@ -1586,7 +1627,7 @@ const SalesReceipt: React.FC = () => {
       skipNavigation,
       onSuccess,
       // Show the server-assigned number in the UI (print preview / printed receipt).
-      onInvoiceNumberAssigned: setInvoiceNumber,
+      onInvoiceNumberAssigned: handleInvoiceNumberAssigned,
       onStockShortage: (lines: string[]) => {
         setStockShortageLines(lines);
         setStockShortageOpen(true);
@@ -1605,7 +1646,7 @@ const SalesReceipt: React.FC = () => {
       upsertInvoicePayments,
       idempotency,
     });
-  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft, idempotency]);
+  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft, idempotency, handleInvoiceNumberAssigned]);
 
   const handleSaveDraft = useCallback(async () => {
     const matchedDoctor = doctorNamesData.find((d: any) =>
@@ -1765,6 +1806,7 @@ const SalesReceipt: React.FC = () => {
             paymentMode={paymentMode}
             insuranceCompany={insuranceCompany}
             invoiceNumber={invoiceNumber}
+            provisionalInvoiceNumber={provisionalInvoiceNumber}
             invoiceDate={invoiceDate}
             onPaymentModeChange={(mode: string) => { setPaymentMode(mode); setSplitPayments([]); }}
             onInsuranceCompanyChange={setInsuranceCompany}
@@ -1953,6 +1995,10 @@ const SalesReceipt: React.FC = () => {
               onSaveDraft={isEditMode ? undefined : handleSaveDraft}
               onPrint={handlePrint}
               isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
+              // Save-and-Print SAVES first (runConfirmedAction), so it gates on the same
+              // required fields as Save — but not on the edit-mode hasChanges clause, which
+              // must never block a re-print. (Moot today: the button is hidden in edit mode.)
+              isPrintDisabled={!validateRequiredFields().isValid}
               isSaveDraftDisabled={salesItems.length === 0 || isSavingDraft || isUpdatingDraft}
               hidePrintButton={isEditMode}
               pageSize={pageSize}

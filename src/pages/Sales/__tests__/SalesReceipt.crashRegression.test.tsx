@@ -36,6 +36,11 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../redux/slices/salesApi');
 jest.mock('../../../redux/slices/receiveApi');
+// SalesReceipt peeks the next invoice number through orgApi, which these stores don't register.
+jest.mock('../../../redux/slices/orgApi', () => ({
+  orgApi: { util: { invalidateTags: jest.fn(() => ({ type: 'orgApi/invalidateTags' })) } },
+  useGetNextDocumentNumberQuery: jest.fn(() => ({ data: undefined, isFetching: false })),
+}));
 jest.mock('../../../utils/cartStorage', () => ({
   clearCartFromStorage: jest.fn(),
   clearFormDataFromStorage: jest.fn(),

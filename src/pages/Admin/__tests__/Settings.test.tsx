@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
@@ -498,17 +498,35 @@ describe('Settings — Document Numbering', () => {
     return String(fy % 100).padStart(2, '0');
   };
 
-  it('examples from reset_to, and from a typed cutover once one is entered', async () => {
+  // The cutover box is write-only and always loads blank, so the example must fall back to
+  // the STORED seq_start — the same `seq_start ?? reset_to` rule the server samples with.
+  // Falling back to reset_to instead made the panel and the summary show two different
+  // numbers for the same scheme at the same time.
+  it('examples from the stored cutover, and from a typed one once entered', async () => {
     const user = userEvent.setup();
     await openDocSection();
     const yy = currentFyYy();
-    // Cutover box blank → the sample rule falls back to reset_to (1).
-    expect(screen.getByText(`SI-EL-${yy}-000001`)).toBeInTheDocument();
+    expect(screen.getByText(`SI-EL-${yy}-002296`)).toBeInTheDocument();
+    expect(screen.getByText(DOC.PREVIEW_PREFIX(DOC.DOC_TYPES.sales_invoice))).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(DOC.START_LABEL), '2296');
+    await user.type(screen.getByLabelText(DOC.START_LABEL), '500');
     await waitFor(() => {
-      expect(screen.getByText(`SI-EL-${yy}-002296`)).toBeInTheDocument();
+      expect(screen.getByText(`SI-EL-${yy}-000500`)).toBeInTheDocument();
     });
+    // An unsaved edit legitimately disagrees with the summary's saved example — labelled.
+    expect(
+      screen.getByText(DOC.PREVIEW_PENDING_PREFIX(DOC.DOC_TYPES.sales_invoice)),
+    ).toBeInTheDocument();
+  });
+
+  it('examples from reset_to when the scheme has no stored cutover', async () => {
+    mockUseGetDocNumbering.mockReturnValue(
+      createMockQueryResult({
+        schemes: [{ ...SCHEMES[0], seq_start: null }, ...SCHEMES.slice(1)],
+      }) as any,
+    );
+    await openDocSection();
+    expect(screen.getByText(`SI-EL-${currentFyYy()}-000001`)).toBeInTheDocument();
   });
 
   // The live example must agree with the number the server would issue: on the annual
@@ -519,13 +537,13 @@ describe('Settings — Document Numbering', () => {
     jest.useFakeTimers().setSystemTime(new Date(2026, 1, 15));
     try {
       await openDocSection();
-      expect(screen.getByText('SI-EL-25-000001')).toBeInTheDocument();
+      expect(screen.getByText('SI-EL-25-002296')).toBeInTheDocument();
 
       // Anchor moved to 1 January → the bucket is the calendar year again (legacy).
       fireEvent.mouseDown(screen.getByLabelText(DOC.ANCHOR_MONTH_LABEL));
       fireEvent.click(screen.getByRole('option', { name: DOC.MONTHS[0] }));
       await waitFor(() => {
-        expect(screen.getByText('SI-EL-26-000001')).toBeInTheDocument();
+        expect(screen.getByText('SI-EL-26-002296')).toBeInTheDocument();
       });
     } finally {
       jest.useRealTimers();
@@ -537,14 +555,12 @@ describe('Settings — Document Numbering', () => {
   // sample sequence and the same period they must agree BYTE FOR BYTE — a disagreement
   // is how an admin loses trust in both. The clock is frozen inside FY2026 so the
   // server fixture ('SI-EL-26-002296', rendered when the server's now() was in FY2026)
-  // and the client's now() are in the SAME bucket; the sample sequence is made equal by
-  // typing the scheme's own seq_start into the cutover box, which is exactly the
-  // `seq_start ?? reset_to` rule the server samples with.
+  // and the client's now() are in the SAME bucket. Nothing is typed: an UNEDITED form
+  // must agree on its own, which is what the stored-seq_start fallback guarantees.
   it("the expanded client preview is byte-identical to the server's summary example", async () => {
     jest.useFakeTimers().setSystemTime(new Date(2026, 5, 15)); // 15 June 2026 — inside FY2026
     try {
       await openDocSection();
-      fireEvent.change(screen.getByLabelText(DOC.START_LABEL), { target: { value: '2296' } });
 
       const serverPreview = SCHEMES[0].preview as string;
       await waitFor(() => {
@@ -569,7 +585,6 @@ describe('Settings — Document Numbering', () => {
     jest.useFakeTimers().setSystemTime(new Date(2026, 1, 15)); // 15 Feb 2026 — still FY2025
     try {
       await openDocSection();
-      fireEvent.change(screen.getByLabelText(DOC.START_LABEL), { target: { value: '2296' } });
 
       await waitFor(() => {
         expect(screen.getByText('SI-EL-25-002296')).toBeInTheDocument();
@@ -629,9 +644,101 @@ describe('Settings — Document Numbering', () => {
         expect.objectContaining({ doc_type: 'sales_invoice', seq_start: 2296 }),
       );
     });
+    // The save collapses the row, so re-open it to see the box is empty again — the
+    // cutover must never be re-sent on the next, unrelated save.
+    await waitFor(() => {
+      expect(screen.queryByLabelText(DOC.START_LABEL)).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText(DOC.DOC_TYPES.sales_invoice));
     await waitFor(() => {
       expect(screen.getByLabelText(DOC.START_LABEL)).toHaveValue(null);
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // Save feedback: the editor must close on success (and ONLY on success), and the
+  // row it closes onto must already show what was just saved.
+  // -------------------------------------------------------------------------
+  it('collapses the editor on a successful save and shows the saved example straight away', async () => {
+    // The PUT answers with the MERGED row, which is what the summary shows until the
+    // invalidated refetch lands — so no stale example flashes back at the admin.
+    updateDocNumberingTrigger.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          scheme: { ...SCHEMES[0], seq_start: 4000, preview: 'SI-EL-26-004000' },
+        }),
+    });
+    const user = userEvent.setup();
+    await openDocSection();
+    await user.type(screen.getByLabelText(DOC.START_LABEL), '4000');
+    await user.click(screen.getByText(DOC.SAVE_BUTTON));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(DOC.TEMPLATE_LABEL)).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(DOC.SUMMARY_EXAMPLE('SI-EL-26-004000'))).toBeInTheDocument();
+    // The old example is gone, not merely covered.
+    expect(screen.queryByText(DOC.SUMMARY_EXAMPLE('SI-EL-26-002296'))).not.toBeInTheDocument();
+    expect(screen.getByText(DOC.SAVE_SUCCESS(DOC.DOC_TYPES.sales_invoice))).toBeInTheDocument();
+    // Focus survives the collapse: it lands on the row's own toggle, not on <body>.
+    expect(screen.getByLabelText(DOC.EXPAND_ARIA(DOC.DOC_TYPES.sales_invoice))).toHaveFocus();
+  });
+
+  it('keeps the editor open when the save fails, with the field error still bound', async () => {
+    updateDocNumberingTrigger.mockReturnValue({
+      unwrap: () =>
+        Promise.reject({
+          status: 400,
+          data: { error: 'reset_anchor_day must be between 1 and 29 for reset_anchor_month 2' },
+        }),
+    });
+    const user = userEvent.setup();
+    await openDocSection();
+    await user.click(screen.getByText(DOC.SAVE_BUTTON));
+
+    // Twice on purpose: the toast, and the field-level binding that outlives it.
+    await waitFor(() => {
+      expect(
+        screen.getAllByText('reset_anchor_day must be between 1 and 29 for reset_anchor_month 2'),
+      ).toHaveLength(2);
+    });
+    // Still editing — nothing collapsed out from under the admin.
+    expect(screen.getByLabelText(DOC.TEMPLATE_LABEL)).toBeInTheDocument();
+    expect(screen.getByLabelText(DOC.ANCHOR_DAY_LABEL)).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('keeps the saved configuration after the refetch lands and after a reload', async () => {
+    const savedScheme = { ...SCHEMES[0], template: 'SI-EL-{YY}-{SEQ:4}', seq_start: 4000, preview: 'SI-EL-26-4000' };
+    updateDocNumberingTrigger.mockReturnValue({
+      unwrap: () => Promise.resolve({ scheme: savedScheme }),
+    });
+    const user = userEvent.setup();
+    await openDocSection();
+    fireEvent.change(screen.getByLabelText(DOC.TEMPLATE_LABEL), {
+      target: { value: 'SI-EL-{YY}-{SEQ:4}' },
+    });
+    await user.type(screen.getByLabelText(DOC.START_LABEL), '4000');
+    await user.click(screen.getByText(DOC.SAVE_BUTTON));
+
+    await waitFor(() => {
+      expect(screen.getByText(DOC.SUMMARY_EXAMPLE('SI-EL-26-4000'))).toBeInTheDocument();
+    });
+
+    // A fresh mount (page reload) reading the persisted scheme: the summary still shows
+    // it, and re-opening shows the saved format plus the stored cutover in the example.
+    cleanup();
+    mockUseGetDocNumbering.mockReturnValue(
+      createMockQueryResult({ schemes: [savedScheme, ...SCHEMES.slice(1)] }) as any,
+    );
+    jest.useFakeTimers().setSystemTime(new Date(2026, 5, 15)); // 15 June 2026 — inside FY2026
+    try {
+      await openDocSection();
+      expect(screen.getByLabelText(DOC.TEMPLATE_LABEL)).toHaveValue('SI-EL-{YY}-{SEQ:4}');
+      expect(screen.getByText(DOC.SUMMARY_EXAMPLE('SI-EL-26-4000'))).toBeInTheDocument();
+      expect(screen.getByText('SI-EL-26-4000')).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('omits reset_to when the restart field is blanked, never sending 0', async () => {

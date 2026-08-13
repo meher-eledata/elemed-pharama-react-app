@@ -15,20 +15,27 @@ import {
   useLazyGetCreditNoteFileQuery,
   SupplierReturnRow,
 } from '../../../../redux/slices/supplierReturnsApi';
+import { useGetSuppliersQuery } from '../../../../redux/slices/masterApi';
 
 const theme = createTheme();
 const mockNavigate = jest.fn();
 
 jest.mock('../../../../redux/slices/supplierReturnsApi');
+jest.mock('../../../../redux/slices/masterApi');
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
 }));
 
+// Stub exposes the client-side page state and the footer (a real <tr>, so it is
+// mounted inside a table to keep the DOM valid).
 jest.mock('../../../../components/PharmaTable', () => ({
-  ReusableTable: ({ data, columns }: any) => (
+  ReusableTable: ({ data, columns, emptyMessage, currentPage, onPageChange, footerContent }: any) => (
     <div data-testid="reusable-table">
       <div data-testid="table-data-count">{data?.length || 0}</div>
+      <div data-testid="table-current-page">{currentPage}</div>
+      <button onClick={() => onPageChange(2)}>go-page-2</button>
+      {(!data || data.length === 0) && <div data-testid="table-empty">{emptyMessage}</div>}
       {data?.map((row: any, idx: number) => (
         <div key={row.supplier_return_id ?? idx} data-testid={`table-row-${idx}`}>
           {columns.map((col: any) => (
@@ -38,9 +45,30 @@ jest.mock('../../../../components/PharmaTable', () => ({
           ))}
         </div>
       ))}
+      <table>
+        <tbody data-testid="table-footer">{footerContent}</tbody>
+      </table>
     </div>
   ),
 }));
+
+// The real DateRangeFilter drives an MUI calendar; swap in buttons that push a
+// fixed Dayjs range so the date-filter wiring is still exercised.
+jest.mock('../../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', () => {
+  const dayjsLib = require('dayjs');
+  return {
+    __esModule: true,
+    default: ({ onDateRangeChange }: { onDateRangeChange: (r: [unknown, unknown]) => void }) => (
+      <div>
+        <span>Filter by Dates</span>
+        <button onClick={() => onDateRangeChange([dayjsLib('2026-07-01'), dayjsLib('2026-07-31')])}>
+          set-range
+        </button>
+        <button onClick={() => onDateRangeChange([null, null])}>clear-range</button>
+      </div>
+    ),
+  };
+});
 
 jest.mock('../../../../components/CommonModal/CommonModal', () => ({
   __esModule: true,
@@ -133,9 +161,20 @@ const mockUseLazyGetCreditNoteFileLinkQuery =
   useLazyGetCreditNoteFileLinkQuery as jest.MockedFunction<typeof useLazyGetCreditNoteFileLinkQuery>;
 const mockUseLazyGetCreditNoteFileQuery =
   useLazyGetCreditNoteFileQuery as jest.MockedFunction<typeof useLazyGetCreditNoteFileQuery>;
+const mockUseGetSuppliersQuery = useGetSuppliersQuery as jest.MockedFunction<
+  typeof useGetSuppliersQuery
+>;
+
+const SUPPLIERS = [
+  { id: 3, supplier_name: 'SupCo' },
+  { id: 7, supplier_name: 'OtherCo' },
+];
 
 const listResult = (data: any, extra: Record<string, unknown> = {}) =>
   ({ data, isLoading: false, isFetching: false, error: null, refetch: jest.fn(), ...extra } as any);
+
+const lastListArgs = () =>
+  mockUseListReturnsQuery.mock.calls.at(-1)![0] as Record<string, unknown>;
 
 // jsdom lacks the object-URL APIs; the blob-fallback view path and the upload
 // control's image preview/cleanup need them.
@@ -152,7 +191,10 @@ let fileLinkTrigger: jest.Mock;
 let fileBlobTrigger: jest.Mock;
 
 const wireDefaults = ({ total = rows.length }: { total?: number } = {}) => {
-  mockUseListReturnsQuery.mockReturnValue(listResult({ rows, total }));
+  mockUseListReturnsQuery.mockReturnValue(
+    listResult({ rows, total, total_amount_owed: 4200, total_awaiting_credit: 1200 })
+  );
+  mockUseGetSuppliersQuery.mockReturnValue({ data: SUPPLIERS } as any);
   mockUseGetReturnDetailsQuery.mockReturnValue(
     ({ data: undefined, isFetching: false, error: null } as any)
   );
@@ -246,6 +288,152 @@ describe('ReturnsLog', () => {
         const lastArgs = mockUseListReturnsQuery.mock.calls.at(-1)![0] as Record<string, unknown>;
         expect(lastArgs).toMatchObject({ status: 'AWAITING_CREDIT', limit: 200, offset: 0 });
       });
+    });
+  });
+
+  describe('supplier + date-range filters (server-side)', () => {
+    const selectSupplier = (label: string) => {
+      fireEvent.mouseDown(screen.getByPlaceholderText('All suppliers'));
+      fireEvent.click(within(screen.getByRole('listbox')).getByText(label));
+    };
+
+    it('sends neither supplier_id nor the dates until they are set', () => {
+      renderPage();
+      const args = lastListArgs();
+      expect(args).not.toHaveProperty('supplier_id');
+      expect(args).not.toHaveProperty('start_date');
+      expect(args).not.toHaveProperty('end_date');
+    });
+
+    it('passes the picked date range as start_date / end_date and drops them on clear', async () => {
+      renderPage();
+      fireEvent.click(screen.getByText('set-range'));
+      await waitFor(() =>
+        expect(lastListArgs()).toMatchObject({
+          start_date: '2026-07-01',
+          end_date: '2026-07-31',
+          limit: 200,
+          offset: 0,
+        })
+      );
+
+      fireEvent.click(screen.getByText('clear-range'));
+      await waitFor(() => expect(lastListArgs()).not.toHaveProperty('start_date'));
+      expect(lastListArgs()).not.toHaveProperty('end_date');
+    });
+
+    it('passes the selected supplier as supplier_id', async () => {
+      renderPage();
+      selectSupplier('OtherCo');
+      await waitFor(() => expect(lastListArgs()).toMatchObject({ supplier_id: 7 }));
+    });
+
+    it('ANDs supplier, dates, status and the free-text search in one request', async () => {
+      renderPage();
+      selectSupplier('SupCo');
+      fireEvent.click(screen.getByText('set-range'));
+      fireEvent.mouseDown(screen.getByText('All'));
+      fireEvent.click(within(screen.getByRole('listbox')).getByText('Awaiting credit'));
+      fireEvent.change(screen.getByPlaceholderText('Search by return ref or supplier...'), {
+        target: { value: 'SR-0000' },
+      });
+
+      await waitFor(
+        () =>
+          expect(lastListArgs()).toEqual({
+            limit: 200,
+            offset: 0,
+            search: 'SR-0000',
+            status: 'AWAITING_CREDIT',
+            supplier_id: 3,
+            start_date: '2026-07-01',
+            end_date: '2026-07-31',
+          }),
+        { timeout: 2000 }
+      );
+    });
+
+    it('Reset clears every filter and is hidden until one is set', async () => {
+      renderPage();
+      expect(screen.queryByText('Reset filters')).not.toBeInTheDocument();
+
+      selectSupplier('SupCo');
+      fireEvent.click(screen.getByText('set-range'));
+      fireEvent.click(await screen.findByText('Reset filters'));
+
+      await waitFor(() =>
+        expect(lastListArgs()).toEqual({ limit: 200, offset: 0 })
+      );
+      expect(screen.queryByText('Reset filters')).not.toBeInTheDocument();
+    });
+
+    it('resets pagination to page 1 whenever a filter changes', async () => {
+      renderPage();
+      const page = () => screen.getByTestId('table-current-page').textContent;
+
+      fireEvent.click(screen.getByText('go-page-2'));
+      expect(page()).toBe('2');
+      fireEvent.click(screen.getByText('set-range'));
+      expect(page()).toBe('1');
+
+      fireEvent.click(screen.getByText('go-page-2'));
+      expect(page()).toBe('2');
+      selectSupplier('SupCo');
+      await waitFor(() => expect(page()).toBe('1'));
+    });
+  });
+
+  describe('amount-owed footer total', () => {
+    const footer = () => within(screen.getByTestId('table-footer'));
+
+    it('renders the SERVER total for the whole filtered set, not a sum of the fetched rows', () => {
+      // rows sum to 100.80 — the footer must show the server aggregate instead.
+      wireDefaults({ total: 300 });
+      renderPage();
+      expect(footer().getByText('₹4,200.00')).toBeInTheDocument();
+      expect(footer().getByText('Total owed')).toBeInTheDocument();
+      expect(footer().getByText('all 300 returns')).toBeInTheDocument();
+      expect(footer().getByText('₹1,200.00 still awaiting credit')).toBeInTheDocument();
+    });
+
+    it('hides the awaiting-credit line when it equals the headline total', () => {
+      mockUseListReturnsQuery.mockReturnValue(
+        listResult({ rows, total: 3, total_amount_owed: 900, total_awaiting_credit: 900 })
+      );
+      renderPage();
+      expect(footer().getByText('₹900.00')).toBeInTheDocument();
+      expect(footer().queryByText(/still awaiting credit/)).not.toBeInTheDocument();
+    });
+
+    it('updates when a filter changes', async () => {
+      renderPage();
+      expect(footer().getByText('₹4,200.00')).toBeInTheDocument();
+
+      mockUseListReturnsQuery.mockReturnValue(
+        listResult({ rows: [rows[0]], total: 1, total_amount_owed: 33.6, total_awaiting_credit: 33.6 })
+      );
+      fireEvent.click(screen.getByText('set-range'));
+
+      await waitFor(() => expect(footer().getByText('₹33.60')).toBeInTheDocument());
+      expect(footer().getByText('all 1 return')).toBeInTheDocument();
+    });
+
+    it('suppresses the footer entirely for an empty result set', () => {
+      // "Total owed ₹0.00 / all 0 returns" under the empty-state message is noise —
+      // the empty-state message already communicates the zero.
+      mockUseListReturnsQuery.mockReturnValue(
+        listResult({ rows: [], total: 0, total_amount_owed: 0, total_awaiting_credit: 0 })
+      );
+      renderPage();
+      expect(footer().queryByText('Total owed')).not.toBeInTheDocument();
+      expect(footer().queryByText(/all 0 returns/)).not.toBeInTheDocument();
+    });
+
+    it('falls back to a zero total (never blank or NaN) when the server omits the aggregates', () => {
+      mockUseListReturnsQuery.mockReturnValue(listResult({ rows, total: 3 }));
+      renderPage();
+      expect(footer().getByText('₹0.00')).toBeInTheDocument();
+      expect(footer().getByText('all 3 returns')).toBeInTheDocument();
     });
   });
 

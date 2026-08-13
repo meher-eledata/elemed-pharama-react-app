@@ -35,10 +35,14 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       } else {
         onDateRangeChange([newDate, end]);
       }
+      // Auto-advance: the next click picks the END date. Without this, two clicks in a
+      // row silently overwrote the start date.
+      setEditing("end");
     } else {
       if (!start || newDate.isBefore(start, "day")) {
+        // An end before the start becomes the new start — so the next click is the end.
         onDateRangeChange([newDate, null]);
-        setEditing("start");
+        setEditing("end");
       } else {
         onDateRangeChange([start, newDate]);
         setOpen(false);

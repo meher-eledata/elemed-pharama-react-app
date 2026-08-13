@@ -288,6 +288,49 @@ describe('DateRangeFilter Component', () => {
       expect(mockOnDateRangeChange).toHaveBeenCalledWith([expect.any(Object), null]);
     });
 
+    it('auto-advances to end-date selection after a start date is picked', () => {
+      const dateRange: [dayjs.Dayjs | null, dayjs.Dayjs | null] = [null, null];
+
+      render(
+        <TestWrapper>
+          <DateRangeFilter
+            dateRange={dateRange}
+            onDateRangeChange={mockOnDateRangeChange}
+          />
+        </TestWrapper>
+      );
+
+      // Open on the start slot and pick a start date.
+      fireEvent.click(screen.getAllByText(DATE_RANGE_LABELS.START_PLACEHOLDER)[0]);
+      expect(screen.getByText(DATE_RANGE_LABELS.SELECT_START)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('gridcell', { name: '15' }));
+
+      // The picker now asks for the END date — a second click must not silently
+      // overwrite the start date.
+      expect(mockOnDateRangeChange).toHaveBeenCalledWith([expect.any(Object), null]);
+      expect(screen.getByText(DATE_RANGE_LABELS.SELECT_END)).toBeInTheDocument();
+    });
+
+    it('asks for the end date again after an end-before-start pick becomes the new start', () => {
+      const startDate = dayjs('2024-01-10');
+      const endDate = dayjs('2024-01-20');
+
+      render(
+        <TestWrapper>
+          <DateRangeFilter
+            dateRange={[startDate, endDate]}
+            onDateRangeChange={mockOnDateRangeChange}
+          />
+        </TestWrapper>
+      );
+
+      fireEvent.click(screen.getByText(endDate.format('DD/MM/YYYY')));
+      fireEvent.click(screen.getByRole('gridcell', { name: '5' }));
+
+      expect(mockOnDateRangeChange).toHaveBeenCalledWith([expect.any(Object), null]);
+      expect(screen.getByText(DATE_RANGE_LABELS.SELECT_END)).toBeInTheDocument();
+    });
+
     it('closes calendar after selecting end date', () => {
       const startDate = dayjs('2024-01-10');
       const endDate = dayjs('2024-01-20');

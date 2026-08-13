@@ -48,6 +48,17 @@ describe('ActionButtons', () => {
     expect(mockProps.onPrint).toHaveBeenCalledTimes(1);
   });
 
+  it('disables Save and Print alongside Save when isPrintDisabled is set', () => {
+    // "Save and Print" saves first, so missing required fields must gate BOTH buttons.
+    render(<ActionButtons {...mockProps} isSaveDisabled isPrintDisabled />);
+
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeDisabled();
+    const printButton = screen.getByRole('button', { name: /save and print/i });
+    expect(printButton).toBeDisabled();
+    fireEvent.click(printButton);
+    expect(mockProps.onPrint).not.toHaveBeenCalled();
+  });
+
   it('renders page size and orientation selectors and reports changes', () => {
     const onPageSizeChange = jest.fn();
     const onOrientationChange = jest.fn();

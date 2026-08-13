@@ -126,6 +126,7 @@ const makeSelectionState = (
         supplier_id: 3,
         supplier_name: 'SupCo',
         receipt_id: 7,
+        receipt_number: 'GRN-000007',
         supplier_invoice_number: 'INV-77',
         po_number: 'PO-9',
         receipt_line_id: 12,

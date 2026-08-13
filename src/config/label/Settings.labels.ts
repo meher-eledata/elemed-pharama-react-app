@@ -93,7 +93,9 @@ export const SETTINGS_LABELS = {
       START_LABEL: 'Continue numbering from',
       // No placeholder: the MUI label occupies the empty field, so one would never render —
       // the "leave blank" guidance lives in the helper text below instead.
-      START_HELP: 'Applied once when you save, then cleared — leave blank to keep counting and the running count is untouched.',
+      // The box is write-only on purpose (re-sending it would rewind the live counter), so
+      // the copy has to say where the saved number went — it stays in the example above.
+      START_HELP: 'Applied once when you save, then cleared from this box — the saved number stays in the example above. Leave blank to keep counting and the running count is untouched.',
       RECURRING_HEADING: 'Applies every period — the recurring reset',
       RECURRING_DESC:
         'Choose how often the sequence starts over, and the number each new period begins with.',
@@ -106,7 +108,11 @@ export const SETTINGS_LABELS = {
       ANCHOR_HELP: 'Defaults to 1 April, the Indian financial year.',
       RESET_TO_LABEL: 'Every new period restarts at',
       RESET_TO_HELP: 'Leave blank to keep the saved value.',
+      // Both examples are SAMPLES of the format, never the live counter. The panel's is
+      // rendered from the form, the summary's by the server from the saved scheme — so
+      // while there are unsaved edits the two legitimately differ and must say why.
       PREVIEW_PREFIX: (docLabel: string) => `Example ${docLabel} number`,
+      PREVIEW_PENDING_PREFIX: (docLabel: string) => `Example ${docLabel} number after saving`,
       SAVE_BUTTON: 'Save',
       SAVE_SUCCESS: (docLabel: string) => `${docLabel} numbering updated.`,
       SAVE_ERROR: 'Could not update document numbering.',

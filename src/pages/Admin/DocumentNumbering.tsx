@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -29,6 +29,8 @@ import { extractErrorMessage, logError } from '../../utils/errorUtils';
 const DOC = SETTINGS_LABELS.SECTIONS.DOCUMENT_NUMBERING;
 const FONT = "'Lexend', sans-serif";
 const ACCENT = '#5C17E5';
+// Drives the panel AND its chevron — one duration so nothing lands out of step.
+const COLLAPSE_MS = 200;
 
 // Numeric fields are kept as text so a half-typed value is not coerced.
 interface SchemeForm {
@@ -87,11 +89,19 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
   // Server-only cross-field anchor 400 (deliberately not mirrored client-side): keep the
   // verbatim message on the field after the toast auto-hides, until the admin edits it.
   const [anchorErrors, setAnchorErrors] = useState<Partial<Record<DocType, string>>>({});
+  // The PUT answers with the MERGED row (same shape as a GET entry, `preview` included),
+  // so the summary can show the saved configuration the instant the row collapses. The
+  // tag invalidation refetches too, but lands a round trip later — without this overlay
+  // the admin sees the OLD example flash back at them and reads the save as lost.
+  const [savedSchemes, setSavedSchemes] = useState<Partial<Record<DocType, DocumentNumberScheme>>>({});
+  // Focus target after a save collapses the panel (the save button unmounts with it).
+  const toggleRefs = useRef<Partial<Record<DocType, HTMLButtonElement | null>>>({});
 
   // Re-seed whenever the schemes (re)load — after a save the PUT invalidates the tag, so
-  // the refetched (merged) values become the form values.
+  // the refetched (merged) values become the form values and supersede the overlay.
   useEffect(() => {
     if (!data) return;
+    setSavedSchemes({});
     setForms(
       data.schemes.reduce<Partial<Record<DocType, SchemeForm>>>((acc, scheme) => {
         acc[scheme.doc_type] = toForm(scheme);
@@ -148,7 +158,7 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
       // fields are therefore sent ONLY when the admin filled them in: re-sending
       // seq_start would re-seed the live counter, and a blanked reset_to must never be
       // coerced to 0 (that would restart every later period at 0).
-      await updateDocumentNumbering({
+      const { scheme } = await updateDocumentNumbering({
         doc_type: docType,
         enabled: form.enabled,
         template: template || null,
@@ -159,9 +169,17 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
         ...(resetToRaw !== '' && { reset_to: resetTo }),
       }).unwrap();
       // The cutover has been applied — leaving it in the box would misread as "this is
-      // the next number" and re-apply on the next save.
+      // the next number" and re-apply on the next save. It stays readable in the
+      // summary's example, which now samples the STORED cutover the save just wrote.
       setField(docType, 'seq_start', '');
       clearAnchorError(docType);
+      // Show the merged row first, then collapse: the summary the admin lands on is
+      // already the saved one. ONLY on success — a failed save keeps the panel open with
+      // its inline error. Focus moves to the row's toggle, which the collapse leaves in
+      // place, so it is never dropped onto <body>.
+      setSavedSchemes((s) => ({ ...s, [docType]: scheme }));
+      setOpenDocType(null);
+      toggleRefs.current[docType]?.focus();
       onToast(DOC.SAVE_SUCCESS(docLabel), 'success');
     } catch (err) {
       logError(err, 'DocumentNumbering.update');
@@ -201,21 +219,30 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
         </Typography>
       )}
 
-      {data.schemes.map((scheme) => {
-        const docType = scheme.doc_type;
+      {data.schemes.map((fetched) => {
+        const docType = fetched.doc_type;
+        // A just-saved row shows the PUT's merged scheme until the refetch supersedes it.
+        const scheme = savedSchemes[docType] ?? fetched;
         const docLabel = DOC.DOC_TYPES[docType];
         const form = forms[docType];
         const isOpen = openDocType === docType;
         const anchorError = anchorErrors[docType];
 
         // Live EXAMPLE of the format (never the live counter): the backend samples with
-        // `seq_start ?? reset_to` for a document dated today, so the unsaved form mirrors
-        // that rule — a typed cutover if there is one, else the recurring restart number.
+        // `seq_start ?? reset_to` for a document dated today, so the form mirrors that
+        // rule exactly — a cutover typed THIS session, else the scheme's STORED cutover,
+        // else the recurring restart number. The stored fallback is what keeps this panel
+        // and the summary's server-rendered example on the same number: the cutover box
+        // is write-only and always loads blank, so without it a series with a stored
+        // seq_start showed two different numbers in the two places at once.
         // The form's cycle+anchor go in too, because {YY}/{YYYY}/{MM} render the PERIOD
         // BUCKET's year: on the default 1-April anchor a preview shown in February must
         // say the running financial year, exactly as the server's `preview` does.
         const templateCheck = form?.template.trim() ? validateInvoiceTemplate(form.template.trim()) : null;
-        const sampleSeq = Number(form ? form.seq_start.trim() || form.reset_to.trim() || '0' : '0');
+        const storedSeq = scheme.seq_start === null ? '' : String(scheme.seq_start);
+        const sampleSeq = Number(
+          form ? form.seq_start.trim() || storedSeq || form.reset_to.trim() || '0' : '0',
+        );
         const preview =
           form && templateCheck?.valid
             ? renderInvoiceNumberPreview(
@@ -229,6 +256,10 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
                 },
               )
             : null;
+        // The two examples may still legitimately differ — the summary shows what the
+        // SAVED scheme samples, the panel what the EDITED one would. Say so rather than
+        // letting two numbers disagree silently.
+        const previewIsPending = preview !== null && preview !== scheme.preview;
 
         return (
           <Box
@@ -287,18 +318,27 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
                   ? DOC.SUMMARY_EXAMPLE(scheme.preview)
                   : DOC.SUMMARY_DEFAULT}
               </Typography>
-              <IconButton size="small" aria-label={DOC.EXPAND_ARIA(docLabel)}>
+              <IconButton
+                size="small"
+                aria-label={DOC.EXPAND_ARIA(docLabel)}
+                aria-expanded={isOpen}
+                ref={(el) => {
+                  toggleRefs.current[docType] = el;
+                }}
+              >
                 <ExpandMoreIcon
                   sx={{
                     color: '#1A212B',
                     transform: isOpen ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 150ms',
+                    // Same duration as the Collapse below, so the chevron and the panel
+                    // finish together instead of the arrow landing 150ms early.
+                    transition: `transform ${COLLAPSE_MS}ms`,
                   }}
                 />
               </IconButton>
             </Box>
 
-            <Collapse in={isOpen} unmountOnExit>
+            <Collapse in={isOpen} timeout={COLLAPSE_MS} unmountOnExit>
               {form && (
                 <Box
                   sx={{
@@ -354,7 +394,9 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
                       }}
                     >
                       <Typography sx={{ fontSize: '13px', color: '#6B7280', fontFamily: FONT }}>
-                        {DOC.PREVIEW_PREFIX(docLabel)}
+                        {previewIsPending
+                          ? DOC.PREVIEW_PENDING_PREFIX(docLabel)
+                          : DOC.PREVIEW_PREFIX(docLabel)}
                       </Typography>
                       <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#1A212B', fontFamily: FONT }}>
                         {preview}
@@ -492,11 +534,14 @@ const DocumentNumbering: React.FC<DocumentNumberingProps> = ({ canEdit, onToast 
                             error={Boolean(anchorError)}
                             sx={fieldSx}
                           />
-                          {/* Full panel width: the anchor help — and the server's verbatim
-                              cross-field 400 — are too long for the narrow day column. */}
+                          {/* The neutral anchor help spans the panel (too long for one
+                              column). The server's cross-field 400 instead starts under the
+                              "on day" field (column 2) it red-outlines, so the message reads
+                              as belonging to that field; it wraps downward within the column,
+                              which never moves the fields above it. */}
                           <Typography
                             sx={{
-                              gridColumn: '1 / -1',
+                              gridColumn: { xs: '1 / -1', sm: anchorError ? '2' : '1 / -1' },
                               fontSize: '12px',
                               fontFamily: FONT,
                               color: anchorError ? '#EF4444' : '#6B7280',

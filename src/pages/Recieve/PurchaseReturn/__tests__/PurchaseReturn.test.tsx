@@ -64,6 +64,7 @@ const makeBatch = (over: Partial<ReturnableBatch> = {}): ReturnableBatch => ({
   supplier_id: 3,
   supplier_name: 'SupCo',
   receipt_id: 7,
+  receipt_number: 'GRN-000007',
   supplier_invoice_number: 'INV-77',
   po_number: 'PO-9',
   receipt_line_id: 12,
@@ -78,6 +79,8 @@ const batches: ReturnableBatch[] = [
     batch_id: 2,
     batch_number: 'B2',
     product_name: 'Ibuprofen 200',
+    receipt_number: 'ELE/GRN/25-26/0042', // scheme-enabled org template — rendered verbatim
+
     supplier_id: 4,
     supplier_name: 'OtherCo',
     expiry_status: 'EXPIRED',
@@ -90,6 +93,7 @@ const batches: ReturnableBatch[] = [
     supplier_id: null,
     supplier_name: null,
     receipt_id: null,
+    receipt_number: null,
     supplier_invoice_number: null,
     po_number: null,
     receipt_line_id: null,
@@ -185,12 +189,29 @@ describe('PurchaseReturn (landing)', () => {
       expect(headers.getByText('Receipt Qty')).toBeInTheDocument();
     });
 
-    it('shows invoice number with an RA<receipt_id> subtext and no PO number', () => {
+    it('shows invoice number with the server receipt (GRN) number as subtext, not a rebuilt RA key', () => {
       renderPage();
       const receiptCell = within(screen.getByTestId('cell-receipt-0'));
       expect(receiptCell.getByText('INV-77')).toBeInTheDocument();
-      expect(receiptCell.getByText('RA7')).toBeInTheDocument();
+      expect(receiptCell.getByText('GRN-000007')).toBeInTheDocument();
+      expect(receiptCell.queryByText('RA7')).not.toBeInTheDocument();
       expect(receiptCell.queryByText('PO-9')).not.toBeInTheDocument();
+    });
+
+    it('renders a scheme-templated receipt number verbatim', () => {
+      renderPage();
+      expect(
+        within(screen.getByTestId('cell-receipt-1')).getByText('ELE/GRN/25-26/0042'),
+      ).toBeInTheDocument();
+    });
+
+    it('omits the receipt number subtext on an unattributable batch', () => {
+      renderPage();
+      // Row 2 is unattributable: receipt_number null → invoice em dash only, no subtext.
+      const receiptCell = within(screen.getByTestId('cell-receipt-2'));
+      expect(receiptCell.getByText('—')).toBeInTheDocument();
+      expect(receiptCell.queryByText(/GRN/)).not.toBeInTheDocument();
+      expect(receiptCell.queryByText(/^RA/)).not.toBeInTheDocument();
     });
 
     it('renders receipt qty, with an em dash when null', () => {

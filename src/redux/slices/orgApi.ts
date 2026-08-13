@@ -141,10 +141,30 @@ export interface UpdateDocumentNumberingResponse {
   scheme: DocumentNumberScheme;
 }
 
+// GET /api/org/document-numbering/next — any org member. A read-only PEEK at the number the
+// NEXT document of this series would get. It is NOT a reservation: the number is allocated
+// inside the save transaction, so a concurrent save can take it first. Callers must present
+// the value as provisional. (Distinct from the GET .../document-numbering `preview`, which
+// samples the static config and always shows sequence 1.)
+export interface NextDocumentNumberRequest {
+  doc_type: DocType;
+  // Canonical ISO `YYYY-MM-DD` of the DOCUMENT. Drives both the counter bucket and the
+  // {YY}/{YYYY}/{MM} tokens, so it must be re-sent whenever the user changes the date.
+  date: string;
+}
+
+export interface NextDocumentNumberResponse {
+  doc_type: DocType;
+  // Rendered when the scheme is enabled ("SI-EL-26-000001"); a bare sequence ("401") when not.
+  number: string;
+  period_key: number;
+  enabled: boolean;
+}
+
 export const orgApi = createApi({
   reducerPath: 'orgApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Me', 'Org', 'DocumentNumbering'] as const,
+  tagTypes: ['Me', 'Org', 'DocumentNumbering', 'NextDocumentNumber'] as const,
   endpoints: (builder) => ({
     getMe: builder.query<MeResponse, void>({
       query: () => ({
@@ -193,6 +213,16 @@ export const orgApi = createApi({
       }),
       providesTags: ['DocumentNumbering'],
     }),
+    // GET /api/org/document-numbering/next — any org member. Provisional, not reserved.
+    getNextDocumentNumber: builder.query<NextDocumentNumberResponse, NextDocumentNumberRequest>({
+      query: ({ doc_type, date }) => ({
+        url: 'org/document-numbering/next',
+        method: 'GET',
+        params: { doc_type, date },
+      }),
+      // Invalidated by a scheme change and by callers once a document consumes a number.
+      providesTags: ['NextDocumentNumber'],
+    }),
     // PUT /api/org/document-numbering — owner/admin only. One doc_type per call.
     updateDocumentNumbering: builder.mutation<
       UpdateDocumentNumberingResponse,
@@ -203,7 +233,7 @@ export const orgApi = createApi({
         method: 'PUT',
         body,
       }),
-      invalidatesTags: ['DocumentNumbering', 'Org', 'Me'],
+      invalidatesTags: ['DocumentNumbering', 'NextDocumentNumber', 'Org', 'Me'],
     }),
     // DELETE /api/org/logo — owner/admin only. Clears the org logo.
     deleteOrgLogo: builder.mutation<{ logo_url: null }, void>({
@@ -224,5 +254,6 @@ export const {
   useUpdateOrgLogoMutation,
   useDeleteOrgLogoMutation,
   useGetDocumentNumberingQuery,
+  useGetNextDocumentNumberQuery,
   useUpdateDocumentNumberingMutation,
 } = orgApi;

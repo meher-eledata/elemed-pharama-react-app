@@ -303,31 +303,6 @@ export const HospitalIdField = styled(StyledTextField)({
   },
 });
 
-export const PaymentField = styled(StyledTextField)({
-  width: '275px',
-  '& .MuiInputLabel-root': {
-    fontFamily: "'Lexend', sans-serif",
-    fontSize: '16px',
-    color: '#1A212B !important',
-    '&.Mui-focused': {
-      color: '#5C17E5 !important',
-    },
-  },
-  '& .MuiInputBase-input': {
-    fontFamily: "'Lexend', sans-serif",
-    fontSize: '16px',
-    color: '#1A212B',
-    padding: '12px 16px',
-    backgroundColor: '#FFFFFF !important',
-    '&::placeholder': {
-      color: '#728197',
-      fontSize: '16px',
-      fontFamily: "'Lexend', sans-serif",
-      opacity: 1,
-    },
-  },
-});
-
 export const InsuranceField = styled(StyledTextField)({
   width: '275px',
   marginTop: "-11px",

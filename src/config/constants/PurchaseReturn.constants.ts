@@ -72,6 +72,7 @@ export const PURCHASE_RETURN_CONSTANTS = {
     ALLOWED_TYPES: ['image/png', 'image/jpeg', 'application/pdf'],
   },
   LOG_FETCH_LIMIT: 200, // list-returns caps limit at 200
+  REQUEST_DATE_FORMAT: 'YYYY-MM-DD', // start_date / end_date request format
   REASON_MAX_LENGTH: 255,
   SEARCH_DEBOUNCE_MS: 400,
   SNACKBAR: {

@@ -134,6 +134,9 @@ export const PURCHASE_RETURN_LABELS = {
     SEARCH_PLACEHOLDER: 'Search by return ref or supplier...',
     STATUS_FILTER: 'Status',
     ALL_STATUSES: 'All',
+    SUPPLIER_FILTER: 'Supplier',
+    ALL_SUPPLIERS: 'All suppliers',
+    RESET_FILTERS: 'Reset filters',
     TABLE: {
       RETURN_REF: 'Return ref',
       DATE: 'Date',
@@ -147,9 +150,17 @@ export const PURCHASE_RETURN_LABELS = {
     RECORD_CREDIT_BUTTON: 'Record credit received',
     CREDIT_RECEIVED_TEXT: (date: string, ref: string) => `Credit received ${date}${ref ? ` · ${ref}` : ''}`,
     SETTLED_TEXT: (mode: string) => `Settled via ${mode}`,
+    // Footer totals come from the SERVER over the whole filtered set, so they cover
+    // every matching return — not just the fetched page. SCOPE spells that out.
+    FOOTER: {
+      TOTAL: 'Total owed',
+      SCOPE: (total: number) => `all ${total} return${total === 1 ? '' : 's'}`,
+      AWAITING: (amount: string) => `${amount} still awaiting credit`,
+    },
     LOADING: 'Loading returns...',
     LOAD_FAILED: 'Failed to load supplier returns.',
     EMPTY: 'No supplier returns yet',
+    EMPTY_FILTERED: 'No supplier returns match these filters',
     TRUNCATED: (shown: number, total: number) => `Showing first ${shown} of ${total} returns`,
     CREDIT_MODAL: {
       TITLE: 'Record Credit Received',

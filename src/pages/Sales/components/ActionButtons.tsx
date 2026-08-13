@@ -10,6 +10,8 @@ interface ActionButtonsProps {
   onPrint: () => void;
   isSaveDisabled?: boolean;
   isSaveDraftDisabled?: boolean;
+  // "Save and Print" saves too, so it must be gated like Save when required fields are missing.
+  isPrintDisabled?: boolean;
   hidePrintButton?: boolean;
   pageSize?: 'A4' | 'A5';
   onPageSizeChange?: (size: 'A4' | 'A5') => void;
@@ -25,6 +27,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onPrint,
   isSaveDisabled = false,
   isSaveDraftDisabled = false,
+  isPrintDisabled = false,
   hidePrintButton = false,
   pageSize = 'A4',
   onPageSizeChange,
@@ -164,11 +167,17 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           variant="primary"
           onClick={onPrint}
           size="large"
+          disabled={isPrintDisabled}
           sx={{
             ...buttonStyles,
-            backgroundColor: '#5C17E5',
+            backgroundColor: isPrintDisabled ? '#9CA3AF' : '#5C17E5',
             color: '#FFFFFF',
             boxShadow: 'none',
+            '&:disabled': {
+              backgroundColor: '#9CA3AF',
+              color: '#FFFFFF',
+              cursor: 'not-allowed',
+            },
           }}
         >
           {SALES_RECEIPT_LABELS.PRINT_BUTTON}

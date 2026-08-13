@@ -37,6 +37,9 @@ export interface ReturnableBatch {
   supplier_id: number | null; // null = unattributable (not returnable)
   supplier_name: string | null;
   receipt_id: number | null;
+  // OUR generated GRN document number (opaque — never parse or rebuild it);
+  // null exactly when the batch is unattributable. Display only — identity stays receipt_id.
+  receipt_number: string | null;
   supplier_invoice_number: string | null;
   po_number: string | null;
   receipt_line_id: number | null;
@@ -78,6 +81,9 @@ export interface SubmitReturnResponse {
 export interface ListReturnsRequest {
   search?: string;
   status?: ReturnStatus;
+  supplier_id?: number; // positive integer; ANDed with search/status
+  start_date?: string; // 'YYYY-MM-DD', inclusive; blank/whitespace ignored server-side
+  end_date?: string; // 'YYYY-MM-DD', inclusive; 400 when start_date > end_date
   limit?: number; // default 50, capped at 200
   offset?: number;
 }
@@ -112,6 +118,10 @@ export interface SupplierReturnRow {
 export interface ListReturnsResponse {
   rows: SupplierReturnRow[];
   total: number;
+  // Aggregates over the COMPLETE filtered set, IGNORING limit/offset (0 when empty,
+  // never null) — the page fetches at most 200 rows, so never sum `rows` client-side.
+  total_amount_owed: number;
+  total_awaiting_credit: number; // same SUM restricted to return_status = 'AWAITING_CREDIT'
 }
 
 // ---- POST /supplier-returns/get-return-details ----

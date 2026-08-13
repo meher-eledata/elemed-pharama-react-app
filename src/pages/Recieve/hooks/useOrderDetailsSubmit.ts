@@ -503,7 +503,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
             pharmaTableData,
             isEditMode: false,
             receiptId: newReceiptId,
-            receiptNumber: `RA${newReceiptId}`,
+            receiptNumber: result.receipt_number ?? `RA${newReceiptId}`,
             creditAvailable: totalCreditAvailable,
             totalAmount: pharmaTableData.reduce((sum, item) => {
               const unitPrice = Number(item.pp) || 0;

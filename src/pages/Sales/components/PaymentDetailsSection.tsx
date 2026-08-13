@@ -9,13 +9,20 @@ import PharmaDatePicker from '../../../components/Common/PharmaDatePicker';
 import {
   PaymentDetailsContainer,
   SectionRow,
-  PaymentField,
 } from '../SalesReceipt.styles';
+
+// The peeked next invoice number for a NEW sale. Omitted entirely in edit/return mode, where
+// the persisted number is authoritative. `number` is '' when the peek failed or was skipped.
+export interface ProvisionalInvoiceNumber {
+  number: string;
+  loading: boolean;
+}
 
 interface PaymentDetailsSectionProps {
   paymentMode: string;
   insuranceCompany: string;
   invoiceNumber: string;
+  provisionalInvoiceNumber?: ProvisionalInvoiceNumber;
   invoiceDate: string;
   onPaymentModeChange: (value: string) => void;
   onInsuranceCompanyChange: (value: string) => void;
@@ -31,6 +38,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   paymentMode,
   insuranceCompany,
   invoiceNumber,
+  provisionalInvoiceNumber,
   invoiceDate,
   onPaymentModeChange,
   onInsuranceCompanyChange,
@@ -56,6 +64,15 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
     if (!date || !date.isValid()) return '';
     return date.format('YYYY-MM-DD');
   };
+
+  // Until the sale is saved the number is only a PEEK — a concurrent sale can take it — so
+  // it is shown muted/italic inside a dashed field with a "Provisional" caption. Once the
+  // server assigns the real number (or in edit mode, where it is already persisted),
+  // `invoiceNumber` wins and the field renders as an ordinary saved value.
+  const isProvisional = !!provisionalInvoiceNumber && !invoiceNumber;
+  const provisionalText = provisionalInvoiceNumber?.loading
+    ? SALES_RECEIPT_LABELS.INVOICE_NUMBER_PENDING
+    : provisionalInvoiceNumber?.number || SALES_RECEIPT_LABELS.INVOICE_NUMBER_AUTO_FALLBACK;
 
   const handleDateChange = (newDate: Dayjs | null) => {
     const formattedDate = formatInvoiceDate(newDate);
@@ -182,66 +199,95 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
             />
           )}
         />
-        {/* Read-only: the backend assigns the invoice number at submit. A new sale shows
-            the "Auto-generated" placeholder; edit/return modes show the real number. */}
-        <TextField
-          label={SALES_RECEIPT_LABELS.INVOICE_NUMBER_LABEL}
-          variant="outlined"
-          placeholder={SALES_RECEIPT_LABELS.INVOICE_NUMBER_AUTO_PLACEHOLDER}
-          value={invoiceNumber}
-          disabled
-          sx={{
-            width: '200px',
-            marginLeft: '30px',
-            '& .MuiOutlinedInput-root': {
-              height: '48px',
-              borderRadius: '12px',
-              backgroundColor: '#FFFFFF',
-              '& fieldset': {
-                borderColor: '#9AA8BC',
-              },
-              '&:hover fieldset': {
-                borderColor: '#9AA8BC',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#5C17E5',
-              },
-              '&.Mui-disabled': {
+        {/* Read-only: the backend assigns the invoice number inside the save transaction.
+            A new sale shows the provisional peek; edit/return modes show the real number.
+            NOTE: no `placeholder` here — MUI force-hides it while the label is un-shrunk,
+            so the hint has to be the VALUE. */}
+        <Box sx={{ width: '200px', marginLeft: '30px', position: 'relative' }}>
+          <TextField
+            label={SALES_RECEIPT_LABELS.INVOICE_NUMBER_LABEL}
+            variant="outlined"
+            value={isProvisional ? provisionalText : invoiceNumber}
+            disabled
+            fullWidth
+            // The provisional text is a value, so the label must float off it explicitly
+            // (a saved number shrinks the label by itself).
+            InputLabelProps={isProvisional ? { shrink: true } : undefined}
+            inputProps={{ 'aria-describedby': isProvisional ? 'invoice-number-provisional' : undefined }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                height: '48px',
+                borderRadius: '12px',
                 backgroundColor: '#FFFFFF',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  border: '1px solid #9AA8BC',
+                '& fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9AA8BC',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#5C17E5',
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: '#FFFFFF',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    // Dashed only while provisional — reads as "not final yet", and keeps the
+                    // normal grey so it never looks like an error or a broken field.
+                    border: isProvisional ? '1px dashed #9AA8BC' : '1px solid #9AA8BC',
+                  },
                 },
               },
-            },
-            '& .MuiOutlinedInput-input': {
-              padding: '12px 16px',
-              fontFamily: "'Lexend', sans-serif",
-              fontSize: '16px',
-              color: '#1A212B',
-              '&.Mui-disabled': {
-                WebkitTextFillColor: '#1A212B',
-              },
-              '&::placeholder': {
-                color: '#728197',
-                fontSize: '16px',
+              '& .MuiOutlinedInput-input': {
+                padding: '12px 16px',
                 fontFamily: "'Lexend', sans-serif",
-                opacity: 1,
+                fontSize: '16px',
+                color: isProvisional ? '#728197' : '#1A212B',
+                fontStyle: isProvisional ? 'italic' : 'normal',
+                '&.Mui-disabled': {
+                  WebkitTextFillColor: isProvisional ? '#728197' : '#1A212B',
+                },
               },
-            },
-            '& .MuiInputLabel-root': {
-              fontFamily: "'Lexend', sans-serif",
-              fontSize: '16px',
-              color: '#1A212B',
-              transform: 'translate(14px, 12px) scale(1)',
-              '&.Mui-focused': {
-                color: '#5C17E5',
+              '& .MuiInputLabel-root': {
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '16px',
+                color: '#1A212B',
+                transform: 'translate(14px, 12px) scale(1)',
+                '&.Mui-focused': {
+                  color: '#5C17E5',
+                },
+                '&.MuiInputLabel-shrink': {
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                },
               },
-              '&.MuiInputLabel-shrink': {
-                transform: 'translate(14px, -9px) scale(0.75)',
-              },
-            },
-          }}
-        />
+            }}
+          />
+          {isProvisional && (
+            <Typography
+              id="invoice-number-provisional"
+              // Absolutely placed in the 25px gap above the next row, so switching to the
+              // saved number never reflows the section.
+              sx={{
+                position: 'absolute',
+                top: '50px',
+                // 14px = MUI's outlined helper-text inset, so it lines up with the label.
+                left: '14px',
+                // Capped to the field so the caption can never poke past its right edge
+                // (nowrap text ellipsizes instead of overflowing).
+                maxWidth: 'calc(100% - 14px)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontFamily: "'Lexend', sans-serif",
+                fontSize: '11px',
+                lineHeight: '14px',
+                color: '#728197',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              {SALES_RECEIPT_LABELS.INVOICE_NUMBER_PROVISIONAL_HELPER}
+            </Typography>
+          )}
+        </Box>
       </SectionRow>
 
       <SectionRow sx={{ gap: '16px', marginTop: '5px', marginLeft: "-10px", position: 'relative' }}>

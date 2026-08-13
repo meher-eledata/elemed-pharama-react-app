@@ -156,7 +156,7 @@ const SupplierTaxReport: React.FC = () => {
   const sortedSupplierRows = useMemo(() => sortRows(supplierRows), [supplierRows, sortConfig]);
 
   const receiptColumns: TableColumn<ReceiptViewRow>[] = [
-    { key: 'receipt_id', header: L.TABLE_RECEIPT.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_id}</CellText> },
+    { key: 'receipt_number', header: L.TABLE_RECEIPT.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
     { key: 'receipt_date', header: L.TABLE_RECEIPT.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
     { key: 'invoice_number', header: L.TABLE_RECEIPT.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
     { key: 'supplier_name', header: L.TABLE_RECEIPT.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
@@ -207,7 +207,7 @@ const SupplierTaxReport: React.FC = () => {
   const csvData = useMemo(() => {
     if (level === 'receipt') {
       return sortedReceiptRows.map((r) => ({
-        [L.TABLE_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_id),
+        [L.TABLE_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
         [L.TABLE_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
         [L.TABLE_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
         [L.TABLE_RECEIPT.SUPPLIER]: csvString(r.supplier_name),

@@ -5,6 +5,7 @@ import {
   TextField,
   Select,
   MenuItem,
+  Autocomplete,
   Chip,
   Alert,
   Snackbar,
@@ -21,9 +22,10 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import { StandardButton, PharmaDatePicker } from '../../../components/Common';
+import DateRangeFilter from '../../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import { ReusableTable, TableColumn } from '../../../components/PharmaTable';
 import CommonModal from '../../../components/CommonModal/CommonModal';
-import { formatReportDate, formatCurrency } from '../../../utils/reportFormat';
+import { formatReportDate, formatCurrency, toNum } from '../../../utils/reportFormat';
 import { extractErrorMessage } from '../../../utils/errorUtils';
 import { PURCHASE_RETURN_LABELS } from '../../../config/label/PurchaseReturn.labels';
 import {
@@ -43,6 +45,7 @@ import {
   SupplierReturnRow,
   ReturnStatus,
 } from '../../../redux/slices/supplierReturnsApi';
+import { useGetSuppliersQuery, Supplier } from '../../../redux/slices/masterApi';
 import CreditNoteUpload from './CreditNoteUpload';
 
 const L = PURCHASE_RETURN_LABELS.LOG;
@@ -50,11 +53,16 @@ const L = PURCHASE_RETURN_LABELS.LOG;
 const ReturnsLog: React.FC = () => {
   const navigate = useNavigate();
 
-  // ---- Filters (server-side search/status, client-side pagination) ----
+  // ---- Filters (server-side search/status/supplier/date range, client-side pagination) ----
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | ReturnStatus>('ALL');
+  const [supplierFilter, setSupplierFilter] = useState<Supplier | null>(null);
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [startDate, endDate] = dateRange;
+
+  const { data: suppliers = [] } = useGetSuppliersQuery();
 
   useEffect(() => {
     const timer = setTimeout(
@@ -64,19 +72,41 @@ const ReturnsLog: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // supplier_id ANDs with the free-text search (which also matches supplier name).
   const listArgs = useMemo(
     () => ({
       limit: PURCHASE_RETURN_CONSTANTS.LOG_FETCH_LIMIT,
       offset: 0,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+      ...(supplierFilter ? { supplier_id: supplierFilter.id } : {}),
+      ...(startDate
+        ? { start_date: startDate.format(PURCHASE_RETURN_CONSTANTS.REQUEST_DATE_FORMAT) }
+        : {}),
+      ...(endDate
+        ? { end_date: endDate.format(PURCHASE_RETURN_CONSTANTS.REQUEST_DATE_FORMAT) }
+        : {}),
     }),
-    [debouncedSearch, statusFilter],
+    [debouncedSearch, statusFilter, supplierFilter, startDate, endDate],
   );
 
   const { data, isLoading, isFetching, error } = useListReturnsQuery(listArgs);
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
+  // Server-side aggregates over the WHOLE filtered set — the table only ever holds
+  // the first 200 rows, so summing `rows` here would silently under-count.
+  const totalOwed = toNum(data?.total_amount_owed);
+  const totalAwaiting = toNum(data?.total_awaiting_credit);
+
+  const hasFilters =
+    !!searchInput || statusFilter !== 'ALL' || !!supplierFilter || !!startDate || !!endDate;
+  const clearFilters = () => {
+    setSearchInput('');
+    setStatusFilter('ALL');
+    setSupplierFilter(null);
+    setDateRange([null, null]);
+    setCurrentPage(1);
+  };
 
   // ---- Snackbar ----
   const [snackbar, setSnackbar] = useState<{
@@ -187,6 +217,8 @@ const ReturnsLog: React.FC = () => {
             fontWeight: 600,
             color: '#5C17E5',
             cursor: 'pointer',
+            // Never wraps mid-reference when the wide Action column squeezes the row.
+            whiteSpace: 'nowrap',
             '&:hover': { textDecoration: 'underline' },
           }}
         >
@@ -199,14 +231,21 @@ const ReturnsLog: React.FC = () => {
       header: L.TABLE.DATE,
       sortable: false,
       render: (r) => (
-        <Typography sx={{ fontSize: 14 }}>{formatReportDate(r.return_date)}</Typography>
+        // nowrap: a date split across lines ("13/0" / "8/20" / "26") is unreadable.
+        <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>
+          {formatReportDate(r.return_date)}
+        </Typography>
       ),
     },
     {
       key: 'supplier_name',
       header: L.TABLE.SUPPLIER,
       sortable: false,
-      render: (r) => <Typography sx={{ fontSize: 14 }}>{r.supplier_name}</Typography>,
+      // May wrap between words, but never inside one ("ZZFB Supplie / r One") — overrides
+      // the table cell's break-word.
+      render: (r) => (
+        <Typography sx={{ fontSize: 14, wordBreak: 'normal' }}>{r.supplier_name}</Typography>
+      ),
     },
     {
       key: 'lines_units',
@@ -282,6 +321,49 @@ const ReturnsLog: React.FC = () => {
     },
   ];
 
+  // Totals row, keyed by column so the amount always lands under "Amount owed ₹".
+  // The awaiting-credit figure is the pharmacist's "still to be given back" number; it is
+  // only shown when it differs from the headline total (identical under the Awaiting-credit
+  // status filter, where a second identical line would just be noise).
+  const footerCellByKey: Record<string, React.ReactNode> = {
+    return_number: (
+      <>
+        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{L.FOOTER.TOTAL}</Typography>
+        <Typography sx={{ fontSize: 12, color: '#728197' }}>{L.FOOTER.SCOPE(total)}</Typography>
+      </>
+    ),
+    total_amount: (
+      <>
+        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{formatCurrency(totalOwed)}</Typography>
+        {totalAwaiting !== totalOwed && (
+          <Typography sx={{ fontSize: 12, color: RETURN_STATUS_META.AWAITING_CREDIT.color }}>
+            {L.FOOTER.AWAITING(formatCurrency(totalAwaiting))}
+          </Typography>
+        )}
+      </>
+    ),
+  };
+
+  const totalsFooter = (
+    <TableRow sx={{ bgcolor: '#F9FAFB' }}>
+      {columns
+        .filter((c) => !c.hide)
+        .map((c) => (
+          <TableCell
+            key={c.key as string}
+            sx={{
+              padding: '12px 16px',
+              whiteSpace: 'nowrap',
+              borderTop: '2px solid #E5E7EB',
+              borderBottom: 'none',
+            }}
+          >
+            {footerCellByKey[c.key as string] ?? null}
+          </TableCell>
+        ))}
+    </TableRow>
+  );
+
   const detailField = (label: string, value: React.ReactNode) => (
     <Box key={label}>
       <Typography sx={{ fontSize: '12px', color: '#728197' }}>{label}</Typography>
@@ -306,12 +388,14 @@ const ReturnsLog: React.FC = () => {
         </StandardButton>
       </Box>
 
-      {/* Filters */}
+      {/* Filters — every control is server-side and resets pagination. Labels sit above
+          each control so all four line up on one row; the search box is the only elastic
+          one, so the row shrinks before it wraps. */}
       <Box
         sx={{
           display: 'flex',
-          gap: 3,
-          alignItems: 'center',
+          gap: 2,
+          alignItems: 'flex-end',
           flexWrap: 'wrap',
           bgcolor: '#F6F8FB',
           borderRadius: '16px',
@@ -334,7 +418,9 @@ const ReturnsLog: React.FC = () => {
             ),
           }}
           sx={{
-            width: '20rem',
+            flex: '1 1 18rem',
+            minWidth: '12rem',
+            maxWidth: '22rem',
             '& .MuiOutlinedInput-root': {
               height: '2.5rem',
               borderRadius: '12px',
@@ -343,8 +429,35 @@ const ReturnsLog: React.FC = () => {
             },
           }}
         />
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontSize: '13px', color: '#728197' }}>{L.STATUS_FILTER}</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography sx={{ fontSize: '12px', color: '#728197' }}>
+            {L.SUPPLIER_FILTER}
+          </Typography>
+          <Autocomplete<Supplier>
+            value={supplierFilter}
+            onChange={(_e, v) => {
+              setSupplierFilter(v);
+              setCurrentPage(1);
+            }}
+            options={suppliers}
+            getOptionLabel={(o) => o.supplier_name}
+            isOptionEqualToValue={(o, v) => o.id === v.id}
+            sx={{
+              width: '15rem',
+              '& .MuiOutlinedInput-root': {
+                height: '2.5rem',
+                borderRadius: '12px',
+                backgroundColor: '#fff',
+                '& fieldset': { border: '1px solid #D1D5DB' },
+              },
+            }}
+            renderInput={(params) => (
+              <TextField {...params} placeholder={L.ALL_SUPPLIERS} />
+            )}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography sx={{ fontSize: '12px', color: '#728197' }}>{L.STATUS_FILTER}</Typography>
           <Select
             value={statusFilter}
             onChange={(e) => {
@@ -352,7 +465,7 @@ const ReturnsLog: React.FC = () => {
               setCurrentPage(1);
             }}
             sx={{
-              width: '13rem',
+              width: '11rem',
               height: '2.5rem',
               borderRadius: '12px',
               backgroundColor: '#fff',
@@ -368,6 +481,23 @@ const ReturnsLog: React.FC = () => {
             ))}
           </Select>
         </Box>
+        <DateRangeFilter
+          dateRange={dateRange}
+          onDateRangeChange={(range) => {
+            setDateRange(range);
+            setCurrentPage(1);
+          }}
+        />
+        {hasFilters && (
+          <StandardButton
+            variant="secondary"
+            size="medium"
+            onClick={clearFilters}
+            sx={{ height: '2.5rem', minWidth: '7.5rem' }}
+          >
+            {L.RESET_FILTERS}
+          </StandardButton>
+        )}
       </Box>
 
       {/* Table */}
@@ -388,7 +518,7 @@ const ReturnsLog: React.FC = () => {
           data={rows}
           selectedRows={[]}
           setSelectedRows={() => { }}
-          emptyMessage={L.EMPTY}
+          emptyMessage={hasFilters ? L.EMPTY_FILTERED : L.EMPTY}
           searchAndFilterConfig={{ filterOptions: [] }}
           currentSearchTerm=""
           onSearchChange={() => { }}
@@ -403,6 +533,9 @@ const ReturnsLog: React.FC = () => {
           onPageChange={setCurrentPage}
           onSortRequest={() => { }}
           sortConfig={{ key: '', direction: 'asc' }}
+          // No footer at zero rows — the empty-state message already says there is nothing.
+          footerContent={total > 0 ? totalsFooter : undefined}
+          disableFooterWrapper
         />
       )}
       {!isLoading && !isFetching && !error && total > rows.length && (

@@ -86,6 +86,25 @@ describe('orgApi — invoice-numbering scheme fields', () => {
     expect(callArg.body).toEqual(body);
   });
 
+  it('getNextDocumentNumber GETs the peek with doc_type + date as query params', async () => {
+    mockOk({ doc_type: 'sales_invoice', number: 'SI-EL-26-000001', period_key: 2026, enabled: true });
+    const store = makeStore();
+    const result = await store.dispatch(
+      orgApi.endpoints.getNextDocumentNumber.initiate({ doc_type: 'sales_invoice', date: '2026-04-01' })
+    );
+
+    const callArg = mockBaseQuery.mock.calls[0][0] as {
+      url: string;
+      method: string;
+      params: { doc_type: string; date: string };
+    };
+    expect(callArg.url).toBe('org/document-numbering/next');
+    expect(callArg.method).toBe('GET');
+    // The date drives both the counter bucket and the {YY}/{MM} tokens.
+    expect(callArg.params).toEqual({ doc_type: 'sales_invoice', date: '2026-04-01' });
+    expect((result.data as { number: string }).number).toBe('SI-EL-26-000001');
+  });
+
   it('MeOrganization also carries the scheme fields (nullable template/start)', () => {
     // Compile-time coverage: a no-org-scheme org still satisfies the type.
     const meOrg: MeOrganization = {

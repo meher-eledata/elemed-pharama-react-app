@@ -127,7 +127,7 @@ const SupplierPaymentReport: React.FC = () => {
     }));
 
   const columns: TableColumn<PaymentRow>[] = [
-    { key: 'receipt_id', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_id ?? '-'}</CellText> },
+    { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number || '-'}</CellText> },
     { key: 'invoice_date', header: L.TABLE.INVOICE_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.invoice_date)}</CellText> },
     { key: 'supplier_name', header: L.TABLE.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
     { key: 'billN', header: L.TABLE.TOTAL_BILL, sortable: true, render: (r) => <CellText>{formatNumber(r.billN)}</CellText> },
@@ -168,7 +168,7 @@ const SupplierPaymentReport: React.FC = () => {
   const csvData = useMemo(
     () =>
       sortedRows.map((r) => ({
-        [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_id),
+        [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
         [L.TABLE.INVOICE_DATE]: formatReportDate(r.invoice_date),
         [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
         [`${L.TABLE.TOTAL_BILL} (₹)`]: r.billN.toFixed(2),

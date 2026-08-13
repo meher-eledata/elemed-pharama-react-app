@@ -295,8 +295,10 @@ const PurchaseReturn: React.FC = () => {
           b,
           <>
             <Typography sx={{ fontSize: 14 }}>{b.supplier_invoice_number ?? '—'}</Typography>
-            {b.receipt_id != null && (
-              <Typography sx={{ fontSize: 12, color: '#728197' }}>{`RA${b.receipt_id}`}</Typography>
+            {/* OUR receipt (GRN) number as sent by the server — opaque, never rebuilt
+                from receipt_id. Null on unattributable batches. */}
+            {b.receipt_number && (
+              <Typography sx={{ fontSize: 12, color: '#728197' }}>{b.receipt_number}</Typography>
             )}
           </>,
         ),

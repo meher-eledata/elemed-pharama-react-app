@@ -110,6 +110,9 @@ export interface SupplierReportDateRequest {
 
 export interface SupplierReceiptReportRow {
   receipt_id: number;
+  // OUR generated goods-receipt number (opaque — never parsed or rebuilt client-side).
+  // Distinct from `invoice_number`, which is the SUPPLIER's number.
+  receipt_number: string;
   receipt_date: string;
   invoice_number: string | null;
   po_number: string | null;
@@ -157,6 +160,8 @@ export interface SupplierReceiptReportResponse {
 export interface SupplierPaymentReportRow {
   payment_id: number;
   receipt_id: number | null;
+  // OUR generated goods-receipt number (opaque); null when the payment has no linked receipt.
+  receipt_number: string | null;
   invoice_date: string | null;
   supplier_id: number | null;
   supplier_name: string | null;
@@ -378,6 +383,8 @@ export interface SupplierTaxReportRequest {
 
 export interface SupplierTaxReceiptRow {
   receipt_id: number;
+  // OUR generated goods-receipt number (opaque); level="receipt" only.
+  receipt_number: string;
   receipt_date: string;
   invoice_number: string | null;
   supplier_id: number;
