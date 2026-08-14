@@ -167,56 +167,35 @@ export default function SaleReturn() {
       try {
 
         let result;
-        let lastError: any = null;
 
-        if (invoiceIdToFetch) {
-          console.log('🔍 Fetching invoice details for return using invoice_id (database ID):', invoiceIdToFetch);
-          try {
-            result = await getInvoiceDetails({ invoice_id: invoiceIdToFetch }).unwrap();
-            console.log('✅ Invoice found using invoice_id');
-          } catch (err: any) {
-            lastError = err;
-            console.log('❌ Invoice not found by invoice_id, trying with invoice_number...');
-            if (invoiceNumber && err?.status === 404) {
-              // Legacy: strip the "INV"/"RB" cosmetic so the backend gets the numeric part.
-              // With the custom scheme on, look the invoice_number up verbatim (a schemed
-              // number is the real invoice_number, even if it starts with "INV"/"RB").
-              const numericInvoiceNumber =
-                typeof invoiceNumber === 'string'
-                  ? invoiceLookupKey(invoiceNumber, schemeEnabled)
-                  : invoiceNumber;
+        // Resolve the invoice by its invoice_number FIRST. invoice_number is the per-org
+        // UNIQUE, stable business key and is exactly what the user is returning against,
+        // so it always points at the right invoice. The invoiceId in navigation state is
+        // NOT trustworthy: some callers derive it from the invoice NUMBER (parseInt of the
+        // displayed number), which silently resolves to a DIFFERENT invoice whenever
+        // invoice_number !== database id — that is what made the return screen show items
+        // from an unrelated invoice. So invoice_id is only a last-resort fallback here.
+        // Strip the cosmetic "INV"/"RB" prefix to get the stored key (unless a custom scheme
+        // is on, where the number is stored verbatim, prefix included).
+        const numericInvoiceNumber =
+          typeof invoiceNumber === 'string'
+            ? invoiceLookupKey(invoiceNumber, schemeEnabled)
+            : invoiceNumber;
+        const hasInvoiceNumber =
+          numericInvoiceNumber !== undefined &&
+          numericInvoiceNumber !== null &&
+          String(numericInvoiceNumber).trim() !== '';
 
-              console.log('🔍 Trying with numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
-              try {
-                result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
-                console.log('✅ Invoice found using numeric invoice_number');
-              } catch (err2: any) {
-                lastError = err2;
-                throw err2;
-              }
-            } else {
-              throw err;
-            }
-          }
-        } else if (invoiceNumber) {
-          // Legacy: strip the "INV"/"RB" cosmetic so the backend gets the numeric part.
-          // With the custom scheme on, look the invoice_number up verbatim (a schemed
-          // number is the real invoice_number, even if it starts with "INV"/"RB").
-          const numericInvoiceNumber =
-            typeof invoiceNumber === 'string'
-              ? invoiceLookupKey(invoiceNumber, schemeEnabled)
-              : invoiceNumber;
-
-          console.log('🔍 Fetching invoice details using numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
-          try {
-            result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
-            console.log('✅ Invoice found using numeric invoice_number');
-          } catch (err: any) {
-            lastError = err;
-            throw err;
-          }
+        if (hasInvoiceNumber) {
+          console.log('🔍 Fetching invoice details for return using invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
+          result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
+          console.log('✅ Invoice found using invoice_number');
+        } else if (invoiceIdToFetch) {
+          console.log('🔍 No invoice_number available; falling back to invoice_id:', invoiceIdToFetch);
+          result = await getInvoiceDetails({ invoice_id: invoiceIdToFetch }).unwrap();
+          console.log('✅ Invoice found using invoice_id');
         } else {
-          throw new Error('No invoice_id or invoice_number available');
+          throw new Error('No invoice_number or invoice_id available');
         }
         console.log('Invoice details response:', result);
 

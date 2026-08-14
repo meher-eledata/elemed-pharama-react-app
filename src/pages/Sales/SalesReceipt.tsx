@@ -338,27 +338,32 @@ const SalesReceipt: React.FC = () => {
             let result;
             let firstAttemptError: any = null;
 
-            // Attempt 1: Fetch by database invoice ID (primary key)
-            if (resolvedInvoiceId > 0) {
-              console.log('🔍 Attempt 1: Fetching by invoice_id (ID):', resolvedInvoiceId);
-              try {
-                result = await getInvoiceDetails({ invoice_id: resolvedInvoiceId }).unwrap();
-                console.log('✅ Invoice found by invoice_id');
-              } catch (err: any) {
-                firstAttemptError = err;
-                console.log('❌ Invoice not found by invoice_id (ID):', resolvedInvoiceId, 'Error:', err);
-                console.log('🔄 Proceeding to Attempt 2...');
-              }
-            }
-
-            // Attempt 2: Fetch by numeric invoice number (e.g. "8")
-            if (!result && fetchInvoiceNumber) {
-              console.log('🔍 Attempt 2: Fetching by numeric invoice_number:', fetchInvoiceNumber);
+            // Attempt 1: Fetch by invoice_number — the per-org UNIQUE source of truth.
+            // The invoice_id in edit state is NOT reliable: some callers derive it from the
+            // invoice NUMBER (parseInt of the displayed number), which resolves to a
+            // DIFFERENT invoice whenever invoice_number !== database id. So the number must
+            // win over the id (matching the "invoice_number is the source of truth" intent).
+            if (fetchInvoiceNumber) {
+              console.log('🔍 Attempt 1: Fetching by numeric invoice_number:', fetchInvoiceNumber);
               try {
                 result = await getInvoiceDetails({ invoice_number: fetchInvoiceNumber }).unwrap();
                 console.log('✅ Invoice found by numeric invoice_number');
               } catch (err: any) {
-                console.log('❌ Numeric invoice_number failed');
+                firstAttemptError = err;
+                console.log('❌ Invoice not found by numeric invoice_number:', fetchInvoiceNumber, 'Error:', err);
+                console.log('🔄 Proceeding to Attempt 2...');
+              }
+            }
+
+            // Attempt 2: Fetch by database invoice ID (only when we could not resolve by
+            // number — e.g. a legacy row with no usable invoice_number).
+            if (!result && resolvedInvoiceId > 0) {
+              console.log('🔍 Attempt 2: Fetching by invoice_id (ID):', resolvedInvoiceId);
+              try {
+                result = await getInvoiceDetails({ invoice_id: resolvedInvoiceId }).unwrap();
+                console.log('✅ Invoice found by invoice_id');
+              } catch (err: any) {
+                console.log('❌ Invoice not found by invoice_id (ID):', resolvedInvoiceId);
                 firstAttemptError = firstAttemptError || err;
               }
             }
