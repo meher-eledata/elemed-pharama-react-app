@@ -4,5 +4,4 @@ export const SALES_RETURNS_LOG_CONSTANTS = {
   SEARCH_DEBOUNCE_MS: 400,
   REQUEST_DATE_FORMAT: 'YYYY-MM-DD', // start_date / end_date request format
   DISPLAY_DATE_FORMAT: 'DD MMM YYYY', // sales-module display format
-  RECEIPT_ROUTE: '/sales/receipt',
 } as const;

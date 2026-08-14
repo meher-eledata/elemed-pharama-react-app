@@ -204,10 +204,21 @@ describe('invoiceLookupKey — edit-mode lookup gating', () => {
     expect(invoiceLookupKey('INV', false)).toBe('INV');
   });
 
-  // The load-bearing invariant: what is DISPLAYED always maps back to what is STORED.
-  it('is the exact inverse of decorateInvoiceNumber for BOTH stored shapes', () => {
+  // decorate → lookup round-trips every value decorateInvoiceNumber actually PRODUCES: a bare
+  // number gains/loses the cosmetic prefix, and any value carrying its own prefix or non-digits
+  // travels verbatim both ways.
+  it('round-trips the stored shapes decorateInvoiceNumber produces', () => {
     for (const stored of ['1005', '947', 'INV-2026-000007', 'EM/26-27/000100']) {
       expect(invoiceLookupKey(decorateInvoiceNumber(stored, false), false)).toBe(stored);
     }
+  });
+
+  // DOCUMENTED EXCEPTION (not a total inverse): a stored value that is itself a bare
+  // prefix+number ("INV947") is indistinguishable from a decoration. decorate leaves it
+  // verbatim, and lookup then strips the prefix — so the pair does NOT round-trip here.
+  // Harmless: the bounded PK-derivation fallbacks (SaleHistory) absorb the stripped digits.
+  it('does NOT round-trip a stored value already shaped like a decoration', () => {
+    expect(decorateInvoiceNumber('INV947', false)).toBe('INV947');
+    expect(invoiceLookupKey(decorateInvoiceNumber('INV947', false), false)).toBe('947');
   });
 });

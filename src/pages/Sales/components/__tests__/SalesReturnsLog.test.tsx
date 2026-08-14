@@ -14,6 +14,7 @@ import {
   SalesReturnDetailsResponse,
 } from '../../../../redux/slices/salesApi';
 import { SALES_RETURNS_LOG_CONSTANTS as C } from '../../../../config/constants/SalesReturnsLog.constants';
+import { SALES_PAGE_CONSTANTS } from '../../../../config/constants/SalesPage.constants';
 
 // Sale History → "Returns" tab. Contract: api-contract.md
 // "POST /api/sales/list-sales-returns" + "POST /api/sales/get-sales-return-details".
@@ -335,13 +336,19 @@ describe('SalesReturnsLog', () => {
 
     // "No sales returns yet" reads as "this pharmacy has never had a return" — wrong when the
     // list is empty only because a filter matched nothing.
-    it('says the FILTERS matched nothing when a search is active', () => {
+    // The empty copy tracks the QUERIED term (debouncedSearch), not the raw keystroke, so an
+    // empty unfiltered list never flashes "match your filters" during the debounce window.
+    it('says the FILTERS matched nothing once the active search is queried', async () => {
       mockUseListSalesReturnsQuery.mockReturnValue(listResult({ rows: [], total: 0 }));
       renderPage();
+      // Before the debounce settles it still reads as the true unfiltered empty state.
+      expect(screen.getByTestId('table-empty')).toHaveTextContent('No sales returns yet');
       fireEvent.change(screen.getByPlaceholderText('Search by return ID, invoice number or customer'), {
         target: { value: 'nothing-matches-this' },
       });
-      expect(screen.getByTestId('table-empty')).toHaveTextContent('No returns match your filters');
+      await waitFor(() =>
+        expect(screen.getByTestId('table-empty')).toHaveTextContent('No returns match your filters')
+      );
     });
 
     it('says the FILTERS matched nothing when only a date range is active', async () => {
@@ -493,8 +500,8 @@ describe('SalesReturnsLog', () => {
     it('clicking the invoice link opens /sales/receipt in return-details mode', () => {
       renderPage();
       fireEvent.click(within(screen.getByTestId('cell-invoice_number-0')).getByText('INV100'));
-      expect(mockNavigate).toHaveBeenCalledWith(C.RECEIPT_ROUTE, { state: EXPECTED_STATE });
-      expect(C.RECEIPT_ROUTE).toBe('/sales/receipt');
+      expect(mockNavigate).toHaveBeenCalledWith(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, { state: EXPECTED_STATE });
+      expect(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT).toBe('/sales/receipt');
     });
 
     it('the dialog\'s "View original invoice" button navigates with the same state', () => {
@@ -502,7 +509,7 @@ describe('SalesReturnsLog', () => {
       renderPage();
       fireEvent.click(screen.getByText('CRN-000042'));
       fireEvent.click(within(screen.getByTestId('common-modal')).getByText('View original invoice'));
-      expect(mockNavigate).toHaveBeenCalledWith(C.RECEIPT_ROUTE, { state: EXPECTED_STATE });
+      expect(mockNavigate).toHaveBeenCalledWith(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, { state: EXPECTED_STATE });
     });
 
     it('a null customer_name is passed as an empty string, never null', () => {
@@ -511,7 +518,7 @@ describe('SalesReturnsLog', () => {
       );
       renderPage();
       fireEvent.click(within(screen.getByTestId('cell-invoice_number-0')).getByText('INV100'));
-      expect(mockNavigate).toHaveBeenCalledWith(C.RECEIPT_ROUTE, {
+      expect(mockNavigate).toHaveBeenCalledWith(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
         state: expect.objectContaining({ customerName: '' }),
       });
     });
@@ -523,7 +530,7 @@ describe('SalesReturnsLog', () => {
       );
       renderPage();
       fireEvent.click(within(screen.getByTestId('cell-invoice_number-0')).getByText('INV-2026-000007'));
-      expect(mockNavigate).toHaveBeenCalledWith(C.RECEIPT_ROUTE, {
+      expect(mockNavigate).toHaveBeenCalledWith(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
         state: expect.objectContaining({ invoiceNumber: 'INV-2026-000007' }),
       });
     });
@@ -536,7 +543,7 @@ describe('SalesReturnsLog', () => {
       fireEvent.click(
         within(screen.getByTestId('cell-invoice_number-0')).getByText('EM/26-27/000100')
       );
-      expect(mockNavigate).toHaveBeenCalledWith(C.RECEIPT_ROUTE, {
+      expect(mockNavigate).toHaveBeenCalledWith(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
         state: expect.objectContaining({ invoiceNumber: 'EM/26-27/000100' }),
       });
     });

@@ -150,8 +150,11 @@ export function renderInvoiceNumberPreview(
 // NUMBER ("INV947", "RB-12"). Anchored on digits on purpose — an imported/historical
 // invoice_number such as "INV-2026-000007" is a REAL stored value, not a decoration, so it
 // is neither re-decorated nor stripped. decorateInvoiceNumber and invoiceLookupKey both gate
-// on this shape, which makes them exact inverses: what is DISPLAYED always maps back to what
-// is STORED (search terms and edit-mode lookups included).
+// on this shape, so decorate → lookup round-trips every value decorate actually PRODUCES.
+// The one NON-invertible class is a stored value that is itself a bare prefix+number
+// ("INV947"): it is indistinguishable from a decoration, so lookup strips it back to "947"
+// (see the SaleHistory row-mapping comment near invoice_number formatting). Harmless — the
+// bounded PK-derivation fallbacks absorb it.
 const DECORATED_INVOICE_RE = /^(?:INV|RB)-?(\d+)$/i;
 
 // Legacy "INV" cosmetic for DISPLAY: when the org's custom scheme is OFF a bare numeric

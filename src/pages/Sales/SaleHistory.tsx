@@ -1366,7 +1366,7 @@ export default function SaleHistory() {
         }
         // Priority 2: Parse from invoice number (e.g., "INV8" -> 8)
         else if (invoice.invoiceNumber) {
-          const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
+          const cleanedNumber = invoiceLookupKey(invoice.invoiceNumber, schemeEnabled);
           const parsed = parseInt(cleanedNumber, 10);
           if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
             finalDatabaseId = parsed;
@@ -1458,8 +1458,8 @@ export default function SaleHistory() {
       }
       // Priority 2: Parse from invoice number (e.g., "INV56" -> 56)
       else if (invoice.invoiceNumber) {
-        // Remove "INV" or "RB" prefix if present and parse
-        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+        // Map the DISPLAYED number back to its stored key (inverse of decorateInvoiceNumber)
+        const cleanedNumber = invoiceLookupKey(invoice.invoiceNumber, schemeEnabled);
         const parsed = parseInt(cleanedNumber, 10);
         if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
           databaseInvoiceId = parsed;

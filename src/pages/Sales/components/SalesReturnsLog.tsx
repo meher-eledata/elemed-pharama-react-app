@@ -27,6 +27,7 @@ import { selectOrganization } from '../../../redux/slices/orgSlice';
 import { SALES_HISTORY_LABELS } from '../../../config/label/SalesHistory.labels';
 import { SALES_RETURNS_LOG_LABELS as L } from '../../../config/label/SalesReturnsLog.labels';
 import { SALES_RETURNS_LOG_CONSTANTS as C } from '../../../config/constants/SalesReturnsLog.constants';
+import { SALES_PAGE_CONSTANTS } from '../../../config/constants/SalesPage.constants';
 import {
   useListSalesReturnsQuery,
   useGetSalesReturnDetailsQuery,
@@ -98,7 +99,11 @@ const SalesReturnsLog: React.FC = () => {
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
 
+  // Reset button reflects the IMMEDIATE input, so it appears the instant you type.
   const hasFilters = !!searchInput || !!startDate || !!endDate;
+  // Empty-state copy must match what was actually QUERIED (debouncedSearch), or an empty
+  // UNFILTERED list would briefly read "No returns match your filters" during the debounce.
+  const hasActiveFilters = !!debouncedSearch || !!startDate || !!endDate;
   const clearFilters = () => {
     setSearchInput('');
     setDateRange([null, null]);
@@ -118,7 +123,7 @@ const SalesReturnsLog: React.FC = () => {
 
   // There is no id-addressable invoice route — the receipt page opens from location state.
   const openOriginalInvoice = (row: Pick<SalesReturnRow, 'invoice_id' | 'invoice_number' | 'customer_name'>) => {
-    navigate(C.RECEIPT_ROUTE, {
+    navigate(SALES_PAGE_CONSTANTS.ROUTE_SALES_RECEIPT, {
       state: {
         isReturnDetailsMode: true,
         invoiceId: row.invoice_id,
@@ -346,7 +351,7 @@ const SalesReturnsLog: React.FC = () => {
               data={rows}
               selectedRows={[]}
               setSelectedRows={() => { }}
-              emptyMessage={hasFilters ? L.EMPTY_FILTERED : L.EMPTY}
+              emptyMessage={hasActiveFilters ? L.EMPTY_FILTERED : L.EMPTY}
               searchAndFilterConfig={{ filterOptions: [] }}
               currentSearchTerm=""
               onSearchChange={() => { }}

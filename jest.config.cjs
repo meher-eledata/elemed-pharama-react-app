@@ -29,4 +29,10 @@ module.exports = {
     // Use preprocessor to replace import.meta.env before ts-jest compilation
     '^.+\\.(ts|tsx)$': path.resolve(__dirname, 'jest.preprocessor.cjs'),
   },
+  // Ignore the stale .worktrees/ checkout: without this, Jest double-collects
+  // every suite (once from src, once from the worktree copy) and warns about
+  // duplicate manual mocks (fileMock). modulePathIgnorePatterns silences the
+  // haste-map duplicate-mock warning.
+  testPathIgnorePatterns: ['/node_modules/', '/.worktrees/'],
+  modulePathIgnorePatterns: ['/.worktrees/'],
 };
