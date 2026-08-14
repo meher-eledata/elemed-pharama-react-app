@@ -1448,36 +1448,26 @@ export default function SaleHistory() {
       const savedItem = savedHistory.find((item: any) => item.id === invoiceId);
       const invoiceItems = savedItem?.items || savedItem?.salesItems || [];
 
-      // Determine the database invoice ID to use for fetching
-      // Priority 1: Use the ID from saved item (this is the database invoice ID we stored when sale was submitted)
-      let databaseInvoiceId: number = 0;
+      // Determine a TRUSTWORTHY database invoice ID to pass, if we have one. We only ever
+      // use the real stored DB id from the saved item — NEVER a value derived from the
+      // invoice NUMBER. invoice_number and database id are independent columns; deriving an
+      // id via parseInt(invoice_number) silently points at a DIFFERENT invoice whenever they
+      // differ (they almost always do), which made the return screen load an unrelated
+      // invoice's items. When we have no reliable id we pass none, and SaleReturn resolves
+      // by the per-org-unique invoice_number instead.
+      let databaseInvoiceId: number | undefined = undefined;
 
       if (savedItem && savedItem.id && typeof savedItem.id === 'number' && savedItem.id < 1000000) {
         databaseInvoiceId = savedItem.id;
         console.log('✅ Using database invoice ID from saved item:', databaseInvoiceId);
       }
-      // Priority 2: Parse from invoice number (e.g., "INV56" -> 56)
-      else if (invoice.invoiceNumber) {
-        // Map the DISPLAYED number back to its stored key (inverse of decorateInvoiceNumber)
-        const cleanedNumber = invoiceLookupKey(invoice.invoiceNumber, schemeEnabled);
-        const parsed = parseInt(cleanedNumber, 10);
-        if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
-          databaseInvoiceId = parsed;
-          console.log('📋 Parsed database invoice ID from invoice number:', databaseInvoiceId);
-        }
-      }
-      // Priority 3: Use frontend ID if it's reasonable (not a timestamp)
-      else if (invoiceId && invoiceId < 1000000) {
-        databaseInvoiceId = invoiceId;
-        console.log('⚠️ Using frontend invoice ID as fallback:', databaseInvoiceId);
-      }
 
-      console.log('🔍 Final database invoice ID to use for return:', databaseInvoiceId);
+      console.log('🔍 Database invoice ID to pass for return (undefined = resolve by number):', databaseInvoiceId);
 
       // Navigate immediately without blocking
       navigate('/sales/sale-return', {
         state: {
-          invoiceId: databaseInvoiceId || invoice.id, // Use database invoice ID, fallback to invoice.id
+          invoiceId: databaseInvoiceId, // reliable DB id only, or undefined → resolve by invoice_number
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
           customerName: invoice.customerName,

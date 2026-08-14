@@ -57,6 +57,7 @@ const wireApi = (lines: unknown[]) => {
     jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue({ message: 'ok' }) })),
     { isLoading: false },
   ]);
+  return trigger;
 };
 
 const renderPage = () =>
@@ -73,6 +74,36 @@ const renderPage = () =>
 describe('SaleReturn', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('resolves the invoice by its invoice_number, NOT by the (possibly-colliding) invoiceId', async () => {
+    // Regression: the location state carries invoiceId 7896 and invoiceNumber "INV7896".
+    // The invoiceId can be fabricated from the number by upstream code (parseInt), and a
+    // value like 7896 may be a DIFFERENT invoice's real primary key — which made the return
+    // screen load an unrelated invoice's products. The fix resolves by the per-org UNIQUE
+    // invoice_number ("INV7896" -> "7896"), never by the id.
+    const trigger = wireApi([
+      {
+        invoice_line_id: 1,
+        product_name: 'Correct Product',
+        batch_number: 'B1',
+        quantity: 1,
+        rate: '10',
+        selling_price: '10',
+        discount: '0',
+        refundable_quantity: 1,
+      },
+    ]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Correct Product/i)).toBeInTheDocument();
+    });
+
+    // It must look the invoice up by number, not by the raw id.
+    expect(trigger).toHaveBeenCalledWith({ invoice_number: '7896' });
+    expect(trigger).not.toHaveBeenCalledWith({ invoice_id: 7896 });
   });
 
   it('renders without crashing on a legacy/inconsistent line (null rate/discount/selling_price)', async () => {
