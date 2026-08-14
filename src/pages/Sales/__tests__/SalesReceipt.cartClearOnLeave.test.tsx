@@ -22,12 +22,6 @@ const makeMutation = (resolved: any = { data: {} }) =>
     { isLoading: false },
   ]);
 
-const makeLazyQuery = (resolved: any = { data: [] }) =>
-  jest.fn(() => [
-    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
-    { data: undefined, isLoading: false },
-  ]);
-
 // Mock dependencies (mirrors SalesReceipt.test.tsx)
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -37,15 +31,18 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../redux/slices/salesApi');
 jest.mock('../../../redux/slices/receiveApi');
+// SalesReceipt peeks the next invoice number through orgApi, which these stores don't register.
+jest.mock('../../../redux/slices/orgApi', () => ({
+  orgApi: { util: { invalidateTags: jest.fn(() => ({ type: 'orgApi/invalidateTags' })) } },
+  useGetNextDocumentNumberQuery: jest.fn(() => ({ data: undefined, isFetching: false })),
+}));
 jest.mock('../../../utils/cartStorage', () => ({
   clearCartFromStorage: jest.fn(),
   clearFormDataFromStorage: jest.fn(),
   getCartFromStorage: jest.fn(() => ({ items: [], total: 0 })),
   getFormDataFromStorage: jest.fn(() => null),
-  generateNextInvoiceNumber: jest.fn(() => 'INV001'),
   setEditInvoiceId: jest.fn(),
   saveSalesHistoryToStorage: jest.fn(),
-  saveInvoiceNumber: jest.fn(),
 }));
 
 // Real cart reducer so the guarded cleanup can actually mutate the store and be
@@ -54,6 +51,7 @@ const createStore = (cart?: Partial<CartState>) =>
   configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
       cart: cartReducer,
     },
     preloadedState: cart
@@ -164,7 +162,6 @@ describe('SalesReceipt — clears cart when leaving the receipt step', () => {
     (salesApi.useUpsertInvoicePaymentsMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useDeleteInvoiceMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation({ data: {} });
-    (salesApi.useLazyGetInvoicesQuery as jest.Mock) = makeLazyQuery({ data: [] });
   });
 
   const renderComponent = (store: ReturnType<typeof createStore>) =>

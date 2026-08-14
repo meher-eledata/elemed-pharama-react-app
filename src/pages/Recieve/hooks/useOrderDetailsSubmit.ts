@@ -7,7 +7,24 @@ import {
   useEditReceiptMutation,
   useUploadReceiptFileMutation,
 } from "../../../redux/slices/receiveApi";
+import { useIdempotencyKey } from "../../../hooks/useIdempotencyKey";
+import { duplicateDocumentNumberMessage } from "../../../utils/errorUtils";
 import { PharmaTableRow, SupplierOption, ProductOption } from "../types";
+
+// Every submit/edit failure surfaces through setSaveError. The 409 DUPLICATE_RECEIPT_NUMBER
+// is a retryable counter anomaly rather than bad input, so it is named ahead of the generic
+// unwrapping (mirrors SalesReceipt.saveHandler's DUPLICATE_INVOICE_NUMBER branch).
+const resolveReceiptSaveError = (error: any): string => {
+  const duplicateNumber = duplicateDocumentNumberMessage(error);
+  if (duplicateNumber) return duplicateNumber;
+  if (error?.data) {
+    if (typeof error.data === 'string') return error.data;
+    if (error.data.message) return error.data.message;
+    if (error.data.error) return error.data.error;
+    if (Array.isArray(error.data.errors) && error.data.errors.length > 0) return error.data.errors[0];
+  }
+  return error?.message || 'Failed to submit receipt';
+};
 
 interface SubmitHookParams {
   supplierName: string;
@@ -28,6 +45,7 @@ interface SubmitHookParams {
   setIsSaving: (val: boolean) => void;
   setSaveError: (val: string | null) => void;
   setSaveSuccess: (val: boolean) => void;
+  setSavedReceiptNumber: (val: string | null) => void;
   setIsDeleting: (val: boolean) => void;
   setDeleteError: (val: string | null) => void;
   setDeleteSuccess: (val: boolean) => void;
@@ -48,6 +66,9 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
   const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
   const [uploadReceiptFile] = useUploadReceiptFileMutation();
+  // One key per pending logical submission: reused on retry of the same failed
+  // payload, regenerated when the payload changes, cleared after success.
+  const { getKey: getIdempotencyKey, reset: resetIdempotencyKey } = useIdempotencyKey();
 
   const {
     supplierName,
@@ -68,6 +89,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     setIsSaving,
     setSaveError,
     setSaveSuccess,
+    setSavedReceiptNumber,
     setIsDeleting,
     setDeleteError,
     setDeleteSuccess,
@@ -337,6 +359,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       setIsSaving(true);
       setSaveError(null);
       setSaveSuccess(false);
+      // An edit issues no new number, so never carry one over from a previous submit.
+      setSavedReceiptNumber(null);
 
       const validationError = validateForm();
       if (validationError) {
@@ -350,7 +374,11 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
       if (isEditMode && receiptId) {
         const editPayload = transformFormDataToEditPayload();
-        result = await editReceipt(editPayload).unwrap();
+        result = await editReceipt({
+          ...editPayload,
+          idempotency_key: getIdempotencyKey(JSON.stringify(editPayload)),
+        }).unwrap();
+        resetIdempotencyKey();
         finalReceiptId = receiptId;
       } else {
         let submitPayload;
@@ -362,31 +390,16 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           return;
         }
 
-        try {
-          result = await submitReceipt(submitPayload).unwrap();
-          finalReceiptId = result.receipt_id || (result as any).receiptId;
-        } catch (rtkError) {
-          // Only attempt manual fetch if we didn't already get a result
-          if (!finalReceiptId) {
-            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-            const response = await fetch(`${apiBaseUrl}receive/submit-receipt/`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` })
-              },
-              body: JSON.stringify(submitPayload)
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            result = await response.json();
-            finalReceiptId = result.receipt_id || result.receiptId;
-          }
-        }
+        // Never re-submit on error (a timeout-after-commit was duplicating stock);
+        // the outer catch surfaces the error to the user via setSaveError.
+        result = await submitReceipt({
+          ...submitPayload,
+          idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+        }).unwrap();
+        resetIdempotencyKey();
+        finalReceiptId = result.receipt_id || (result as any).receiptId;
+        // The server-issued GRN number, shown in the success snackbar.
+        setSavedReceiptNumber(result.receipt_number ?? null);
       }
 
       // Upload file if selected
@@ -420,16 +433,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       }, 2000);
 
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-        else if (error.data.error) errorMessage = error.data.error;
-        else if (Array.isArray(error.data.errors) && error.data.errors.length > 0) errorMessage = error.data.errors[0];
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      setSaveError(resolveReceiptSaveError(error));
     } finally {
       setIsSaving(false);
     }
@@ -457,33 +461,14 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         return;
       }
 
-      let result;
-      let newReceiptId: number | null = null;
-      try {
-        result = await submitReceipt(submitPayload).unwrap();
-        newReceiptId = result.receipt_id || (result as any).receiptId;
-      } catch (rtkError) {
-        // Only attempt manual fetch if we didn't already get a result
-        if (!newReceiptId) {
-          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-          const response = await fetch(`${apiBaseUrl}receive/submit-receipt/`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              ...(token && { 'Authorization': `Bearer ${token}` })
-            },
-            body: JSON.stringify(submitPayload)
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-          }
-
-          result = await response.json();
-          newReceiptId = result.receipt_id || result.receiptId;
-        }
-      }
+      // Never re-submit on error (a timeout-after-commit was duplicating stock);
+      // the outer catch surfaces the error to the user via setSaveError.
+      const result = await submitReceipt({
+        ...submitPayload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+      }).unwrap();
+      resetIdempotencyKey();
+      const newReceiptId: number | null = result.receipt_id || (result as any).receiptId;
 
       if (newReceiptId) {
         if (invoiceFile) {
@@ -518,7 +503,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
             pharmaTableData,
             isEditMode: false,
             receiptId: newReceiptId,
-            receiptNumber: `RA${newReceiptId}`,
+            receiptNumber: result.receipt_number ?? `RA${newReceiptId}`,
             creditAvailable: totalCreditAvailable,
             totalAmount: pharmaTableData.reduce((sum, item) => {
               const unitPrice = Number(item.pp) || 0;
@@ -538,14 +523,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         });
       }
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      setSaveError(resolveReceiptSaveError(error));
       setIsSaving(false);
     } finally {
       setIsSaving(false);
@@ -574,34 +552,16 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         return;
       }
 
-      let result;
-      let newReceiptId: number | null = null;
-      try {
-        // Optimistically use RTK Query
-        result = await submitReceipt(submitPayload).unwrap();
-        newReceiptId = result.receipt_id || (result as any).receiptId;
-      } catch (rtkError) {
-        // Fallback to manual fetch
-        if (!newReceiptId) {
-          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
-          const response = await fetch(`${apiBaseUrl}receive/submit-receipt/`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              ...(token && { 'Authorization': `Bearer ${token}` })
-            },
-            body: JSON.stringify(submitPayload)
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-          }
-
-          result = await response.json();
-          newReceiptId = result.receipt_id || result.receiptId;
-        }
-      }
+      // Never re-submit on error (a timeout-after-commit was duplicating stock);
+      // the outer catch surfaces the error to the user via setSaveError.
+      const result = await submitReceipt({
+        ...submitPayload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+      }).unwrap();
+      resetIdempotencyKey();
+      const newReceiptId: number | null = result.receipt_id || (result as any).receiptId;
+      // The server-issued GRN number, shown in the success snackbar.
+      setSavedReceiptNumber(result.receipt_number ?? null);
 
       if (newReceiptId) {
         if (invoiceFile) {
@@ -625,14 +585,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         }, 1500);
       }
     } catch (error: any) {
-      let errorMessage = 'Failed to submit receipt';
-      if (error?.data) {
-        if (typeof error.data === 'string') errorMessage = error.data;
-        else if (error.data.message) errorMessage = error.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      setSaveError(errorMessage);
+      setSaveError(resolveReceiptSaveError(error));
     } finally {
       setIsSaving(false);
     }

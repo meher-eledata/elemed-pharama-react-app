@@ -34,7 +34,8 @@ export interface OrderReceiveRow {
   amountPaid?: number; // Amount paid to supplier
   pendingAmount?: number; // Pending amount
   creditAvailable?: number; // Credit available for supplier
-  invoice_number?: string;
+  invoice_number?: string; // The SUPPLIER's invoice number
+  receipt_number?: string | null; // OUR goods-receipt (GRN) number; reNo stays the internal key
 }
 
 export interface PurchaseOrderRow {

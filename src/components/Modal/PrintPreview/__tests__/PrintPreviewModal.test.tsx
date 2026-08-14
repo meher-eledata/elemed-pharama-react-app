@@ -36,8 +36,18 @@ describe('PrintPreviewModal', () => {
     },
   ];
 
+  const mockOrgHeader = {
+    name: 'Test Pharmacy',
+    legal_name: 'Testco Pvt Ltd',
+    address: '1 Test Street, Testville',
+    dl_numbers: 'DL-1, DL-2',
+    gstin: 'GSTIN123',
+    phone: '000-111',
+  };
+
   const mockProps = {
     salesItems: mockSalesItems,
+    orgHeader: mockOrgHeader,
     customerName: 'John Doe',
     customerMobile: '1234567890',
     customerCity: 'Mumbai',
@@ -61,7 +71,10 @@ describe('PrintPreviewModal', () => {
   it('renders print preview with branded header, receipt title and customer details', () => {
     render(<PrintPreviewModal {...mockProps} />);
 
-    expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    // The letterhead comes from the orgHeader prop, not a hardcoded brand.
+    expect(screen.getByText('Test Pharmacy')).toBeInTheDocument();
+    expect(screen.getByText('(Testco Pvt Ltd)')).toBeInTheDocument();
+    expect(screen.getByText(/GSTIN No: GSTIN123/)).toBeInTheDocument();
     // Centered in-document receipt title (matches the printed output).
     expect(screen.getByText(/customer receipt/i)).toBeInTheDocument();
     expect(screen.getByText(/john doe/i)).toBeInTheDocument();
@@ -177,7 +190,7 @@ describe('PrintPreviewModal', () => {
     render(<PrintPreviewModal {...mockProps} salesItems={[]} />);
 
     expect(screen.getByText(/no items added/i)).toBeInTheDocument();
-    expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    expect(screen.getByText('Test Pharmacy')).toBeInTheDocument();
   });
 
   it('handles missing optional fields', () => {
@@ -190,7 +203,38 @@ describe('PrintPreviewModal', () => {
       />
     );
 
-    expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+    expect(screen.getByText('Test Pharmacy')).toBeInTheDocument();
+  });
+
+  it('omits null org header fields instead of rendering empty lines', () => {
+    render(
+      <PrintPreviewModal
+        {...mockProps}
+        orgHeader={{
+          name: 'Test Pharmacy',
+          legal_name: null,
+          address: null,
+          dl_numbers: null,
+          gstin: 'GSTIN123',
+          phone: null,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Test Pharmacy')).toBeInTheDocument();
+    expect(screen.getByText(/GSTIN No: GSTIN123/)).toBeInTheDocument();
+    expect(screen.queryByText(/Testco Pvt Ltd/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/DL No:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\(M\):/)).not.toBeInTheDocument();
+  });
+
+  it('renders no letterhead lines when orgHeader is absent', () => {
+    render(<PrintPreviewModal {...mockProps} orgHeader={undefined} />);
+
+    expect(screen.queryByText('Test Pharmacy')).not.toBeInTheDocument();
+    expect(screen.queryByText(/GSTIN No:/)).not.toBeInTheDocument();
+    // The rest of the receipt still renders.
+    expect(screen.getByText(/customer receipt/i)).toBeInTheDocument();
   });
 
   it('displays the table column headers for items', () => {

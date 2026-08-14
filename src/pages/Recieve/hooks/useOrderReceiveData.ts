@@ -126,9 +126,12 @@ export const useOrderReceiveData = (activeTab: number) => {
 
         return {
           receiptId: receiptId,
+          // reNo stays the internal RA-key the row actions/lookups depend on; the GRN
+          // number is carried separately for display.
           reNo: `RA${receiptId}`,
+          receipt_number: receipt.receipt_number ?? null,
           poNo: receipt.po_number || String(receipt.po_id),
-          invoice_number: receipt.invoice_number, // Map invoice number from API
+          invoice_number: receipt.invoice_number, // The SUPPLIER's invoice number
           po_id: receipt.po_id,
           supplier: supplierName,
           supplierId: receipt.supplier_id || 0,

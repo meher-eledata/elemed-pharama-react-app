@@ -28,12 +28,6 @@ const makeMutation = (resolved: any = {}) =>
     { isLoading: false },
   ]);
 
-const makeLazyQuery = (resolved: any = []) =>
-  jest.fn(() => [
-    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
-    { data: undefined, isLoading: false },
-  ]);
-
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
@@ -42,12 +36,16 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../redux/slices/salesApi');
 jest.mock('../../../redux/slices/receiveApi');
+// SalesReceipt peeks the next invoice number through orgApi, which these stores don't register.
+jest.mock('../../../redux/slices/orgApi', () => ({
+  orgApi: { util: { invalidateTags: jest.fn(() => ({ type: 'orgApi/invalidateTags' })) } },
+  useGetNextDocumentNumberQuery: jest.fn(() => ({ data: undefined, isFetching: false })),
+}));
 jest.mock('../../../utils/cartStorage', () => ({
   clearCartFromStorage: jest.fn(),
   clearFormDataFromStorage: jest.fn(),
   getCartFromStorage: jest.fn(() => ({ items: [], total: 0 })),
   getFormDataFromStorage: jest.fn(() => null),
-  generateNextInvoiceNumber: jest.fn(() => 'INV001'),
   setEditInvoiceId: jest.fn(),
 }));
 
@@ -55,6 +53,7 @@ const createStore = () =>
   configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
       cart: cartReducer, // REAL reducer — the crash loop runs through formData
     },
   });
@@ -91,7 +90,6 @@ describe('SalesReceipt crash regression (form-persistence feedback loop)', () =>
     (salesApi.useUpsertInvoicePaymentsMutation as jest.Mock) = makeMutation();
     (salesApi.useDeleteInvoiceMutation as jest.Mock) = makeMutation();
     (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation();
-    (salesApi.useLazyGetInvoicesQuery as jest.Mock) = makeLazyQuery();
     (receiveApi.useGetProductsQuery as jest.Mock) = jest.fn(() => ({
       data: [],
       isLoading: false,

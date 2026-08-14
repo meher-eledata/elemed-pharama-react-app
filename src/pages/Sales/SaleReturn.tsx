@@ -19,8 +19,12 @@ import {
 } from '@mui/material';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { useSubmitSalesReturnMutation, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
+import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
+import { selectOrganization } from '../../redux/slices/orgSlice';
+import { invoiceLookupKey } from '../../utils/invoiceNumberPreview';
+import { duplicateDocumentNumberMessage } from '../../utils/errorUtils';
 
 interface ReturnItem extends SalesReceiptItem {
   returnQuantity: string;
@@ -56,7 +60,14 @@ export default function SaleReturn() {
   } | null;
 
   const user = useSelector((state: RootState) => state.auth.user);
+  // With the custom scheme on, a sale invoice_number is stored/looked-up in full (any
+  // prefix included) — so we must NOT strip an "INV" prefix off it. RB (return-bill)
+  // handling is out of scope and stays intact either way.
+  const schemeEnabled = !!useSelector(selectOrganization)?.invoice_number_enabled;
   const [submitSalesReturn, { isLoading: isSubmittingReturn }] = useSubmitSalesReturnMutation();
+  // One idempotency key per pending return submission: reused on retry of the
+  // same failed payload, cleared after success.
+  const { getKey: getIdempotencyKey, reset: resetIdempotencyKey } = useIdempotencyKey();
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
 
   const [returnDate, setReturnDate] = useState<Dayjs | null>(dayjs());
@@ -167,13 +178,13 @@ export default function SaleReturn() {
             lastError = err;
             console.log('❌ Invoice not found by invoice_id, trying with invoice_number...');
             if (invoiceNumber && err?.status === 404) {
-              // Backend expects numeric part only (e.g., "26" instead of "INV26")
-              // Strip the "INV" prefix before sending to backend
-              let numericInvoiceNumber = invoiceNumber;
-              if (typeof invoiceNumber === 'string') {
-                const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-                numericInvoiceNumber = cleaned || invoiceNumber;
-              }
+              // Legacy: strip the "INV"/"RB" cosmetic so the backend gets the numeric part.
+              // With the custom scheme on, look the invoice_number up verbatim (a schemed
+              // number is the real invoice_number, even if it starts with "INV"/"RB").
+              const numericInvoiceNumber =
+                typeof invoiceNumber === 'string'
+                  ? invoiceLookupKey(invoiceNumber, schemeEnabled)
+                  : invoiceNumber;
 
               console.log('🔍 Trying with numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
               try {
@@ -188,13 +199,13 @@ export default function SaleReturn() {
             }
           }
         } else if (invoiceNumber) {
-          // Backend expects numeric part only (e.g., "26" instead of "INV26")
-          // Strip the "INV" prefix before sending to backend
-          let numericInvoiceNumber = invoiceNumber;
-          if (typeof invoiceNumber === 'string') {
-            const cleaned = invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
-            numericInvoiceNumber = cleaned || invoiceNumber;
-          }
+          // Legacy: strip the "INV"/"RB" cosmetic so the backend gets the numeric part.
+          // With the custom scheme on, look the invoice_number up verbatim (a schemed
+          // number is the real invoice_number, even if it starts with "INV"/"RB").
+          const numericInvoiceNumber =
+            typeof invoiceNumber === 'string'
+              ? invoiceLookupKey(invoiceNumber, schemeEnabled)
+              : invoiceNumber;
 
           console.log('🔍 Fetching invoice details using numeric invoice_number:', numericInvoiceNumber, '(original:', invoiceNumber, ')');
           try {
@@ -771,7 +782,11 @@ export default function SaleReturn() {
       console.log('Prepared payload for submission:', payload);
       console.log('🌐 Endpoint: POST /sales/submit-sales-return/');
 
-      const result = await submitSalesReturn(payload).unwrap();
+      const result = await submitSalesReturn({
+        ...payload,
+        idempotency_key: getIdempotencyKey(JSON.stringify(payload)),
+      }).unwrap();
+      resetIdempotencyKey();
 
       console.log('✅ Return submitted successfully:', result);
       setIsConfirmDialogOpen(false);
@@ -786,7 +801,13 @@ export default function SaleReturn() {
         message: error?.message,
         error: error?.error,
       });
-      const errorMessage = error?.data?.error || error?.message || 'Failed to submit return. Please try again.';
+      // 409 DUPLICATE_RETURN_NUMBER: retryable counter anomaly, not bad input — say so
+      // instead of showing the raw error code.
+      const errorMessage =
+        duplicateDocumentNumberMessage(error)
+        || error?.data?.error
+        || error?.message
+        || 'Failed to submit return. Please try again.';
       alert(errorMessage);
     }
   };

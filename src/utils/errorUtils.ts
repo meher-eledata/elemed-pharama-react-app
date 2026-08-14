@@ -91,3 +91,26 @@ export const extractErrorMessage = (
 export const logError = (error: unknown, context?: string): void => {
 };
 
+// The 409 duplicate-document-number backstops raised by the org-scoped unique indexes on
+// invoice_number / return_number / receipt_number. All four share one shape —
+// { error: '<CODE>', message } — and one remedy: submit again, because the number is
+// server-assigned and a retry allocates a fresh one. Discriminated on the CODE, never the
+// message (the supplier-return wording differs from the other three).
+const DUPLICATE_DOCUMENT_NUMBER_CODES = [
+  'DUPLICATE_INVOICE_NUMBER',
+  'DUPLICATE_RETURN_NUMBER',
+  'DUPLICATE_RECEIPT_NUMBER',
+];
+
+// Returns the message to show for a duplicate-document-number 409, or null when the error
+// is something else (so the caller falls through to its normal handling).
+export const duplicateDocumentNumberMessage = (
+  error: unknown,
+  fallback: string = 'That document number is already used in this pharmacy. Please submit again — a new number will be issued.',
+): string | null => {
+  const data = (error as ApiError | undefined)?.data;
+  if (!data || typeof data === 'string' || !data.error) return null;
+  if (!DUPLICATE_DOCUMENT_NUMBER_CODES.includes(data.error)) return null;
+  return data.message || fallback;
+};
+

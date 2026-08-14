@@ -15,13 +15,16 @@ const createMockStore = () => {
 
 describe('PaymentDetailsSection', () => {
   const mockProps = {
-    paymentMode: '',
+    // The app always seeds paymentMode to a paymentMethods member
+    // (DEFAULT_PAYMENT_MODE = paymentMethods[0] in SalesReceipt.tsx); '' is never
+    // passed and made MUI's Autocomplete warn "None of the options match" on
+    // every default render. Keep the fixture aligned with the options list.
+    paymentMode: 'Cash',
     insuranceCompany: '',
     invoiceNumber: 'INV001',
     invoiceDate: '01/01/2024',
     onPaymentModeChange: jest.fn(),
     onInsuranceCompanyChange: jest.fn(),
-    onInvoiceNumberChange: jest.fn(),
     onInvoiceDateChange: jest.fn(),
   };
 
@@ -71,6 +74,70 @@ describe('PaymentDetailsSection', () => {
 
     // Invoice number is rendered as a TextField value, not free text.
     expect(screen.getByDisplayValue('INV123')).toBeInTheDocument();
+  });
+
+  it('renders the invoice number field read-only (backend assigns the number)', () => {
+    renderComponent({ invoiceNumber: 'INV123' });
+
+    expect(screen.getByLabelText(/invoice number/i)).toBeDisabled();
+  });
+
+  const invoiceInput = () => screen.getByLabelText(/invoice number/i);
+
+  // A new sale (edit/return mode omits `provisionalInvoiceNumber` entirely).
+  const newSale = (over: Partial<{ number: string; loading: boolean }> = {}) => ({
+    invoiceNumber: '',
+    provisionalInvoiceNumber: { number: 'SI-EL-26-000001', loading: false, ...over },
+  });
+
+  it('shows the peeked number for a new sale, marked provisional', () => {
+    renderComponent(newSale());
+
+    // Rendered TEXT, not a placeholder attribute: MUI force-hides placeholders while the
+    // floating label is un-shrunk, so a placeholder here was never visible to anyone.
+    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('SI-EL-26-000001');
+    expect(screen.getByText('Provisional until saved')).toBeInTheDocument();
+  });
+
+  it('styles the provisional number so it cannot be read as a saved one', () => {
+    renderComponent(newSale());
+
+    const style = getComputedStyle(invoiceInput());
+    expect(style.fontStyle).toBe('italic');
+    // The field is disabled, so the VISIBLE colour is -webkit-text-fill-color (MUI's own
+    // .Mui-disabled rule owns `color`) — the same lever the saved value already used.
+    expect(style.getPropertyValue('-webkit-text-fill-color')).toBe('rgb(114, 129, 151)'); // #728197
+  });
+
+  it('shows a non-numeric pending value while the peek is in flight', () => {
+    renderComponent(newSale({ number: '', loading: true }));
+
+    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('Generating…');
+    expect(screen.getByText('Provisional until saved')).toBeInTheDocument();
+  });
+
+  it('falls back to visible "Auto-generated" text when the peek fails', () => {
+    renderComponent(newSale({ number: '', loading: false }));
+
+    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('Auto-generated');
+    expect(screen.getByText('Provisional until saved')).toBeInTheDocument();
+  });
+
+  it('drops the provisional caption once the sale is saved and a real number arrives', () => {
+    renderComponent({ ...newSale(), invoiceNumber: 'INV401' });
+
+    expect(invoiceInput()).toHaveValue('INV401');
+    expect(screen.queryByText('Provisional until saved')).not.toBeInTheDocument();
+    // …and the provisional styling goes with it.
+    expect(getComputedStyle(invoiceInput()).fontStyle).toBe('normal');
+  });
+
+  it('shows the persisted number with no provisional treatment in edit mode', () => {
+    // Edit mode passes no provisionalInvoiceNumber at all.
+    renderComponent({ invoiceNumber: 'SI-EL-26-000042' });
+
+    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('SI-EL-26-000042');
+    expect(screen.queryByText('Provisional until saved')).not.toBeInTheDocument();
   });
 
   it('displays invoice date field when provided', () => {

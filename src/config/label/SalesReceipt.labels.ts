@@ -32,6 +32,15 @@ export const SALES_RECEIPT_LABELS = {
   DETAILS_LABEL: "Details",
   DETAILS_PLACEHOLDER: "Enter comments (optional)",
   INVOICE_NUMBER_LABEL: "Invoice number",
+  // Shown as the field's VALUE (not a placeholder — MUI hides placeholders while the label
+  // is un-shrunk) when the next-number peek is unavailable.
+  INVOICE_NUMBER_AUTO_FALLBACK: "Auto-generated",
+  // While the peek is in flight — never a number, so it cannot be mistaken for one.
+  INVOICE_NUMBER_PENDING: "Generating…",
+  // The number shown before saving is a peek, not a reservation: a concurrent sale can take
+  // it. Say so on the field.
+  // Must fit the 200px invoice-number field (the caption is width-capped to it).
+  INVOICE_NUMBER_PROVISIONAL_HELPER: "Provisional until saved",
   INVOICE_DATE_LABEL: "Invoice date",
 
   // Table Headers
@@ -71,6 +80,11 @@ export const SALES_RECEIPT_LABELS = {
   PRINT_ONLY_BUTTON: "Print",
 
   // Print Options
+  // Printed org header line prefixes
+  ORG_DL_PREFIX: "DL No: ",
+  ORG_GSTIN_PREFIX: "GSTIN No: ",
+  ORG_PHONE_PREFIX: "(M): ",
+
   ORIENTATION_LABEL: "Orientation:",
   ORIENTATION_LANDSCAPE: "Landscape",
   ORIENTATION_PORTRAIT: "Portrait",
@@ -108,5 +122,10 @@ export const SALES_RECEIPT_LABELS = {
   // Delete Confirmation
   DELETE_ITEMS_TITLE: "Delete Items",
   DELETE_ITEMS_MESSAGE: "Are you sure you want to delete {count} item(s)?",
+
+  // Submit-sale 409 (duplicate invoice number) — fallback when the backend omits `message`
+  // Fallback for the DUPLICATE_INVOICE_NUMBER 409 backstop (numbers are server-assigned,
+  // so the user cannot pick a different one — retrying gets a fresh number).
+  DUPLICATE_INVOICE_NUMBER_ERROR: "A duplicate invoice number was detected. Please try saving the sale again.",
 };
 

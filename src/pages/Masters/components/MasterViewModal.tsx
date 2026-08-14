@@ -19,8 +19,10 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
+import Tooltip from '@mui/material/Tooltip';
 import * as XLSX from 'xlsx';
 import { StandardButton } from '../../../components/Common';
 import {
@@ -35,6 +37,8 @@ import { formatSchedule } from '../../../config/constants/product.constants';
 import { extractErrorMessage } from '../../../utils/errorUtils';
 import { useLogDownloadMutation } from '../../../redux/slices/activityApi';
 import MasterEditModal from './MasterEditModal';
+import CustomerHistoryModal from '../../Sales/components/CustomerHistoryModal';
+import { CUSTOMER_HISTORY_LABELS } from '../../../config/label/CustomerHistory.labels';
 
 type Row = Record<string, unknown>;
 
@@ -107,6 +111,8 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
 
   const [editRow, setEditRow] = useState<Row | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  // Customer-only: the row whose purchase history is being viewed (null = closed).
+  const [historyRow, setHistoryRow] = useState<Row | null>(null);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string>('');
 
@@ -281,7 +287,7 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
                               : rendered;
                           return <TableCell key={col.key}>{display}</TableCell>;
                         })}
-                        <TableCell sx={{ textAlign: 'center' }}>
+                        <TableCell sx={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                           <IconButton
                             size="small"
                             aria-label={MASTER_VIEW_LABELS.EDIT_BUTTON}
@@ -290,6 +296,18 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
+                          {category === 'customer' && (
+                            <Tooltip title={CUSTOMER_HISTORY_LABELS.HISTORY_ACTION} arrow>
+                              <IconButton
+                                size="small"
+                                aria-label={CUSTOMER_HISTORY_LABELS.HISTORY_ACTION}
+                                onClick={() => setHistoryRow(row)}
+                                sx={{ color: '#5C17E5' }}
+                              >
+                                <HistoryIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -317,6 +335,15 @@ const MasterViewModal: React.FC<MasterViewModalProps> = ({
           </Box>
         </Box>
       </Modal>
+
+      {category === 'customer' && historyRow && (
+        <CustomerHistoryModal
+          open
+          onClose={() => setHistoryRow(null)}
+          customerId={Number(historyRow[config.pkKey])}
+          customerName={String(historyRow['name'] ?? '')}
+        />
+      )}
 
       <MasterEditModal
         open={editOpen}

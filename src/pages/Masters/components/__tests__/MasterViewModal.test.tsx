@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { activityApi } from '../../../../redux/slices/activityApi';
 import MasterViewModal from '../MasterViewModal';
 import { MASTER_VIEW_LABELS } from '../../../../config/label/MasterView.labels';
+import { CUSTOMER_HISTORY_LABELS } from '../../../../config/label/CustomerHistory.labels';
 import {
   MASTER_VIEW_CONFIG,
   getMasterViewConfig,
@@ -33,6 +34,15 @@ jest.mock('../../../../redux/slices/masterApi', () => ({
   useGetProductFieldOptionsQuery: jest.fn(() => ({
     data: { types: [], units: [] },
   })),
+}));
+
+// Stub CustomerHistoryModal: the History row-action tests only care THAT it opens
+// (and with which customerId). The real modal calls salesApi RTK Query hooks that
+// this store does not wire — the stub keeps the assertion on the entry point.
+jest.mock('../../../Sales/components/CustomerHistoryModal', () => ({
+  __esModule: true,
+  default: ({ open, customerId }: { open: boolean; customerId: number | null }) =>
+    open ? <div data-testid="customer-history-modal">history:{String(customerId)}</div> : null,
 }));
 
 // Mock SheetJS. utils.* are no-ops that just need to exist; writeFile is the spy we assert.
@@ -297,6 +307,37 @@ describe('MasterViewModal — doctor view shows Name, masked Phone, Branch + Cit
 
     expect(screen.getByText('******8919')).toBeInTheDocument();
     expect(screen.queryByText('9876548919')).not.toBeInTheDocument();
+  });
+});
+
+describe('MasterViewModal — History row action (customer category only)', () => {
+  const historyButtons = () =>
+    screen.queryAllByRole('button', { name: CUSTOMER_HISTORY_LABELS.HISTORY_ACTION });
+
+  it('renders a History action on each customer row', () => {
+    renderModal(); // category="customer", CUSTOMER_ROWS has 2 rows
+    expect(historyButtons()).toHaveLength(CUSTOMER_ROWS.length);
+  });
+
+  it.each(['supplier', 'product', 'doctor'] as MasterCategory[])(
+    'does NOT render the History action for the %s category',
+    (category) => {
+      const pk = MASTER_VIEW_CONFIG[category].pkKey;
+      renderModal({ category, rows: [{ [pk]: 1, name: 'Row', supplier_name: 'Row' }] });
+      expect(historyButtons()).toHaveLength(0);
+    }
+  );
+
+  it("opens the history modal with the clicked customer row's id", () => {
+    renderModal();
+
+    expect(screen.queryByTestId('customer-history-modal')).not.toBeInTheDocument();
+    // Second row is customer id 2.
+    fireEvent.click(historyButtons()[1]);
+
+    const modal = screen.getByTestId('customer-history-modal');
+    expect(modal).toBeInTheDocument();
+    expect(modal).toHaveTextContent('history:2');
   });
 });
 

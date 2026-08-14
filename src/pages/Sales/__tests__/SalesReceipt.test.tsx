@@ -8,6 +8,7 @@ import SalesReceipt from '../SalesReceipt';
 import { executeSave } from '../SalesReceipt.saveHandler';
 import * as salesApi from '../../../redux/slices/salesApi';
 import * as receiveApi from '../../../redux/slices/receiveApi';
+import { saveSalesHistoryToStorage } from '../../../utils/cartStorage';
 
 const theme = createTheme();
 
@@ -16,12 +17,6 @@ const makeMutation = (resolved: any = { data: {} }) =>
   jest.fn(() => [
     jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
     { isLoading: false },
-  ]);
-
-const makeLazyQuery = (resolved: any = { data: [] }) =>
-  jest.fn(() => [
-    jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue(resolved) })),
-    { data: undefined, isLoading: false },
   ]);
 
 // Mock dependencies
@@ -33,21 +28,25 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../redux/slices/salesApi');
 jest.mock('../../../redux/slices/receiveApi');
+// SalesReceipt peeks the next invoice number through orgApi, which these stores don't register.
+jest.mock('../../../redux/slices/orgApi', () => ({
+  orgApi: { util: { invalidateTags: jest.fn(() => ({ type: 'orgApi/invalidateTags' })) } },
+  useGetNextDocumentNumberQuery: jest.fn(() => ({ data: undefined, isFetching: false })),
+}));
 jest.mock('../../../utils/cartStorage', () => ({
   clearCartFromStorage: jest.fn(),
   clearFormDataFromStorage: jest.fn(),
   getCartFromStorage: jest.fn(() => ({ items: [], total: 0 })),
   getFormDataFromStorage: jest.fn(() => null),
-  generateNextInvoiceNumber: jest.fn(() => 'INV001'),
   setEditInvoiceId: jest.fn(),
   saveSalesHistoryToStorage: jest.fn(),
-  saveInvoiceNumber: jest.fn(),
 }));
 
 const createMockStore = (initialState = {}) => {
   return configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
       cart: (state = {
         items: [],
         totalAmount: 0,
@@ -140,7 +139,6 @@ describe('SalesReceipt', () => {
     (salesApi.useUpsertInvoicePaymentsMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useDeleteInvoiceMutation as jest.Mock) = makeMutation({ data: { success: true } });
     (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation({ data: {} });
-    (salesApi.useLazyGetInvoicesQuery as jest.Mock) = makeLazyQuery({ data: [] });
   });
 
   const renderComponent = (store = createMockStore()) => {
@@ -302,9 +300,8 @@ describe('SalesReceipt', () => {
     expect(screen.getByText('Schedule')).toBeInTheDocument();
   });
 
-  describe('executeSave payloads (customer_details)', () => {
-    // Minimal, valid save inputs shared by the submit and edit payload assertions.
-    const baseSaveParams = {
+  // Minimal, valid save inputs shared by the executeSave payload assertions.
+  const baseSaveParams = {
       customerName: 'John Doe',
       customerMobile: '1234567890',
       customerCity: 'Mumbai',
@@ -335,9 +332,10 @@ describe('SalesReceipt', () => {
       skipNavigation: true,
     };
 
+  describe('executeSave payloads (customer_details)', () => {
     it('includes trimmed customer_details in the submit-sale payload', async () => {
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '1' }),
       }));
 
       await executeSave({
@@ -371,7 +369,7 @@ describe('SalesReceipt', () => {
 
     it('sends an empty customer_details when the Details field is blank', async () => {
       const submitTrigger = jest.fn(() => ({
-        unwrap: jest.fn().mockResolvedValue({ invoice: { id: 1, invoice_number: '1' } }),
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '1' }),
       }));
 
       await executeSave({
@@ -384,6 +382,138 @@ describe('SalesReceipt', () => {
       // Backend trims and stores blank as NULL — the client sends the empty string.
       expect(submitTrigger).toHaveBeenCalledWith(
         expect.objectContaining({ customer_details: '' })
+      );
+    });
+
+    describe('submit-sale 409 discrimination', () => {
+      const reject409 = (data: any) =>
+        jest.fn(() => ({ unwrap: jest.fn().mockRejectedValue({ status: 409, data }) }));
+
+      it('duplicate invoice 409 shows the backend message and does NOT open the shortfall UI', async () => {
+        const showToast = jest.fn();
+        const onStockShortage = jest.fn();
+
+        await executeSave({
+          ...baseSaveParams,
+          showToast,
+          onStockShortage,
+          submitSale: reject409({
+            error: 'DUPLICATE_INVOICE_NUMBER',
+            message: 'Invoice number 7 is already used in this pharmacy',
+          }),
+          editSale: jest.fn(),
+        });
+
+        expect(showToast).toHaveBeenCalledWith(
+          'Invoice number 7 is already used in this pharmacy',
+          'error'
+        );
+        expect(onStockShortage).not.toHaveBeenCalled();
+      });
+
+      it('stock-shortage 409 still opens the shortfall UI and does NOT toast an error', async () => {
+        const showToast = jest.fn();
+        const onStockShortage = jest.fn();
+
+        await executeSave({
+          ...baseSaveParams,
+          showToast,
+          onStockShortage,
+          submitSale: reject409({
+            message: 'Not enough stock for one or more items',
+            insufficient_stock: [
+              { product_id: 1, product_name: 'Product A', batch_number: 'B001', requested: 10, available: 2 },
+            ],
+          }),
+          editSale: jest.fn(),
+        });
+
+        expect(onStockShortage).toHaveBeenCalledWith([
+          '• Product A (batch B001): need 10, have 2',
+        ]);
+        expect(showToast).not.toHaveBeenCalledWith(expect.anything(), 'error');
+      });
+    });
+  });
+
+  describe('executeSave server-assigned invoice number', () => {
+    it('does not send invoice_number in the submit-sale payload (even when stale state exists)', async () => {
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 1, invoice_number: '947' }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        invoiceNumber: 'INV999', // e.g. a stale value carried by a resumed draft
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+      });
+
+      expect(submitTrigger).toHaveBeenCalledTimes(1);
+      expect((submitTrigger.mock.calls[0] as any[])[0]).not.toHaveProperty('invoice_number');
+    });
+
+    it('uses the response-assigned number for the history entry and notifies the UI', async () => {
+      const onInvoiceNumberAssigned = jest.fn();
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'Sale submitted', invoice_id: 12, invoice_number: '947' }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+        onInvoiceNumberAssigned,
+      });
+
+      // "INV" prefix is added on the display layer.
+      expect(onInvoiceNumberAssigned).toHaveBeenCalledWith('INV947');
+      expect(saveSalesHistoryToStorage).toHaveBeenCalledWith(
+        expect.objectContaining({ invoiceNumber: 'INV947' }),
+        12
+      );
+    });
+
+    it('with the org scheme enabled uses the rendered invoice_number VERBATIM (no INV prefix)', async () => {
+      const onInvoiceNumberAssigned = jest.fn();
+      const submitTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({
+          message: 'Sale submitted',
+          invoice_id: 12,
+          invoice_number: 'SI-EL-26-002296',
+        }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        schemeEnabled: true,
+        submitSale: submitTrigger,
+        editSale: jest.fn(),
+        onInvoiceNumberAssigned,
+      });
+
+      expect(onInvoiceNumberAssigned).toHaveBeenCalledWith('SI-EL-26-002296');
+      expect(saveSalesHistoryToStorage).toHaveBeenCalledWith(
+        expect.objectContaining({ invoiceNumber: 'SI-EL-26-002296' }),
+        12
+      );
+    });
+
+    it('edit mode still sends invoice_number as the read-only lookup key', async () => {
+      const editTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({ message: 'ok', invoice_id: 5 }),
+      }));
+
+      await executeSave({
+        ...baseSaveParams,
+        submitSale: jest.fn(),
+        editSale: editTrigger,
+        isEditMode: true,
+        invoiceId: 5,
+      });
+
+      expect(editTrigger).toHaveBeenCalledWith(
+        expect.objectContaining({ invoice_number: 'INV1' })
       );
     });
   });

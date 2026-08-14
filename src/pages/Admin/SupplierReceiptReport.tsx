@@ -127,7 +127,7 @@ const SupplierReceiptReport: React.FC = () => {
     }));
 
   const columns: TableColumn<ReceiptRow>[] = [
-    { key: 'receipt_id', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_id}</CellText> },
+    { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
     { key: 'receipt_date', header: L.TABLE.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
     { key: 'invoice_number', header: L.TABLE.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
     { key: 'po_number', header: L.TABLE.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
@@ -169,7 +169,7 @@ const SupplierReceiptReport: React.FC = () => {
   const csvData = useMemo(
     () =>
       sortedRows.map((r) => ({
-        [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_id),
+        [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
         [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
         [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
         [L.TABLE.PO_NUMBER]: csvString(r.po_number),

@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Product } from '../../pages/Sales/SalesPage.types';
+import { logout } from './authSlice';
 
 export interface CartItem {
   id: string;
@@ -205,6 +206,11 @@ const cartSlice = createSlice({
 
     // Reset cart state
     resetCart: () => initialState,
+  },
+  // The in-memory working cart is org-scoped data: clear it on logout regardless
+  // of where logout is dispatched (TopBar menu, baseQuery 401 handler, etc.).
+  extraReducers: (builder) => {
+    builder.addCase(logout, () => initialState);
   },
 });
 

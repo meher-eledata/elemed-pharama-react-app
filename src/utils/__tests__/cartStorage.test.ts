@@ -13,18 +13,14 @@ import {
   saveSalesHistoryToStorage,
   getSalesHistoryFromStorage,
   clearSalesHistoryFromStorage,
-  getCurrentInvoiceNumber,
-  generateNextInvoiceNumber,
-  saveInvoiceNumber,
   type SalesFormData,
 } from '../cartStorage';
 
 // Cart + form data + edit-invoice-id live in sessionStorage.
-// Sales history + invoice counter live in localStorage.
+// Sales history lives in localStorage.
 const CART_STORAGE_KEY = 'pharma_sales_cart';
 const FORM_DATA_STORAGE_KEY = 'pharma_sales_form_data';
 const SALES_HISTORY_STORAGE_KEY = 'pharma_sales_history';
-const INVOICE_NUMBER_COUNTER_KEY = 'pharma_invoice_number_counter';
 const EDIT_INVOICE_ID_KEY = 'pharma_edit_invoice_id';
 
 const FORM_DATA_BASE: Omit<SalesFormData, 'timestamp'> = {
@@ -235,48 +231,6 @@ describe('cartStorage', () => {
       saveSalesHistoryToStorage({ invoiceNumber: 'INV11' });
       clearSalesHistoryFromStorage();
       expect(localStorage.getItem(SALES_HISTORY_STORAGE_KEY)).toBeNull();
-    });
-  });
-
-  describe('invoice number counter', () => {
-    it('defaults to 11 when no counter is stored', () => {
-      expect(getCurrentInvoiceNumber()).toBe(11);
-    });
-
-    it('reads the stored counter value', () => {
-      localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, '20');
-      expect(getCurrentInvoiceNumber()).toBe(20);
-    });
-
-    it('floors the counter to 11 when stored value is below 11', () => {
-      localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, '3');
-      expect(getCurrentInvoiceNumber()).toBe(11);
-    });
-
-    it('self-heals ahead of the highest invoice number found in history', () => {
-      localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, '11');
-      saveSalesHistoryToStorage({ invoiceNumber: 'INV50' });
-
-      expect(getCurrentInvoiceNumber()).toBe(51);
-      expect(localStorage.getItem(INVOICE_NUMBER_COUNTER_KEY)).toBe('51');
-    });
-
-    it('generateNextInvoiceNumber returns INV-prefixed number and increments the counter', () => {
-      localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, '11');
-      expect(generateNextInvoiceNumber()).toBe('INV11');
-      expect(localStorage.getItem(INVOICE_NUMBER_COUNTER_KEY)).toBe('12');
-    });
-
-    it('saveInvoiceNumber bumps the counter to one past the given number', () => {
-      localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, '11');
-      saveInvoiceNumber('INV30');
-      expect(localStorage.getItem(INVOICE_NUMBER_COUNTER_KEY)).toBe('31');
-    });
-
-    it('saveInvoiceNumber does not lower the counter for a smaller number', () => {
-      localStorage.setItem(INVOICE_NUMBER_COUNTER_KEY, '40');
-      saveInvoiceNumber('INV5');
-      expect(localStorage.getItem(INVOICE_NUMBER_COUNTER_KEY)).toBe('40');
     });
   });
 });

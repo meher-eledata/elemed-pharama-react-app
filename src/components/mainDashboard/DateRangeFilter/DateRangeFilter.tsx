@@ -35,10 +35,14 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       } else {
         onDateRangeChange([newDate, end]);
       }
+      // Auto-advance: the next click picks the END date. Without this, two clicks in a
+      // row silently overwrote the start date.
+      setEditing("end");
     } else {
       if (!start || newDate.isBefore(start, "day")) {
+        // An end before the start becomes the new start — so the next click is the end.
         onDateRangeChange([newDate, null]);
-        setEditing("start");
+        setEditing("end");
       } else {
         onDateRangeChange([start, newDate]);
         setOpen(false);
@@ -152,7 +156,11 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               width: "242px",
               maxWidth: "242px",
               minWidth: "272px",
-              height: "312px",
+              // Sized by its content (height: auto). The day grid below reserves six rows, so a
+              // month spanning SIX calendar weeks (e.g. August 2026) keeps its last row inside
+              // the card and the height stays constant across months — only the day / month /
+              // year views differ.
+              height: "auto",
               position: "relative",
               zIndex: 9999,
               "&::-webkit-scrollbar": {
@@ -187,15 +195,11 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                     width: "242px",
                     maxWidth: "242px",
                     minWidth: "242px",
-                    height: "300px !important",
-                    minHeight: "300px !important",
                   },
                   "& .MuiDayCalendar-root": {
                     width: "242px",
                     maxWidth: "242px",
                     marginTop:"-6px",
-                    height: "300px !important",
-                    minHeight: "300px !important",
                   },
                   "& .MuiYearCalendar-root": {
                     marginLeft: "-20px",
@@ -259,8 +263,9 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                     display: "block",
                     position: "relative",
                     overflowX: "hidden",
-                    minHeight: "242px",
-                    height: "300px !important",
+                    // MUI's DayCalendar already reserves six week-rows (6 * (DAY_SIZE 36 +
+                    // 2 * DAY_MARGIN 2) = 240px) by default, so the 6th week stays inside the
+                    // card without an explicit floor here.
                     width: "242px",
                     maxWidth: "242px",
                   },

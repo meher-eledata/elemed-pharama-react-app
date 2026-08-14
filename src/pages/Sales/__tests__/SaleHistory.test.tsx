@@ -53,10 +53,28 @@ jest.mock('../../../utils/cartStorage', () => ({
   clearEditInvoiceId: jest.fn(),
 }));
 
+// Org context drives the printed receipt letterhead (name/legal/GSTIN lines).
+const TEST_ORG = {
+  id: 1,
+  name: 'Test Pharmacy',
+  slug: 'test-pharmacy',
+  logo_url: null,
+  legal_name: 'Testco Pvt Ltd',
+  address: '1 Test Street',
+  dl_numbers: 'DL-1, DL-2',
+  gstin: 'GSTIN123',
+  phone: '000-111',
+  invoice_number_enabled: false,
+  invoice_number_template: null,
+  invoice_number_reset: 'none',
+  invoice_seq_start: null,
+};
+
 const createMockStore = (initialState = {}) => {
   return configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      org: (state = { organization: TEST_ORG, activeModules: ['pharmacy'], loaded: true }) => state,
       cart: (state = {
         items: [],
         totalAmount: 0,
@@ -105,6 +123,21 @@ describe('SaleHistory', () => {
       stableTrigger,
       stableOptions,
     ]);
+
+    // Sales Returns log (the "Returns" tab, 2026-08-13). Only mounted on tab 1,
+    // but the automocked hooks must still return a destructurable result.
+    (salesApi.useListSalesReturnsQuery as jest.Mock) = jest.fn(() => ({
+      data: { rows: [], total: 0 },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+      refetch: jest.fn(),
+    }));
+    (salesApi.useGetSalesReturnDetailsQuery as jest.Mock) = jest.fn(() => ({
+      data: undefined,
+      isFetching: false,
+      error: null,
+    }));
   });
 
   const renderComponent = (store = createMockStore()) => {
@@ -211,9 +244,37 @@ describe('SaleHistory', () => {
     expect(screen.getByText(/customer name/i)).toBeInTheDocument();
   });
 
+  it('shows a schemed invoice_number VERBATIM (no INV prefix) when the org scheme is enabled', async () => {
+    // Stable reference so effects keyed on invoicesData do not loop (mirrors beforeEach).
+    const schemedInvoices = [{ ...mockInvoices[0], invoice_number: 'SI-EL-26-002296' }];
+    const stableRefetch = jest.fn();
+    (salesApi.useGetInvoicesQuery as jest.Mock) = jest.fn(() => ({
+      data: schemedInvoices,
+      isLoading: false,
+      error: null,
+      refetch: stableRefetch,
+    }));
+    const schemedStore = createMockStore({
+      org: {
+        organization: {
+          ...TEST_ORG,
+          invoice_number_enabled: true,
+          invoice_number_template: 'SI-EL-{YY}-{SEQ:6}',
+        },
+        activeModules: ['pharmacy'],
+        loaded: true,
+      },
+    });
+    renderComponent(schemedStore);
+
+    expect(await screen.findByText('SI-EL-26-002296')).toBeInTheDocument();
+    // Never the legacy "INV<custom>" mangling.
+    expect(screen.queryByText(/INVSI-EL/i)).not.toBeInTheDocument();
+  });
+
   it('opens invoice modal when eye icon is clicked', async () => {
     renderComponent();
-    
+
     // Wait for table to render with mock data (invoice numbers should appear)
     await waitFor(() => {
       expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
@@ -271,10 +332,11 @@ describe('SaleHistory', () => {
 
     // Wait for modal and PrintPreviewModal content.
     // The "Customer receipt" title was removed from PrintPreviewModal; the
-    // pharmacy header ("ELITE PHARMACY") is now the stable receipt content.
+    // org-driven letterhead (from the store's org context) is now the stable
+    // receipt content.
     await waitFor(() => {
       expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
-      expect(screen.getByText(/elite pharmacy/i)).toBeInTheDocument();
+      expect(screen.getByText('Test Pharmacy')).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 
@@ -544,6 +606,89 @@ describe('SaleHistory', () => {
         expect(screen.getByText(/inv1001/i)).toBeInTheDocument();
         expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
         expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  // =========================================================================
+  // Invoices / Returns tabs (Sales Returns log feature, 2026-08-13). The open
+  // tab lives in the URL (`/sales?tab=returns`) so it is shareable and survives
+  // the round trip to a return's original invoice; no param = Invoices.
+  // useSearchParams resolves against the real jsdom history under BrowserRouter,
+  // so each case drives window.history directly.
+  // =========================================================================
+  describe('Invoices / Returns tabs', () => {
+    const setUrl = (url: string) => window.history.pushState({}, '', url);
+    afterEach(() => setUrl('/'));
+
+    const tab = (name: 'Invoices' | 'Returns') => screen.getByRole('tab', { name });
+
+    it('renders both tabs', () => {
+      setUrl('/sales');
+      renderComponent();
+      expect(tab('Invoices')).toBeInTheDocument();
+      expect(tab('Returns')).toBeInTheDocument();
+    });
+
+    it('lands on Invoices by default (no tab param) and shows the invoices table', () => {
+      setUrl('/sales');
+      renderComponent();
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('Returns')).toHaveAttribute('aria-selected', 'false');
+      // The invoices toolbar is present, the returns log is not.
+      expect(screen.getByText(/show filters/i)).toBeInTheDocument();
+      expect(salesApi.useListSalesReturnsQuery).not.toHaveBeenCalled();
+    });
+
+    it('an unknown tab value falls back to Invoices', () => {
+      setUrl('/sales?tab=bogus');
+      renderComponent();
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(salesApi.useListSalesReturnsQuery).not.toHaveBeenCalled();
+    });
+
+    it('?tab=returns lands directly on the Returns tab and mounts the returns log', () => {
+      setUrl('/sales?tab=returns');
+      renderComponent();
+      expect(tab('Returns')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'false');
+      expect(salesApi.useListSalesReturnsQuery).toHaveBeenCalled();
+      expect(
+        screen.getByPlaceholderText('Search by return ID, invoice number or customer')
+      ).toBeInTheDocument();
+      // The invoices toolbar is unmounted while Returns is open.
+      expect(screen.queryByText(/show filters/i)).not.toBeInTheDocument();
+    });
+
+    it('switching to Returns sets ?tab=returns in the URL', async () => {
+      setUrl('/sales');
+      renderComponent();
+      fireEvent.click(tab('Returns'));
+
+      await waitFor(() => expect(window.location.search).toBe('?tab=returns'));
+      expect(tab('Returns')).toHaveAttribute('aria-selected', 'true');
+      await waitFor(() => expect(salesApi.useListSalesReturnsQuery).toHaveBeenCalled());
+    });
+
+    it('switching back to Invoices REMOVES the param rather than setting tab=invoices', async () => {
+      setUrl('/sales?tab=returns');
+      renderComponent();
+      fireEvent.click(tab('Invoices'));
+
+      await waitFor(() => expect(window.location.search).toBe(''));
+      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText(/show filters/i)).toBeInTheDocument();
+    });
+
+    it('preserves any other query params when switching tabs', async () => {
+      setUrl('/sales?ref=dashboard');
+      renderComponent();
+      fireEvent.click(tab('Returns'));
+
+      await waitFor(() => {
+        const params = new URLSearchParams(window.location.search);
+        expect(params.get('tab')).toBe('returns');
+        expect(params.get('ref')).toBe('dashboard');
       });
     });
   });

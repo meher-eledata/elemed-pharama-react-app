@@ -30,7 +30,6 @@ import {
 
   useGetCustomerPhonesMutation,
   useGetCustomerOptionsQuery,
-  useLazyGetInvoicesQuery,
   Customer,
   CustomerOption,
   DoctorPhoneEmailInfo
@@ -44,9 +43,12 @@ import {
   SalesFormData
 } from '../../redux/slices/cartSlice';
 import { RootState } from '../../redux/store';
+import { selectOrganization } from '../../redux/slices/orgSlice';
+import { orgApi, useGetNextDocumentNumberQuery } from '../../redux/slices/orgApi';
 import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
-import { clearCartFromStorage, clearFormDataFromStorage, generateNextInvoiceNumber, setEditInvoiceId } from '../../utils/cartStorage';
+import { clearCartFromStorage, clearFormDataFromStorage, setEditInvoiceId } from '../../utils/cartStorage';
+import { decorateInvoiceNumber, invoiceLookupKey } from '../../utils/invoiceNumberPreview';
 
 import CustomerDetailsSection from './components/CustomerDetailsSection';
 import DoctorDetailsSection from './components/DoctorDetailsSection';
@@ -66,6 +68,7 @@ import { useCustomerPhones } from './hooks/useCustomerPhones';
 import { useDoctorPhonesAndEmails } from './hooks/useDoctorPhonesAndEmails';
 import { handleCustomerSubmit } from './SalesReceipt.customerHandler';
 import { executeSave } from './SalesReceipt.saveHandler';
+import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { executeSaveDraft } from './SalesReceipt.draftHandler';
 import {
   useCreateDraftMutation,
@@ -83,7 +86,7 @@ import {
 
 import { getPrintStyles, fieldStyles } from './SalesReceipt.printStyles';
 import { paymentMethods } from '../../config/constants/OrderDetail.constants';
-import bgWhiteIcon from '../../assets/BG_White.svg';
+import elemedLogo from '../../assets/ElemedLogo.svg';
 
 // Explicit default payment mode (Cash) so state === displayed === saved from the start,
 // instead of relying on an empty '' that the UI cosmetically renders as the first option.
@@ -105,9 +108,28 @@ const SalesReceipt: React.FC = () => {
 
   const cartTotal = useSelector(selectCartTotal);
   const user = useSelector((state: RootState) => state.auth.user);
+  const organization = useSelector(selectOrganization);
+  // Org branding for the printed letterhead; undefined for legacy/no-org users.
+  const orgHeader = organization
+    ? {
+        name: organization.name,
+        legal_name: organization.legal_name,
+        address: organization.address,
+        dl_numbers: organization.dl_numbers,
+        gstin: organization.gstin,
+        phone: organization.phone,
+      }
+    : undefined;
+  const receiptBrandIcon = organization?.logo_url || elemedLogo;
+  // When the org's custom invoice-number scheme is on, invoice_number is stored/rendered
+  // in full (prefix included) — so we skip the legacy "INV" cosmetic prepend/strip.
+  const schemeEnabled = !!organization?.invoice_number_enabled;
 
   const [submitSale, { isLoading: isSubmittingSale }] = useSubmitSaleMutation();
   const [editSale, { isLoading: isEditingSale }] = useEditSaleMutation();
+  // One idempotency key per pending logical submission (submit-sale / edit-sale):
+  // reused on retry of the same failed payload, cleared after success.
+  const idempotency = useIdempotencyKey();
   const [deleteInvoice, { isLoading: isDeletingInvoice }] = useDeleteInvoiceMutation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [upsertInvoicePayments] = useUpsertInvoicePaymentsMutation();
@@ -122,7 +144,6 @@ const SalesReceipt: React.FC = () => {
 
   const [getInvoiceDetails, { isLoading: isLoadingInvoiceDetails }] = useGetInvoiceDetailsMutation();
 
-  const [fetchInvoicesList] = useLazyGetInvoicesQuery();
   const [getCustomerPhones] = useGetCustomerPhonesMutation();
   const { data: doctorNamesData = [], isLoading: isLoadingDoctorNames } = useGetDoctorNamesQuery();
 
@@ -175,6 +196,10 @@ const SalesReceipt: React.FC = () => {
   const [availablePhones, setAvailablePhones] = useState<string[]>([]);
   // 🔒 Pause flag: prevents phone-lookup hook from overwriting the real ID while addCustomer is in flight
   const isAddingCustomerRef = useRef(false);
+
+  // 🔒 Synchronous guard for the sale-confirmation dialog: blocks a sub-frame
+  // double click from starting the submit flow twice.
+  const isConfirmingRef = useRef(false);
 
   // Tracks the sanctioned receipt -> salepage hop ("Edit Cart"), which must keep
   // the cart. Any other unmount clears the working cart/form data.
@@ -281,11 +306,13 @@ const SalesReceipt: React.FC = () => {
     if ((isEditMode || isReturnDetailsMode) && editModeData) {
       let fetchInvoiceNumber: string | null = null;
 
-      // CRITICAL: Always use invoice_number if available - it's the source of truth
+      // CRITICAL: Always use invoice_number if available - it's the source of truth.
+      // When the org's custom scheme is enabled the stored invoice_number is the full
+      // rendered value (e.g. "SI-EL-26-002296") and is looked up verbatim; otherwise the
+      // legacy "INV"/"RB" cosmetic prefix is stripped (backend expects the numeric part).
       if (editModeData.invoiceNumber) {
-        // Strip "INV" or "RB" prefix if present - backend expects only numeric part
-        let fullInvoiceNumber = editModeData.invoiceNumber.toString().trim();
-        fetchInvoiceNumber = fullInvoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim() || fullInvoiceNumber;
+        const fullInvoiceNumber = editModeData.invoiceNumber.toString().trim();
+        fetchInvoiceNumber = invoiceLookupKey(fullInvoiceNumber, schemeEnabled);
         console.log('📝 Prepared invoice number for API fetch. Original:', fullInvoiceNumber, '→ Sending:', fetchInvoiceNumber);
       }
 
@@ -553,7 +580,14 @@ const SalesReceipt: React.FC = () => {
                   }
                   return 'Out Patient';
                 })(),
-                invoiceNumber: (invoice.invoice_number ? `INV${invoice.invoice_number}` : '') || (result.invoice_number ? `INV${result.invoice_number}` : '') || editModeData.invoiceNumber || '',
+                // When the org scheme is enabled invoice_number already carries the full
+                // rendered value (prefix included) → shown verbatim; otherwise the legacy
+                // cosmetic "INV" prepend is applied.
+                invoiceNumber:
+                  decorateInvoiceNumber(invoice.invoice_number, schemeEnabled) ||
+                  decorateInvoiceNumber(result.invoice_number, schemeEnabled) ||
+                  editModeData.invoiceNumber ||
+                  '',
                 invoiceDate: (() => {
                   // Canonical state format is ISO YYYY-MM-DD. The backend already
                   // returns YYYY-MM-DD; normalize any fallback to ISO too (normalizeIso
@@ -881,7 +915,8 @@ const SalesReceipt: React.FC = () => {
       // Set paymentMode from form data, or the explicit default if empty
       setPaymentMode(formData.paymentMode || DEFAULT_PAYMENT_MODE);
       setInsuranceCompany(formData.insuranceCompany);
-      if (formData.invoiceNumber) setInvoiceNumber(formData.invoiceNumber);
+      // invoiceNumber is deliberately NOT restored: the backend assigns it at submit,
+      // so a persisted/draft value is stale — the field stays "Auto-generated".
       // Normalize the restored value: a cart persisted before the ISO migration holds a
       // legacy "DD MMM YYYY" string, which the strict save-validation would now reject.
       // Empty/invalid → leave the ISO default already in state.
@@ -901,41 +936,48 @@ const SalesReceipt: React.FC = () => {
     }, [])
   });
 
-  // Generate invoice number on mount (if not in edit mode and not already set)
-  // PRIORITY ORDER:
-  //   1. Derive from the existing invoices list (max invoice_number + 1)
-  //   2. localStorage counter (fallback if list fetch fails)
-  useEffect(() => {
-    if (!isEditMode && !invoiceNumber) {
-      (async () => {
-        // Priority 1: Derive from the existing invoices list (max invoice_number + 1)
-        try {
-          const invoices = await fetchInvoicesList().unwrap();
-          if (invoices && invoices.length > 0) {
-            const maxInvoiceNum = invoices.reduce((max: number, inv: any) => {
-              const raw = String(inv.invoice_number ?? inv.invoiceNumber ?? '0').replace(/[^0-9]/g, '');
-              const num = parseInt(raw, 10);
-              return (!isNaN(num) && num > max) ? num : max;
-            }, 0);
-            if (maxInvoiceNum > 0) {
-              const nextInvoiceNumber = `INV${maxInvoiceNum + 1}`;
-              setInvoiceNumber(nextInvoiceNumber);
-              console.log('📝 Invoice number derived from invoices list (max + 1):', nextInvoiceNumber);
-              return;
-            }
-          }
-        } catch (err) {
-          console.warn('⚠️ Could not fetch invoices list, falling back to localStorage counter...', err);
-        }
-
-        // Priority 2: localStorage counter (last resort — only reliable on single-device)
-        const nextInvoiceNumber = generateNextInvoiceNumber();
-        setInvoiceNumber(nextInvoiceNumber);
-        console.log('📝 Invoice number generated from localStorage (fallback):', nextInvoiceNumber);
-      })();
+  // NOTE: no client-side invoice-number generation. The backend assigns the number at
+  // submit and returns it in the response (executeSave → onInvoiceNumberAssigned).
+  // Before that, a NEW sale shows a server-computed PEEK of the next number so the till has
+  // something to quote. It is provisional, never reserved: allocation happens in the save
+  // transaction, so a concurrent sale can take it (the field says so). Edit/return mode is
+  // skipped entirely — the persisted number is authoritative there.
+  const isNewSale = !isEditMode && !isReturnDetailsMode;
+  const {
+    data: nextInvoiceNumber,
+    isFetching: isNextInvoiceNumberFetching,
+  } = useGetNextDocumentNumberQuery(
+    // The date drives BOTH the counter bucket and the {YY}/{MM} tokens, so changing the
+    // invoice date re-queries.
+    { doc_type: 'sales_invoice', date: invoiceDate },
+    {
+      skip: !isNewSale || !/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate),
+      // Contract: re-fetch on page open. Without this, returning to the new-sale page
+      // within RTK Query's 60s cache window would quote a stale number.
+      refetchOnMountOrArgChange: true,
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  );
+  // Same decoration the save path applies to the assigned number, so what is quoted before
+  // the save matches what the Sales Log shows after it (legacy scheme off → "INV401").
+  // The peek's own per-doc-type `enabled` is authoritative over the legacy org-level flag.
+  const provisionalInvoiceNumber = useMemo(
+    () => (isNewSale
+      ? {
+          number: nextInvoiceNumber
+            ? decorateInvoiceNumber(nextInvoiceNumber.number, nextInvoiceNumber.enabled)
+            : '',
+          loading: isNextInvoiceNumberFetching,
+        }
+      : undefined),
+    [isNewSale, nextInvoiceNumber, isNextInvoiceNumberFetching]
+  );
+
+  // The peeked number is consumed by the save, so drop it — a follow-on sale on this same
+  // mount must peek again instead of quoting the number it just used.
+  const handleInvoiceNumberAssigned = useCallback((assigned: string) => {
+    setInvoiceNumber(assigned);
+    dispatch(orgApi.util.invalidateTags(['NextDocumentNumber']));
+  }, [dispatch]);
 
   const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setSnackbarMessage(message);
@@ -1205,7 +1247,8 @@ const SalesReceipt: React.FC = () => {
         totalPayableAmount,
         patientType,
         labels: SALES_RECEIPT_LABELS,
-        brandIcon: bgWhiteIcon,
+        brandIcon: receiptBrandIcon,
+        orgHeader: orgHeader,
         pageSize: pageSize,
         orientation: orientation,
         splitPayments: splitPayments,
@@ -1270,6 +1313,20 @@ const SalesReceipt: React.FC = () => {
    * - If action is 'print': Open Print Preview Modal (shows customer receipt for review before printing)
    */
   const handleConfirmDialogConfirm = async () => {
+    // Synchronous re-entry guard: a sub-frame double click must not start the
+    // submit flow twice (state updates like setIsConfirmDialogOpen are async).
+    if (isConfirmingRef.current) {
+      return;
+    }
+    isConfirmingRef.current = true;
+    try {
+      await runConfirmedAction();
+    } finally {
+      isConfirmingRef.current = false;
+    }
+  };
+
+  const runConfirmedAction = async () => {
     if (pendingAction === 'save') {
       // Close dialog first
       setIsConfirmDialogOpen(false);
@@ -1326,6 +1383,9 @@ const SalesReceipt: React.FC = () => {
     setSelectedRows([]);
     setEditingRowId(null);
     setSplitPayments([]); // Reset split payments
+    // Drop the server-assigned number from the finished sale so the next sale (and any
+    // draft saved from this mount — draftHandler / draftPreserve) starts Auto-generated.
+    setInvoiceNumber('');
     setInvoiceDate(getTodayDate()); // Always default new sales to today's date
 
     dispatch(clearCart());
@@ -1528,6 +1588,7 @@ const SalesReceipt: React.FC = () => {
     }
 
     await executeSave({
+      schemeEnabled,
       customerName,
       customerMobile,
       customerCity,
@@ -1565,6 +1626,8 @@ const SalesReceipt: React.FC = () => {
       originalSalesItems: originalInvoiceData?.salesItems,
       skipNavigation,
       onSuccess,
+      // Show the server-assigned number in the UI (print preview / printed receipt).
+      onInvoiceNumberAssigned: handleInvoiceNumberAssigned,
       onStockShortage: (lines: string[]) => {
         setStockShortageLines(lines);
         setStockShortageOpen(true);
@@ -1581,8 +1644,9 @@ const SalesReceipt: React.FC = () => {
         : undefined,
       splitPayments: effectiveSplitPayments,
       upsertInvoicePayments,
+      idempotency,
     });
-  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft]);
+  }, [customerName, customerMobile, customerCity, customerDetails, patientType, doctorName, doctorMobile, doctorEmail, paymentMode, insuranceCompany, invoiceNumber, invoiceDate, salesItems, totalValue, totalDiscount, taxAmount, totalPayableAmount, selectedCustomer, apiProducts, isProductsLoading, isProductsError, productsError, user, submitSale, editSale, updateSales, showToast, navigate, dispatch, isEditMode, editModeData, originalInvoiceData, resetForm, doctorNamesData, splitPayments, upsertInvoicePayments, getCustomerPhones, activeDraftId, deleteDraft, idempotency, handleInvoiceNumberAssigned]);
 
   const handleSaveDraft = useCallback(async () => {
     const matchedDoctor = doctorNamesData.find((d: any) =>
@@ -1742,10 +1806,10 @@ const SalesReceipt: React.FC = () => {
             paymentMode={paymentMode}
             insuranceCompany={insuranceCompany}
             invoiceNumber={invoiceNumber}
+            provisionalInvoiceNumber={provisionalInvoiceNumber}
             invoiceDate={invoiceDate}
             onPaymentModeChange={(mode: string) => { setPaymentMode(mode); setSplitPayments([]); }}
             onInsuranceCompanyChange={setInsuranceCompany}
-            onInvoiceNumberChange={setInvoiceNumber}
             onInvoiceDateChange={setInvoiceDate}
             isReturnDetailsMode={isReturnDetailsMode}
             returnDate={returnDate}
@@ -1931,6 +1995,10 @@ const SalesReceipt: React.FC = () => {
               onSaveDraft={isEditMode ? undefined : handleSaveDraft}
               onPrint={handlePrint}
               isSaveDisabled={!validateRequiredFields().isValid || (isEditMode && !hasChanges())}
+              // Save-and-Print SAVES first (runConfirmedAction), so it gates on the same
+              // required fields as Save — but not on the edit-mode hasChanges clause, which
+              // must never block a re-print. (Moot today: the button is hidden in edit mode.)
+              isPrintDisabled={!validateRequiredFields().isValid}
               isSaveDraftDisabled={salesItems.length === 0 || isSavingDraft || isUpdatingDraft}
               hidePrintButton={isEditMode}
               pageSize={pageSize}
@@ -2014,7 +2082,8 @@ const SalesReceipt: React.FC = () => {
               totalPayableAmount={totalPayableAmount}
               patientType={patientType}
               splitPayments={splitPayments}
-              brandIcon={bgWhiteIcon}
+              brandIcon={receiptBrandIcon}
+              orgHeader={orgHeader}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
               orientation={orientation}

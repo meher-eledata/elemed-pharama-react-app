@@ -67,7 +67,8 @@ export const useOrderReceiveActions = (
         isEditMode: true,
         selectedOrder: row,
         receiptId: row.receiptId,
-        receiptNumber: row.reNo,
+        // OUR GRN number; legacy rows without one fall back to the internal RA-key.
+        receiptNumber: row.receipt_number || row.reNo,
         transactionNumber: row.transaction_number || '',
         paymentVendor: row.payment_vendor || '',
         invoiceDate: invoiceDateValue
@@ -188,7 +189,7 @@ export const useOrderReceiveActions = (
         poId: row.po_id,
         invoiceDate: row.invoice_date || "",
         receiptId: row.receiptId,
-        receiptNumber: row.reNo,
+        receiptNumber: row.receipt_number || row.reNo,
         isEditMode: true,
         transactionNumber: row.transaction_number || "",
         paymentVendor: row.payment_vendor || "",

@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Typography, Autocomplete, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import HistoryIcon from '@mui/icons-material/History';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { StandardButton } from '../../../components/Common';
 import { Customer, CustomerOption } from '../../../redux/slices/salesApi';
 import { filterRanked, isPhoneQuery } from '../utils/customerSearch';
+import CustomerHistoryModal from './CustomerHistoryModal';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
+import { CUSTOMER_HISTORY_LABELS } from '../../../config/label/CustomerHistory.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../../config/constants/SalesReceipt.constants';
 import {
   CustomerDetailsColumn,
@@ -63,6 +66,13 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
   onAddNewCustomer,
 }) => {
   const [patientTypeOpen, setPatientTypeOpen] = useState(false);
+  // Opening/closing this modal only touches local state — it never dispatches to
+  // the cart/draft/sale form, so the in-progress sale is left untouched.
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // "View history" is enabled only for a real, saved customer (positive id).
+  // Walk-in / none / free-typed name keeps it disabled.
+  const canViewHistory = !!(selectedCustomer?.id && selectedCustomer.id > 0);
 
   // The customer NAME picker must only suggest actual names. Guard against
   // malformed records whose `name` is really a phone number (all digits, no
@@ -141,7 +151,31 @@ const CustomerDetailsSection: React.FC<CustomerDetailsSectionProps> = ({
         >
           {SALES_RECEIPT_LABELS.ADD_NEW_CUSTOMER_BUTTON}
         </StandardButton>
+        <StandardButton
+          onClick={() => setHistoryOpen(true)}
+          variant="secondary"
+          size="small"
+          disabled={!canViewHistory}
+          startIcon={<HistoryIcon sx={{ fontSize: '18px' }} />}
+          sx={{
+            height: '35px',
+            fontSize: '12px',
+            padding: '6px 16px',
+            flexShrink: 0,
+          }}
+        >
+          {CUSTOMER_HISTORY_LABELS.VIEW_HISTORY_BUTTON}
+        </StandardButton>
       </Box>
+
+      {historyOpen && (
+        <CustomerHistoryModal
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          customerId={selectedCustomer?.id ?? null}
+          customerName={selectedCustomer?.name}
+        />
+      )}
 
       <SectionRow>
         <Autocomplete<CustomerOption, false, boolean, true>

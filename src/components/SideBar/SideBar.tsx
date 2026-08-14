@@ -5,14 +5,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from 'react-redux';
 import { List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import ArrowIcon from '../../assets/Arrow.svg';
-import BgWhiteIcon from '../../assets/BG_White.svg';
-import BoxIcon from '../../assets/Box.svg';
+import ElemedLogo from '../../assets/ElemedLogo.svg';
 import CheckBoxIcon from '../../assets/CheckBox.svg';
-import DollarIcon from '../../assets/Dollor.svg';
 import GearIcon from '../../assets/Gear.svg';
 import GroupIcon from '../../assets/Group.svg';
 import HumanIcon from '../../assets/Human.svg';
-import MailIcon from '../../assets/Mail.svg';
 import VectorIcon from '../../assets/Vector.svg';
 import SettingsIcon from '../../assets/Setting.svg';
 import ThunderIcon from '../../assets/Thunder.svg';
@@ -26,6 +23,8 @@ import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
+import { MODULES, ALL_MODULE_KEYS, ModuleKey } from '../../config/modules.config';
+import { selectOrganization, selectActiveModules, selectOrgLoaded } from '../../redux/slices/orgSlice';
 interface SidebarItem {
   id: string;
   icon: string | React.ReactNode;
@@ -59,17 +58,9 @@ const WhiteIcon: React.FC<{ children: React.ReactElement }> = ({ children }) => 
   </Box>
 );
 
-const baseItems: SidebarItem[] = [
-  { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' },
-  { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: "Sales", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales' },
-  { id: 'box', icon: BoxIcon, alt: 'Box', label: "Inventory", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
-  // { id: 'human', icon: HumanIcon, alt: 'Human', label: "Customers", iconWidth: '26px', iconHeight: '26px', marginTop: '5px' },
-  { id: 'mail', icon: MailIcon, alt: 'Mail', label: "Order Receive", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive' },
-  { id: 'master', icon: <WhiteIcon><StorageIcon sx={{ fontSize: 24 }} /></WhiteIcon>, alt: 'Master', label: "Master", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/master', isComponent: true },
-  // { id: 'checkbox', icon: CheckBoxIcon, alt: 'CheckBox', label: "Tasks", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  // { id: 'arrow', icon: ArrowIcon, alt: 'Arrow', label: "Reports", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' },
-  // { id: 'gear', icon: GearIcon, alt: 'Gear', label: "Tools", iconWidth: '24px', iconHeight: '24px', marginTop: '5px' }
-];
+// Home is always present regardless of active modules. The remaining non-admin
+// items are derived from the org's active modules (see MODULES registry).
+const homeItem: SidebarItem = { id: 'vector', icon: VectorIcon, alt: 'Vector', label: "Home", iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/dashboard' };
 interface SidebarProps {
   onOpenChange?: (isOpen: boolean) => void;
   isOpen?: boolean;
@@ -103,6 +94,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector((state: any) => state.auth.user);
+  const organization = useSelector(selectOrganization);
+  const activeModules = useSelector(selectActiveModules);
+  const orgLoaded = useSelector(selectOrgLoaded);
+
+  // Non-admin sidebar = fixed Home + each active module's items in registry order.
+  // Before /me resolves, optimistically show pharmacy items to avoid a flash.
+  const baseItems: SidebarItem[] = useMemo(() => {
+    const keys: ModuleKey[] = orgLoaded
+      ? ALL_MODULE_KEYS.filter((k) => activeModules.includes(k))
+      : ['pharmacy'];
+    const moduleItems = keys.flatMap((k) => MODULES[k].sidebarItems);
+    return [homeItem, ...moduleItems];
+  }, [activeModules, orgLoaded]);
 
   // Order, labels and icons mirror the AdminDashboard tiles (tiles are canonical).
   const adminItems: SidebarItem[] = useMemo(() => [
@@ -120,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
   const sidebarItems = useMemo(() => {
     if (location.pathname.startsWith('/admin')) return adminItems;
     return baseItems;
-  }, [location.pathname, adminItems]);
+  }, [location.pathname, adminItems, baseItems]);
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -199,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
           }}
         >
           <img
-            src={BgWhiteIcon}
+            src={organization?.logo_url || ElemedLogo}
             alt="Logo"
             style={{ width: '2.5rem', height: '2.5rem', cursor: 'pointer' }}
             onClick={(e) => {
@@ -214,7 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
               navigate(isAdmin ? '/admin' : '/dashboard');
             }}
           />
-          {open && (
+          {open && organization?.name && (
             <Typography
               variant="subtitle1"
               sx={{
@@ -226,7 +230,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenChange, isOpen }) => {
                 color: '#5C17E5'
               }}
             >
-              Elite  pharmacy
+              {organization.name}
             </Typography>
           )}
         </Box>

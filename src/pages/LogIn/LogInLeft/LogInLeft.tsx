@@ -19,7 +19,7 @@ import { useDispatch } from "react-redux";
 import { LOGIN_LABELS } from "../../../config/label/loginLabels";
 import { LOGIN_CONSTANTS } from "../../../config/constants/loginConstants";
 import { handleLoginEffect } from "../../../config/helpers/loginHandlers";
-import bgWhiteIcon from "../../../assets/BG_White.svg";
+import elemedLogo from "../../../assets/ElemedLogo.svg";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -128,8 +128,8 @@ const LoginForm: React.FC = () => {
           }}
         >
           <img
-            src={bgWhiteIcon}
-            alt="Logo"
+            src={elemedLogo}
+            alt="Elemed"
             style={{
               height: "100px", // Restored to large size as requested
               width: "auto",
@@ -145,7 +145,7 @@ const LoginForm: React.FC = () => {
               whiteSpace: "nowrap", // Prevents wrapping
             }}
           >
-            Elite  Pharmacy
+            Elemed
           </Typography>
         </Box>
       </Box>

@@ -24,6 +24,16 @@ global.ResizeObserver = class ResizeObserver {
   }
 };
 
+// jsdom does not expose WebCrypto; provide Node's implementation so
+// crypto.randomUUID() (idempotency keys) works in tests.
+const nodeCrypto = require('crypto');
+if (typeof global.crypto === 'undefined') {
+  global.crypto = nodeCrypto.webcrypto;
+}
+if (typeof global.crypto.randomUUID !== 'function') {
+  global.crypto.randomUUID = () => nodeCrypto.randomUUID();
+}
+
 // Mock process.env for Vite environment variables (import.meta.env is transformed to process.env)
 process.env.VITE_API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/api/';
 

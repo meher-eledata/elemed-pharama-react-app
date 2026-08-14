@@ -233,28 +233,9 @@ const ProductSearchSection: React.FC<ProductSearchSectionProps> = ({
                         {params.InputProps.startAdornment}
                       </React.Fragment>
                     ),
-                    endAdornment: (
-                      <React.Fragment>
-                        {findProductTerm && (
-                          <IconButton
-                            size="small"
-                            onClick={() => setFindProductTerm("")}
-                            sx={{
-                              padding: '4px',
-                              marginRight: '4px',
-                              color: '#9CA3AF',
-                              '&:hover': {
-                                color: '#374151',
-                                backgroundColor: 'transparent',
-                              },
-                            }}
-                          >
-                            <CloseIcon sx={{ fontSize: '18px' }} />
-                          </IconButton>
-                        )}
-                        {params.InputProps.endAdornment}
-                      </React.Fragment>
-                    ),
+                    // endAdornment is left to MUI: its clearIndicator (kept always visible by
+                    // the sx above) clears the term via onChange reason 'clear'. A custom clear
+                    // button here rendered a second, redundant x next to it.
                   }}
                   sx={{
                     "& .MuiInputBase-input": {

@@ -1,5 +1,6 @@
 export const ORDER_RECEIVE_TITLE = "Stock Receipt History";
 export const ADD_RECEIVE_BUTTON = "Receive Stock";
+export const PURCHASE_RETURN_BUTTON = "Purchase Return";
 
 export const TAB_CURRENT_ORDER = "Current Order";
 export const TAB_RECEIVE_HISTORY = "Receive History";
@@ -9,6 +10,8 @@ export const RECEIVE_HISTORY_PLACEHOLDER = "Receive History content here...";
 
 export const ORDER_RECEIVE_TABLE_HEADERS = {
   RECEIPT_NUMBER: "Receipt number",
+  // The supplier's own invoice number — deliberately distinct from RECEIPT_NUMBER above.
+  SUPPLIER_INVOICE_NUMBER: "Supplier invoice no.",
   PO_NUMBER: "PO number",
   SUPPLIER_NAME: "Supplier name",
   RECEIVED_ON: "Received on",

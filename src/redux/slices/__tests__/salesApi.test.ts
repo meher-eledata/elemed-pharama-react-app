@@ -141,6 +141,71 @@ describe('Sales API Endpoints', () => {
     });
   });
 
+  describe('GET sales/get-customer-invoices (getCustomerInvoices query)', () => {
+    // Same bare Invoice[] row shape as get-invoices, filtered to one customer and
+    // ordered invoice_date DESC. Full path resolves to /api/sales/get-customer-invoices.
+    const rows = [
+      {
+        invoice_id: 9,
+        invoice_number: 'INV-9',
+        customer_id: 5,
+        invoice_date: '2026-08-10',
+        total_amount: '250',
+        return_status: 'No Return',
+      },
+      {
+        invoice_id: 4,
+        invoice_number: 'INV-4',
+        customer_id: 5,
+        invoice_date: '2026-08-01',
+        total_amount: '100',
+        return_status: 'No Return',
+      },
+    ];
+
+    it('resolves to sales/get-customer-invoices?customer_id=<id> as a GET (string url) and returns Invoice[]', async () => {
+      mockOk(rows);
+      const store = makeStore();
+      const result = await store.dispatch(
+        salesApi.endpoints.getCustomerInvoices.initiate({ customer_id: 5 })
+      );
+
+      expect(result.data).toEqual(rows);
+      // RTK Query string-url queries default to GET; the id is a query param on the
+      // path (relative to the /api/ baseUrl -> /api/sales/get-customer-invoices).
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        'sales/get-customer-invoices?customer_id=5',
+        expectExtraArgs,
+        undefined
+      );
+    });
+
+    it('interpolates a different customer_id into the query string', async () => {
+      mockOk([]);
+      const store = makeStore();
+      const result = await store.dispatch(
+        salesApi.endpoints.getCustomerInvoices.initiate({ customer_id: 42 })
+      );
+
+      expect(result.data).toEqual([]);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        'sales/get-customer-invoices?customer_id=42',
+        expectExtraArgs,
+        undefined
+      );
+    });
+
+    it('handles error', async () => {
+      mockErr(400);
+      const store = makeStore();
+      const result = await store.dispatch(
+        salesApi.endpoints.getCustomerInvoices.initiate({ customer_id: 5 })
+      );
+      expect(result.error).toBeDefined();
+      expect((result.error as { status: number }).status).toBe(400);
+    });
+  });
+
   describe('GET sales/:id (getSalesById query)', () => {
     it('interpolates the id into the url string', async () => {
       mockOk({ id: 42 });
@@ -771,6 +836,7 @@ describe('Sales API Endpoints', () => {
       expect(salesApi.endpoints.createSales).toBeDefined();
       expect(salesApi.endpoints.getSalesHistory).toBeDefined();
       expect(salesApi.endpoints.getInvoices).toBeDefined();
+      expect(salesApi.endpoints.getCustomerInvoices).toBeDefined();
       expect(salesApi.endpoints.getSalesById).toBeDefined();
       expect(salesApi.endpoints.updateSales).toBeDefined();
       expect(salesApi.endpoints.editSale).toBeDefined();
@@ -798,6 +864,8 @@ describe('Sales API Endpoints', () => {
       expect(salesApi.useCreateSalesMutation).toBeDefined();
       expect(salesApi.useGetSalesHistoryQuery).toBeDefined();
       expect(salesApi.useGetInvoicesQuery).toBeDefined();
+      expect(salesApi.useGetCustomerInvoicesQuery).toBeDefined();
+      expect(salesApi.useLazyGetCustomerInvoicesQuery).toBeDefined();
       expect(salesApi.useGetSalesByIdQuery).toBeDefined();
       expect(salesApi.useUpdateSalesMutation).toBeDefined();
       expect(salesApi.useEditSaleMutation).toBeDefined();

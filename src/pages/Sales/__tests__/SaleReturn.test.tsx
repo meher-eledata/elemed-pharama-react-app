@@ -33,6 +33,8 @@ const createMockStore = () =>
   configureStore({
     reducer: {
       auth: (state = { user: { id: 1, username: 'testuser' } }) => state,
+      // selectOrganization reads state.org.organization (INV-cosmetic gating).
+      org: (state = { organization: null, activeModules: [], loaded: false }) => state,
     },
   });
 

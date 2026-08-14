@@ -52,6 +52,18 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
   setInvoiceNumber,
   invoiceNumberError,
 }) => {
+  const baseSupplierOptions = isSuppliersLoading
+    ? ["Loading suppliers..."]
+    : filteredSupplierOptions;
+  // supplierName can be seeded synchronously from navigation/edit state before the
+  // supplier list resolves; keep it a valid option meanwhile so MUI's Autocomplete
+  // doesn't warn "None of the options match". No behavior change once the fetched
+  // list contains it, and the loading / Add-new-supplier affordances are untouched.
+  const supplierAutocompleteOptions =
+    supplierName && !baseSupplierOptions.includes(supplierName)
+      ? [supplierName, ...baseSupplierOptions]
+      : baseSupplierOptions;
+
   return (
     <Box sx={{ display: "flex", gap: "32px", marginTop: "10px" }}>
       {/* Supplier Name */}
@@ -60,7 +72,7 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
           {orderLabels.supplierName}
         </Typography>
         <Autocomplete
-          options={isSuppliersLoading ? ["Loading suppliers..."] : filteredSupplierOptions}
+          options={supplierAutocompleteOptions}
           value={supplierName || null}
           onChange={(_, newValue) => {
             if (newValue === orderLabels.addNewSupplier) {

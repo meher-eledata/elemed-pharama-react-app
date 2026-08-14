@@ -227,9 +227,15 @@ export interface InsufficientStockItem {
   available: number;
 }
 
-// Error body for POST /api/sales/submit-sale when stock is short (HTTP 409).
+// Error body for the two distinct POST /api/sales/submit-sale HTTP 409s.
 // RTK Query surfaces HTTP errors as `error.data`, so this types `error.data`.
+// - duplicate invoice number: { error: 'DUPLICATE_INVOICE_NUMBER', message } (no insufficient_stock)
+// - stock shortage: { message, insufficient_stock: [...] } (no error code)
+// Clients discriminate on error === 'DUPLICATE_INVOICE_NUMBER' vs presence of insufficient_stock.
+// With server-assigned numbering (2026-08-11) the duplicate 409 is a DB-constraint
+// backstop only and should never fire in practice.
 export interface SubmitSaleError {
+  error?: string;
   message?: string;
   insufficient_stock?: InsufficientStockItem[];
 }
@@ -264,12 +270,17 @@ export interface SubmitSaleRequest {
   doctor_name?: string; // Name of the doctor
   doctor_mobile?: string; // Mobile of the doctor
   doctor_email?: string; // Email of the doctor
-  // REQUIRED (2026-07-29): backend 400s when missing/blank and 409s on a duplicate
-  // ("invoice_number <n> already exists"). Always generated client-side (cartStorage).
-  invoice_number: string;
+  // invoice_number REMOVED (2026-08-11, server-side numbering): the backend now assigns
+  // the number at submit and IGNORES any client value; the assigned number is returned
+  // in the 201 response (see SubmitSaleResponse). Do not send it. The
+  // DUPLICATE_INVOICE_NUMBER 409 (see SubmitSaleError) remains as the DB-constraint
+  // backstop but should never fire now that the server generates numbers.
   invoice_date?: string | null; // Invoice date (for return flow - invoice already stored in DB)
   patient_type?: number; // 1 for "In Patient", 0 for "Out Patient"
   lines: SubmitSaleLine[];
+  // OPTIONAL (≤64 chars): a duplicate submit with the same key replays the stored
+  // outcome of the first attempt (same status + body, e.g. 201) (see useIdempotencyKey).
+  idempotency_key?: string;
 }
 
 export interface SubmitSaleLineResponse {
@@ -287,7 +298,16 @@ export interface SubmitSaleLineResponse {
 
 export interface SubmitSaleResponse {
   message: string;
-  invoice_number: number | null;
+  invoice_id: number; // Database id of the created invoice
+  // Server-ASSIGNED at submit (2026-08-11): the authoritative invoice number as a plain
+  // numeric string (e.g. "947"). The "INV" prefix is a display-layer concern only.
+  invoice_number: string;
+  patient_type: number;
+  totals: {
+    lines_total: number;
+    header_discount: number;
+    invoice_total: number;
+  };
   lines: SubmitSaleLineResponse[];
 }
 
@@ -339,6 +359,9 @@ export interface EditSaleRequest {
   Deleted?: number[];
   Added?: SubmitSaleLine[];
   Edited?: EditSaleLine[];
+  // OPTIONAL (≤64 chars): a duplicate submit with the same key replays the stored
+  // outcome of the first attempt (same status + body, e.g. 201) (see useIdempotencyKey).
+  idempotency_key?: string;
 }
 
 export interface EditSaleResponse {
@@ -367,10 +390,64 @@ export interface InvoiceDetailsResponse {
 }
 
 
+// ---------------------------------------------------------------------------
+// Sales-returns log (POST sales/list-sales-returns, POST sales/get-sales-return-details).
+// Shapes per api-contract.md. All money/qty fields are Number()-converted
+// server-side, so they arrive as real numbers (not pg DECIMAL strings).
+// ---------------------------------------------------------------------------
+export interface SalesReturnRow {
+  sales_return_id: number;
+  return_number: string | null;
+  invoice_id: number;
+  invoice_number: string | null; // LEFT JOIN — nullable
+  customer_id: number;
+  customer_name: string | null; // LEFT JOIN — nullable
+  return_date: string; // ISO timestamp
+  created_by: string;
+  reason: string | null;
+  notes: string | null;
+  return_type: string;
+  return_status: string;
+  refund_method: string | null;
+  total_amount: number | null;
+  line_count: number;
+  units_count: number;
+}
+
+export interface ListSalesReturnsRequest {
+  search?: string; // matches return_number OR invoice_number OR customer name
+  start_date?: string; // 'YYYY-MM-DD' (inclusive)
+  end_date?: string; // 'YYYY-MM-DD' (inclusive)
+  limit?: number; // default 50, capped at 200
+  offset?: number; // default 0
+}
+
+export interface ListSalesReturnsResponse {
+  rows: SalesReturnRow[];
+  total: number; // ignores limit/offset
+}
+
+export interface SalesReturnLine {
+  id: number;
+  sales_return_id: number;
+  invoice_line_id: number | null;
+  product_id: number;
+  product_name: string | null;
+  batch_number: string;
+  quantity: number;
+  refund_amount: number | null;
+  restock_action: string;
+}
+
+// Flat header (identical field set to a list row) plus the returned lines.
+export interface SalesReturnDetailsResponse extends SalesReturnRow {
+  lines: SalesReturnLine[]; // ordered id ASC
+}
+
 export const salesApi = createApi({
   reducerPath: "salesApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Sales", "ProductType", "Inventory", "Dashboard"] as const,
+  tagTypes: ["Sales", "ProductType", "Inventory", "Dashboard", "SalesReturns"] as const,
   endpoints: (builder) => ({
     // Get product types by product ID (can return multiple types)
     getProductType: builder.query<ProductTypesResponse, GetProductTypeRequest>({
@@ -414,6 +491,14 @@ export const salesApi = createApi({
       providesTags: ["Sales"],
     }),
 
+    // Customer-scoped invoice list — same bare Invoice[] row shape as get-invoices,
+    // filtered to one customer and ordered invoice_date DESC (newest-first). The UI
+    // derives "last purchase date" from row[0].invoice_date. Powers customer history.
+    getCustomerInvoices: builder.query<Invoice[], { customer_id: number }>({
+      query: ({ customer_id }) => `sales/get-customer-invoices?customer_id=${customer_id}`,
+      providesTags: ["Sales"],
+    }),
+
     // Get sales by ID
     getSalesById: builder.query<any, { id: number }>({
       query: ({ id }) => `sales/${id}`,
@@ -445,7 +530,9 @@ export const salesApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Sales", "Inventory"],
+      // SalesReturns too: the backend's recalcSalesReturnHeader rewrites sales_return
+      // total_amount and line refund_amount when an invoice with returns is edited.
+      invalidatesTags: ["Sales", "Inventory", "SalesReturns"],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -651,13 +738,16 @@ export const salesApi = createApi({
         quantity: number;
         restock_action: string;
       }>;
+      // OPTIONAL (≤64 chars): a duplicate submit with the same key replays the stored
+      // outcome of the first attempt (same status + body, e.g. 201) (see useIdempotencyKey).
+      idempotency_key?: string;
     }>({
       query: (body) => ({
         url: "sales/submit-sales-return/",
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Sales", "Inventory"],
+      invalidatesTags: ["Sales", "Inventory", "SalesReturns"],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -667,6 +757,25 @@ export const salesApi = createApi({
           dispatch(receiveApi.util.invalidateTags(["Inventory"]));
         } catch (error) { }
       },
+    }),
+
+    // Sales-returns log (Sale History "Returns" tab)
+    listSalesReturns: builder.query<ListSalesReturnsResponse, ListSalesReturnsRequest>({
+      query: (body) => ({
+        url: "sales/list-sales-returns",
+        method: "POST",
+        body,
+      }),
+      providesTags: ["SalesReturns"],
+    }),
+
+    getSalesReturnDetails: builder.query<SalesReturnDetailsResponse, { sales_return_id: number }>({
+      query: (body) => ({
+        url: "sales/get-sales-return-details",
+        method: "POST",
+        body,
+      }),
+      providesTags: (_res, _err, arg) => [{ type: "SalesReturns", id: arg.sales_return_id }],
     }),
 
     // Upsert invoice payments
@@ -689,7 +798,9 @@ export const salesApi = createApi({
 
     // Permanently delete an invoice with a reason. Backend restores stock
     // and recalculates totals; we invalidate Sales + Inventory so the table
-    // and stock counts refresh automatically.
+    // and stock counts refresh automatically. No SalesReturns tag: the backend
+    // 409s (and rolls back) on any invoice that has returns, so a successful
+    // delete can never change sales-return data.
     deleteInvoice: builder.mutation<{ message: string } & Record<string, any>, {
       invoice_id: number;
       deleted_by: string;
@@ -723,6 +834,8 @@ export const {
   useGetSalesHistoryQuery,
   useGetInvoicesQuery,
   useLazyGetInvoicesQuery,
+  useGetCustomerInvoicesQuery,
+  useLazyGetCustomerInvoicesQuery,
   useGetSalesByIdQuery,
   useUpdateSalesMutation,
   useDeleteSalesMutation,
@@ -747,6 +860,8 @@ export const {
   useGetBatchNumbersByProductIdMutation,
   useGetInvoiceDetailsMutation,
   useSubmitSalesReturnMutation,
+  useListSalesReturnsQuery,
+  useGetSalesReturnDetailsQuery,
   useEditSaleMutation,
   useUpsertInvoicePaymentsMutation,
   useDeleteInvoiceMutation,

@@ -9,6 +9,9 @@ import InventoryAdjustment from "./Inventory/InventoryAdjustment";
 import OrderReceive from "../pages/Recieve/OrderReceive";
 import OrderDetails from "../pages/Recieve/OrderDetails";
 import PaymentDetails from "../pages/Recieve/PaymentDetails";
+import PurchaseReturn from "../pages/Recieve/PurchaseReturn/PurchaseReturn";
+import PurchaseReturnDetails from "../pages/Recieve/PurchaseReturn/PurchaseReturnDetails";
+import ReturnsLog from "../pages/Recieve/PurchaseReturn/ReturnsLog";
 import DashboardMain from "../pages/DashboardMain/DashboardMain"
 import Masterpage from "./Masters/MasterPage";
 import Sale from "./Sales/salepage";
@@ -34,6 +37,7 @@ import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
 import { RoleGuard } from "../guards/RoleGuard";
+import { ModuleGuard } from "../guards/ModuleGuard";
 
 export const Pages = () => {
   return (
@@ -53,27 +57,33 @@ export const Pages = () => {
           <Route index element={<DashboardMain />} />
         </Route>
 
-        <Route path="/inventory" element={<DashboardLayout />}>
-          <Route index element={<InventoryModule />} />
-          <Route path="adjust" element={<InventoryAdjustment />} />
-        </Route>
+        {/* Pharmacy module routes - gated by the org's active modules */}
+        <Route element={<ModuleGuard module="pharmacy" />}>
+          <Route path="/inventory" element={<DashboardLayout />}>
+            <Route index element={<InventoryModule />} />
+            <Route path="adjust" element={<InventoryAdjustment />} />
+          </Route>
 
-        <Route path="/receive" element={<DashboardLayout />}>
-          <Route path="order-receive" element={<OrderReceive />} />
-          <Route path="order-details" element={<OrderDetails labels={orderLabels} />} />
-          <Route path="payment-details" element={<PaymentDetails />} />
-        </Route>
+          <Route path="/receive" element={<DashboardLayout />}>
+            <Route path="order-receive" element={<OrderReceive />} />
+            <Route path="order-details" element={<OrderDetails labels={orderLabels} />} />
+            <Route path="payment-details" element={<PaymentDetails />} />
+            <Route path="purchase-return" element={<PurchaseReturn />} />
+            <Route path="purchase-return/details" element={<PurchaseReturnDetails />} />
+            <Route path="purchase-return/log" element={<ReturnsLog />} />
+          </Route>
 
-        <Route path="/master" element={<DashboardLayout />}>
-          <Route index element={<Masterpage />} />
-        </Route>
+          <Route path="/master" element={<DashboardLayout />}>
+            <Route index element={<Masterpage />} />
+          </Route>
 
-        <Route path="/sales" element={<DashboardLayout />}>
-          <Route index element={<SaleHistory />} />
-          <Route path="new" element={<Sale />} />
-          <Route path="drafts" element={<SaleDrafts />} />
-          <Route path="receipt" element={<SalesReceipt />} />
-          <Route path="sale-return" element={<SaleReturn />} />
+          <Route path="/sales" element={<DashboardLayout />}>
+            <Route index element={<SaleHistory />} />
+            <Route path="new" element={<Sale />} />
+            <Route path="drafts" element={<SaleDrafts />} />
+            <Route path="receipt" element={<SalesReceipt />} />
+            <Route path="sale-return" element={<SaleReturn />} />
+          </Route>
         </Route>
 
         <Route path="/profile" element={<DashboardLayout />}>

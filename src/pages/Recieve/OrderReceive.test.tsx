@@ -498,6 +498,23 @@ describe('OrderReceive', () => {
     });
   });
 
+  describe('Purchase Return Entry Point', () => {
+    it('should render the Purchase Return button in the header', () => {
+      renderWithProviders(<OrderReceive />);
+      expect(screen.getByText('Purchase Return')).toBeInTheDocument();
+    });
+
+    it('should navigate to /receive/purchase-return when Purchase Return is clicked', async () => {
+      const mockNavigate = jest.fn();
+      jest.spyOn(require('react-router-dom'), 'useNavigate').mockReturnValue(mockNavigate);
+
+      renderWithProviders(<OrderReceive />);
+
+      fireEvent.click(screen.getByText('Purchase Return'));
+      expect(mockNavigate).toHaveBeenCalledWith('/receive/purchase-return');
+    });
+  });
+
   describe('Error Handling', () => {
     it('should display error message and retry button on error', () => {
       const mockRefetch = jest.fn();

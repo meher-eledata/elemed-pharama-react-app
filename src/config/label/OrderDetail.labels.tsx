@@ -54,4 +54,10 @@ export const orderLabels = {
   // Add product option
   addProducts: 'Add Products...',
   addNewSupplier: 'Add New Supplier',
+
+  // Submit feedback — the goods-receipt (GRN) number the server issued is named as soon as
+  // it comes back, so the user can quote it without opening the receipt again.
+  receiptSubmitted: 'Receipt submitted successfully!',
+  receiptSubmittedWithNumber: (receiptNumber: string) =>
+    `Receipt ${receiptNumber} submitted successfully!`,
 };

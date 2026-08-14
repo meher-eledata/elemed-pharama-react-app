@@ -132,7 +132,8 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_VARIANT}>
-          {PRODUCT_DETAILS_MODAL_LABELS.RECEIPT_PREFIX} <span style={{ fontWeight: 'bold' }}>{productData.reNo}</span>
+          {PRODUCT_DETAILS_MODAL_LABELS.RECEIPT_PREFIX}{' '}
+          <span style={{ fontWeight: 'bold' }}>{productData.receipt_number || productData.reNo}</span>
         </Typography>
         <Typography variant={PRODUCT_DETAILS_MODAL_CONSTANTS.TYPOGRAPHY.HEADER_VARIANT}>
           {PRODUCT_DETAILS_MODAL_LABELS.SUPPLIER_PREFIX} <span style={{ fontWeight: 'bold' }}>{productData.supplier}</span>

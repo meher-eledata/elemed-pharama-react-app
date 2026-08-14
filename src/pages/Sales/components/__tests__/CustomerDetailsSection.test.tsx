@@ -4,6 +4,17 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import CustomerDetailsSection from '../CustomerDetailsSection';
 import { Customer, CustomerOption } from '../../../../redux/slices/salesApi';
+import { CUSTOMER_HISTORY_LABELS } from '../../../../config/label/CustomerHistory.labels';
+
+// Stub CustomerHistoryModal: the entry-point gating tests only care THAT it opens
+// (and with which customerId). The real modal calls RTK Query hooks that this
+// lightweight store does not wire — the stub keeps the test focused on the button
+// gate. It renders a marker only while `open`.
+jest.mock('../CustomerHistoryModal', () => ({
+  __esModule: true,
+  default: ({ open, customerId }: { open: boolean; customerId: number | null }) =>
+    open ? <div data-testid="customer-history-modal">history:{String(customerId)}</div> : null,
+}));
 
 // Mock Redux store
 const createMockStore = () => {
@@ -196,15 +207,57 @@ describe('CustomerDetailsSection', () => {
       mobile: '1234567890',
       city: 'Mumbai',
     };
-    
-    renderComponent({ 
+
+    renderComponent({
       customerName: 'John Doe',
       customerMobile: '1234567890',
-      selectedCustomer: customer 
+      selectedCustomer: customer
     });
-    
+
     expect(screen.getByLabelText(/customer name/i)).toHaveValue('John Doe');
     expect(screen.getByLabelText(/mobile number/i)).toHaveValue('1234567890');
+  });
+
+  // -------------------------------------------------------------------------
+  // "View history" entry-point gating: enabled only for a real saved customer
+  // (positive id); disabled for none / walk-in / id <= 0. Clicking a valid one
+  // opens the CustomerHistoryModal with that customer's id.
+  // -------------------------------------------------------------------------
+  describe('View history button', () => {
+    const viewHistoryButton = () =>
+      screen.getByRole('button', { name: new RegExp(CUSTOMER_HISTORY_LABELS.VIEW_HISTORY_BUTTON, 'i') });
+
+    it('is disabled when no customer is selected', () => {
+      renderComponent({ selectedCustomer: null });
+      expect(viewHistoryButton()).toBeDisabled();
+    });
+
+    it('is disabled when the selected customer id is not positive (walk-in / unsaved, id <= 0)', () => {
+      renderComponent({
+        selectedCustomer: { id: 0, name: 'Walk-in', mobile: '', city: '' } as Customer,
+      });
+      expect(viewHistoryButton()).toBeDisabled();
+    });
+
+    it('is enabled when a real customer (id > 0) is selected', () => {
+      renderComponent({
+        selectedCustomer: { id: 7, name: 'John Doe', mobile: '1234567890', city: 'Mumbai' } as Customer,
+      });
+      expect(viewHistoryButton()).toBeEnabled();
+    });
+
+    it('opens the CustomerHistoryModal with the selected customer id when clicked', () => {
+      renderComponent({
+        selectedCustomer: { id: 7, name: 'John Doe', mobile: '1234567890', city: 'Mumbai' } as Customer,
+      });
+
+      expect(screen.queryByTestId('customer-history-modal')).not.toBeInTheDocument();
+      fireEvent.click(viewHistoryButton());
+
+      const modal = screen.getByTestId('customer-history-modal');
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveTextContent('history:7');
+    });
   });
 });
 

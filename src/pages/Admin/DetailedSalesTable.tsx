@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, ChangeEvent } from 'react';
 import { Box, Typography, TextField, InputAdornment, IconButton, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
@@ -15,6 +16,7 @@ import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
 import { formatWholeCurrency } from '../../utils/reportFormat';
+import { selectOrganization } from '../../redux/slices/orgSlice';
 
 interface SalesData {
   id: number;
@@ -37,13 +39,20 @@ interface SalesData {
 const DetailedSalesTable: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
+  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
+  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
   const [logDownload] = useLogDownloadMutation();
+  // With the custom scheme on, invoice_number is stored in full (prefix included) and the
+  // API returns it verbatim — so localStorage keys must NOT have the legacy "INV" stripped.
+  const schemeEnabled = !!useSelector(selectOrganization)?.invoice_number_enabled;
 
   const { data: apiData, isLoading, isError } = useGetDailySalesTableQuery(
-    { date: selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD') },
     {
-      skip: !selectedDate,
+      start_date: (startDate ?? dayjs()).format('YYYY-MM-DD'),
+      end_date: (endDate ?? dayjs()).format('YYYY-MM-DD'),
+    },
+    {
+      skip: !startDate || !endDate,
       refetchOnMountOrArgChange: true
     }
   );
@@ -57,8 +66,10 @@ const DetailedSalesTable: React.FC = () => {
     const localNameMap = new Map<string, string>();
     savedHistory.forEach((entry: any) => {
       if (entry.invoiceNumber && entry.customerName && entry.customerName !== 'N/A') {
-        // Stored as "INV42"; API returns "42" — normalise to the numeric part
-        const num = String(entry.invoiceNumber).replace(/^INV/i, '').trim();
+        // Legacy: stored as "INV42", API returns "42" — strip to match. With the custom
+        // scheme on, both the stored value and the API return the full number verbatim.
+        const raw = String(entry.invoiceNumber).trim();
+        const num = schemeEnabled ? raw : raw.replace(/^INV/i, '').trim();
         if (num) localNameMap.set(num, entry.customerName);
       }
     });
@@ -107,7 +118,7 @@ const DetailedSalesTable: React.FC = () => {
         rawPaymentType: item.payment_type || 'N/A', // Keep raw for debugging
       };
     });
-  }, [apiData]);
+  }, [apiData, savedHistory, schemeEnabled]);
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -239,6 +250,7 @@ const DetailedSalesTable: React.FC = () => {
       key: 'invoiceNumber',
       header: DETAILED_SALES_TABLE_LABELS.TABLE.INVOICE_NUMBER,
       sortable: true,
+      columnWidth: '190px',
       render: (item) => (
         <Typography sx={{
           fontFamily: DETAILED_SALES_TABLE_CONSTANTS.TABLE.HEADER_FONT_FAMILY,
@@ -447,8 +459,12 @@ const DetailedSalesTable: React.FC = () => {
     }));
   }, [sortedData]);
 
-  // Generate filename with current date
-  const csvFilename = `detailed_sales_table_${selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')}.csv`;
+  // Generate filename with the selected date range
+  const csvFilename = (() => {
+    const s = (startDate ?? dayjs()).format('YYYY-MM-DD');
+    const e = (endDate ?? dayjs()).format('YYYY-MM-DD');
+    return s === e ? `detailed_sales_table_${s}.csv` : `detailed_sales_table_${s}_to_${e}.csv`;
+  })();
 
   if (isLoading) {
     return (
@@ -596,8 +612,16 @@ const DetailedSalesTable: React.FC = () => {
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <PharmaDatePicker
-            value={selectedDate}
-            onChange={setSelectedDate}
+            value={startDate}
+            onChange={setStartDate}
+            maxDate={endDate ?? undefined}
+            width={200}
+            height={40}
+          />
+          <PharmaDatePicker
+            value={endDate}
+            onChange={setEndDate}
+            minDate={startDate ?? undefined}
             width={200}
             height={40}
           />

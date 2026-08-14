@@ -1,6 +1,6 @@
 import React, { useState, useMemo, ChangeEvent, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip, Chip, FormControl, Autocomplete } from '@mui/material';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip, Chip, FormControl, Autocomplete, Tabs, Tab } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import dayjs, { Dayjs } from 'dayjs';
@@ -27,12 +27,15 @@ import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
 import { SALES_HISTORY_LABELS } from '../../config/label/SalesHistory.labels';
 import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.constants';
 import { paymentMethods } from '../../config/constants/OrderDetail.constants';
-import bgWhiteIcon from '../../assets/BG_White.svg';
+import elemedLogo from '../../assets/ElemedLogo.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
+import { selectOrganization } from '../../redux/slices/orgSlice';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
 import { getSalesHistoryFromStorage, getEditInvoiceId, clearEditInvoiceId } from '../../utils/cartStorage';
+import { decorateInvoiceNumber, invoiceLookupKey } from '../../utils/invoiceNumberPreview';
 import { clearCart, clearFormData } from '../../redux/slices/cartSlice';
+import SalesReturnsLog from './components/SalesReturnsLog';
 import { recalculateSalesItemAmount } from './SalesReceipt.utils.calculation';
 
 // Load the customParseFormat plugin once at module scope so strict format strings
@@ -166,12 +169,40 @@ export default function SaleHistory() {
   const dispatch = useDispatch();
 
   const user = useSelector((state: RootState) => state.auth.user);
+  const organization = useSelector(selectOrganization);
+  // When the org's custom invoice-number scheme is on, invoice_number is stored/rendered
+  // in full (prefix included) — skip the legacy "INV" cosmetic prepend/strip everywhere.
+  const schemeEnabled = !!organization?.invoice_number_enabled;
+  // Org branding for the printed letterhead; undefined for legacy/no-org users.
+  const orgHeader = organization
+    ? {
+        name: organization.name,
+        legal_name: organization.legal_name,
+        address: organization.address,
+        dl_numbers: organization.dl_numbers,
+        gstin: organization.gstin,
+        phone: organization.phone,
+      }
+    : undefined;
+  const receiptBrandIcon = organization?.logo_url || elemedLogo;
 
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
 
 
   const [returnInfoMap, setReturnInfoMap] = useState<Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
+
+  // 0 = Invoices (the sales history table), 1 = Returns (the sales-returns log).
+  // Held in the URL (`/sales?tab=returns`) so the tab is shareable and survives the
+  // round trip to a return's original invoice; no param = Invoices, as before.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get(SALES_HISTORY_CONSTANTS.TAB_PARAM) === SALES_HISTORY_CONSTANTS.TAB_RETURNS ? 1 : 0;
+  const handleTabChange = (value: number) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 1) next.set(SALES_HISTORY_CONSTANTS.TAB_PARAM, SALES_HISTORY_CONSTANTS.TAB_RETURNS);
+    else next.delete(SALES_HISTORY_CONSTANTS.TAB_PARAM);
+    setSearchParams(next, { replace: true });
+  };
 
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -289,24 +320,29 @@ export default function SaleHistory() {
       // CRITICAL: Identify the actual database primary key from ALL possible field names
       const databaseId = Number(invoice.id || invoice.invoice_id || invoice.InvoiceID || invoice.invoiceId || 0);
 
-      // For the table's internal "id" (used for row selection and keys), 
+      // For the table's internal "id" (used for row selection and keys),
       // we need something unique. If no database ID exists, we'll generate one.
-      const tableRowId = databaseId || (invoice.invoice_number ? (parseInt(numericPart) || (index + 500000)) : (index + 500000));
+      // A schemed invoice_number is non-numeric, so never parseInt it into a row id.
+      const tableRowId = databaseId
+        || (invoice.invoice_number && !schemeEnabled ? (parseInt(numericPart) || (index + 500000)) : (index + 500000));
 
       const numValue = Number(numericPart);
+      // A present, non-"null" invoice_number is valid. Legacy additionally requires it to be
+      // a positive number (the numeric invoice id); a schemed number is a free-form string.
       const hasValidInvoiceNumber = invoiceNum !== null
         && invoiceNum !== undefined
         && invoiceNum !== ''
         && invoiceNumStr.toLowerCase() !== 'null'
-        && !isNaN(numValue)
-        && numValue > 0; // Must be a positive number
+        && (schemeEnabled || (!isNaN(numValue) && numValue > 0));
 
       if (hasValidInvoiceNumber) {
-        formattedInvoiceNumber = hasInvPrefix ? invoiceNumStr : `INV${numericPart}`;
+        // Enabled: show invoice_number verbatim. Disabled: legacy "INV<n>" cosmetic
+        // (decorateInvoiceNumber re-prepends after the numericPart strip, matching before).
+        formattedInvoiceNumber = decorateInvoiceNumber(schemeEnabled ? invoiceNumStr : numericPart, schemeEnabled);
       } else if (invoice.id) {
-        formattedInvoiceNumber = `INV${invoice.id}`;
+        formattedInvoiceNumber = decorateInvoiceNumber(invoice.id, schemeEnabled);
       } else {
-        formattedInvoiceNumber = `INV${index + 1000}`;
+        formattedInvoiceNumber = decorateInvoiceNumber(index + 1000, schemeEnabled);
       }
 
       const rawReturnStatus = invoice.return_status || invoice.last_return_status || 'No Return';
@@ -414,7 +450,7 @@ export default function SaleHistory() {
       }
       return item;
     });
-  }, [savedHistory, invoicesData, returnInfoMap]);
+  }, [savedHistory, invoicesData, returnInfoMap, schemeEnabled]);
 
   // Fetch return information for all invoices
   // TODO: Enable this when the API is ready
@@ -444,7 +480,7 @@ export default function SaleHistory() {
           if (invoiceId) {
             result = await getInvoiceDetails({ invoice_id: invoiceId }).unwrap();
           } else if (invoiceNumber) {
-            const numericInvoiceNumber = String(invoiceNumber).replace(/^INV/i, '').trim();
+            const numericInvoiceNumber = invoiceLookupKey(String(invoiceNumber), schemeEnabled);
             result = await getInvoiceDetails({ invoice_number: numericInvoiceNumber }).unwrap();
           }
 
@@ -463,7 +499,10 @@ export default function SaleHistory() {
             // Check if all items are returned: returnedItems should equal or exceed totalItems
             // Using >= to handle edge cases, but typically they should be equal
             const isFullReturn = totalItems > 0 && returnedItems > 0 && returnedItems >= totalItems;
-            const mapKey = invoiceId || parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0;
+            // Map is keyed by the numeric database id. A schemed invoice_number is not
+            // numeric, so never parseInt it into a key — rely on invoiceId (item.id).
+            const mapKey = invoiceId
+              || (schemeEnabled ? 0 : (parseInt(String(invoiceNumber).replace(/^INV/i, '')) || 0));
             newReturnInfoMap.set(mapKey, {
               totalItems: Math.round(totalItems),
               returnedItems: Math.round(returnedItems),
@@ -492,7 +531,7 @@ export default function SaleHistory() {
     };
 
     fetchReturnInfo();
-  }, [invoicesData, getInvoiceDetails, refreshKey, ENABLE_RETURN_STATUS_API]);
+  }, [invoicesData, getInvoiceDetails, refreshKey, ENABLE_RETURN_STATUS_API, schemeEnabled]);
 
 
   useEffect(() => {
@@ -652,7 +691,7 @@ export default function SaleHistory() {
             // payments here is already filtered to active rows; derive the mode from it.
             paymentMode: derivePaymentMode(payments, inv.payment_mode || initialDetails.paymentMode),
             insuranceCompany: inv.insurance_company || initialDetails.insuranceCompany,
-            invoiceNumber: inv.invoice_number ? `INV${inv.invoice_number}` : initialDetails.invoiceNumber,
+            invoiceNumber: decorateInvoiceNumber(inv.invoice_number, schemeEnabled) || initialDetails.invoiceNumber,
             // Hand off the invoice date in the canonical ISO form the New Sale flow stores.
             invoiceDate: (inv.invoice_date || inv.created_at) ? dayjs(inv.invoice_date || inv.created_at).format('YYYY-MM-DD') : initialDetails.invoiceDate,
             totalValue: calculatedTotalValue.toFixed(2),
@@ -690,7 +729,7 @@ export default function SaleHistory() {
     };
 
     fetchFullDetails();
-  }, [selectedInvoiceId, salesHistoryData, savedHistory, getInvoiceDetails]);
+  }, [selectedInvoiceId, salesHistoryData, savedHistory, getInvoiceDetails, schemeEnabled]);
 
   const filteredData = useMemo(() => {
     let filtered = [...salesHistoryData];
@@ -927,7 +966,7 @@ export default function SaleHistory() {
       key: 'invoiceNumber',
       header: SALES_HISTORY_LABELS.TABLE.INVOICE,
       sortable: true,
-      columnWidth: '140px',
+      columnWidth: '210px',
       headerAlign: 'center',
       render: (item) => {
         const isDeleted = String(item.recordStatus || '').toUpperCase() === 'DELETED';
@@ -1247,7 +1286,8 @@ export default function SaleHistory() {
         totalPayableAmount: invoiceDetails.totalPayableAmount || '0',
         splitPayments: invoiceDetails.splitPayments || [],
         labels: SALES_RECEIPT_LABELS,
-        brandIcon: bgWhiteIcon,
+        brandIcon: receiptBrandIcon,
+        orgHeader: orgHeader,
         pageSize: pageSize,
         orientation: orientation,
       });
@@ -1326,7 +1366,7 @@ export default function SaleHistory() {
         }
         // Priority 2: Parse from invoice number (e.g., "INV8" -> 8)
         else if (invoice.invoiceNumber) {
-          const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB-?)/i, '').trim();
+          const cleanedNumber = invoiceLookupKey(invoice.invoiceNumber, schemeEnabled);
           const parsed = parseInt(cleanedNumber, 10);
           if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
             finalDatabaseId = parsed;
@@ -1418,8 +1458,8 @@ export default function SaleHistory() {
       }
       // Priority 2: Parse from invoice number (e.g., "INV56" -> 56)
       else if (invoice.invoiceNumber) {
-        // Remove "INV" or "RB" prefix if present and parse
-        const cleanedNumber = invoice.invoiceNumber.replace(/^(INV-?|RB)/i, '').trim();
+        // Map the DISPLAYED number back to its stored key (inverse of decorateInvoiceNumber)
+        const cleanedNumber = invoiceLookupKey(invoice.invoiceNumber, schemeEnabled);
         const parsed = parseInt(cleanedNumber, 10);
         if (!isNaN(parsed) && parsed > 0 && parsed < 1000000) {
           databaseInvoiceId = parsed;
@@ -1514,6 +1554,35 @@ export default function SaleHistory() {
         </Box>
       </Box>
 
+      {/* Invoices / Returns tabs */}
+      <Tabs
+        value={activeTab}
+        onChange={(_, value: number) => handleTabChange(value)}
+        sx={{
+          mb: 3,
+          minHeight: '2.5rem',
+          borderBottom: '0.0625rem solid #E6ECF5',
+          '& .MuiTabs-indicator': { backgroundColor: '#5C17E5', height: '0.1875rem' },
+          '& .MuiTab-root': {
+            minHeight: '2.5rem',
+            padding: '0 1rem',
+            fontFamily: "'Lexend', sans-serif",
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            textTransform: 'none',
+            color: '#728197',
+          },
+          '& .Mui-selected': { color: '#5C17E5' },
+        }}
+      >
+        <Tab label={SALES_HISTORY_LABELS.TABS.INVOICES} />
+        <Tab label={SALES_HISTORY_LABELS.TABS.RETURNS} />
+      </Tabs>
+
+      {activeTab === 1 && <SalesReturnsLog />}
+
+      {activeTab === 0 && (
+        <>
       {/* Search and Filter Section */}
       <Box sx={{
         display: 'flex',
@@ -1912,7 +1981,8 @@ export default function SaleHistory() {
               totalDiscount={invoiceDetails.totalDiscount || '0'}
               taxAmount={invoiceDetails.taxAmount || '0'}
               totalPayableAmount={invoiceDetails.totalPayableAmount || '0'}
-              brandIcon={bgWhiteIcon}
+              brandIcon={receiptBrandIcon}
+              orgHeader={orgHeader}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
               orientation={orientation}
@@ -1939,6 +2009,8 @@ export default function SaleHistory() {
         onClose={handleConfirmDialogClose}
         onConfirm={handleConfirmDialogConfirm}
       />
+        </>
+      )}
 
     </Box>
   );

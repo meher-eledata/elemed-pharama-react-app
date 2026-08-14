@@ -1,5 +1,9 @@
 export const SALES_HISTORY_LABELS = {
   PAGE_TITLE: 'Sales history',
+  TABS: {
+    INVOICES: 'Invoices',
+    RETURNS: 'Returns',
+  },
   SEARCH_PLACEHOLDER: 'Search by Invoice Number, Customer Name, or Phone Number',
   SHOW_FILTERS: 'Show filters',
   HIDE_FILTERS: 'Hide filters',
