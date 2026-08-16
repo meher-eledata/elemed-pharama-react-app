@@ -29,6 +29,7 @@ import { SALES_HISTORY_CONSTANTS } from '../../config/constants/SalesHistory.con
 import { paymentMethods } from '../../config/constants/OrderDetail.constants';
 import elemedLogo from '../../assets/ElemedLogo.svg';
 import { SalesReceiptItem as SalesApiReceiptItem, useGetInvoicesQuery, useGetInvoiceDetailsMutation } from '../../redux/slices/salesApi';
+import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 import { generatePrintHTML } from './SalesReceipt.utils';
 import { SalesReceiptItem } from './SalesReceipt.types';
@@ -188,6 +189,7 @@ export default function SaleHistory() {
 
   const { data: invoicesData, isLoading: isLoadingInvoices, error: invoicesError, refetch: refetchInvoices } = useGetInvoicesQuery();
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
+  const [logDownload] = useLogDownloadMutation();
 
 
   const [returnInfoMap, setReturnInfoMap] = useState<Map<number, { totalItems: number; returnedItems: number; isFullReturn: boolean }>>(new Map());
@@ -1296,6 +1298,11 @@ export default function SaleHistory() {
       printWindow.document.close();
       // The generated document self-paginates once fonts are ready, then calls
       // window.print() and closes itself on afterprint — do NOT print from here.
+      logDownload({
+        category: 'sales',
+        name: invoiceDetails.invoiceNumber ? `Invoice ${invoiceDetails.invoiceNumber}` : 'Invoice PDF',
+        format: 'pdf',
+      }).catch(() => {});
     }
   };
 
