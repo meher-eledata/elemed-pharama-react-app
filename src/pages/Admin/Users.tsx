@@ -8,7 +8,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
-import { USERS_LABELS } from '../../config/label/Users.labels';
+import { USERS_LABELS, getRoleLabel } from '../../config/label/Users.labels';
 import { USERS_CONSTANTS } from '../../config/constants/Users.constants';
 import AddUserModal from '../../components/Modal/AddUser/AddUserModal';
 import ConfirmationDialog from '../../components/DeleteDialogue/ConfirmationDialog';
@@ -88,10 +88,10 @@ const Users: React.FC = () => {
       
       const status = user.status.charAt(0).toUpperCase() + user.status.slice(1);
       
-      let role = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-      
+      let role = getRoleLabel(user.role);
+
       if (localRoleUpdates[user.id]) {
-        role = localRoleUpdates[user.id].charAt(0).toUpperCase() + localRoleUpdates[user.id].slice(1);
+        role = getRoleLabel(localRoleUpdates[user.id]);
       }
       
       return {

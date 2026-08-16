@@ -46,7 +46,6 @@ export const orderLabels = {
   updateReceipt: 'Update Receipt',
   deleteReceipt: 'Delete Receipt',
   proceedToPayment: 'Proceed to Payment',
-  orderReceivedButton: 'Order Received',
 
   // Table data
   noDataAvailable: 'No data available',

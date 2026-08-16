@@ -31,6 +31,7 @@ import {
 } from '../../redux/slices/profileApi';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
 import { USER_PROFILE_LABELS } from '../../config/label/UserProfile.labels';
+import { getRoleLabel } from '../../config/label/Users.labels';
 import { getInitials } from '../../config/helpers/initials';
 
 const PRIMARY = '#5C17E5';
@@ -107,7 +108,7 @@ const Header: React.FC<{ profile: Profile }> = ({ profile }) => {
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
           <Chip
-            label={profile.role}
+            label={getRoleLabel(profile.role)}
             size="small"
             sx={{ backgroundColor: PRIMARY, color: 'white', textTransform: 'capitalize' }}
           />

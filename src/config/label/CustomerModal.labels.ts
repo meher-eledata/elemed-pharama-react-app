@@ -1,6 +1,6 @@
 export const CUSTOMER_MODAL_LABELS = {
   // Modal Title
-  MODAL_TITLE: "Add New customer",
+  MODAL_TITLE: "New Customer",
   MODAL_ARIA_LABEL: "add-new-customer-modal-title",
 
   // Section Headers

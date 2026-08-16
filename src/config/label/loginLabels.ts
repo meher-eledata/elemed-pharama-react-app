@@ -6,7 +6,7 @@ export const LOGIN_LABELS = {
   PASSWORD_PLACEHOLDER: "••••••••",
   FORGOT_PASSWORD: "Forgot Password?",
   LOGIN_BUTTON: "Login",
-  LOGIN_BUTTON_LOADING: "Logging In...",
+  LOGIN_BUTTON_LOADING: "Logging in...",
   DIVIDER_TEXT: "or",
   SIGNUP_QUESTION: "Don't have an account?",
   SIGNUP_LINK: "Sign up",

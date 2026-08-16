@@ -248,10 +248,10 @@ describe('SaleHistory', () => {
   it('renders sales history table', () => {
     renderComponent();
     
-    // Table headers should be present - use getAllByText since there might be multiple "Invoice" elements
-    const invoiceHeaders = screen.getAllByText(/invoice/i);
-    expect(invoiceHeaders.length).toBeGreaterThan(0);
-    expect(screen.getByText(/invoice date/i)).toBeInTheDocument();
+    // Table headers should be present - use getAllByText since there might be multiple "Sale" elements
+    const saleHeaders = screen.getAllByText(/sale/i);
+    expect(saleHeaders.length).toBeGreaterThan(0);
+    expect(screen.getByText(/sale date/i)).toBeInTheDocument();
     expect(screen.getByText(/customer name/i)).toBeInTheDocument();
   });
 
@@ -452,11 +452,11 @@ describe('SaleHistory', () => {
     renderComponent();
     
     // Click on sortable column header - use getAllByText and get the first one
-    const invoiceHeaders = screen.getAllByText(/invoice/i);
-    if (invoiceHeaders.length > 0) {
-      fireEvent.click(invoiceHeaders[0]);
+    const saleHeaders = screen.getAllByText(/sale/i);
+    if (saleHeaders.length > 0) {
+      fireEvent.click(saleHeaders[0]);
       // Sorting should be triggered
-      expect(invoiceHeaders[0]).toBeInTheDocument();
+      expect(saleHeaders[0]).toBeInTheDocument();
     } else {
       // At least verify the table exists
       expect(screen.getByText(/sales history/i)).toBeInTheDocument();

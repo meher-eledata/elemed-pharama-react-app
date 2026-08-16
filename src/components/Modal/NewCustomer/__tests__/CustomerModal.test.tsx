@@ -36,13 +36,13 @@ describe('CustomerModal', () => {
   it('renders modal when isOpen is true', () => {
     renderComponent();
     
-    expect(screen.getByText(/add new customer/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /new customer/i })).toBeInTheDocument();
   });
 
   it('does not render modal when isOpen is false', () => {
     renderComponent({ isOpen: false });
-    
-    expect(screen.queryByText(/add new customer/i)).not.toBeInTheDocument();
+
+    expect(screen.queryByRole('heading', { name: /new customer/i })).not.toBeInTheDocument();
   });
 
   it('displays all form fields', () => {

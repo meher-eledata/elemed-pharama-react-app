@@ -206,7 +206,7 @@ describe('SupplierCredit page', () => {
     selectDialogSupplier(dialog, 'Acme Pharma');
 
     // Amount + reason left blank → submit is blocked with an inline error.
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Submit Adjustment' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save Adjustment' }));
 
     expect(
       await within(dialog).findByText('Please enter an amount greater than 0.')
@@ -227,7 +227,7 @@ describe('SupplierCredit page', () => {
       target: { value: 'Manual top-up' },
     });
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Submit Adjustment' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save Adjustment' }));
 
     await waitFor(() => expect(adjustMock).toHaveBeenCalledTimes(1));
     expect(adjustMock).toHaveBeenCalledWith(

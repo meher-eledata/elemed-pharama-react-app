@@ -186,7 +186,7 @@ describe('UserProfile', () => {
           el?.textContent === `${L.HEADER.USERNAME_PREFIX}jdoe`
       )
     ).toBeInTheDocument();
-    expect(screen.getByText('pharmacist')).toBeInTheDocument();
+    expect(screen.getByText('Pharmacist')).toBeInTheDocument();
     expect(screen.getByText('active')).toBeInTheDocument();
 
     // Account + identity fields.

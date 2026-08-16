@@ -45,11 +45,11 @@ describe('PaymentDetailsSection', () => {
     renderComponent();
     
     expect(screen.getByText(/payment details/i)).toBeInTheDocument();
-    // "Invoice number" appears as both the field label and its placeholder,
+    // "Sale number" appears as both the field label and its placeholder,
     // so query the labelled input directly to avoid an ambiguous text match.
-    expect(screen.getByLabelText(/invoice number/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/sale number/i)).toBeInTheDocument();
     // The MUI date picker exposes the date input as a labelled group.
-    expect(screen.getByRole('group', { name: /invoice date/i })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /sale date/i })).toBeInTheDocument();
   });
 
   it('displays payment mode when provided', () => {
@@ -72,17 +72,17 @@ describe('PaymentDetailsSection', () => {
   it('displays invoice number when provided', () => {
     renderComponent({ invoiceNumber: 'INV123' });
 
-    // Invoice number is rendered as a TextField value, not free text.
+    // Sale number is rendered as a TextField value, not free text.
     expect(screen.getByDisplayValue('INV123')).toBeInTheDocument();
   });
 
   it('renders the invoice number field read-only (backend assigns the number)', () => {
     renderComponent({ invoiceNumber: 'INV123' });
 
-    expect(screen.getByLabelText(/invoice number/i)).toBeDisabled();
+    expect(screen.getByLabelText(/sale number/i)).toBeDisabled();
   });
 
-  const invoiceInput = () => screen.getByLabelText(/invoice number/i);
+  const invoiceInput = () => screen.getByLabelText(/sale number/i);
 
   // A new sale (edit/return mode omits `provisionalInvoiceNumber` entirely).
   const newSale = (over: Partial<{ number: string; loading: boolean }> = {}) => ({
@@ -95,7 +95,7 @@ describe('PaymentDetailsSection', () => {
 
     // Rendered TEXT, not a placeholder attribute: MUI force-hides placeholders while the
     // floating label is un-shrunk, so a placeholder here was never visible to anyone.
-    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('SI-EL-26-000001');
+    expect(screen.getByLabelText(/sale number/i)).toHaveValue('SI-EL-26-000001');
     expect(screen.getByText('Provisional until saved')).toBeInTheDocument();
   });
 
@@ -112,14 +112,14 @@ describe('PaymentDetailsSection', () => {
   it('shows a non-numeric pending value while the peek is in flight', () => {
     renderComponent(newSale({ number: '', loading: true }));
 
-    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('Generating…');
+    expect(screen.getByLabelText(/sale number/i)).toHaveValue('Generating…');
     expect(screen.getByText('Provisional until saved')).toBeInTheDocument();
   });
 
   it('falls back to visible "Auto-generated" text when the peek fails', () => {
     renderComponent(newSale({ number: '', loading: false }));
 
-    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('Auto-generated');
+    expect(screen.getByLabelText(/sale number/i)).toHaveValue('Auto-generated');
     expect(screen.getByText('Provisional until saved')).toBeInTheDocument();
   });
 
@@ -136,7 +136,7 @@ describe('PaymentDetailsSection', () => {
     // Edit mode passes no provisionalInvoiceNumber at all.
     renderComponent({ invoiceNumber: 'SI-EL-26-000042' });
 
-    expect(screen.getByLabelText(/invoice number/i)).toHaveValue('SI-EL-26-000042');
+    expect(screen.getByLabelText(/sale number/i)).toHaveValue('SI-EL-26-000042');
     expect(screen.queryByText('Provisional until saved')).not.toBeInTheDocument();
   });
 
@@ -146,7 +146,7 @@ describe('PaymentDetailsSection', () => {
     // single "15/05/2024" text node. Assert the labelled date field is present.
     renderComponent({ invoiceDate: '15/05/2024' });
 
-    expect(screen.getByRole('group', { name: /invoice date/i })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /sale date/i })).toBeInTheDocument();
   });
 
   it('calls onPaymentModeChange when payment mode changes', () => {

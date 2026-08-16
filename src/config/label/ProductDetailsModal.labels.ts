@@ -4,7 +4,7 @@ export const PRODUCT_DETAILS_MODAL_LABELS = {
   TABLE_HEADERS: {
     PRODUCT_NAME: 'Product name',
     TYPE: 'Type',
-    QUANTITY: 'Quantity',
+    QUANTITY: 'Qty',
     HSN_CODE: 'HSN code',
     BATCH_NUMBER: 'Batch Number',
     MRP: 'MRP',

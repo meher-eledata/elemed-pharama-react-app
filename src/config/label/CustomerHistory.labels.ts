@@ -4,12 +4,12 @@ export const CUSTOMER_HISTORY_LABELS = {
   LAST_PURCHASE: 'Last purchase',
   LOADING: 'Loading history...',
   LOAD_ERROR: 'Failed to load customer history. Please try again.',
-  EMPTY: 'This customer has no invoices yet.',
+  EMPTY: 'This customer has no sales yet.',
   NO_LAST_PURCHASE: 'No purchases yet',
   RETRY: 'Retry',
   NO_RETURN: 'No return',
   // Detail (single-invoice preview) modal
-  DETAIL_TITLE: 'Invoice Preview',
+  DETAIL_TITLE: 'Sale Preview',
   PRINT_BUTTON: 'Print',
   // Entry-point triggers
   HISTORY_ACTION: 'History',
