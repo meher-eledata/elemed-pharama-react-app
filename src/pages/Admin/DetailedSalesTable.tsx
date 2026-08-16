@@ -84,7 +84,14 @@ const DetailedSalesTable: React.FC = () => {
       return {
         id: index + 1,
         transactionDate: item.transaction_date, // Note: This might need formatting if it's just YYYY-MM-DD
-        transactionType: item.transaction_type || 'Sale', // Default to Sale until backend adds it
+        transactionType: (() => {
+          // The same outbound-return event arrives as either 'return' or 'refund' depending on the
+          // backend row; display both consistently as 'Return'. Empty defaults to 'Sale'.
+          const raw = (item.transaction_type || '').trim().toLowerCase();
+          if (!raw) return 'Sale';
+          if (raw === 'return' || raw === 'refund') return 'Return';
+          return raw.charAt(0).toUpperCase() + raw.slice(1);
+        })(),
         invoiceNumber: item.invoice_number,
         customerName: resolvedCustomerName,
         customerDetails: (item.customer_details && String(item.customer_details).trim()) ? item.customer_details : '',

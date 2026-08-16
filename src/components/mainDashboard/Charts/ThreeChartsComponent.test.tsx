@@ -113,7 +113,7 @@ describe('ThreeChartsComponent', () => {
       // Corrected titles based on the rendered output
       expect(screen.getByTestId('chart-card-Revenue')).toBeInTheDocument();
       expect(screen.getByTestId('chart-card-Sales')).toBeInTheDocument();
-      expect(screen.getByTestId('chart-card-Patients')).toBeInTheDocument();
+      expect(screen.getByTestId('chart-card-Customers')).toBeInTheDocument();
 
       // Assert that the mocked ChartCard component received the correct props
       const revenueCall = (ChartCard as jest.Mock).mock.calls.find(call => call[0].title === 'Revenue');

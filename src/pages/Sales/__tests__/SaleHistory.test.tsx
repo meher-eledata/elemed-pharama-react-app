@@ -6,6 +6,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SaleHistory from '../SaleHistory';
 import * as salesApi from '../../../redux/slices/salesApi';
+import { SALES_HISTORY_LABELS } from '../../../config/label/SalesHistory.labels';
 
 const theme = createTheme();
 
@@ -237,10 +238,10 @@ describe('SaleHistory', () => {
   it('renders sales history table', () => {
     renderComponent();
     
-    // Table headers should be present - use getAllByText since there might be multiple "Invoice" elements
-    const invoiceHeaders = screen.getAllByText(/invoice/i);
-    expect(invoiceHeaders.length).toBeGreaterThan(0);
-    expect(screen.getByText(/invoice date/i)).toBeInTheDocument();
+    // Table headers should be present - use getAllByText since there might be multiple "Sale" elements
+    const saleHeaders = screen.getAllByText(/sale/i);
+    expect(saleHeaders.length).toBeGreaterThan(0);
+    expect(screen.getByText(/sale date/i)).toBeInTheDocument();
     expect(screen.getByText(/customer name/i)).toBeInTheDocument();
   });
 
@@ -292,7 +293,7 @@ describe('SaleHistory', () => {
         
         // Wait for modal to open
         await waitFor(() => {
-          expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
+          expect(screen.getByText(SALES_HISTORY_LABELS.MODAL_TITLE)).toBeInTheDocument();
         }, { timeout: 3000 });
       } else {
         // Fallback: try finding any SVG that's not a known icon
@@ -304,7 +305,7 @@ describe('SaleHistory', () => {
         if (viewIcon) {
           fireEvent.click(viewIcon);
           await waitFor(() => {
-            expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
+            expect(screen.getByText(SALES_HISTORY_LABELS.MODAL_TITLE)).toBeInTheDocument();
           }, { timeout: 3000 });
         }
       }
@@ -335,7 +336,7 @@ describe('SaleHistory', () => {
     // org-driven letterhead (from the store's org context) is now the stable
     // receipt content.
     await waitFor(() => {
-      expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
+      expect(screen.getByText(SALES_HISTORY_LABELS.MODAL_TITLE)).toBeInTheDocument();
       expect(screen.getByText('Test Pharmacy')).toBeInTheDocument();
     }, { timeout: 3000 });
   });
@@ -361,7 +362,7 @@ describe('SaleHistory', () => {
 
     // Wait for modal to open
     await waitFor(() => {
-      expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
+      expect(screen.getByText(SALES_HISTORY_LABELS.MODAL_TITLE)).toBeInTheDocument();
     }, { timeout: 3000 });
 
     // Find and click close button (usually an X or Close button in CommonModal)
@@ -374,7 +375,7 @@ describe('SaleHistory', () => {
       fireEvent.click(closeButton);
       
       await waitFor(() => {
-        expect(screen.queryByText(/invoice preview/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(SALES_HISTORY_LABELS.MODAL_TITLE)).not.toBeInTheDocument();
       });
     }
   });
@@ -400,7 +401,7 @@ describe('SaleHistory', () => {
 
     // Wait for modal to open
     await waitFor(() => {
-      expect(screen.getByText(/invoice preview/i)).toBeInTheDocument();
+      expect(screen.getByText(SALES_HISTORY_LABELS.MODAL_TITLE)).toBeInTheDocument();
     }, { timeout: 3000 });
 
     // Note: In SaleHistory, the Save/Print buttons are not rendered inside
@@ -441,11 +442,11 @@ describe('SaleHistory', () => {
     renderComponent();
     
     // Click on sortable column header - use getAllByText and get the first one
-    const invoiceHeaders = screen.getAllByText(/invoice/i);
-    if (invoiceHeaders.length > 0) {
-      fireEvent.click(invoiceHeaders[0]);
+    const saleHeaders = screen.getAllByText(/sale/i);
+    if (saleHeaders.length > 0) {
+      fireEvent.click(saleHeaders[0]);
       // Sorting should be triggered
-      expect(invoiceHeaders[0]).toBeInTheDocument();
+      expect(saleHeaders[0]).toBeInTheDocument();
     } else {
       // At least verify the table exists
       expect(screen.getByText(/sales history/i)).toBeInTheDocument();
@@ -611,47 +612,51 @@ describe('SaleHistory', () => {
   });
 
   // =========================================================================
-  // Invoices / Returns tabs (Sales Returns log feature, 2026-08-13). The open
+  // Sales / Returns tabs (Sales Returns log feature, 2026-08-13; the first tab
+  // was renamed 'Invoices' → 'Sales' by the vocab standardization). The open
   // tab lives in the URL (`/sales?tab=returns`) so it is shareable and survives
-  // the round trip to a return's original invoice; no param = Invoices.
+  // the round trip to a return's original invoice; no param = the Sales tab.
   // useSearchParams resolves against the real jsdom history under BrowserRouter,
   // so each case drives window.history directly.
   // =========================================================================
-  describe('Invoices / Returns tabs', () => {
+  describe('Sales / Returns tabs', () => {
     const setUrl = (url: string) => window.history.pushState({}, '', url);
     afterEach(() => setUrl('/'));
 
-    const tab = (name: 'Invoices' | 'Returns') => screen.getByRole('tab', { name });
+    // Resolve tabs through the label constants so a vocab rename cannot silently
+    // stale these assertions again.
+    const tab = (name: 'INVOICES' | 'RETURNS') =>
+      screen.getByRole('tab', { name: SALES_HISTORY_LABELS.TABS[name] });
 
     it('renders both tabs', () => {
       setUrl('/sales');
       renderComponent();
-      expect(tab('Invoices')).toBeInTheDocument();
-      expect(tab('Returns')).toBeInTheDocument();
+      expect(tab('INVOICES')).toBeInTheDocument();
+      expect(tab('RETURNS')).toBeInTheDocument();
     });
 
-    it('lands on Invoices by default (no tab param) and shows the invoices table', () => {
+    it('lands on the Sales tab by default (no tab param) and shows the invoices table', () => {
       setUrl('/sales');
       renderComponent();
-      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
-      expect(tab('Returns')).toHaveAttribute('aria-selected', 'false');
+      expect(tab('INVOICES')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('RETURNS')).toHaveAttribute('aria-selected', 'false');
       // The invoices toolbar is present, the returns log is not.
       expect(screen.getByText(/show filters/i)).toBeInTheDocument();
       expect(salesApi.useListSalesReturnsQuery).not.toHaveBeenCalled();
     });
 
-    it('an unknown tab value falls back to Invoices', () => {
+    it('an unknown tab value falls back to the Sales tab', () => {
       setUrl('/sales?tab=bogus');
       renderComponent();
-      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('INVOICES')).toHaveAttribute('aria-selected', 'true');
       expect(salesApi.useListSalesReturnsQuery).not.toHaveBeenCalled();
     });
 
     it('?tab=returns lands directly on the Returns tab and mounts the returns log', () => {
       setUrl('/sales?tab=returns');
       renderComponent();
-      expect(tab('Returns')).toHaveAttribute('aria-selected', 'true');
-      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'false');
+      expect(tab('RETURNS')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('INVOICES')).toHaveAttribute('aria-selected', 'false');
       expect(salesApi.useListSalesReturnsQuery).toHaveBeenCalled();
       expect(
         screen.getByPlaceholderText('Search by return ID, invoice number or customer')
@@ -663,27 +668,27 @@ describe('SaleHistory', () => {
     it('switching to Returns sets ?tab=returns in the URL', async () => {
       setUrl('/sales');
       renderComponent();
-      fireEvent.click(tab('Returns'));
+      fireEvent.click(tab('RETURNS'));
 
       await waitFor(() => expect(window.location.search).toBe('?tab=returns'));
-      expect(tab('Returns')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('RETURNS')).toHaveAttribute('aria-selected', 'true');
       await waitFor(() => expect(salesApi.useListSalesReturnsQuery).toHaveBeenCalled());
     });
 
-    it('switching back to Invoices REMOVES the param rather than setting tab=invoices', async () => {
+    it('switching back to the Sales tab REMOVES the param rather than setting tab=invoices', async () => {
       setUrl('/sales?tab=returns');
       renderComponent();
-      fireEvent.click(tab('Invoices'));
+      fireEvent.click(tab('INVOICES'));
 
       await waitFor(() => expect(window.location.search).toBe(''));
-      expect(tab('Invoices')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('INVOICES')).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByText(/show filters/i)).toBeInTheDocument();
     });
 
     it('preserves any other query params when switching tabs', async () => {
       setUrl('/sales?ref=dashboard');
       renderComponent();
-      fireEvent.click(tab('Returns'));
+      fireEvent.click(tab('RETURNS'));
 
       await waitFor(() => {
         const params = new URLSearchParams(window.location.search);

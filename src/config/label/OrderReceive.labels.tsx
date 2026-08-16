@@ -2,7 +2,7 @@ export const ORDER_RECEIVE_TITLE = "Stock Receipt History";
 export const ADD_RECEIVE_BUTTON = "Receive Stock";
 export const PURCHASE_RETURN_BUTTON = "Purchase Return";
 
-export const TAB_CURRENT_ORDER = "Current Order";
+export const TAB_CURRENT_ORDER = "New Receipt";
 export const TAB_RECEIVE_HISTORY = "Receive History";
 
 export const CURRENT_ORDER_PLACEHOLDER = "Current Order content here...";

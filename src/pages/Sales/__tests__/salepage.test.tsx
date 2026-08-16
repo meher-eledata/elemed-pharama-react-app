@@ -161,8 +161,8 @@ describe('SalePage', () => {
     renderComponent();
     
     expect(screen.getByText(/find product/i)).toBeInTheDocument();
-    // Quantity field label renders as "Units" (also appears as a table header)
-    expect(screen.getAllByText(/units/i).length).toBeGreaterThan(0);
+    // Quantity field label renders as "Qty" (also appears as a table header)
+    expect(screen.getAllByText(/qty/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/discount/i)).toBeInTheDocument();
   });
 

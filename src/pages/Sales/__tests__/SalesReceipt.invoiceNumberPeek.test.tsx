@@ -89,7 +89,7 @@ const peekResult = (number: string, enabled = true) => ({
   isFetching: false,
 });
 
-const invoiceNumberField = () => screen.getByLabelText(/invoice number/i);
+const invoiceNumberField = () => screen.getByLabelText(/sale number/i);
 const PROVISIONAL = 'Provisional until saved';
 
 describe('SalesReceipt — provisional invoice number', () => {

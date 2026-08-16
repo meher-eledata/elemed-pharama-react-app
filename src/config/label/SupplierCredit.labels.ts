@@ -42,7 +42,7 @@ export const SUPPLIER_CREDIT_LABELS = {
     REASON: 'Reason',
     REASON_PLACEHOLDER: 'Reason for this adjustment',
     AVAILABLE_CREDIT: 'Current available credit',
-    SUBMIT: 'Submit Adjustment',
+    SUBMIT: 'Save Adjustment',
     CANCEL: 'Cancel',
     SUCCESS: 'Credit adjusted successfully.',
     VALIDATION: {

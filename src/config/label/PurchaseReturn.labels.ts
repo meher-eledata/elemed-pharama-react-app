@@ -1,6 +1,6 @@
 export const PURCHASE_RETURN_LABELS = {
   LANDING: {
-    TITLE: 'Supplier Purchase Return',
+    TITLE: 'Purchase Return',
     SUBTITLE: 'Select batches to return to their supplier. Expired and near-expiry stock is shown first.',
     RETURNS_LOG_BUTTON: 'Returns Log',
     FILTERS: {
@@ -25,7 +25,7 @@ export const PURCHASE_RETURN_LABELS = {
       PURCHASE_PRICE: 'Purchase Price',
       MRP: 'MRP ₹',
       RECEIPT: 'Invoice Number',
-      RETURN_QTY: 'Return qty',
+      RETURN_QTY: 'Return Qty',
     },
     UNATTRIBUTABLE_TOOLTIP:
       'This batch cannot be attributed to a supplier and is not returnable.',
@@ -53,7 +53,7 @@ export const PURCHASE_RETURN_LABELS = {
       PRODUCT: 'Product',
       BATCH: 'Batch',
       EXPIRY: 'Expiry',
-      RETURN_QTY: 'Return qty',
+      RETURN_QTY: 'Return Qty',
       UNIT_VALUE: 'Unit ₹',
       TAXABLE: 'Taxable ₹',
       GST: 'GST',
@@ -180,7 +180,7 @@ export const PURCHASE_RETURN_LABELS = {
     },
     VIEW_FILE_FAILED: 'Failed to open the credit note file.',
     DETAILS_MODAL: {
-      TITLE: 'Return Details',
+      TITLE: 'Purchase Return Details',
       LOADING: 'Loading return details...',
       FAILED: 'Failed to load return details.',
       DATE: 'Date',

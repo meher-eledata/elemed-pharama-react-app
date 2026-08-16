@@ -6,7 +6,7 @@ export const SALES_RETURNS_LOG_LABELS = {
     INVOICE: 'Invoice',
     CUSTOMER: 'Customer',
     ITEMS: 'Items',
-    UNITS: 'Units',
+    UNITS: 'Qty',
     REFUND: 'Refund', // values carry the ₹ symbol (formatWholeCurrency)
     RETURNED_BY: 'Returned by',
   },
@@ -35,7 +35,7 @@ export const SALES_RETURNS_LOG_LABELS = {
     LINES: {
       PRODUCT: 'Product',
       BATCH: 'Batch',
-      QTY: 'Quantity returned',
+      QTY: 'Qty Returned',
       REFUND: 'Refund amount',
       RESTOCK: 'Restock action',
     },

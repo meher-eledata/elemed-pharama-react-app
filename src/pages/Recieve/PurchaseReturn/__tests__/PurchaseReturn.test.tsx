@@ -150,7 +150,7 @@ describe('PurchaseReturn (landing)', () => {
   describe('rendering & expiry filter', () => {
     it('renders the returnable batches with supplier attribution', () => {
       renderPage();
-      expect(screen.getByText('Supplier Purchase Return')).toBeInTheDocument();
+      expect(screen.getByText('Purchase Return')).toBeInTheDocument();
       expect(screen.getByText('Paracetamol 500')).toBeInTheDocument();
       expect(screen.getByText('Ibuprofen 200')).toBeInTheDocument();
       expect(screen.getByText('SupCo')).toBeInTheDocument();

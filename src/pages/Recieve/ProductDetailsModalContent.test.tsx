@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import ProductDetailsModalContent from './ProductDetailsModalContent';
 import { OrderReceiveRow, ProductItem } from './types';
+import { PRODUCT_DETAILS_MODAL_LABELS } from '../../config/label/ProductDetailsModal.labels';
 
 // Create a theme for testing
 const theme = createTheme();
@@ -124,7 +125,7 @@ describe('ProductDetailsModalContent', () => {
 
       expect(screen.getByText(/Product Name/i)).toBeInTheDocument();
       expect(screen.getByText(/Type/i)).toBeInTheDocument();
-      expect(screen.getByText(/Quantity/i)).toBeInTheDocument();
+      expect(screen.getByText(PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.QUANTITY)).toBeInTheDocument();
       expect(screen.getByText(/HSN Code/i)).toBeInTheDocument();
       // Unit Price was removed; the modal now shows Batch Number / MRP / Purchase Price.
       expect(screen.queryByText(/Unit Price/i)).not.toBeInTheDocument();

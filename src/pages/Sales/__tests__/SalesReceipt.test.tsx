@@ -205,8 +205,8 @@ describe('SalesReceipt', () => {
     
     // Wait for modal to appear - check for modal title by ID or use getAllByText
     await waitFor(() => {
-      const modalTitle = screen.getByRole('heading', { name: /add new customer/i }) || 
-                        screen.getAllByText(/add new customer/i).find(el => el.id === 'add-new-customer-modal-title');
+      const modalTitle = screen.getByRole('heading', { name: /new customer/i }) ||
+                        screen.getAllByText(/new customer/i).find(el => el.id === 'add-new-customer-modal-title');
       expect(modalTitle).toBeInTheDocument();
     }, { timeout: 3000 });
   });

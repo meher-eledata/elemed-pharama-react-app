@@ -391,7 +391,7 @@ describe('SalesReturnsLog', () => {
 
       const modal = within(screen.getByTestId('common-modal'));
       expect(modal.getByText('Sales Return Details')).toBeInTheDocument();
-      expect(modal.getByText('Quantity returned')).toBeInTheDocument();
+      expect(modal.getByText('Qty Returned')).toBeInTheDocument();
 
       // Each line is one row: product + batch + quantity + refund + restock action.
       const lineRow = (product: string) =>
