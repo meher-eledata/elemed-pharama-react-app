@@ -13,6 +13,11 @@ export const NOTIFICATION_LABELS = {
   DISMISS: 'Dismiss',
   ALL_READ: 'All read',
   unread: (count: number): string => `${count} unread`,
+  FILTER_ALL: 'All',
+  filterChip: (label: string, count: number): string => `${label} (${count})`,
+  LOAD_MORE: 'Load more',
+  listCapped: (limit: number): string =>
+    `Showing the first ${limit} — filter by type to see the rest.`,
   TYPE: {
     NEAR_EXPIRY: 'Near expiry',
     EXPIRED: 'Expired',

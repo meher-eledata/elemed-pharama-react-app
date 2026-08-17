@@ -1,6 +1,7 @@
 import {
   NOTIFICATION_CONSTANTS,
   getNotificationRoute,
+  notificationTypeFilters,
 } from '../Notifications.constants';
 import type { NotificationItem } from '../../../redux/slices/notificationsApi';
 
@@ -120,5 +121,54 @@ describe('NOTIFICATION_CONSTANTS', () => {
     expect(Number.isInteger(NOTIFICATION_CONSTANTS.LIST_LIMIT)).toBe(true);
     expect(NOTIFICATION_CONSTANTS.LIST_LIMIT).toBeGreaterThanOrEqual(1);
     expect(NOTIFICATION_CONSTANTS.LIST_LIMIT).toBeLessThanOrEqual(200);
+  });
+
+  it('LIST_LIMIT_MAX is the server ceiling and an exact number of "load more" steps', () => {
+    expect(NOTIFICATION_CONSTANTS.LIST_LIMIT_MAX).toBe(200);
+    expect(NOTIFICATION_CONSTANTS.LIST_LIMIT_MAX % NOTIFICATION_CONSTANTS.LIST_LIMIT).toBe(0);
+  });
+});
+
+// The panel's type filter must be derived, never enumerated: `byType` is
+// zero-filled from a server registry that gains entries with no DDL, so a fifth
+// type has to become reachable without a frontend release.
+describe('notificationTypeFilters', () => {
+  it('returns one entry per byType key, including a type this build has never seen', () => {
+    expect(
+      notificationTypeFilters(
+        { NEAR_EXPIRY: 3, EXPIRED: 2, LOW_STOCK: 72, EXCESS_STOCK: 10, FUTURE_TYPE: 1 },
+        [],
+      ),
+    ).toEqual([
+      { type: 'NEAR_EXPIRY', count: 3 },
+      { type: 'EXPIRED', count: 2 },
+      { type: 'LOW_STOCK', count: 72 },
+      { type: 'EXCESS_STOCK', count: 10 },
+      { type: 'FUTURE_TYPE', count: 1 },
+    ]);
+  });
+
+  it('keeps zero-count types — byType counts UNREAD rows, which "mark all read" zeroes', () => {
+    expect(notificationTypeFilters({ NEAR_EXPIRY: 0, LOW_STOCK: 0 }, [])).toEqual([
+      { type: 'NEAR_EXPIRY', count: 0 },
+      { type: 'LOW_STOCK', count: 0 },
+    ]);
+  });
+
+  it('adds a type that is on the page but missing from byType (read rows only)', () => {
+    const filters = notificationTypeFilters({ LOW_STOCK: 1 }, [
+      item({ type: 'EXCESS_STOCK', read_at: '2026-08-17T06:00:00.000Z' }),
+    ]);
+    expect(filters).toEqual([
+      { type: 'LOW_STOCK', count: 1 },
+      { type: 'EXCESS_STOCK', count: 0 },
+    ]);
+  });
+
+  it('does not double-count a type present in both inputs, and tolerates no summary', () => {
+    expect(notificationTypeFilters({ LOW_STOCK: 4 }, [item({ type: 'LOW_STOCK' })])).toEqual([
+      { type: 'LOW_STOCK', count: 4 },
+    ]);
+    expect(notificationTypeFilters(undefined, [])).toEqual([]);
   });
 });

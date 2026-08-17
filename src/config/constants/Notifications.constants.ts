@@ -1,17 +1,45 @@
 import type { NotificationItem } from '../../redux/slices/notificationsApi';
 
 export const NOTIFICATION_CONSTANTS = {
-  LIST_LIMIT: 50, // server default; must be an integer 1..200
+  LIST_LIMIT: 50, // server default + "load more" step; must be an integer 1..200
+  LIST_LIMIT_MAX: 200, // server bound — a larger `limit` is a 400
   MENU_WIDTH: 380,
-  MENU_MAX_HEIGHT: 480,
-  // The title carries the actionable part (product + what's wrong) and always
-  // overflows one line at MENU_WIDTH, so it gets the same two-line clamp as the
-  // body; the row reserves both lines so every row keeps the same rhythm.
+  // +80 over the original 480: that is what the sticky filter chips cost, so the
+  // panel still shows the same number of rows. MUI caps this to the viewport.
+  MENU_MAX_HEIGHT: 560,
+  // The title carries the actionable part (product + what's wrong) and gets the
+  // same two-line clamp as the body. It is a clamp only, NOT a reserved height:
+  // reserving both lines left a blank line under every short title without ever
+  // making rows equal height (the body/type lines vary too).
   TITLE_LINE_CLAMP: 2,
   BODY_LINE_CLAMP: 2,
   SKELETON_ROWS: 3,
   SKELETON_ROW_HEIGHT: 64,
 } as const;
+
+export interface NotificationTypeFilter {
+  type: string;
+  count: number; // unread, per the server summary
+}
+
+// Chip set for the panel's type filter. Derived ONLY from the server's
+// zero-filled `byType` (a registry-driven map that gains a key whenever a new
+// module/type ships, with no DDL) unioned with whatever types the loaded page
+// actually contains — never a hardcoded list, so a fifth type is reachable the
+// day the backend starts emitting it.
+// Zero-count types are KEPT: `byType` counts unread only, so after "mark all
+// read" every count is 0 while the rows are still listed, and dropping the chips
+// would make those rows unreachable again.
+export const notificationTypeFilters = (
+  byType: Record<string, number> | undefined,
+  notifications: NotificationItem[],
+): NotificationTypeFilter[] => {
+  const counts = new Map<string, number>(Object.entries(byType ?? {}));
+  notifications.forEach((notification) => {
+    if (!counts.has(notification.type)) counts.set(notification.type, 0);
+  });
+  return Array.from(counts, ([type, count]) => ({ type, count }));
+};
 
 export interface NotificationRoute {
   path: string;

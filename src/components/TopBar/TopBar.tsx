@@ -8,6 +8,7 @@ import {
   Menu,
   MenuItem,
   Badge,
+  Chip,
   Skeleton,
   Tooltip,
 } from "@mui/material";
@@ -41,6 +42,7 @@ import {
 import {
   NOTIFICATION_CONSTANTS,
   getNotificationRoute,
+  notificationTypeFilters,
 } from "../../config/constants/Notifications.constants";
 import { extractErrorMessage } from "../../utils/errorUtils";
 
@@ -78,13 +80,20 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   // read/dismiss mutation invalidates the 'Notification' tag.
   const { data: summary } = useGetNotificationSummaryQuery();
   const [listRequested, setListRequested] = React.useState(false);
+  // The server sorts by severity rank, so a single unfiltered page of 50 is all
+  // CRITICAL/HIGH and the lower-severity types are unreachable. The panel
+  // therefore drives the list with a `type` filter (chips) and a growable
+  // `limit` ("load more"), both server-side params — one request per user
+  // action, never a fan-out (each GET regenerates the org's notifications).
+  const [typeFilter, setTypeFilter] = React.useState<string | null>(null);
+  const [limit, setLimit] = React.useState<number>(NOTIFICATION_CONSTANTS.LIST_LIMIT);
   const {
     data: notificationsData,
     isFetching: notificationsFetching,
     error: notificationsFetchError,
     refetch: refetchNotifications,
   } = useGetNotificationsQuery(
-    { limit: NOTIFICATION_CONSTANTS.LIST_LIMIT },
+    { limit, type: typeFilter ?? undefined },
     { skip: !listRequested },
   );
   const [markRead] = useMarkNotificationReadMutation();
@@ -95,6 +104,17 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   // not-dismissed rows and must never be re-derived from the returned page.
   const unreadCount = summary?.unreadCount ?? 0;
   const notifications = notificationsData?.notifications ?? [];
+  // Chips come from the server's registry-driven byType, so a new type shows up
+  // without a frontend change.
+  const typeFilters = notificationTypeFilters(summary?.byType, notifications);
+  // The header must describe what is on screen: with a chip active it counts
+  // that type only, so "N unread" can never contradict the visible rows.
+  const visibleUnread = typeFilter ? (summary?.byType?.[typeFilter] ?? 0) : unreadCount;
+  // The page is full, so more rows exist behind the current limit.
+  const canLoadMore =
+    notifications.length >= limit && limit < NOTIFICATION_CONSTANTS.LIST_LIMIT_MAX;
+  const listCapped =
+    notifications.length >= NOTIFICATION_CONSTANTS.LIST_LIMIT_MAX;
   // First open only: no data yet, so reserve the row height instead of
   // collapsing the menu to the header.
   const notificationsLoading = notificationsFetching && !notificationsData;
@@ -110,6 +130,9 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
   const listFailed = Boolean(notificationsFetchError) && !notificationsLoading;
   const showListError = listFailed && notifications.length === 0;
   const showEmpty = !notificationsLoading && !listFailed && notifications.length === 0;
+  // Hide the chips only on a genuinely empty, unfiltered bell — with a filter on
+  // they are the way back to "All".
+  const showFilters = !showListError && (!showEmpty || typeFilter !== null);
 
   // Get user info from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -151,6 +174,25 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
     setAlertsAnchorEl(null);
   };
 
+  // Switching filter always restarts at one page — a filter is a new list, not a
+  // continuation of the one that was loaded more of.
+  const handleFilterSelect = (type: string | null) => {
+    if (type === typeFilter) return;
+    setNotificationsError(null);
+    setTypeFilter(type);
+    setLimit(NOTIFICATION_CONSTANTS.LIST_LIMIT);
+  };
+
+  // The API has no offset, so "more" is a bigger `limit` on the same query.
+  const handleLoadMore = () => {
+    setLimit((current) =>
+      Math.min(
+        current + NOTIFICATION_CONSTANTS.LIST_LIMIT,
+        NOTIFICATION_CONSTANTS.LIST_LIMIT_MAX,
+      ),
+    );
+  };
+
   // Clicking a row always marks it read; it navigates only for a type this
   // frontend knows how to route (an unknown type still renders, just inert).
   const handleNotificationClick = async (notification: NotificationItem) => {
@@ -182,10 +224,11 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
     }
   };
 
+  // Scoped to the active chip so the action matches the count next to it.
   const handleMarkAllRead = async () => {
     setNotificationsError(null);
     try {
-      await markAllRead().unwrap();
+      await markAllRead(typeFilter ? { type: typeFilter } : undefined).unwrap();
     } catch (error) {
       setNotificationsError(extractErrorMessage(error, NOTIFICATION_LABELS.ERROR_DEFAULT));
     }
@@ -257,7 +300,7 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
               top: 0,
               zIndex: 1,
               display: 'flex',
-              alignItems: 'center',
+              flexDirection: 'column',
               gap: 1,
               px: 2,
               py: 1.25,
@@ -268,24 +311,55 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
               borderColor: 'divider',
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4 }}>
-                {NOTIFICATION_LABELS.TITLE}
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>
-                {unreadCount > 0
-                  ? NOTIFICATION_LABELS.unread(unreadCount)
-                  : NOTIFICATION_LABELS.ALL_READ}
-              </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4 }}>
+                  {NOTIFICATION_LABELS.TITLE}
+                </Typography>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>
+                  {visibleUnread > 0
+                    ? NOTIFICATION_LABELS.unread(visibleUnread)
+                    : NOTIFICATION_LABELS.ALL_READ}
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                onClick={handleMarkAllRead}
+                disabled={visibleUnread === 0}
+                sx={{ ml: 'auto', flexShrink: 0, textTransform: 'none', fontSize: 13 }}
+              >
+                {NOTIFICATION_LABELS.MARK_ALL_READ}
+              </Button>
             </Box>
-            <Button
-              size="small"
-              onClick={handleMarkAllRead}
-              disabled={unreadCount === 0}
-              sx={{ ml: 'auto', flexShrink: 0, textTransform: 'none', fontSize: 13 }}
-            >
-              {NOTIFICATION_LABELS.MARK_ALL_READ}
-            </Button>
+            {showFilters ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                <Chip
+                  size="small"
+                  label={NOTIFICATION_LABELS.filterChip(
+                    NOTIFICATION_LABELS.FILTER_ALL,
+                    unreadCount,
+                  )}
+                  aria-pressed={typeFilter === null}
+                  color={typeFilter === null ? 'primary' : 'default'}
+                  variant={typeFilter === null ? 'filled' : 'outlined'}
+                  onClick={() => handleFilterSelect(null)}
+                />
+                {typeFilters.map(({ type, count }) => (
+                  <Chip
+                    key={type}
+                    size="small"
+                    label={NOTIFICATION_LABELS.filterChip(
+                      notificationTypeLabel(type),
+                      count,
+                    )}
+                    aria-pressed={typeFilter === type}
+                    color={typeFilter === type ? 'primary' : 'default'}
+                    variant={typeFilter === type ? 'filled' : 'outlined'}
+                    onClick={() => handleFilterSelect(type)}
+                  />
+                ))}
+              </Box>
+            ) : null}
           </Box>
           {errorMessage && !showListError ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1 }}>
@@ -428,9 +502,6 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
                       WebkitBoxOrient: 'vertical',
                       WebkitLineClamp: NOTIFICATION_CONSTANTS.TITLE_LINE_CLAMP,
                       overflow: 'hidden',
-                      // Reserve both title lines (1.4 line-height x clamp) so a
-                      // short title doesn't break the rows' shared rhythm.
-                      minHeight: `${1.4 * NOTIFICATION_CONSTANTS.TITLE_LINE_CLAMP}em`,
                     }}
                   >
                     {notification.title}
@@ -469,6 +540,27 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
               </MenuItem>
             );
           })}
+          {canLoadMore || listCapped ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', px: 2, py: 1 }}>
+              {canLoadMore ? (
+                <Button
+                  size="small"
+                  onClick={handleLoadMore}
+                  disabled={notificationsFetching}
+                  sx={{ textTransform: 'none', fontSize: 13 }}
+                >
+                  {NOTIFICATION_LABELS.LOAD_MORE}
+                </Button>
+              ) : (
+                // The server caps `limit` at 200; past that the type chips are
+                // the only way through the rest, so say so rather than let the
+                // header count silently outrun the rows.
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', textAlign: 'center' }}>
+                  {NOTIFICATION_LABELS.listCapped(NOTIFICATION_CONSTANTS.LIST_LIMIT_MAX)}
+                </Typography>
+              )}
+            </Box>
+          ) : null}
         </Menu>
 
         <Box

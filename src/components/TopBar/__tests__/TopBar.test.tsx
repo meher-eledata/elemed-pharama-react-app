@@ -34,25 +34,42 @@ let mockList: { unreadCount: number; count: number; notifications: any[] } | und
 };
 let mockListFetching = false;
 let mockListError: unknown = undefined;
+// Every `useGetNotificationsQuery` arg the component asked for, in order.
+const mockListArgs: any[] = [];
 const mockMarkRead = jest.fn();
 const mockMarkAllRead = jest.fn();
 const mockDismiss = jest.fn();
 const mockRefetch = jest.fn();
 jest.mock('../../../redux/slices/notificationsApi', () => ({
   useGetNotificationSummaryQuery: () => ({ data: mockSummary }),
-  useGetNotificationsQuery: () => ({
+  // Emulates the two server-side params the panel relies on (`type`, `limit`) so
+  // a test can prove a filter/limit actually changes what is on screen rather
+  // than only what was requested.
+  useGetNotificationsQuery: (args: any) => {
+    mockListArgs.push(args);
     // A failed fetch leaves RTK Query with no data — mirror that here.
-    data: mockListError ? undefined : mockList,
-    isFetching: mockListFetching,
-    error: mockListError,
-    refetch: mockRefetch,
-  }),
+    const page = mockListError ? undefined : mockList;
+    return {
+      data: page
+        ? {
+            ...page,
+            notifications: page.notifications
+              .filter((n: any) => !args?.type || n.type === args.type)
+              .slice(0, args?.limit ?? 50),
+          }
+        : undefined,
+      isFetching: mockListFetching,
+      error: mockListError,
+      refetch: mockRefetch,
+    };
+  },
   useMarkNotificationReadMutation: () => [mockMarkRead],
   useMarkAllNotificationsReadMutation: () => [mockMarkAllRead],
   useDismissNotificationMutation: () => [mockDismiss],
 }));
 
 import { TopBar } from '../TopBar';
+import { notificationTypeLabel } from '../../../config/label/Notifications.labels';
 
 const createStore = () =>
   configureStore({
@@ -88,6 +105,7 @@ beforeEach(() => {
   mockList = { unreadCount: 0, count: 0, notifications: [] };
   mockListFetching = false;
   mockListError = undefined;
+  mockListArgs.length = 0;
   mockMarkRead.mockReturnValue({ unwrap: () => Promise.resolve({ id: 1, read_at: 'now' }) });
   mockMarkAllRead.mockReturnValue({ unwrap: () => Promise.resolve({ updated: 2 }) });
   mockDismiss.mockReturnValue({ unwrap: () => Promise.resolve({ id: 1, dismissed_at: 'now' }) });
@@ -162,10 +180,27 @@ describe('TopBar — notification centre bell', () => {
     read_at: '2026-08-17T06:00:00.000Z',
   });
 
+  const futureType = notification({
+    id: 6,
+    type: 'FUTURE_TYPE',
+    severity: 'WEIRD',
+    title: 'A type this build has never seen',
+    payload: {},
+  });
+
   const seed = (notifications: any[], unreadCount = notifications.length) => {
-    mockSummary = { unreadCount, byType: {}, byModule: {} };
+    // Mirrors the server summary: byType counts UNREAD active rows only and is
+    // zero-filled from the registry, so it is the list of types that exist.
+    const byType: Record<string, number> = {};
+    notifications.forEach((item) => {
+      byType[item.type] = (byType[item.type] ?? 0) + (item.read_at ? 0 : 1);
+    });
+    mockSummary = { unreadCount, byType, byModule: { pharmacy: unreadCount } };
     mockList = { unreadCount, count: notifications.length, notifications };
   };
+
+  const chip = (type: string, count: number) =>
+    screen.getByRole('button', { name: `${notificationTypeLabel(type)} (${count})` });
 
   const openBell = () => fireEvent.click(screen.getByLabelText('Notifications'));
 
@@ -313,6 +348,96 @@ describe('TopBar — notification centre bell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(mockRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  // REGRESSION GUARD (QA 2026-08-17): the server sorts by severity rank, so one
+  // unfiltered page of 50 was entirely CRITICAL/HIGH and the MEDIUM/LOW types
+  // never rendered at all. Every type the server reports must be reachable, and
+  // this test derives them from `byType` — it must keep working when the
+  // registry grows a fifth type, so nothing here may enumerate the types.
+  it('makes every type in the summary byType reachable through the panel filters', () => {
+    const items = [expired, lowStock, nearExpiry1Month, nearExpiry3Month, excessStock, futureType];
+    seed(items);
+    const byType = mockSummary.byType as Record<string, number>;
+    // Sanity: the fixture must actually contain a type the frontend has no
+    // literal for, otherwise this proves nothing about an open type set.
+    expect(Object.keys(byType).length).toBeGreaterThan(4);
+
+    renderTopBar();
+    openBell();
+
+    Object.entries(byType).forEach(([type, count]) => {
+      fireEvent.click(chip(type, count));
+
+      const ofType = items.filter((item) => item.type === type);
+      ofType.forEach((item) =>
+        expect(screen.getByText(item.title)).toBeInTheDocument(),
+      );
+      items
+        .filter((item) => item.type !== type)
+        .forEach((item) =>
+          expect(screen.queryByText(item.title)).not.toBeInTheDocument(),
+        );
+      // The list is narrowed server-side, never by slicing a page client-side.
+      expect(mockListArgs[mockListArgs.length - 1]).toEqual({ type, limit: 50 });
+    });
+  });
+
+  it('counts only the active type in the header, so the count never contradicts the rows', () => {
+    seed([expired, lowStock, nearExpiry1Month]);
+    renderTopBar();
+    openBell();
+    expect(screen.getByText('3 unread')).toBeInTheDocument();
+
+    fireEvent.click(chip('NEAR_EXPIRY', 1));
+
+    expect(screen.getByText('1 unread')).toBeInTheDocument();
+    expect(screen.getByText(nearExpiry1Month.title)).toBeInTheDocument();
+  });
+
+  it('scopes "Mark all read" to the active type filter', async () => {
+    seed([expired, lowStock, nearExpiry1Month]);
+    renderTopBar();
+    openBell();
+    fireEvent.click(chip('LOW_STOCK', 1));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
+
+    await waitFor(() => expect(mockMarkAllRead).toHaveBeenCalledWith({ type: 'LOW_STOCK' }));
+  });
+
+  it('returns to the unfiltered list from the "All" chip', () => {
+    seed([expired, lowStock]);
+    renderTopBar();
+    openBell();
+    fireEvent.click(chip('EXPIRED', 1));
+    expect(screen.queryByText(lowStock.title)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'All (2)' }));
+
+    expect(screen.getByText(lowStock.title)).toBeInTheDocument();
+    expect(screen.getByText(expired.title)).toBeInTheDocument();
+    expect(mockListArgs[mockListArgs.length - 1]).toEqual({ type: undefined, limit: 50 });
+  });
+
+  it('loads more of a full page without ever exceeding the server limit of 200', () => {
+    const many = Array.from({ length: 60 }, (_, index) =>
+      notification({ id: 100 + index, type: 'LOW_STOCK', title: `Low stock item ${index}` }),
+    );
+    seed(many);
+    renderTopBar();
+    openBell();
+    // A full page: 50 of the 60 unread the header advertises.
+    expect(screen.getByText('60 unread')).toBeInTheDocument();
+    expect(screen.queryByText('Low stock item 59')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+    expect(screen.getByText('Low stock item 59')).toBeInTheDocument();
+    expect(mockListArgs[mockListArgs.length - 1]).toEqual({ type: undefined, limit: 100 });
+    // The page is no longer full, so there is nothing left to load.
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+    mockListArgs.forEach((args) => expect(args.limit).toBeLessThanOrEqual(200));
   });
 
   it('shows neither the empty state nor an error while the first fetch is in flight', () => {

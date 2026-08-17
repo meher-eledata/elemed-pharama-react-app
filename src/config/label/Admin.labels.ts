@@ -15,7 +15,7 @@ export const ADMIN_LABELS = {
     },
     REPORTS: {
       TITLE: 'Reports',
-      DESC: 'Access detailed analytics on system usage, p e metrics, and activity trends.',
+      DESC: 'Access detailed analytics on system usage, performance metrics, and activity trends.',
       ACTION: 'View Reports',
     },
     AUDIT: {

@@ -63,9 +63,15 @@ const InventoryMetrics: React.FC<InventoryMetricsCardProps> = ({
     error: expiredStockError,
   } = useGetExpiredStockQuery();
 
+  // Full near-expiry horizon (0..90 days — `withinThreeMonths` is a superset of
+  // `withinOneMonth`). The card is labelled "Near Expiry Stock" with no window
+  // qualifier, and both the notification bell and the inventory tab this card
+  // links to (which defaults to 3 months) count that same horizon; querying
+  // months: 1 made the card read 0 while the bell read 3 and then dropped the
+  // user on a tab showing rows the card had not counted.
   const {
     data: nearExpiryItems = [],
-  } = useGetNearExpiryStockQuery({ months: 1 });
+  } = useGetNearExpiryStockQuery({ months: 3 });
 
   const isLoading =
     isInvoiceStatsLoading || isLowStockLoading || isExcessStockLoading || isExpiredStockLoading;
