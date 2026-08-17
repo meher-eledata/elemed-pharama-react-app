@@ -11,6 +11,8 @@ import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import StorageIcon from '@mui/icons-material/Storage';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../redux/store';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
 import { ADMIN_CONSTANTS } from '../../config/constants/Admin.constants';
 
@@ -83,6 +85,13 @@ const Card: React.FC<CardProps> = ({ icon, title, desc, action, onAction, iconBg
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  // Same source the TopBar greets from — auth state is rehydrated from
+  // localStorage when the store is created, so it is present on first render.
+  const user = useSelector((state: RootState) => state.auth.user);
+  const displayName = user
+    ? (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username)
+    : '';
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -108,7 +117,7 @@ const AdminDashboard: React.FC = () => {
             mb: 1
           }}
         >
-          {ADMIN_LABELS.PAGE_TITLE}
+          {displayName ? `${ADMIN_LABELS.GREETING_PREFIX}, ${displayName}!` : `${ADMIN_LABELS.GREETING_PREFIX}!`}
         </Typography>
         <Typography 
           sx={{ 

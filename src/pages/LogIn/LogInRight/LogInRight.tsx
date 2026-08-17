@@ -1,7 +1,10 @@
 
 import React from 'react';
 import { Box } from '@mui/material';
-import loginImage from "../../../assets/LogIn.svg"
+// The artwork used to ship as an 8.5 MB SVG whose only content was a base64
+// 4096x4096 JPEG. It is now the same crop as a 2560x3200 WebP (~149 kB), which
+// still exceeds the panel's pixel size on a 5K retina display.
+import loginImage from "../../../assets/LogIn.webp"
 
 interface LoginRightProps {
   className?: string;

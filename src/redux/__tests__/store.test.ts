@@ -3,10 +3,10 @@ import { logout, setCredentials } from '../slices/authSlice';
 import { setCartItems, saveFormData } from '../slices/cartSlice';
 import { orgApi } from '../slices/orgApi';
 import { salesApi } from '../slices/salesApi';
-import { alertsApi } from '../slices/alertsApi';
+import { notificationsApi } from '../slices/notificationsApi';
 
 // Regression test for the stale-cache-across-logout bug: RTK Query caches
-// (sales rows, alerts, /me org context, ...) survived logout, so a different
+// (sales rows, notifications, /me org context, ...) survived logout, so a different
 // user logging in within keepUnusedDataFor was served the previous org's data.
 // The store's resetApiStateOnLogout middleware must purge EVERY api slice on
 // logout, and the in-memory working cart must clear too.
@@ -67,15 +67,16 @@ describe('store logout purge', () => {
       ]),
     );
     store.dispatch(
-      alertsApi.util.upsertQueryData('getAlerts', undefined, {
-        count: 3,
-        alerts: [],
-      } as any),
+      notificationsApi.util.upsertQueryData('getNotificationSummary', undefined, {
+        unreadCount: 3,
+        byType: {},
+        byModule: {},
+      }),
     );
   };
 
   const seededQueryCount = () =>
-    ([orgApi, salesApi, alertsApi] as const)
+    ([orgApi, salesApi, notificationsApi] as const)
       .map((api) => Object.keys(store.getState()[api.reducerPath].queries).length)
       .reduce((a, b) => a + b, 0);
 

@@ -23,7 +23,7 @@ module.exports = {
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     // Use the <rootDir> alias to ensure the path is always correct
-    '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/__mocks__/fileMock.js'
+    '\\.(gif|ttf|eot|svg|png|jpe?g|webp)$': '<rootDir>/__mocks__/fileMock.js'
   },
   transform: {
     // Use preprocessor to replace import.meta.env before ts-jest compilation

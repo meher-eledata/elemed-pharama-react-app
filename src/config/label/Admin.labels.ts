@@ -1,5 +1,6 @@
 export const ADMIN_LABELS = {
-  PAGE_TITLE: 'Hello, Guest!',
+  // Rendered as `Hello, {user}!` — the name comes from state.auth.user.
+  GREETING_PREFIX: 'Hello',
   SUBTITLE: 'Access key administrative functions and system insights.',
   SECTIONS: {
     DASHBOARD: {
