@@ -105,9 +105,13 @@ const PurchaseReturn: React.FC = () => {
     const n = Number(raw);
     return Number.isInteger(n) ? n : NaN;
   };
+  // Max returnable per row is capped at the units originally received when known,
+  // falling back to on-hand when receipt_qty is null/non-positive (unattributable rows).
+  const maxReturnable = (b: ReturnableBatch): number =>
+    b.receipt_qty != null && b.receipt_qty > 0 ? Math.min(b.quantity, b.receipt_qty) : b.quantity;
   const isQtyValid = (b: ReturnableBatch): boolean => {
     const n = qtyOf(b);
-    return Number.isInteger(n) && n >= 1 && n <= b.quantity;
+    return Number.isInteger(n) && n >= 1 && n <= maxReturnable(b);
   };
 
   const selectedBatches = useMemo(
@@ -135,8 +139,17 @@ const PurchaseReturn: React.FC = () => {
     });
   };
 
+  // Integer-only, clamped to the per-row max: strip any non-digit (blocks '.', '-', 'e'),
+  // then clamp a too-large value down to max so the field can never hold an invalid number.
   const handleQtyChange = (b: ReturnableBatch, value: string) => {
-    setSelection((prev) => ({ ...prev, [b.batch_id]: value }));
+    // First run of digits only: drops a decimal tail ('1.5' → '1'), sign and 'e'.
+    const digits = value.match(/\d+/)?.[0] ?? '';
+    if (digits === '') {
+      setSelection((prev) => ({ ...prev, [b.batch_id]: '' }));
+      return;
+    }
+    const clamped = Math.min(Number(digits), maxReturnable(b));
+    setSelection((prev) => ({ ...prev, [b.batch_id]: String(clamped) }));
   };
 
   const clearSelection = () => setSelection({});
@@ -253,7 +266,12 @@ const PurchaseReturn: React.FC = () => {
       sortable: false,
       headerAlign: 'right',
       render: (b) =>
-        mute(b, <Typography sx={{ fontSize: 14, textAlign: 'right' }}>{b.quantity}</Typography>),
+        mute(
+          b,
+          <Typography sx={{ fontSize: 14, textAlign: 'right', whiteSpace: 'nowrap' }}>
+            {b.quantity}
+          </Typography>,
+        ),
     },
     {
       key: 'receipt_qty',
@@ -263,7 +281,7 @@ const PurchaseReturn: React.FC = () => {
       render: (b) =>
         mute(
           b,
-          <Typography sx={{ fontSize: 14, textAlign: 'right' }}>
+          <Typography sx={{ fontSize: 14, textAlign: 'right', whiteSpace: 'nowrap' }}>
             {b.receipt_qty != null ? b.receipt_qty : '—'}
           </Typography>,
         ),
@@ -275,7 +293,7 @@ const PurchaseReturn: React.FC = () => {
       render: (b) =>
         mute(
           b,
-          <Typography sx={{ fontSize: 14 }}>
+          <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>
             {b.purchase_price_per_unit != null ? b.purchase_price_per_unit.toFixed(2) : '—'}
           </Typography>,
         ),
@@ -284,7 +302,8 @@ const PurchaseReturn: React.FC = () => {
       key: 'mrp',
       header: L.TABLE.MRP,
       sortable: false,
-      render: (b) => mute(b, <Typography sx={{ fontSize: 14 }}>{b.mrp.toFixed(2)}</Typography>),
+      render: (b) =>
+        mute(b, <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>{b.mrp.toFixed(2)}</Typography>),
     },
     {
       key: 'receipt',
@@ -317,9 +336,19 @@ const PurchaseReturn: React.FC = () => {
               type="number"
               value={selected ? selection[b.batch_id] : ''}
               onChange={(e) => handleQtyChange(b, e.target.value)}
+              onKeyDown={(e) => {
+                // Block decimal point / sign / exponent so only whole units can be typed.
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+              }}
               disabled={!selected || isRowDisabled(b)}
               error={invalid}
-              inputProps={{ min: 1, max: b.quantity, style: { textAlign: 'center', padding: '4px 8px' } }}
+              inputProps={{
+                min: 1,
+                max: maxReturnable(b),
+                step: 1,
+                inputMode: 'numeric',
+                style: { textAlign: 'center', padding: '4px 8px' },
+              }}
               sx={{
                 width: '80px',
                 '& .MuiOutlinedInput-root': {
@@ -330,7 +359,7 @@ const PurchaseReturn: React.FC = () => {
             />
             {invalid && (
               <Typography variant="caption" sx={{ color: '#DC2626', fontSize: '11px', fontWeight: 500 }}>
-                {L.QTY_ERROR}
+                {L.QTY_ERROR(maxReturnable(b))}
               </Typography>
             )}
           </Box>

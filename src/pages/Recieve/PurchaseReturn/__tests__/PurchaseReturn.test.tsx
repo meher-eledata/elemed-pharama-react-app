@@ -58,6 +58,7 @@ const makeBatch = (over: Partial<ReturnableBatch> = {}): ReturnableBatch => ({
   pack_qty: 10,
   purchase_price_per_unit: 10,
   mrp: 5.5,
+  gst_rate: 12,
   expiry_date: '2026-08-20',
   days_until_expiry: 9,
   expiry_status: 'NEAR_EXPIRY',
@@ -314,36 +315,72 @@ describe('PurchaseReturn (landing)', () => {
       expect(screen.getByText('1 line · 1 unit selected')).toBeInTheDocument();
     });
 
-    it('flags a quantity above stock on hand as an error and disables Return', () => {
+    it('clamps a quantity above the max returnable down to the max (on hand 5)', () => {
       renderPage();
-      fireEvent.click(rowCheckbox(0)); // stock on hand is 5
+      fireEvent.click(rowCheckbox(0)); // on hand 5, receipt qty 10 → max 5
       fireEvent.change(rowQtyInput(0), { target: { value: '99' } });
 
-      expect(screen.getByText('Enter 1 to stock on hand')).toBeInTheDocument();
-      expect(returnButton()).toBeDisabled();
+      // Field can never hold an over-max value — it is clamped, not flagged.
+      expect(rowQtyInput(0)).toHaveValue(5);
+      expect(screen.queryByText(/Enter 1/)).not.toBeInTheDocument();
+      expect(returnButton()).toBeEnabled();
+      expect(screen.getByText('1 line · 5 units selected')).toBeInTheDocument();
     });
 
-    it('flags zero / non-integer quantities as errors', () => {
+    it('caps the max returnable at units received when receipt_qty is below on-hand', () => {
+      // on hand 8 but only 3 received → max returnable is 3.
+      mockUseGetReturnableBatchesQuery.mockReturnValue(
+        queryResult({ batches: [makeBatch({ quantity: 8, receipt_qty: 3 })] }),
+      );
+      renderPage();
+      fireEvent.click(rowCheckbox(0));
+      fireEvent.change(rowQtyInput(0), { target: { value: '9' } });
+
+      expect(rowQtyInput(0)).toHaveValue(3); // clamped to units received, not on-hand
+      expect(returnButton()).toBeEnabled();
+      expect(screen.getByText('1 line · 3 units selected')).toBeInTheDocument();
+    });
+
+    it('falls back to on-hand as the cap when receipt_qty is null', () => {
+      mockUseGetReturnableBatchesQuery.mockReturnValue(
+        queryResult({ batches: [makeBatch({ quantity: 4, receipt_qty: null })] }),
+      );
+      renderPage();
+      fireEvent.click(rowCheckbox(0));
+      fireEvent.change(rowQtyInput(0), { target: { value: '50' } });
+
+      expect(rowQtyInput(0)).toHaveValue(4);
+    });
+
+    it('rejects decimals and negatives, keeping only whole units', () => {
       renderPage();
       fireEvent.click(rowCheckbox(0));
 
-      fireEvent.change(rowQtyInput(0), { target: { value: '0' } });
-      expect(screen.getByText('Enter 1 to stock on hand')).toBeInTheDocument();
-      expect(returnButton()).toBeDisabled();
-
       fireEvent.change(rowQtyInput(0), { target: { value: '1.5' } });
-      expect(screen.getByText('Enter 1 to stock on hand')).toBeInTheDocument();
+      expect(rowQtyInput(0)).toHaveValue(1); // decimal tail dropped
+
+      fireEvent.change(rowQtyInput(0), { target: { value: '-3' } });
+      expect(rowQtyInput(0)).toHaveValue(3); // sign stripped
+      expect(returnButton()).toBeEnabled();
+    });
+
+    it('flags an empty quantity as invalid and disables Return', () => {
+      renderPage();
+      fireEvent.click(rowCheckbox(0));
+      fireEvent.change(rowQtyInput(0), { target: { value: '' } });
+
+      expect(screen.getByText('Enter 1–5 units')).toBeInTheDocument();
       expect(returnButton()).toBeDisabled();
     });
 
     it('recovers when the quantity is corrected back into range', () => {
       renderPage();
       fireEvent.click(rowCheckbox(0));
-      fireEvent.change(rowQtyInput(0), { target: { value: '99' } });
+      fireEvent.change(rowQtyInput(0), { target: { value: '' } });
       expect(returnButton()).toBeDisabled();
 
-      fireEvent.change(rowQtyInput(0), { target: { value: '5' } }); // = stock on hand
-      expect(screen.queryByText('Enter 1 to stock on hand')).not.toBeInTheDocument();
+      fireEvent.change(rowQtyInput(0), { target: { value: '5' } }); // = max returnable
+      expect(screen.queryByText(/Enter 1/)).not.toBeInTheDocument();
       expect(returnButton()).toBeEnabled();
       expect(screen.getByText('1 line · 5 units selected')).toBeInTheDocument();
     });
@@ -365,7 +402,7 @@ describe('PurchaseReturn (landing)', () => {
     it('does not navigate while any selected line is invalid', () => {
       renderPage();
       fireEvent.click(rowCheckbox(0));
-      fireEvent.change(rowQtyInput(0), { target: { value: '99' } });
+      fireEvent.change(rowQtyInput(0), { target: { value: '' } });
       expect(returnButton()).toBeDisabled();
       expect(mockNavigate).not.toHaveBeenCalled();
     });

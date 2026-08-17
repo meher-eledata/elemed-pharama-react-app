@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -120,6 +120,7 @@ const makeSelectionState = (
         pack_qty: 10,
         purchase_price_per_unit: 10,
         mrp: 5.5,
+        gst_rate: 12,
         expiry_date: '2026-08-20',
         days_until_expiry: 9,
         expiry_status: 'NEAR_EXPIRY',
@@ -142,7 +143,7 @@ const submitResponse = {
   supplier_return_id: 42,
   return_number: 'SR-000042',
   return_status: 'AWAITING_CREDIT',
-  totals: { taxable_value: 20, cgst_amount: 1.2, sgst_amount: 1.2, total_amount: 22.4 },
+  totals: { taxable_value: 20, cgst_amount: 1.2, sgst_amount: 1.2, igst_amount: 0, total_amount: 22.4 },
   credit: { credit_txn_id: 77, new_balance: 43.6 },
 };
 
@@ -229,6 +230,73 @@ describe('PurchaseReturnDetails', () => {
     expect(finalizeButton()).toBeEnabled();
   });
 
+  describe('GST estimate (FIX #1)', () => {
+    it('shows a GST-INCLUSIVE amount owed and a single Estimated GST line when the rate is known', () => {
+      // qty 2 × ₹10 = ₹20 taxable; 12% GST = ₹2.40 → owed ₹22.40.
+      renderPage();
+      expect(screen.getByText('Includes estimated GST')).toBeInTheDocument();
+      // Owed is GST-inclusive (formatCurrency, distinct from the plain line-total '22.40').
+      expect(screen.getByText('₹22.40')).toBeInTheDocument();
+      // Pre-finalize shows ONE tax-type-agnostic "Estimated GST" line — no CGST/SGST split.
+      expect(screen.getByText('Estimated GST')).toBeInTheDocument();
+      expect(screen.getByText('₹2.40')).toBeInTheDocument();
+      expect(screen.queryByText('CGST')).not.toBeInTheDocument();
+      expect(screen.queryByText('SGST')).not.toBeInTheDocument();
+      // Per-line GST column shows the estimate, not the deferral text.
+      expect(within(screen.getByTestId('cell-gst-0')).getByText('2.40')).toBeInTheDocument();
+    });
+
+    it('defers GST honestly when a line has an unknown gst_rate', () => {
+      const state = makeSelectionState();
+      state.lines[0].batch.gst_rate = null;
+      mockLocationState = state;
+      renderPage();
+      // Owed shown as "Taxable + GST (computed at finalize)" rather than a GST-excluding number.
+      expect(screen.getByText('₹20.00 + GST')).toBeInTheDocument();
+      expect(screen.getAllByText('GST computed at finalize').length).toBeGreaterThan(0);
+      expect(screen.queryByText('Includes estimated GST')).not.toBeInTheDocument();
+    });
+
+    it('WITHOUT_GST: owed equals the taxable value, no GST columns', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Without GST' }));
+      expect(screen.queryByText('Includes estimated GST')).not.toBeInTheDocument();
+      expect(screen.queryByText(/GST computed at finalize/)).not.toBeInTheDocument();
+      // Owed = taxable ₹20.00 (both the Taxable card and the Amount-owed card show it).
+      expect(screen.getAllByText('₹20.00')).toHaveLength(2);
+    });
+  });
+
+  describe('idempotency key (FIX #6)', () => {
+    it('is payload-sensitive: an edited resubmit yields a new key, an identical one reuses it', async () => {
+      const suffix = (k: string) => k.split('-').pop();
+      const keyFor = async (mutate?: () => void) => {
+        jest.clearAllMocks();
+        mockBaseQuery.mockResolvedValue({ data: submitResponse, meta: okMeta });
+        const { unmount } = renderPage();
+        if (mutate) mutate();
+        fireEvent.click(finalizeButton());
+        fireEvent.click(screen.getByText('Dialog Confirm'));
+        await waitFor(() => expect(mockBaseQuery).toHaveBeenCalled());
+        const key = (mockBaseQuery.mock.calls[0][0] as { body: Record<string, string> }).body
+          .idempotency_key;
+        unmount();
+        return key;
+      };
+
+      const base1 = await keyFor();
+      const edited = await keyFor(() => fireEvent.click(screen.getByRole('button', { name: 'MRP' })));
+      const base2 = await keyFor();
+
+      // Changing value_basis changes the payload → new key (no stale replay).
+      expect(suffix(edited)).not.toEqual(suffix(base1));
+      // Identical payload → identical (deterministic) key → dedupes accidental double-clicks.
+      expect(suffix(base2)).toEqual(suffix(base1));
+      expect(base1.length).toBeGreaterThan(0);
+      expect(base1.length).toBeLessThanOrEqual(64);
+    });
+  });
+
   describe('finalize submit', () => {
     it('sends only supplier/settlement choices and { batch_id, quantity } lines — never prices — plus an idempotency key', async () => {
       mockBaseQuery.mockResolvedValue({ data: submitResponse, meta: okMeta });
@@ -303,6 +371,38 @@ describe('PurchaseReturnDetails', () => {
       expect(screen.getByText('SR-000042')).toBeInTheDocument();
       expect(screen.getByText(/New supplier credit balance/i)).toBeInTheDocument();
       expect(screen.getByText('Awaiting credit')).toBeInTheDocument();
+      // Intra-state totals → CGST/SGST shown, IGST hidden.
+      expect(screen.getByText('CGST')).toBeInTheDocument();
+      expect(screen.getByText('SGST')).toBeInTheDocument();
+      expect(screen.queryByText('IGST')).not.toBeInTheDocument();
+    });
+
+    it('renders IGST (not CGST/SGST) on the success view for an inter-state return', async () => {
+      mockBaseQuery.mockResolvedValue({
+        data: {
+          ...submitResponse,
+          totals: {
+            taxable_value: 20,
+            cgst_amount: 0,
+            sgst_amount: 0,
+            igst_amount: 2.4,
+            total_amount: 22.4,
+          },
+        },
+        meta: okMeta,
+      });
+      renderPage();
+      fireEvent.click(finalizeButton());
+      fireEvent.click(screen.getByText('Dialog Confirm'));
+
+      await waitFor(() =>
+        expect(screen.getByText('Purchase return submitted')).toBeInTheDocument()
+      );
+      // Taxable + IGST == Total (20 + 2.4 == 22.4); CGST/SGST are omitted (both 0).
+      expect(screen.getByText('IGST')).toBeInTheDocument();
+      expect(screen.getByText('₹2.40')).toBeInTheDocument();
+      expect(screen.queryByText('CGST')).not.toBeInTheDocument();
+      expect(screen.queryByText('SGST')).not.toBeInTheDocument();
     });
 
     it('shows "Not attached" on the success view when no credit-note file was chosen', async () => {
