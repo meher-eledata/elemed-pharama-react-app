@@ -5,8 +5,18 @@ export const NOTIFICATION_CONSTANTS = {
   LIST_LIMIT_MAX: 200, // server bound — a larger `limit` is a 400
   MENU_WIDTH: 380,
   // +80 over the original 480: that is what the sticky filter chips cost, so the
-  // panel still shows the same number of rows. MUI caps this to the viewport.
+  // panel still shows the same number of rows.
+  // This is a CEILING ONLY — it must always be combined with the viewport-relative
+  // cap below. MUI's Popover does NOT clamp an over-tall paper to the viewport: when
+  // the paper's bottom overflows it SHIFTS the paper up (`top -= diff`) without
+  // re-checking the top edge, so a fixed 560 pushed the header off-screen at
+  // viewport heights under ~568px (top=-68 at 500px).
   MENU_MAX_HEIGHT: 560,
+  // Vertical space the panel can never occupy: the bell anchor (~40px from the
+  // viewport top), the paper's `mt: 1` (8px) and MUI's 16px viewport margin, plus
+  // slack. Keeping the paper's own height within `100vh - this` means MUI never
+  // needs to shift it, so it stays anchored and scrolls internally instead.
+  MENU_VIEWPORT_RESERVE: 72,
   // The title carries the actionable part (product + what's wrong) and gets the
   // same two-line clamp as the body. It is a clamp only, NOT a reserved height:
   // reserving both lines left a blank line under every short title without ever
@@ -16,6 +26,30 @@ export const NOTIFICATION_CONSTANTS = {
   SKELETON_ROWS: 3,
   SKELETON_ROW_HEIGHT: 64,
 } as const;
+
+// Bounded by the viewport at every height: `min()` keeps 560 as the ceiling on
+// tall screens and hands over to the viewport-relative value on short ones.
+export const notificationMenuMaxHeight = `min(${NOTIFICATION_CONSTANTS.MENU_MAX_HEIGHT}px, calc(100vh - ${NOTIFICATION_CONSTANTS.MENU_VIEWPORT_RESERVE}px))`;
+
+// Brand purple, duplicated here rather than read from the theme:
+// src/components/Theme/Theme.tsx sets no `palette`, so MUI's `primary` is still
+// the default blue everywhere. Adding the palette globally would recolour every
+// default-styled MUI control app-wide, which is not something to bundle with a
+// layout fix — so the panel matches the brand locally, like the other modules
+// that hardcode #5C17E5 in their own constants files.
+export const NOTIFICATION_ACCENT = {
+  MAIN: '#5C17E5',
+  HOVER: '#4A12B8',
+} as const;
+
+export const notificationChipSx = (selected: boolean) =>
+  selected
+    ? {
+        bgcolor: NOTIFICATION_ACCENT.MAIN,
+        color: '#fff',
+        '&:hover': { bgcolor: NOTIFICATION_ACCENT.HOVER },
+      }
+    : undefined;
 
 export interface NotificationTypeFilter {
   type: string;

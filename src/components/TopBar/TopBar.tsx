@@ -40,8 +40,11 @@ import {
   notificationTypeLabel,
 } from "../../config/label/Notifications.labels";
 import {
+  NOTIFICATION_ACCENT,
   NOTIFICATION_CONSTANTS,
   getNotificationRoute,
+  notificationChipSx,
+  notificationMenuMaxHeight,
   notificationTypeFilters,
 } from "../../config/constants/Notifications.constants";
 import { extractErrorMessage } from "../../utils/errorUtils";
@@ -288,8 +291,14 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
               sx: {
                 width: NOTIFICATION_CONSTANTS.MENU_WIDTH,
                 maxWidth: '100%',
-                maxHeight: NOTIFICATION_CONSTANTS.MENU_MAX_HEIGHT,
+                maxHeight: notificationMenuMaxHeight,
                 mt: 1,
+                // Brand purple for the panel's text buttons (mark all read /
+                // retry / load more), which otherwise render in MUI's default
+                // blue — see NOTIFICATION_ACCENT for why this is local.
+                '& .MuiButton-text:not(.Mui-disabled)': {
+                  color: NOTIFICATION_ACCENT.MAIN,
+                },
               },
             },
           }}
@@ -340,8 +349,8 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
                     unreadCount,
                   )}
                   aria-pressed={typeFilter === null}
-                  color={typeFilter === null ? 'primary' : 'default'}
                   variant={typeFilter === null ? 'filled' : 'outlined'}
+                  sx={notificationChipSx(typeFilter === null)}
                   onClick={() => handleFilterSelect(null)}
                 />
                 {typeFilters.map(({ type, count }) => (
@@ -353,8 +362,8 @@ export const TopBar: React.FC<TopBarProps> = ({ name: propName, initials, onTogg
                       count,
                     )}
                     aria-pressed={typeFilter === type}
-                    color={typeFilter === type ? 'primary' : 'default'}
                     variant={typeFilter === type ? 'filled' : 'outlined'}
+                    sx={notificationChipSx(typeFilter === type)}
                     onClick={() => handleFilterSelect(type)}
                   />
                 ))}

@@ -1,6 +1,7 @@
 import {
   NOTIFICATION_CONSTANTS,
   getNotificationRoute,
+  notificationMenuMaxHeight,
   notificationTypeFilters,
 } from '../Notifications.constants';
 import type { NotificationItem } from '../../../redux/slices/notificationsApi';
@@ -170,5 +171,23 @@ describe('notificationTypeFilters', () => {
       { type: 'LOW_STOCK', count: 4 },
     ]);
     expect(notificationTypeFilters(undefined, [])).toEqual([]);
+  });
+});
+
+// jsdom has no layout engine, so the ONLY thing testable here is the value itself:
+// that the cap is viewport-relative rather than a fixed pixel height. A fixed
+// MENU_MAX_HEIGHT shipped a real regression — MUI's Popover shifts an over-tall
+// paper up past the top edge instead of clamping it, so at a 500px viewport the
+// panel header rendered at top=-68. Whether it visually clips still needs a real
+// browser; this only guards the mechanism from being reverted to a px constant.
+describe('notificationMenuMaxHeight', () => {
+  it('caps the panel to the viewport, not to a fixed pixel height', () => {
+    expect(notificationMenuMaxHeight).toBe('min(560px, calc(100vh - 72px))');
+    expect(notificationMenuMaxHeight).toContain('100vh');
+  });
+
+  it('reserves enough room for the anchor + paper margin + MUI viewport margin', () => {
+    // bell anchor bottom ~40px + `mt: 1` (8px) + MUI's 16px marginThreshold = 64px.
+    expect(NOTIFICATION_CONSTANTS.MENU_VIEWPORT_RESERVE).toBeGreaterThanOrEqual(64);
   });
 });
