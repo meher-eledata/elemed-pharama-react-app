@@ -3,9 +3,9 @@ import { baseQueryWithReauth } from '../baseQuery';
 
 // Request interface
 export interface LogDownloadRequest {
-  category: 'report' | 'master' | 'inventory';
+  category: 'report' | 'master' | 'inventory' | 'sales';
   name: string;
-  format?: 'csv' | 'xlsx';
+  format?: 'csv' | 'xlsx' | 'pdf';
   count?: number;
 }
 

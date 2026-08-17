@@ -64,7 +64,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     sidebarItems: [
       { id: 'dollar', icon: DollarIcon, alt: 'Dollar', label: 'Sales', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/sales' },
       { id: 'box', icon: BoxIcon, alt: 'Box', label: 'Inventory', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/inventory' },
-      { id: 'mail', icon: MailIcon, alt: 'Mail', label: 'Order Receive', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive' },
+      { id: 'mail', icon: MailIcon, alt: 'Mail', label: 'Receive Stock', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/receive' },
       { id: 'master', icon: React.createElement(WhiteIcon, null, React.createElement(StorageIcon, { sx: { fontSize: 24 } })), alt: 'Master', label: 'Master', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/master', isComponent: true },
     ],
   },

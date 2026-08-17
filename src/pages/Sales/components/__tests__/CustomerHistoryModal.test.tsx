@@ -22,6 +22,16 @@ import * as salesApi from '../../../../redux/slices/salesApi';
 
 jest.mock('../../../../redux/slices/salesApi');
 
+// The detail-preview Print action fire-and-forgets a logDownload mutation
+// (activityApi). Mock the hook — the trigger is the assertion target — so no RTK
+// Query reducer/middleware wiring is needed. NOTE: mockLogDownload is referenced
+// lazily (only when the hook runs during render), so the const below is
+// initialized by the time the factory's inner function executes.
+const mockLogDownload = jest.fn(() => ({ catch: jest.fn() }));
+jest.mock('../../../../redux/slices/activityApi', () => ({
+  useLogDownloadMutation: jest.fn(() => [mockLogDownload]),
+}));
+
 jest.mock('../../../../components/Modal/PrintPreview/PrintPreviewModal', () => ({
   __esModule: true,
   default: () => <div data-testid="print-preview" />,
@@ -162,6 +172,66 @@ describe('CustomerHistoryModal', () => {
     // The detail preview opens once the mutation resolves.
     await waitFor(() => {
       expect(screen.getByTestId('print-preview')).toBeInTheDocument();
+    });
+  });
+
+  // =========================================================================
+  // Print activity logging (2026-08-16): handlePrint fire-and-forgets
+  // POST /api/activity/log-download with category 'sales' / format 'pdf' and a
+  // name carrying the invoice number — and only once the print popup opened.
+  // =========================================================================
+  describe('print activity logging', () => {
+    let openSpy: jest.SpyInstance;
+    afterEach(() => openSpy?.mockRestore());
+
+    // Drill into the invoice-946 detail preview; its action bar owns the Print
+    // button. Click the newest row via its unique net-amount cell ('10 Aug 2026'
+    // is ambiguous — it also rides the last-purchase line).
+    const drillIntoDetail = async () => {
+      fireEvent.click(screen.getByText('250'));
+      await waitFor(() => {
+        expect(screen.getByTestId('print-preview')).toBeInTheDocument();
+      });
+    };
+
+    it('logs ONE sales/pdf download naming the invoice number — with NO count field', async () => {
+      detailsUnwrap.mockResolvedValue({
+        invoice: { invoice_number: 946 }, lines: [], payments: [],
+      });
+      const fakePrintWindow = { document: { write: jest.fn(), close: jest.fn() } };
+      openSpy = jest
+        .spyOn(window, 'open')
+        .mockReturnValue(fakePrintWindow as unknown as Window);
+      renderModal();
+      await drillIntoDetail();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: CUSTOMER_HISTORY_LABELS.PRINT_BUTTON })
+      );
+
+      expect(mockLogDownload).toHaveBeenCalledTimes(1);
+      // EXACT payload equality: category/name/format only — asserts a count
+      // field can never ride a print log (prints have no row count).
+      expect(mockLogDownload).toHaveBeenCalledWith({
+        category: 'sales',
+        name: 'Invoice INV946',
+        format: 'pdf',
+      });
+      // Fired on the successful-popup path (the receipt HTML was written).
+      expect(fakePrintWindow.document.write).toHaveBeenCalled();
+    });
+
+    it('does NOT log when the print popup is blocked (window.open returns null)', async () => {
+      openSpy = jest.spyOn(window, 'open').mockReturnValue(null);
+      renderModal();
+      await drillIntoDetail();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: CUSTOMER_HISTORY_LABELS.PRINT_BUTTON })
+      );
+
+      expect(window.open).toHaveBeenCalled();
+      expect(mockLogDownload).not.toHaveBeenCalled();
     });
   });
 });

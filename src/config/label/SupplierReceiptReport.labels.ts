@@ -29,7 +29,7 @@ export const SUPPLIER_RECEIPT_REPORT_LABELS = {
   },
   SECTIONS: {
     SPEND_BY_DATE: 'Spend by Date',
-    QTY_BY_DATE: 'Quantity Received by Date',
+    QTY_BY_DATE: 'Qty Received by Date',
     TOP_SUPPLIERS: 'Top Supplier by Value',
     TOP_PRODUCTS: 'Top Product by Value',
   },
@@ -41,7 +41,7 @@ export const SUPPLIER_RECEIPT_REPORT_LABELS = {
   AXIS: {
     DATE: 'Date',
     SPEND: 'Spend (₹)',
-    QTY: 'Quantity',
+    QTY: 'Qty',
     SUPPLIER: 'Supplier',
     PRODUCT: 'Product',
     VALUE: 'Value (₹)',

@@ -129,7 +129,7 @@ describe('SimpleAreaCharts Component', () => {
       // Corrected titles based on the rendered output
       expect(screen.getByTestId('chart-card-Revenue')).toBeInTheDocument();
       expect(screen.getByTestId('chart-card-Sales')).toBeInTheDocument();
-      expect(screen.getByTestId('chart-card-Patients')).toBeInTheDocument();
+      expect(screen.getByTestId('chart-card-Customers')).toBeInTheDocument();
 
       // Assert that the mocked ChartsCard component received the correct props.
       // Current behaviour: revenue is formatted with en-IN grouping + 2 decimals.
@@ -260,7 +260,7 @@ describe('SimpleAreaCharts Component', () => {
     );
 
     await waitFor(() => {
-      const patientsCall = (ChartsCard as jest.Mock).mock.calls.find(call => call[0].title === 'Patients');
+      const patientsCall = (ChartsCard as jest.Mock).mock.calls.find(call => call[0].title === 'Customers');
       const revenueCall = (ChartsCard as jest.Mock).mock.calls.find(call => call[0].title === 'Revenue');
       const salesCall = (ChartsCard as jest.Mock).mock.calls.find(call => call[0].title === 'Sales');
 
@@ -309,7 +309,7 @@ describe('SimpleAreaCharts Component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('chart-card-Revenue')).toBeInTheDocument();
       expect(screen.getByTestId('chart-card-Sales')).toBeInTheDocument();
-      expect(screen.getByTestId('chart-card-Patients')).toBeInTheDocument();
+      expect(screen.getByTestId('chart-card-Customers')).toBeInTheDocument();
     });
   });
 
@@ -367,7 +367,7 @@ describe('SimpleAreaCharts Component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('chart-card-Revenue')).toBeInTheDocument();
       expect(screen.getByTestId('chart-card-Sales')).toBeInTheDocument();
-      expect(screen.getByTestId('chart-card-Patients')).toBeInTheDocument();
+      expect(screen.getByTestId('chart-card-Customers')).toBeInTheDocument();
     });
   });
 
@@ -389,7 +389,7 @@ describe('SimpleAreaCharts Component', () => {
       // Check that charts have proper test IDs for accessibility
       expect(screen.getByTestId('chart-card-Revenue')).toBeInTheDocument();
       expect(screen.getByTestId('chart-card-Sales')).toBeInTheDocument();
-      expect(screen.getByTestId('chart-card-Patients')).toBeInTheDocument();
+      expect(screen.getByTestId('chart-card-Customers')).toBeInTheDocument();
     });
   });
 

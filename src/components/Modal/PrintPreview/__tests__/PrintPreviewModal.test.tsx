@@ -105,7 +105,7 @@ describe('PrintPreviewModal', () => {
   it('displays invoice details section', () => {
     render(<PrintPreviewModal {...mockProps} />);
 
-    expect(screen.getByText(/invoice details/i)).toBeInTheDocument();
+    expect(screen.getByText(/sale details/i)).toBeInTheDocument();
     expect(screen.getByText(/inv001/i)).toBeInTheDocument();
   });
 

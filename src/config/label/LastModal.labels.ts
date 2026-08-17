@@ -1,4 +1,4 @@
-export const MODAL_TITLE = 'Receive Supplier';
+export const MODAL_TITLE = 'Receive from Supplier';
 export const PRODUCT_NAME_LABEL = 'Product Name';
 export const CANCEL_BUTTON_LABEL = 'Cancel';
 export const DONE_BUTTON_LABEL = 'Done';

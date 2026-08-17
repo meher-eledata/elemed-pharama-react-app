@@ -287,7 +287,7 @@ describe('LogInLeft (LoginForm)', () => {
       mockLoginState.isLoading = true;
       renderWithProviders(<LogInLeft />);
 
-      expect(screen.getByText('Logging In...')).toBeInTheDocument();
+      expect(screen.getByText('Logging in...')).toBeInTheDocument();
     });
   });
 

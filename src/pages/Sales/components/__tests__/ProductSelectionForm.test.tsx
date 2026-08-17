@@ -93,10 +93,10 @@ describe('ProductSelectionForm', () => {
   it('renders product selection form with all fields', () => {
     renderComponent();
     
-    // Field labels come from SALES_PAGE_LABELS: "Find product", "Units" (quantity),
+    // Field labels come from SALES_PAGE_LABELS: "Find product", "Qty" (quantity),
     // "Discount %", and the "Add to Cart" button.
     expect(screen.getByText(/find product/i)).toBeInTheDocument();
-    expect(screen.getByText(/units/i)).toBeInTheDocument();
+    expect(screen.getByText(/qty/i)).toBeInTheDocument();
     expect(screen.getByText(/discount %/i)).toBeInTheDocument();
     expect(screen.getByText(/add to cart/i)).toBeInTheDocument();
   });

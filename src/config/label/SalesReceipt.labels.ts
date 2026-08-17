@@ -6,7 +6,7 @@ export const SALES_RECEIPT_LABELS = {
   CUSTOMER_DETAILS_TITLE: "Customer details",
   DOCTOR_DETAILS_TITLE: "Doctor details",
   PAYMENT_DETAILS_TITLE: "Payment details",
-  INVOICE_DETAILS_TITLE: "Invoice details",
+  INVOICE_DETAILS_TITLE: "Sale details",
 
   // Customer Details
   CUSTOMER_NAME_LABEL: "customer name",
@@ -31,7 +31,7 @@ export const SALES_RECEIPT_LABELS = {
   INSURANCE_COMPANY_PLACEHOLDER: "Insurance company",
   DETAILS_LABEL: "Details",
   DETAILS_PLACEHOLDER: "Enter comments (optional)",
-  INVOICE_NUMBER_LABEL: "Invoice number",
+  INVOICE_NUMBER_LABEL: "Sale number",
   // Shown as the field's VALUE (not a placeholder — MUI hides placeholders while the label
   // is un-shrunk) when the next-number peek is unavailable.
   INVOICE_NUMBER_AUTO_FALLBACK: "Auto-generated",
@@ -41,11 +41,11 @@ export const SALES_RECEIPT_LABELS = {
   // it. Say so on the field.
   // Must fit the 200px invoice-number field (the caption is width-capped to it).
   INVOICE_NUMBER_PROVISIONAL_HELPER: "Provisional until saved",
-  INVOICE_DATE_LABEL: "Invoice date",
+  INVOICE_DATE_LABEL: "Sale date",
 
   // Table Headers
   TABLE_HEADER_PRODUCT: "Product",
-  TABLE_HEADER_QUANTITY: "Units",
+  TABLE_HEADER_QUANTITY: "Qty",
   TABLE_HEADER_TYPE: "Unit",
   TABLE_HEADER_DOSAGE_TYPE: "Type",
   TABLE_HEADER_BATCH: "Batch",
@@ -126,6 +126,6 @@ export const SALES_RECEIPT_LABELS = {
   // Submit-sale 409 (duplicate invoice number) — fallback when the backend omits `message`
   // Fallback for the DUPLICATE_INVOICE_NUMBER 409 backstop (numbers are server-assigned,
   // so the user cannot pick a different one — retrying gets a fresh number).
-  DUPLICATE_INVOICE_NUMBER_ERROR: "A duplicate invoice number was detected. Please try saving the sale again.",
+  DUPLICATE_INVOICE_NUMBER_ERROR: "A duplicate sale number was detected. Please try saving the sale again.",
 };
 

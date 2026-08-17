@@ -17,10 +17,7 @@ export const USERS_LABELS = {
   },
   ROLES: {
     ADMIN: 'Admin',
-    ADMINISTRATOR: 'Administrator',
     PHARMACIST: 'Pharmacist',
-    EDITOR: 'Editor',
-    VIEWER: 'Viewer',
   },
   LAST_LOGIN: {
     NEVER: 'Never',
@@ -46,4 +43,18 @@ export const USERS_LABELS = {
 } as const;
 
 export type UsersLabels = typeof USERS_LABELS;
+
+// Normalizes a raw backend role (integer 0/1, the strings '0'/'1', or 'admin'/'pharmacist' in any
+// case) to its canonical display label so role chips match the adjacent edit dropdown. Unknown
+// values fall back to title-case.
+export const getRoleLabel = (raw: unknown): string => {
+  const key = String(raw ?? '').toLowerCase();
+  const map: Record<string, string> = {
+    '0': USERS_LABELS.ROLES.ADMIN,
+    admin: USERS_LABELS.ROLES.ADMIN,
+    '1': USERS_LABELS.ROLES.PHARMACIST,
+    pharmacist: USERS_LABELS.ROLES.PHARMACIST,
+  };
+  return map[key] ?? (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
+};
 

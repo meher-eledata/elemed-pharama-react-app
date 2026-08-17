@@ -1,9 +1,9 @@
 export const DETAILED_SALES_TABLE_LABELS = {
   PAGE_TITLE: 'Detailed sales table',
-  SEARCH_PLACEHOLDER: 'Search by customer, invoice #, payment, patient, or transaction type',
+  SEARCH_PLACEHOLDER: 'Search by customer, sale #, payment, or sale type',
   TABLE: {
-    TRANSACTION_DATE: 'Transaction date',
-    TRANSACTION_TYPE: 'Transaction type',
+    TRANSACTION_DATE: 'Sale date',
+    TRANSACTION_TYPE: 'Sale type',
     INVOICE_NUMBER: 'Invoice #',
     CUSTOMER_NAME: 'Customer name',
     CUSTOMER_DETAILS: 'Customer Details',

@@ -24,6 +24,7 @@ import {
   useGetCustomerInvoicesQuery,
   useGetInvoiceDetailsMutation,
 } from '../../../redux/slices/salesApi';
+import { useLogDownloadMutation } from '../../../redux/slices/activityApi';
 import { decorateInvoiceNumber } from '../../../utils/invoiceNumberPreview';
 import { generatePrintHTML } from '../SalesReceipt.utils';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
@@ -227,6 +228,7 @@ const CustomerHistoryModal: React.FC<CustomerHistoryModalProps> = ({
     { skip: !open || !validId },
   );
   const [getInvoiceDetails] = useGetInvoiceDetailsMutation();
+  const [logDownload] = useLogDownloadMutation();
 
   const [detail, setDetail] = useState<any | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -287,6 +289,11 @@ const CustomerHistoryModal: React.FC<CustomerHistoryModalProps> = ({
     });
     printWindow.document.write(html);
     printWindow.document.close();
+    logDownload({
+      category: 'sales',
+      name: detail.invoiceNumber ? `Invoice ${detail.invoiceNumber}` : 'Customer History Invoice',
+      format: 'pdf',
+    }).catch(() => {});
   };
 
   const loading = isLoading || isFetching;
