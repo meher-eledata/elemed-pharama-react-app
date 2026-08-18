@@ -146,9 +146,15 @@ const ReturnsLog: React.FC = () => {
   const [recordCredit, { isLoading: isRecording }] = useRecordCreditReceivedMutation();
   const [uploadCreditNoteFile, { isLoading: isUploading }] = useUploadCreditNoteFileMutation();
 
+  // Remaining owed on a row = total_amount - cumulative credit_received_amount (never < 0).
+  const remainingOf = (row: SupplierReturnRow): number =>
+    Math.max(0, Math.round((toNum(row.total_amount) - toNum(row.credit_received_amount)) * 100) / 100);
+
   const openCreditModal = (row: SupplierReturnRow) => {
     setCreditRow(row);
-    setCreditAmount(row.total_amount != null ? String(row.total_amount) : '');
+    // Prefill the REMAINING owed (not the full total) so a partial top-up is one click.
+    const remaining = remainingOf(row);
+    setCreditAmount(row.total_amount != null ? String(remaining) : '');
     setCreditDate(dayjs());
     setCreditReference('');
     setCreditNoteFile(null);
@@ -162,8 +168,15 @@ const ReturnsLog: React.FC = () => {
       setCreditError(L.CREDIT_MODAL.AMOUNT_ERROR);
       return;
     }
+    // Cap at the remaining owed (only meaningful when total_amount is known).
+    const remaining = remainingOf(creditRow);
+    if (creditRow.total_amount != null && amountNum > remaining) {
+      setCreditError(L.CREDIT_MODAL.AMOUNT_EXCEEDS_REMAINING(formatCurrency(remaining)));
+      return;
+    }
+    let recorded;
     try {
-      await recordCredit({
+      recorded = await recordCredit({
         supplier_return_id: creditRow.supplier_return_id,
         amount: amountNum,
         date: (creditDate ?? dayjs()).format('YYYY-MM-DD'),
@@ -186,10 +199,16 @@ const ReturnsLog: React.FC = () => {
       }
     }
     setCreditRow(null);
+    // Fully-received vs partial drives the success wording; the remaining figure comes
+    // straight from the server response so it reflects the authoritative cumulative total.
+    const fully = recorded.credit_received.fully_received;
+    const successMessage = fully
+      ? L.CREDIT_MODAL.SUCCESS_FULL
+      : L.CREDIT_MODAL.SUCCESS_PARTIAL(formatCurrency(toNum(recorded.credit_received.remaining)));
     setSnackbar(
       uploadFailed
         ? { open: true, message: L.CREDIT_MODAL.UPLOAD_FAILED_NONFATAL, severity: 'warning' }
-        : { open: true, message: L.CREDIT_MODAL.SUCCESS, severity: 'success' },
+        : { open: true, message: successMessage, severity: 'success' },
     );
   };
 
@@ -252,7 +271,7 @@ const ReturnsLog: React.FC = () => {
       header: L.TABLE.LINES_UNITS,
       sortable: false,
       render: (r) => (
-        <Typography sx={{ fontSize: 14 }}>
+        <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>
           {r.line_count} / {r.units_count}
         </Typography>
       ),
@@ -262,7 +281,7 @@ const ReturnsLog: React.FC = () => {
       header: L.TABLE.AMOUNT,
       sortable: false,
       render: (r) => (
-        <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+        <Typography sx={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>
           {r.total_amount != null ? formatCurrency(r.total_amount) : '—'}
         </Typography>
       ),
@@ -296,6 +315,21 @@ const ReturnsLog: React.FC = () => {
       sortable: false,
       render: (r) => {
         if (r.return_status === 'AWAITING_CREDIT') {
+          const received = toNum(r.credit_received_amount);
+          // A partial credit keeps the row AWAITING_CREDIT — show progress and prefill the
+          // remaining amount; a fresh row (nothing received yet) keeps the plain record CTA.
+          if (received > 0) {
+            return (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Typography sx={{ fontSize: 13, color: '#728197' }}>
+                  {L.PARTIAL_PROGRESS(formatCurrency(received), formatCurrency(toNum(r.total_amount)))}
+                </Typography>
+                <StandardButton variant="outline" size="small" onClick={() => openCreditModal(r)}>
+                  {L.RECORD_REMAINING_BUTTON}
+                </StandardButton>
+              </Box>
+            );
+          }
           return (
             <StandardButton variant="outline" size="small" onClick={() => openCreditModal(r)}>
               {L.RECORD_CREDIT_BUTTON}
@@ -687,14 +721,14 @@ const ReturnsLog: React.FC = () => {
                   L.DETAILS_MODAL.TAXABLE,
                   details.taxable_value != null ? formatCurrency(details.taxable_value) : '—',
                 )}
-                {detailField(
-                  L.DETAILS_MODAL.CGST,
-                  details.cgst_amount != null ? formatCurrency(details.cgst_amount) : '—',
-                )}
-                {detailField(
-                  L.DETAILS_MODAL.SGST,
-                  details.sgst_amount != null ? formatCurrency(details.sgst_amount) : '—',
-                )}
+                {/* Show whichever taxes are non-zero so Taxable + shown-taxes == Total holds:
+                    intra-state returns carry CGST/SGST, inter-state returns carry IGST. */}
+                {toNum(details.cgst_amount) > 0 &&
+                  detailField(L.DETAILS_MODAL.CGST, formatCurrency(toNum(details.cgst_amount)))}
+                {toNum(details.sgst_amount) > 0 &&
+                  detailField(L.DETAILS_MODAL.SGST, formatCurrency(toNum(details.sgst_amount)))}
+                {toNum(details.igst_amount) > 0 &&
+                  detailField(L.DETAILS_MODAL.IGST, formatCurrency(toNum(details.igst_amount)))}
                 {detailField(
                   L.DETAILS_MODAL.TOTAL,
                   details.total_amount != null ? formatCurrency(details.total_amount) : '—',

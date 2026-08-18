@@ -50,6 +50,7 @@ describe('Supplier Returns API', () => {
             pack_qty: 10,
             purchase_price_per_unit: 10,
             mrp: 5.5,
+            gst_rate: 12,
             expiry_date: '2026-09-01',
             days_until_expiry: 21,
             expiry_status: 'NEAR_EXPIRY' as const,
@@ -85,7 +86,7 @@ describe('Supplier Returns API', () => {
         supplier_return_id: 42,
         return_number: 'SR-000042',
         return_status: 'AWAITING_CREDIT' as const,
-        totals: { taxable_value: 30, cgst_amount: 1.8, sgst_amount: 1.8, total_amount: 33.6 },
+        totals: { taxable_value: 30, cgst_amount: 1.8, sgst_amount: 1.8, igst_amount: 0, total_amount: 33.6 },
         credit: { credit_txn_id: 77, new_balance: 43.6 },
       };
       mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });
@@ -198,6 +199,7 @@ describe('Supplier Returns API', () => {
         taxable_value: 221.67,
         cgst_amount: 13.3,
         sgst_amount: 13.3,
+        igst_amount: 0,
         total_amount: 248.27,
         credit_txn_id: 77,
         lines: [
@@ -276,6 +278,9 @@ describe('Supplier Returns API', () => {
           date: '2026-08-11',
           reference: 'CN-9',
           by: 'currentUser',
+          cumulative_received: 33.6,
+          remaining: 0,
+          fully_received: true,
         },
       };
       mockBaseQuery.mockResolvedValueOnce({ data: mockResponse, meta: okMeta });

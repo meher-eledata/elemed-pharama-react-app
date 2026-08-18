@@ -105,9 +105,13 @@ const PurchaseReturn: React.FC = () => {
     const n = Number(raw);
     return Number.isInteger(n) ? n : NaN;
   };
+  // Max returnable per row is capped at the units originally received when known,
+  // falling back to on-hand when receipt_qty is null/non-positive (unattributable rows).
+  const maxReturnable = (b: ReturnableBatch): number =>
+    b.receipt_qty != null && b.receipt_qty > 0 ? Math.min(b.quantity, b.receipt_qty) : b.quantity;
   const isQtyValid = (b: ReturnableBatch): boolean => {
     const n = qtyOf(b);
-    return Number.isInteger(n) && n >= 1 && n <= b.quantity;
+    return Number.isInteger(n) && n >= 1 && n <= maxReturnable(b);
   };
 
   const selectedBatches = useMemo(
@@ -135,8 +139,17 @@ const PurchaseReturn: React.FC = () => {
     });
   };
 
+  // Integer-only, clamped to the per-row max: strip any non-digit (blocks '.', '-', 'e'),
+  // then clamp a too-large value down to max so the field can never hold an invalid number.
   const handleQtyChange = (b: ReturnableBatch, value: string) => {
-    setSelection((prev) => ({ ...prev, [b.batch_id]: value }));
+    // First run of digits only: drops a decimal tail ('1.5' → '1'), sign and 'e'.
+    const digits = value.match(/\d+/)?.[0] ?? '';
+    if (digits === '') {
+      setSelection((prev) => ({ ...prev, [b.batch_id]: '' }));
+      return;
+    }
+    const clamped = Math.min(Number(digits), maxReturnable(b));
+    setSelection((prev) => ({ ...prev, [b.batch_id]: String(clamped) }));
   };
 
   const clearSelection = () => setSelection({});
@@ -195,8 +208,12 @@ const PurchaseReturn: React.FC = () => {
         mute(
           b,
           <>
-            <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{b.product_name}</Typography>
-            <Typography sx={{ fontSize: 12, color: '#728197' }}>
+            {/* May wrap between words, but never inside one — overrides the table cell's
+                break-word (same treatment as ReturnsLog's supplier column). */}
+            <Typography sx={{ fontSize: 14, fontWeight: 500, wordBreak: 'normal' }}>
+              {b.product_name}
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: '#728197', wordBreak: 'normal' }}>
               {[b.type, b.brand_name].filter(Boolean).join(' · ')}
             </Typography>
           </>,
@@ -206,14 +223,21 @@ const PurchaseReturn: React.FC = () => {
       key: 'batch_number',
       header: L.TABLE.BATCH,
       sortable: false,
-      render: (b) => mute(b, <Typography sx={{ fontSize: 14 }}>{b.batch_number}</Typography>),
+      render: (b) =>
+        mute(b, <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>{b.batch_number}</Typography>),
     },
     {
       key: 'expiry_date',
       header: L.TABLE.EXPIRY,
       sortable: false,
       render: (b) =>
-        mute(b, <Typography sx={{ fontSize: 14 }}>{formatReportDate(b.expiry_date)}</Typography>),
+        // nowrap: a date split across lines ("01/0" / "6/20" / "26") is unreadable.
+        mute(
+          b,
+          <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>
+            {formatReportDate(b.expiry_date)}
+          </Typography>,
+        ),
     },
     {
       key: 'expiry_status',
@@ -230,7 +254,13 @@ const PurchaseReturn: React.FC = () => {
           <Chip
             label={label}
             size="small"
-            sx={{ backgroundColor: meta.bg, color: meta.color, fontWeight: 600, fontSize: 12 }}
+            sx={{
+              backgroundColor: meta.bg,
+              color: meta.color,
+              fontWeight: 600,
+              fontSize: 12,
+              whiteSpace: 'nowrap',
+            }}
           />,
         );
       },
@@ -239,10 +269,18 @@ const PurchaseReturn: React.FC = () => {
       key: 'supplier_name',
       header: L.TABLE.SUPPLIER,
       sortable: false,
+      // May wrap between words, but never inside one ("A.ASS / OCIAT / E") — overrides
+      // the table cell's break-word.
       render: (b) =>
         mute(
           b,
-          <Typography sx={{ fontSize: 14, color: b.supplier_name ? '#374151' : '#9CA3AF' }}>
+          <Typography
+            sx={{
+              fontSize: 14,
+              color: b.supplier_name ? '#374151' : '#9CA3AF',
+              wordBreak: 'normal',
+            }}
+          >
             {b.supplier_name ?? L.UNATTRIBUTED}
           </Typography>,
         ),
@@ -253,7 +291,12 @@ const PurchaseReturn: React.FC = () => {
       sortable: false,
       headerAlign: 'right',
       render: (b) =>
-        mute(b, <Typography sx={{ fontSize: 14, textAlign: 'right' }}>{b.quantity}</Typography>),
+        mute(
+          b,
+          <Typography sx={{ fontSize: 14, textAlign: 'right', whiteSpace: 'nowrap' }}>
+            {b.quantity}
+          </Typography>,
+        ),
     },
     {
       key: 'receipt_qty',
@@ -263,7 +306,7 @@ const PurchaseReturn: React.FC = () => {
       render: (b) =>
         mute(
           b,
-          <Typography sx={{ fontSize: 14, textAlign: 'right' }}>
+          <Typography sx={{ fontSize: 14, textAlign: 'right', whiteSpace: 'nowrap' }}>
             {b.receipt_qty != null ? b.receipt_qty : '—'}
           </Typography>,
         ),
@@ -275,7 +318,7 @@ const PurchaseReturn: React.FC = () => {
       render: (b) =>
         mute(
           b,
-          <Typography sx={{ fontSize: 14 }}>
+          <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>
             {b.purchase_price_per_unit != null ? b.purchase_price_per_unit.toFixed(2) : '—'}
           </Typography>,
         ),
@@ -284,7 +327,8 @@ const PurchaseReturn: React.FC = () => {
       key: 'mrp',
       header: L.TABLE.MRP,
       sortable: false,
-      render: (b) => mute(b, <Typography sx={{ fontSize: 14 }}>{b.mrp.toFixed(2)}</Typography>),
+      render: (b) =>
+        mute(b, <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>{b.mrp.toFixed(2)}</Typography>),
     },
     {
       key: 'receipt',
@@ -294,11 +338,15 @@ const PurchaseReturn: React.FC = () => {
         mute(
           b,
           <>
-            <Typography sx={{ fontSize: 14 }}>{b.supplier_invoice_number ?? '—'}</Typography>
+            <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>
+              {b.supplier_invoice_number ?? '—'}
+            </Typography>
             {/* OUR receipt (GRN) number as sent by the server — opaque, never rebuilt
                 from receipt_id. Null on unattributable batches. */}
             {b.receipt_number && (
-              <Typography sx={{ fontSize: 12, color: '#728197' }}>{b.receipt_number}</Typography>
+              <Typography sx={{ fontSize: 12, color: '#728197', whiteSpace: 'nowrap' }}>
+                {b.receipt_number}
+              </Typography>
             )}
           </>,
         ),
@@ -317,9 +365,19 @@ const PurchaseReturn: React.FC = () => {
               type="number"
               value={selected ? selection[b.batch_id] : ''}
               onChange={(e) => handleQtyChange(b, e.target.value)}
+              onKeyDown={(e) => {
+                // Block decimal point / sign / exponent so only whole units can be typed.
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+              }}
               disabled={!selected || isRowDisabled(b)}
               error={invalid}
-              inputProps={{ min: 1, max: b.quantity, style: { textAlign: 'center', padding: '4px 8px' } }}
+              inputProps={{
+                min: 1,
+                max: maxReturnable(b),
+                step: 1,
+                inputMode: 'numeric',
+                style: { textAlign: 'center', padding: '4px 8px' },
+              }}
               sx={{
                 width: '80px',
                 '& .MuiOutlinedInput-root': {
@@ -330,7 +388,7 @@ const PurchaseReturn: React.FC = () => {
             />
             {invalid && (
               <Typography variant="caption" sx={{ color: '#DC2626', fontSize: '11px', fontWeight: 500 }}>
-                {L.QTY_ERROR}
+                {L.QTY_ERROR(maxReturnable(b))}
               </Typography>
             )}
           </Box>

@@ -12,7 +12,7 @@ import { reportsApi } from "./slices/reportsApi";
 import { historicalFilesApi } from "./slices/historicalFilesApi";
 import { activityApi } from "./slices/activityApi";
 import { profileApi } from "./slices/profileApi";
-import { alertsApi } from "./slices/alertsApi";
+import { notificationsApi } from "./slices/notificationsApi";
 import { adminCreditApi } from "./slices/adminCreditApi";
 import { draftsApi } from "./slices/draftsApi";
 import { orgApi } from "./slices/orgApi";
@@ -37,7 +37,7 @@ export const allApis = [
   historicalFilesApi,
   activityApi,
   profileApi,
-  alertsApi,
+  notificationsApi,
   adminCreditApi,
   draftsApi,
   orgApi,
@@ -80,7 +80,7 @@ export const store = configureStore({
     [historicalFilesApi.reducerPath]: historicalFilesApi.reducer,
     [activityApi.reducerPath]: activityApi.reducer,
     [profileApi.reducerPath]: profileApi.reducer,
-    [alertsApi.reducerPath]: alertsApi.reducer,
+    [notificationsApi.reducerPath]: notificationsApi.reducer,
     [adminCreditApi.reducerPath]: adminCreditApi.reducer,
     [draftsApi.reducerPath]: draftsApi.reducer,
     [orgApi.reducerPath]: orgApi.reducer,

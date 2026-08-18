@@ -198,7 +198,23 @@ const wireDefaults = ({ total = rows.length }: { total?: number } = {}) => {
   mockUseGetReturnDetailsQuery.mockReturnValue(
     ({ data: undefined, isFetching: false, error: null } as any)
   );
-  recordCreditTrigger = jest.fn(() => ({ unwrap: jest.fn().mockResolvedValue({}) }));
+  recordCreditTrigger = jest.fn(() => ({
+    unwrap: jest.fn().mockResolvedValue({
+      message: 'Credit received recorded',
+      supplier_return_id: 42,
+      return_number: 'SR-000042',
+      return_status: 'CREDIT_RECEIVED',
+      credit_received: {
+        amount: 33.6,
+        date: '2026-08-11',
+        reference: null,
+        by: 'currentUser',
+        cumulative_received: 33.6,
+        remaining: 0,
+        fully_received: true,
+      },
+    }),
+  }));
   mockUseRecordCreditReceivedMutation.mockReturnValue([
     recordCreditTrigger,
     { isLoading: false },
@@ -487,7 +503,7 @@ describe('ReturnsLog', () => {
       await waitFor(() =>
         expect(screen.queryByTestId('common-modal')).not.toBeInTheDocument()
       );
-      expect(screen.getByText('Credit received recorded.')).toBeInTheDocument();
+      expect(screen.getByText('Credit fully received.')).toBeInTheDocument();
     });
 
     it('omits the reference key when left blank', async () => {
@@ -526,6 +542,86 @@ describe('ReturnsLog', () => {
     });
   });
 
+  describe('partial credit (FIX #2)', () => {
+    const partialList = () =>
+      mockUseListReturnsQuery.mockReturnValue(
+        listResult({
+          rows: [makeRow({ credit_received_amount: 10, total_amount: 33.6 })],
+          total: 1,
+          total_amount_owed: 33.6,
+          total_awaiting_credit: 23.6,
+        })
+      );
+
+    it('keeps AWAITING_CREDIT and shows progress + a Record remaining button', () => {
+      partialList();
+      renderPage();
+      const action = within(screen.getByTestId('cell-action-0'));
+      expect(action.getByText('₹10.00 of ₹33.60 received')).toBeInTheDocument();
+      expect(action.getByText('Record remaining')).toBeInTheDocument();
+      // Status chip still Awaiting credit while only partially received.
+      expect(
+        within(screen.getByTestId('cell-return_status-0')).getByText('Awaiting credit')
+      ).toBeInTheDocument();
+    });
+
+    it('prefills the record modal with the REMAINING amount, not the full total', () => {
+      partialList();
+      renderPage();
+      fireEvent.click(screen.getByText('Record remaining'));
+      const amount = within(screen.getByTestId('common-modal')).getByRole(
+        'spinbutton'
+      ) as HTMLInputElement;
+      expect(amount).toHaveValue(23.6); // 33.6 total − 10 received
+    });
+
+    it('rejects an amount above the remaining owed without firing the mutation', async () => {
+      partialList();
+      renderPage();
+      fireEvent.click(screen.getByText('Record remaining'));
+      const modal = within(screen.getByTestId('common-modal'));
+      fireEvent.change(modal.getByRole('spinbutton'), { target: { value: '30' } }); // > 23.6
+      fireEvent.click(modal.getByText('Record Credit'));
+
+      expect(await screen.findByText(/Amount cannot exceed the remaining ₹23.60/)).toBeInTheDocument();
+      expect(recordCreditTrigger).not.toHaveBeenCalled();
+    });
+
+    it('shows a "partial credit recorded" snackbar when the server reports not fully received', async () => {
+      recordCreditTrigger = jest.fn(() => ({
+        unwrap: jest.fn().mockResolvedValue({
+          message: 'Credit received recorded',
+          supplier_return_id: 42,
+          return_number: 'SR-000042',
+          return_status: 'AWAITING_CREDIT',
+          credit_received: {
+            amount: 10,
+            date: '2026-08-11',
+            reference: null,
+            by: 'currentUser',
+            cumulative_received: 10,
+            remaining: 23.6,
+            fully_received: false,
+          },
+        }),
+      }));
+      mockUseRecordCreditReceivedMutation.mockReturnValue([
+        recordCreditTrigger,
+        { isLoading: false },
+      ] as any);
+      mockUseListReturnsQuery.mockReturnValue(listResult({ rows: [makeRow()], total: 1 }));
+      renderPage();
+      fireEvent.click(screen.getByText('Record credit received'));
+      const modal = within(screen.getByTestId('common-modal'));
+      fireEvent.change(modal.getByRole('spinbutton'), { target: { value: '10' } });
+      fireEvent.click(modal.getByText('Record Credit'));
+
+      await waitFor(() =>
+        expect(screen.getByText('Partial credit recorded, ₹23.60 remaining.')).toBeInTheDocument()
+      );
+    });
+  });
+
   describe('credit-note attachment', () => {
     const cnFile = () => new File(['scan'], 'cn.png', { type: 'image/png' });
     const openModal = () => fireEvent.click(screen.getByText('Record credit received'));
@@ -560,7 +656,7 @@ describe('ReturnsLog', () => {
       await waitFor(() =>
         expect(screen.queryByTestId('common-modal')).not.toBeInTheDocument()
       );
-      expect(screen.getByText('Credit received recorded.')).toBeInTheDocument();
+      expect(screen.getByText('Credit fully received.')).toBeInTheDocument();
     });
 
     it('does not upload when no file is selected', async () => {
@@ -694,6 +790,48 @@ describe('ReturnsLog', () => {
   });
 
   describe('details modal', () => {
+    it('shows IGST (not CGST/SGST) for an inter-state return so Taxable + tax == Total', async () => {
+      mockUseGetReturnDetailsQuery.mockReturnValue(
+        ({
+          data: {
+            id: 42,
+            supplier_return_id: 42,
+            return_number: 'SR-000042',
+            supplier_name: 'SupCo',
+            return_date: '2026-08-11T09:00:00.000Z',
+            created_by: 'currentUser',
+            return_status: 'AWAITING_CREDIT',
+            gst_treatment: 'WITH_GST',
+            value_basis: 'PURCHASE_PRICE',
+            settlement_mode: 'CREDIT_NOTE',
+            settlement_reference: null,
+            taxable_value: 30,
+            cgst_amount: 0,
+            sgst_amount: 0,
+            igst_amount: 3.6,
+            total_amount: 33.6,
+            credit_received_date: null,
+            credit_received_reference: null,
+            credit_note_file_name: null,
+            credit_note_file_uploaded_at: null,
+            reason: null,
+            notes: null,
+            lines: [],
+          },
+          isFetching: false,
+          error: null,
+        } as any)
+      );
+      renderPage();
+      fireEvent.click(screen.getByText('SR-000042'));
+
+      const modal = within(await screen.findByTestId('common-modal'));
+      expect(modal.getByText('IGST')).toBeInTheDocument();
+      expect(modal.getByText('₹3.60')).toBeInTheDocument();
+      expect(modal.queryByText('CGST')).not.toBeInTheDocument();
+      expect(modal.queryByText('SGST')).not.toBeInTheDocument();
+    });
+
     it('clicking a return ref requests its details', async () => {
       renderPage();
       // Skipped while no row is selected.

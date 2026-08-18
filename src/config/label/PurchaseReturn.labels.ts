@@ -33,7 +33,7 @@ export const PURCHASE_RETURN_LABELS = {
     SUPPLIER_LOCK_PREFIX: 'Returning to ',
     SUPPLIER_LOCK_SUFFIX: ' — lines from other suppliers are locked',
     CLEAR_SELECTION: 'Clear selection',
-    QTY_ERROR: 'Enter 1 to stock on hand',
+    QTY_ERROR: (max: number) => `Enter 1–${max} unit${max === 1 ? '' : 's'}`,
     SELECTION_SUMMARY: (lines: number, units: number) =>
       `${lines} line${lines === 1 ? '' : 's'} · ${units} unit${units === 1 ? '' : 's'} selected`,
     RETURN_BUTTON: 'Return',
@@ -85,7 +85,13 @@ export const PURCHASE_RETURN_LABELS = {
       CGST: 'CGST',
       SGST: 'SGST',
       AMOUNT_OWED: 'Amount owed by supplier',
-      EXCLUDES_GST: 'Excludes GST — computed at finalize',
+      // Single pre-finalize GST estimate — the batch contract carries only a rate, not the
+      // tax type, so the authoritative CGST/SGST/IGST split is shown post-finalize instead.
+      ESTIMATED_GST: 'Estimated GST',
+      ESTIMATED: 'Estimated',
+      INCLUDES_GST: 'Includes estimated GST',
+      // Headline for the mixed case where at least one line's GST rate is unknown.
+      AMOUNT_OWED_PLUS_GST: (taxable: string) => `${taxable} + GST`,
     },
     NO_PURCHASE_PRICE_WARNING:
       'One or more selected batches have no attributed purchase price. Switch the value basis to MRP to proceed.',
@@ -108,6 +114,7 @@ export const PURCHASE_RETURN_LABELS = {
       TAXABLE: 'Taxable value',
       CGST: 'CGST',
       SGST: 'SGST',
+      IGST: 'IGST',
       TOTAL: 'Amount owed by supplier',
       SETTLEMENT: 'Settlement mode',
       STATUS: 'Status',
@@ -148,6 +155,9 @@ export const PURCHASE_RETURN_LABELS = {
       ACTION: 'Action',
     },
     RECORD_CREDIT_BUTTON: 'Record credit received',
+    RECORD_REMAINING_BUTTON: 'Record remaining',
+    // Shown on an AWAITING_CREDIT row that already has a partial credit against it.
+    PARTIAL_PROGRESS: (received: string, total: string) => `${received} of ${total} received`,
     CREDIT_RECEIVED_TEXT: (date: string, ref: string) => `Credit received ${date}${ref ? ` · ${ref}` : ''}`,
     SETTLED_TEXT: (mode: string) => `Settled via ${mode}`,
     // Footer totals come from the SERVER over the whole filtered set, so they cover
@@ -170,7 +180,10 @@ export const PURCHASE_RETURN_LABELS = {
       REFERENCE_PLACEHOLDER: 'Credit note / reference number (optional)',
       SUBMIT: 'Record Credit',
       SUCCESS: 'Credit received recorded.',
+      SUCCESS_FULL: 'Credit fully received.',
+      SUCCESS_PARTIAL: (remaining: string) => `Partial credit recorded, ${remaining} remaining.`,
       AMOUNT_ERROR: 'Enter an amount greater than 0.',
+      AMOUNT_EXCEEDS_REMAINING: (remaining: string) => `Amount cannot exceed the remaining ${remaining}.`,
       FAILED: 'Failed to record credit received.',
       ATTACHMENT: 'Credit note photo/scan',
       ATTACHMENT_REPLACE: 'Replace credit note photo/scan',
@@ -196,6 +209,7 @@ export const PURCHASE_RETURN_LABELS = {
       TAXABLE: 'Taxable value',
       CGST: 'CGST',
       SGST: 'SGST',
+      IGST: 'IGST',
       TOTAL: 'Amount owed',
       LINES: {
         PRODUCT: 'Product',

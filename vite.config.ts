@@ -12,9 +12,17 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          mui: ['@mui/material', '@mui/icons-material'],
+        // Path-based so it actually matches: the object form keyed on package
+        // names ('react', 'react-dom') resolved only to the CJS entry stubs and
+        // emitted an empty `vendor` chunk while the real code stayed in index.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('/@mui/') || id.includes('/@emotion/')) return 'mui';
+          // Framework runtime only. Sweeping *all* of node_modules in here would
+          // pull lazily-imported libs (recharts et al.) into the eager payload.
+          if (/\/node_modules\/(react|react-dom|react-router|react-router-dom|react-redux|redux|redux-thunk|scheduler|@reduxjs)\//.test(id)) {
+            return 'vendor';
+          }
         },
       },
     },

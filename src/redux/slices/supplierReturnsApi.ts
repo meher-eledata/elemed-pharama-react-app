@@ -31,6 +31,7 @@ export interface ReturnableBatch {
   pack_qty: number;
   purchase_price_per_unit: number | null; // per UNIT; null = no attributed purchase price
   mrp: number; // per unit
+  gst_rate: number | null; // % from the attributed PO line; null when unknown/unattributed
   expiry_date: string | null;
   days_until_expiry: number | null; // negative when past
   expiry_status: ExpiryStatus;
@@ -71,6 +72,7 @@ export interface SubmitReturnResponse {
     taxable_value: number;
     cgst_amount: number;
     sgst_amount: number;
+    igst_amount: number; // inter-state returns carry IGST here (CGST/SGST 0)
     total_amount: number;
   };
   // non-null only for CREDIT_NOTE; new_balance may be null on an idempotent duplicate 200.
@@ -106,6 +108,8 @@ export interface SupplierReturnRow {
   cgst_amount: number | null;
   sgst_amount: number | null;
   total_amount: number | null;
+  // Cumulative credit received so far (default 0). A return stays AWAITING_CREDIT until this
+  // reaches total_amount; the remaining owed is total_amount - credit_received_amount.
   credit_received_amount: number | null;
   credit_received_date: string | null; // 'YYYY-MM-DD'
   credit_received_reference: string | null; // added 2026-08-11 (same field as the get-return-details header)
@@ -121,7 +125,8 @@ export interface ListReturnsResponse {
   // Aggregates over the COMPLETE filtered set, IGNORING limit/offset (0 when empty,
   // never null) — the page fetches at most 200 rows, so never sum `rows` client-side.
   total_amount_owed: number;
-  total_awaiting_credit: number; // same SUM restricted to return_status = 'AWAITING_CREDIT'
+  // REMAINING owed = SUM(total_amount - credit_received_amount) over AWAITING_CREDIT rows.
+  total_awaiting_credit: number;
 }
 
 // ---- POST /supplier-returns/get-return-details ----
@@ -170,6 +175,7 @@ export interface ReturnDetailsResponse {
   taxable_value: number | null;
   cgst_amount: number | null;
   sgst_amount: number | null;
+  igst_amount: number | null; // inter-state returns carry IGST here (CGST/SGST 0)
   total_amount: number | null;
   credit_txn_id: number | null;
   credit_received_amount: number | null;
@@ -213,12 +219,14 @@ export interface RecordCreditReceivedResponse {
   message: string;
   supplier_return_id: number;
   return_number: string | null;
-  return_status: 'CREDIT_RECEIVED';
+  // A PARTIAL record keeps AWAITING_CREDIT; only a fully-covered return flips to CREDIT_RECEIVED.
+  return_status: 'AWAITING_CREDIT' | 'CREDIT_RECEIVED';
+  // Backend returns only these keys on record-credit (date/reference/by live on the row/details, not here).
   credit_received: {
-    amount: number;
-    date: string;
-    reference: string | null;
-    by: string;
+    amount: number; // this record's amount (2 dp)
+    cumulative_received: number; // total received so far including this record
+    remaining: number | null; // total_amount - cumulative_received (null when total_amount is null)
+    fully_received: boolean;
   };
 }
 

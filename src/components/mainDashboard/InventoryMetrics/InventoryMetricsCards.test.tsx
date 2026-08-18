@@ -197,6 +197,21 @@ describe('InventoryMetricsCards', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/inventory', { state: { tab: 'low' } });
   });
 
+  // The card counts the SAME window it links to. `withinThreeMonths` (0..90 days)
+  // is a superset of `withinOneMonth`, it is what the notification bell counts,
+  // and it is what the inventory near-expiry tab defaults to — querying months: 1
+  // made the card read 0 while the bell read 3 and then dropped the user on a tab
+  // listing rows the card had not counted.
+  it('counts the full near-expiry window the "View Items" link lands on', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <InventoryMetricsCards dateRange={{ startDate: null, endDate: null }} />
+      </ThemeProvider>
+    );
+
+    expect(useGetNearExpiryStockQuery).toHaveBeenCalledWith({ months: 3 });
+  });
+
   // Test Case 3: Near Expiry "View Items" navigates to the inventory page.
   it('navigates to the inventory near-expiry tab when Near Expiry "View Items" is clicked', async () => {
     render(

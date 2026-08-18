@@ -85,13 +85,31 @@ const PurchaseReturnDetails: React.FC = () => {
   const [submitReturn, { isLoading: isSubmitting }] = useSubmitReturnMutation();
   const [uploadCreditNoteFile, { isLoading: isUploading }] = useUploadCreditNoteFileMutation();
 
-  // One idempotency key per details-page entry: a retried/duplicated submit with
-  // the same key is answered by the backend with the original result (200) instead
-  // of creating a second return. "Start new return" remounts this page → new key.
-  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  // Idempotency key TIED TO THE PAYLOAD: a per-mount nonce keeps an accidental
+  // double-click deduped (identical payload → same key → backend replays the original
+  // 200), while any change to the submitted payload (lines / gst_treatment / value_basis
+  // / settlement_mode / settlement_reference) yields a NEW key so an EDITED resubmit
+  // creates a fresh return instead of silently replaying the stale one. ≤64 chars.
+  const mountNonceRef = useRef<string>(crypto.randomUUID());
 
   const lines: SelectedLine[] = selectionState?.lines ?? [];
   const supplier = selectionState?.supplier;
+
+  const idempotencyKey = useMemo(() => {
+    const signature = JSON.stringify({
+      lines: lines.map((l) => ({ batch_id: l.batch.batch_id, quantity: l.quantity })),
+      gst_treatment: gstTreatment,
+      value_basis: valueBasis,
+      settlement_mode: settlementMode,
+      settlement_reference: settlementReference.trim(),
+    });
+    // djb2 → base36, appended to the per-mount nonce; deterministic per payload, ≤64 chars.
+    let hash = 5381;
+    for (let i = 0; i < signature.length; i += 1) {
+      hash = ((hash << 5) + hash + signature.charCodeAt(i)) >>> 0;
+    }
+    return `${mountNonceRef.current}-${hash.toString(36)}`;
+  }, [lines, gstTreatment, valueBasis, settlementMode, settlementReference]);
 
   const receiptRefs = useMemo(
     () =>
@@ -105,20 +123,44 @@ const PurchaseReturnDetails: React.FC = () => {
     [lines],
   );
 
-  // Client-side ESTIMATES only — the server recomputes all money at finalize.
-  // The batch listing exposes no GST rate, so GST is shown as "computed at finalize".
+  // Client-side ESTIMATES only — the server recomputes all money at finalize, but the
+  // estimate mirrors the server's rate/rounding: taxable = round2(unit*qty), then per-line
+  // GST = round2(taxable * gst_rate/100). GST is only estimable when the line carries a rate.
+  const round2 = (n: number): number => Math.round(n * 100) / 100;
+  const withGst = gstTreatment === 'WITH_GST';
   const unitValue = (line: SelectedLine): number | null =>
     valueBasis === 'PURCHASE_PRICE' ? line.batch.purchase_price_per_unit : line.batch.mrp;
   const lineTaxable = (line: SelectedLine): number | null => {
     const unit = unitValue(line);
-    return unit == null ? null : Math.round(unit * line.quantity * 100) / 100;
+    return unit == null ? null : round2(unit * line.quantity);
+  };
+  // Estimated GST for a line: 0 without GST; null when the rate is unknown (→ "computed at
+  // finalize"); else round2(taxable * rate/100).
+  const lineEstimatedGst = (line: SelectedLine): number | null => {
+    if (!withGst) return 0;
+    const taxable = lineTaxable(line);
+    const rate = line.batch.gst_rate;
+    if (taxable == null || rate == null) return null;
+    return round2((taxable * rate) / 100);
+  };
+  const lineEstimatedTotal = (line: SelectedLine): number | null => {
+    const taxable = lineTaxable(line);
+    if (taxable == null) return null;
+    const gst = lineEstimatedGst(line);
+    return gst == null ? taxable : round2(taxable + gst);
   };
 
   const totalUnits = lines.reduce((sum, l) => sum + l.quantity, 0);
   const estimatedTaxable = lines.reduce((sum, l) => sum + (lineTaxable(l) ?? 0), 0);
   const hasMissingPurchasePrice =
     valueBasis === 'PURCHASE_PRICE' && lines.some((l) => l.batch.purchase_price_per_unit == null);
-  const withGst = gstTreatment === 'WITH_GST';
+  // GST estimation: known when every line carries a rate; otherwise part of the GST is
+  // deferred to finalize and the owed figure is shown as "Taxable + GST (computed at finalize)".
+  const anyGstRateUnknown = withGst && lines.some((l) => lineEstimatedGst(l) == null);
+  const estimatedGst = withGst
+    ? lines.reduce((sum, l) => sum + (lineEstimatedGst(l) ?? 0), 0)
+    : 0;
+  const estimatedOwed = round2(estimatedTaxable + estimatedGst);
 
   const canFinalize =
     !isSubmitting &&
@@ -184,24 +226,30 @@ const PurchaseReturnDetails: React.FC = () => {
       key: 'gst',
       header: L.TABLE.GST,
       sortable: false,
-      render: () =>
-        withGst ? (
+      render: (l) => {
+        const gst = lineEstimatedGst(l);
+        // null only in the WITH_GST + unknown-rate case → defer to finalize.
+        return gst == null ? (
           <Typography sx={{ fontSize: 13, color: '#728197', fontStyle: 'italic' }}>
             {L.GST_AT_FINALIZE}
           </Typography>
         ) : (
-          <Typography sx={{ fontSize: 14 }}>0.00</Typography>
-        ),
+          <Typography sx={{ fontSize: 14 }}>{gst.toFixed(2)}</Typography>
+        );
+      },
     },
     {
       key: 'line_total',
       header: L.TABLE.LINE_TOTAL,
       sortable: false,
       render: (l) => {
-        const taxable = lineTaxable(l);
+        const total = lineEstimatedTotal(l);
+        if (total == null) return <Typography sx={{ fontSize: 14, fontWeight: 600 }}>—</Typography>;
+        // Asterisk only when this line's GST is still deferred to finalize.
+        const deferred = lineEstimatedGst(l) == null;
         return (
           <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-            {taxable != null ? `${taxable.toFixed(2)}${withGst ? '*' : ''}` : '—'}
+            {`${total.toFixed(2)}${deferred ? '*' : ''}`}
           </Typography>
         );
       },
@@ -214,7 +262,7 @@ const PurchaseReturnDetails: React.FC = () => {
     try {
       const response = await submitReturn({
         supplier_id: supplier.id,
-        idempotency_key: idempotencyKeyRef.current,
+        idempotency_key: idempotencyKey,
         gst_treatment: gstTreatment,
         value_basis: valueBasis,
         settlement_mode: settlementMode,
@@ -283,11 +331,16 @@ const PurchaseReturnDetails: React.FC = () => {
             [L.SUCCESS.SUPPLIER, supplier.name],
             [L.SUCCESS.LINES_UNITS, `${lines.length} / ${totalUnits}`],
             [L.SUCCESS.TAXABLE, formatCurrency(result.totals.taxable_value)],
-            ...(result.totals.cgst_amount || result.totals.sgst_amount
-              ? [
-                  [L.SUCCESS.CGST, formatCurrency(result.totals.cgst_amount)],
-                  [L.SUCCESS.SGST, formatCurrency(result.totals.sgst_amount)],
-                ]
+            // Show whichever taxes are non-zero so Taxable + shown-taxes == Total always
+            // holds — intra-state carries CGST/SGST, inter-state carries IGST.
+            ...(result.totals.cgst_amount > 0
+              ? [[L.SUCCESS.CGST, formatCurrency(result.totals.cgst_amount)]]
+              : []),
+            ...(result.totals.sgst_amount > 0
+              ? [[L.SUCCESS.SGST, formatCurrency(result.totals.sgst_amount)]]
+              : []),
+            ...(result.totals.igst_amount > 0
+              ? [[L.SUCCESS.IGST, formatCurrency(result.totals.igst_amount)]]
               : []),
             [L.SUCCESS.TOTAL, formatCurrency(result.totals.total_amount)],
             [L.SUCCESS.SETTLEMENT, SETTLEMENT_MODE_TEXT[settlementMode]],
@@ -417,7 +470,7 @@ const PurchaseReturnDetails: React.FC = () => {
           onSortRequest={() => { }}
           sortConfig={{ key: '', direction: 'asc' }}
         />
-        {withGst && (
+        {anyGstRateUnknown && (
           <Typography sx={{ fontSize: '12px', color: '#728197', mt: 1, fontStyle: 'italic' }}>
             * {L.ESTIMATED_NOTE} {L.GST_AT_FINALIZE}.
           </Typography>
@@ -552,34 +605,55 @@ const PurchaseReturnDetails: React.FC = () => {
           </Typography>
         </Box>
         {withGst && (
-          <>
-            <Box>
-              <Typography sx={{ fontSize: '14px', color: '#728197', mb: 0.5 }}>
-                {L.TOTALS.CGST}
-              </Typography>
-              <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>—</Typography>
-              <Typography sx={{ fontSize: '11px', color: '#728197' }}>{L.GST_AT_FINALIZE}</Typography>
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: '14px', color: '#728197', mb: 0.5 }}>
-                {L.TOTALS.SGST}
-              </Typography>
-              <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>—</Typography>
-              <Typography sx={{ fontSize: '11px', color: '#728197' }}>{L.GST_AT_FINALIZE}</Typography>
-            </Box>
-          </>
+          <Box>
+            {/* Single "Estimated GST" — the batch contract carries only a rate, not the tax
+                type, so pre-finalize we cannot authoritatively split CGST/SGST vs IGST. The
+                owed headline below is tax-type-agnostic; the real split shows post-finalize. */}
+            <Typography sx={{ fontSize: '14px', color: '#728197', mb: 0.5 }}>
+              {L.TOTALS.ESTIMATED_GST}
+            </Typography>
+            {hasMissingPurchasePrice || anyGstRateUnknown ? (
+              <>
+                <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>—</Typography>
+                <Typography sx={{ fontSize: '11px', color: '#728197' }}>{L.GST_AT_FINALIZE}</Typography>
+              </>
+            ) : (
+              <>
+                <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>
+                  {formatCurrency(estimatedGst)}
+                </Typography>
+                <Typography sx={{ fontSize: '11px', color: '#728197' }}>{L.TOTALS.ESTIMATED}</Typography>
+              </>
+            )}
+          </Box>
         )}
         <Box>
           <Typography sx={{ fontSize: '14px', color: '#728197', mb: 0.5 }}>
             {L.TOTALS.AMOUNT_OWED}
           </Typography>
-          <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>
-            {hasMissingPurchasePrice ? '—' : formatCurrency(estimatedTaxable)}
-          </Typography>
-          {withGst && (
-            <Typography sx={{ fontSize: '11px', color: '#728197' }}>
-              {L.TOTALS.EXCLUDES_GST}
-            </Typography>
+          {/* Headline must equal what will actually be posted. WITHOUT_GST → taxable;
+              WITH_GST + all rates known → GST-inclusive owed; WITH_GST + any unknown rate →
+              honest "Taxable + GST (computed at finalize)" instead of a GST-excluding number. */}
+          {hasMissingPurchasePrice ? (
+            <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>—</Typography>
+          ) : withGst && anyGstRateUnknown ? (
+            <>
+              <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>
+                {L.TOTALS.AMOUNT_OWED_PLUS_GST(formatCurrency(estimatedTaxable))}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#728197' }}>{L.GST_AT_FINALIZE}</Typography>
+            </>
+          ) : (
+            <>
+              <Typography sx={{ fontSize: '18px', fontWeight: 600 }}>
+                {formatCurrency(withGst ? estimatedOwed : estimatedTaxable)}
+              </Typography>
+              {withGst && (
+                <Typography sx={{ fontSize: '11px', color: '#728197' }}>
+                  {L.TOTALS.INCLUDES_GST}
+                </Typography>
+              )}
+            </>
           )}
         </Box>
         </Box>
