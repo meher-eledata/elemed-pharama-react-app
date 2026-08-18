@@ -289,6 +289,10 @@ export interface ExtractInvoiceDraft {
   lines: ExtractInvoiceLine[];
   unresolved_fields: string[]; // dotted/indexed paths below threshold or unmatched
   meta: { driver: "textract" | "stub"; threshold: number };
+  // Id of the best-effort persisted `invoice_extraction_draft` row for this
+  // extraction (null when persistence failed). Echoed back as the optional
+  // `extraction_id` on submit-receipt to link draft → receipt.
+  extraction_id: number | null;
 }
 
 import { createApi } from "@reduxjs/toolkit/query/react";
@@ -459,6 +463,9 @@ export const receiveApi = createApi({
         // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
         // stored outcome of the first attempt (see useIdempotencyKey).
         idempotency_key?: string;
+        // OPTIONAL: the extract-invoice draft id when the form was pre-filled from an
+        // extraction. Absent/invalid values are silently ignored by the backend.
+        extraction_id?: number;
       }
     >({
       query: (body) => ({

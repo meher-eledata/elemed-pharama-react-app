@@ -14,6 +14,7 @@ import { useOrderDetailsSubmit } from "../useOrderDetailsSubmit";
 import { PharmaTableRow } from "../../types";
 
 const mockSubmitReceipt = jest.fn();
+const mockEditReceipt = jest.fn();
 
 jest.mock("react-router-dom", () => ({
   useNavigate: () => jest.fn(),
@@ -27,7 +28,7 @@ jest.mock("react-redux", () => ({
 jest.mock("../../../../redux/slices/receiveApi", () => ({
   receiveApi: { util: { invalidateTags: jest.fn() } },
   useSubmitReceiptMutation: () => [mockSubmitReceipt, { isLoading: false }],
-  useEditReceiptMutation: () => [jest.fn(), { isLoading: false }],
+  useEditReceiptMutation: () => [mockEditReceipt, { isLoading: false }],
   useUploadReceiptFileMutation: () => [jest.fn()],
 }));
 
@@ -216,5 +217,149 @@ describe("useOrderDetailsSubmit — no re-submit on RTK error", () => {
     expect(params.setSaveError).toHaveBeenCalledWith(
       "This receipt number is already used in this pharmacy",
     );
+  });
+});
+
+// ===========================================================================
+// extraction_id correction-signal (invoice-extraction capture)
+//
+// When the form was pre-filled from POST /receive/extract-invoice, the hook
+// receives the persisted draft id (`extractionId`) and must echo it as the
+// optional body field `extraction_id` on CREATE-mode submits only. Invariants:
+// - sent only when a numeric id is provided (manual entry sends NOTHING);
+// - kept OUTSIDE the idempotency fingerprint, so the idempotency_key is
+//   byte-identical for the same payload with and without an extraction id;
+// - consumed (clearExtractionId) only AFTER a successful save — a failed save
+//   retains it for the retry;
+// - the edit path never sends it.
+// ===========================================================================
+describe("useOrderDetailsSubmit — extraction_id correction-signal", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const success = () =>
+    mockSubmitReceipt.mockReturnValue({
+      unwrap: () => Promise.resolve({ receipt_id: 42, receipt_number: "GRN-2608-0042" }),
+    });
+
+  it("create-mode saves include extraction_id on ALL THREE save paths when provided", async () => {
+    success();
+    const params = { ...makeParams(), extractionId: 77, clearExtractionId: jest.fn() };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+      await result.current.handleProceedToPayment();
+      await result.current.handleSaveAndPayLater();
+    });
+
+    expect(mockSubmitReceipt).toHaveBeenCalledTimes(3);
+    for (const [body] of mockSubmitReceipt.mock.calls) {
+      expect(body.extraction_id).toBe(77);
+    }
+  });
+
+  it.each([
+    ["not provided at all", {}],
+    ["explicitly null (extraction failed / manual entry)", { extractionId: null }],
+  ])("omits the extraction_id KEY entirely when %s", async (_label, override) => {
+    success();
+    const params = { ...makeParams(), ...override };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(mockSubmitReceipt).toHaveBeenCalledTimes(1);
+    expect(mockSubmitReceipt.mock.calls[0][0]).not.toHaveProperty("extraction_id");
+  });
+
+  it("keeps the idempotency_key byte-identical with and without extraction_id (id is outside the fingerprint)", async () => {
+    // First attempt (no extraction id) fails; the retry carries an id. Because
+    // extraction_id is spread OUTSIDE the fingerprinted payload, the retry must
+    // REUSE the same idempotency_key — the backend then replays/continues the
+    // same logical submission instead of double-committing.
+    mockSubmitReceipt
+      .mockReturnValueOnce({ unwrap: () => Promise.reject({ data: { message: "timeout" } }) })
+      .mockReturnValueOnce({ unwrap: () => Promise.resolve({ receipt_id: 42 }) });
+
+    const clearExtractionId = jest.fn();
+    const { result, rerender } = renderHook(
+      ({ extractionId }: { extractionId: number | null }) =>
+        useOrderDetailsSubmit({ ...makeParams(), extractionId, clearExtractionId }),
+      { initialProps: { extractionId: null as number | null } }
+    );
+
+    await act(async () => {
+      await result.current.proceedWithSave(); // fails, no extraction_id
+    });
+    rerender({ extractionId: 77 });
+    await act(async () => {
+      await result.current.proceedWithSave(); // retry of the same payload, now WITH the id
+    });
+
+    const [firstBody] = mockSubmitReceipt.mock.calls[0];
+    const [secondBody] = mockSubmitReceipt.mock.calls[1];
+    expect(firstBody).not.toHaveProperty("extraction_id");
+    expect(secondBody.extraction_id).toBe(77);
+    // Same fingerprint -> the exact same key, byte for byte.
+    expect(secondBody.idempotency_key).toBe(firstBody.idempotency_key);
+  });
+
+  it("consumes the id (clearExtractionId) after a successful save", async () => {
+    success();
+    const clearExtractionId = jest.fn();
+    const params = { ...makeParams(), extractionId: 77, clearExtractionId };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(clearExtractionId).toHaveBeenCalledTimes(1);
+  });
+
+  it("a FAILED save retains the id (clearExtractionId not called) so the retry can still link", async () => {
+    mockSubmitReceipt.mockReturnValue({
+      unwrap: () => Promise.reject({ data: { message: "timeout" } }),
+    });
+    const clearExtractionId = jest.fn();
+    const params = { ...makeParams(), extractionId: 77, clearExtractionId };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(mockSubmitReceipt).toHaveBeenCalledTimes(1);
+    expect(mockSubmitReceipt.mock.calls[0][0].extraction_id).toBe(77);
+    expect(clearExtractionId).not.toHaveBeenCalled();
+    expect(params.setSaveError).toHaveBeenCalledWith("timeout");
+  });
+
+  it("the EDIT path never sends extraction_id (and never consumes it)", async () => {
+    mockEditReceipt.mockReturnValue({
+      unwrap: () => Promise.resolve({ receipt_id: 5 }),
+    });
+    const clearExtractionId = jest.fn();
+    const params = {
+      ...makeParams(),
+      isEditMode: true,
+      receiptId: 5,
+      extractionId: 77,
+      clearExtractionId,
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(mockSubmitReceipt).not.toHaveBeenCalled();
+    expect(mockEditReceipt).toHaveBeenCalledTimes(1);
+    expect(mockEditReceipt.mock.calls[0][0]).not.toHaveProperty("extraction_id");
+    expect(clearExtractionId).not.toHaveBeenCalled();
   });
 });

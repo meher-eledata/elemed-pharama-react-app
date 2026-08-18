@@ -176,6 +176,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setIsProductSelected: table.setIsProductSelected,
     isProductRowComplete: table.isProductRowComplete,
     allReceiptsData: data.allReceiptsData,
+    // Links the persisted extract-invoice draft to the submitted receipt
+    // (optional; manual entry sends nothing).
+    extractionId: extraction.extractionId,
+    clearExtractionId: extraction.clearExtractionId,
   });
 
   // Fetch suppliers and products on mount

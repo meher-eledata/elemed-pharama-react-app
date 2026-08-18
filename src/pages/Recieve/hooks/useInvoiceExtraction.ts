@@ -163,6 +163,9 @@ export const useInvoiceExtraction = ({
 }: UseInvoiceExtractionParams) => {
   const [extractInvoice, { isLoading: isExtracting }] = useExtractInvoiceMutation();
   const [review, setReview] = useState<InvoiceReview | null>(null);
+  // Persisted draft id from the last successful extraction (null when the backend
+  // could not persist it). Echoed on submit-receipt to link draft → receipt.
+  const [extractionId, setExtractionId] = useState<number | null>(null);
 
   // Attaching an invoice file in create mode triggers extraction + pre-fill.
   // Never runs in edit mode (would clobber the loaded receipt) and never blocks:
@@ -170,8 +173,10 @@ export const useInvoiceExtraction = ({
   const runExtraction = async (file: File) => {
     if (isEditMode) return;
     setReview(null);
+    setExtractionId(null);
     try {
       const draft = await extractInvoice({ file }).unwrap();
+      setExtractionId(typeof draft.extraction_id === "number" ? draft.extraction_id : null);
       const threshold = draft.meta?.threshold ?? INVOICE_EXTRACTION.DEFAULT_THRESHOLD;
 
       // Header — each field only when its confidence clears the threshold.
@@ -225,12 +230,18 @@ export const useInvoiceExtraction = ({
 
   const dismissReview = () => setReview(null);
 
+  // Consumed by the submit flow after a successful save so a subsequent
+  // unrelated save never re-sends a stale draft id.
+  const clearExtractionId = () => setExtractionId(null);
+
   return {
     isExtracting,
     review,
+    extractionId,
     runExtraction,
     applySupplierCandidate,
     applyProductCandidate,
     dismissReview,
+    clearExtractionId,
   };
 };

@@ -57,6 +57,11 @@ interface SubmitHookParams {
   setIsProductSelected: (val: boolean) => void;
   isProductRowComplete: (row: PharmaTableRow) => boolean;
   allReceiptsData?: any[];
+  // Draft id from useInvoiceExtraction when the form was pre-filled from an
+  // extraction (null/absent for manual entry). Sent as the optional
+  // `extraction_id` on submit-receipt and consumed after a successful save.
+  extractionId?: number | null;
+  clearExtractionId?: () => void;
 }
 
 export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
@@ -101,7 +106,16 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     setIsProductSelected,
     isProductRowComplete,
     allReceiptsData,
+    extractionId,
+    clearExtractionId,
   } = params;
+
+  // Optional extract-invoice draft link. Kept OUTSIDE the payload passed to
+  // getIdempotencyKey so the idempotency key stays byte-identical whether or
+  // not an extraction id is present.
+  const extractionIdField =
+    typeof extractionId === "number" ? { extraction_id: extractionId } : {};
+  const consumeExtractionId = () => clearExtractionId?.();
 
   const getProductIdFromName = (productName: string): number | null => {
     if (!productName || !productOptionsWithIds || productOptionsWithIds.length === 0) {
@@ -395,8 +409,10 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         result = await submitReceipt({
           ...submitPayload,
           idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+          ...extractionIdField,
         }).unwrap();
         resetIdempotencyKey();
+        consumeExtractionId();
         finalReceiptId = result.receipt_id || (result as any).receiptId;
         // The server-issued GRN number, shown in the success snackbar.
         setSavedReceiptNumber(result.receipt_number ?? null);
@@ -466,8 +482,10 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       const result = await submitReceipt({
         ...submitPayload,
         idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+        ...extractionIdField,
       }).unwrap();
       resetIdempotencyKey();
+      consumeExtractionId();
       const newReceiptId: number | null = result.receipt_id || (result as any).receiptId;
 
       if (newReceiptId) {
@@ -557,8 +575,10 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       const result = await submitReceipt({
         ...submitPayload,
         idempotency_key: getIdempotencyKey(JSON.stringify(submitPayload)),
+        ...extractionIdField,
       }).unwrap();
       resetIdempotencyKey();
+      consumeExtractionId();
       const newReceiptId: number | null = result.receipt_id || (result as any).receiptId;
       // The server-issued GRN number, shown in the success snackbar.
       setSavedReceiptNumber(result.receipt_number ?? null);
