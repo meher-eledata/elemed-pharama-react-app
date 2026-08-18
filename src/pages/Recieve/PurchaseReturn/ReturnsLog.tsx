@@ -271,7 +271,7 @@ const ReturnsLog: React.FC = () => {
       header: L.TABLE.LINES_UNITS,
       sortable: false,
       render: (r) => (
-        <Typography sx={{ fontSize: 14 }}>
+        <Typography sx={{ fontSize: 14, whiteSpace: 'nowrap' }}>
           {r.line_count} / {r.units_count}
         </Typography>
       ),
@@ -281,7 +281,7 @@ const ReturnsLog: React.FC = () => {
       header: L.TABLE.AMOUNT,
       sortable: false,
       render: (r) => (
-        <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+        <Typography sx={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>
           {r.total_amount != null ? formatCurrency(r.total_amount) : '—'}
         </Typography>
       ),
