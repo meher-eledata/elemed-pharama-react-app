@@ -128,7 +128,17 @@ export const ADMIN_REPORTS_CONSTANTS = {
     TICK_LABEL_COLOR: '#728197',
     AXIS_STROKE: '#6B7280',
     GRID_STROKE: '#E5E7EB',
-    MARGIN: { top: 20, bottom: 60, left: 70, right: 10 },
+    // x-charts v8: tick-label space is allocated by the AXIS config, not by
+    // `margin` — margin is only outer padding around the plot + axes.
+    MARGIN: { top: 20, bottom: 5, left: 5, right: 10 },
+    X_AXIS_HEIGHT: 30,
+    // Rotated (-35°) date/category labels need real vertical room or the
+    // library ellipsizes them down to EMPTY strings (blank axis).
+    X_AXIS_HEIGHT_ANGLED: 80,
+    Y_AXIS_WIDTH: 55,
+    // Cap on rendered x-axis tick labels — wide date ranges skip intermediate
+    // ticks instead of overlapping into an unreadable smear.
+    MAX_X_TICK_LABELS: 12,
   },
 
   TABLE: {

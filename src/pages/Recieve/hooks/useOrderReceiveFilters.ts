@@ -54,6 +54,16 @@ export const useOrderReceiveFilters = (
         sortableItems = sortableItems.filter(item => item.supplier === filters.supplier);
       }
 
+      // Status filter, mirroring Sale History's All/Return/Deleted control. 'Deleted'
+      // narrows to soft-deleted receipts — they stay in the list by design, so without
+      // this there was no way to review just the retired ones.
+      if (filters.status && filters.status !== 'All') {
+        const wantDeleted = filters.status.toLowerCase() === 'deleted';
+        sortableItems = sortableItems.filter(item =>
+          (String(item.record_status || 'ACTIVE').toUpperCase() === 'DELETED') === wantDeleted
+        );
+      }
+
       if (dateRange[0] || dateRange[1]) {
         sortableItems = sortableItems.filter(item => {
           const receivedDate = item.receivedRaw

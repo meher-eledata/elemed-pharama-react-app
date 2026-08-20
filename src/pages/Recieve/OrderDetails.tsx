@@ -22,6 +22,9 @@ import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
 import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
+import DeleteDocumentDialog from "../../components/DeleteDialogue/DeleteDocumentDialog";
+import DeleteDocumentTrigger from "../../components/DeleteDialogue/DeleteDocumentTrigger";
+import { ORDER_RECEIVE_DELETED_BADGE, ORDER_RECEIVE_DELETE_DIALOG } from "../../config/label/OrderReceive.labels";
 import { StandardButton } from "../../components/Common";
 import { orderLabels } from "../../config/label/OrderDetail.labels";
 import { themeColors, typography } from "../../config/constants/OrderDetail.constants";
@@ -176,6 +179,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     setIsProductSelected: table.setIsProductSelected,
     isProductRowComplete: table.isProductRowComplete,
     allReceiptsData: data.allReceiptsData,
+    // Links the persisted extract-invoice draft to the submitted receipt
+    // (optional; manual entry sends nothing).
+    extractionId: extraction.extractionId,
+    clearExtractionId: extraction.clearExtractionId,
   });
 
   // Fetch suppliers and products on mount
@@ -470,11 +477,35 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             variant="h4"
             sx={{ fontWeight: "bold", color: themeColors.textPrimary, fontSize: typography.headerSize }}
           >
-            {form.isEditMode ? `${labels.orderDetails} (Editing ${form.receiptNumber})` : labels.orderDetails}
+            {form.isEditMode
+              ? `${labels.orderDetails} (${form.isDeletedReceipt ? 'Viewing' : 'Editing'} ${form.receiptNumber})`
+              : labels.orderDetails}
           </Typography>
         </Box>
       </Box>
       <Divider sx={{ marginTop: "16px", border: "0.5px solid #CBD4E1" }} />
+
+      {/* A retired receipt is read-only history. Reachable by deep link / browser-back
+          even though the list disables its edit icon, so say so plainly here too. */}
+      {form.isEditMode && form.isDeletedReceipt && (
+        <Box
+          role="status"
+          sx={{
+            mt: 2,
+            px: 2,
+            py: 1.25,
+            borderRadius: '8px',
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            color: '#B91C1C',
+            fontSize: '13px',
+            lineHeight: 1.6,
+            fontFamily: "'Lexend', sans-serif",
+          }}
+        >
+          {ORDER_RECEIVE_DELETED_BADGE.EDIT_BLOCKED}
+        </Box>
+      )}
 
       {/* Supplier Section */}
       <SupplierSection
@@ -628,7 +659,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           <StandardButton
             variant="primary"
             size="large"
-            disabled={!validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
+            // A retired receipt cannot be saved — the endpoint answers 409 RECEIPT_DELETED.
+            disabled={form.isDeletedReceipt || !validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
             onClick={form.isEditMode ? handleSubmitReceipt : handleProceedToPaymentClick}
             sx={{ height: "48px", width: "160px", fontSize: "12px" }}
           >
@@ -647,36 +679,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           )}
         </Box>
 
-        {form.isEditMode && (
-          <Button
-            variant="contained"
-            disableRipple
+        {form.isEditMode && !form.isDeletedReceipt && (
+          // Opens the reason dialog — never deletes straight from the click. The endpoint
+          // requires a deletion_reason, and a one-click destructive action with no
+          // confirmation was how this used to behave.
+          <DeleteDocumentTrigger
+            label={labels.deleteReceipt}
             disabled={form.isDeleting}
-            onClick={submit.deleteReceipt}
-            sx={{
-              backgroundColor: "#EF4444",
-              color: "#FFFFFF",
-              border: "2px solid #EF4444",
-              height: "48px",
-              borderRadius: "12px",
-              fontFamily: "'Lexend', sans-serif",
-              fontWeight: 500,
-              fontSize: "12px",
-              textTransform: "none",
-              minWidth: "140px",
-              boxShadow: "none",
-              "&:hover": { backgroundColor: "#DC2626", borderColor: "#DC2626" },
-              "&:disabled": { backgroundColor: "#6B7280", borderColor: "#6B7280", color: "#FFFFFF" },
-            }}
-          >
-            {form.isDeleting ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : form.deleteSuccess ? (
-              "Deleted!"
-            ) : (
-              "Delete the full receipt"
-            )}
-          </Button>
+            onClick={() => form.setIsReceiptDeleteDialogOpen(true)}
+          />
         )}
       </Box>
 
@@ -720,15 +731,17 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         itemName={form.rowToDeleteId ? table.pharmaTableData.find(row => row.id === form.rowToDeleteId)?.productId : undefined}
       />
 
-      <ConfirmationDialog
+      <DeleteDocumentDialog
         open={form.isReceiptDeleteDialogOpen}
+        documentLabel={ORDER_RECEIVE_DELETE_DIALOG.DOCUMENT_LABEL}
+        documentNumber={form.receiptNumber}
+        consequenceText={ORDER_RECEIVE_DELETE_DIALOG.CONSEQUENCE}
+        isDeleting={form.isDeleting}
         onClose={() => form.setIsReceiptDeleteDialogOpen(false)}
-        onConfirm={async () => {
+        onConfirm={async (reason) => {
           form.setIsReceiptDeleteDialogOpen(false);
-          await submit.deleteReceipt();
+          await submit.deleteReceipt(reason);
         }}
-        title="Delete Receipt"
-        message="Are you sure you want to delete this entire receipt? This action cannot be undone."
       />
 
       <ConfirmationDialog

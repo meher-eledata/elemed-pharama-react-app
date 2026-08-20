@@ -4,6 +4,7 @@ import { OrderReceiveRow, ProductItem } from "./types";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import { PRODUCT_DETAILS_MODAL_CONSTANTS } from "../../config/constants/ProductDetailsModal.constants";
 import { PRODUCT_DETAILS_MODAL_LABELS } from "../../config/label/ProductDetailsModal.labels";
+import { deletedRecordTooltip } from "../../components/DeletedRecord/DeletedRecordBadge";
 
 interface ProductDetailsModalContentProps {
   productData: OrderReceiveRow | null;
@@ -139,6 +140,34 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
           {PRODUCT_DETAILS_MODAL_LABELS.SUPPLIER_PREFIX} <span style={{ fontWeight: 'bold' }}>{productData.supplier}</span>
         </Typography>
       </Box>
+
+      {/* A retired receipt still opens and reads normally — the lines are real history —
+          but the modal has to say so, or it is indistinguishable from a live receipt. */}
+      {productData.record_status === 'DELETED' && (
+        <Box
+          role="status"
+          sx={{
+            mb: 2,
+            px: 1.5,
+            py: 1,
+            borderRadius: '8px',
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            color: '#B91C1C',
+            fontSize: '13px',
+            lineHeight: 1.6,
+            fontFamily: "'Lexend', sans-serif",
+          }}
+        >
+          {deletedRecordTooltip(
+            'receipt',
+            productData.deleted_by,
+            productData.deleted_at,
+            productData.deletion_reason
+          )}
+        </Box>
+      )}
+
       
       <ReusableTable<ProductItem>
         columns={columns}

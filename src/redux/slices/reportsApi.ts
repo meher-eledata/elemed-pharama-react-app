@@ -136,6 +136,28 @@ export interface SupplierReceiptReportRow {
   total_value: Num;
 }
 
+// Receipt-level rollup (one element per receipt) — same filters/scoping as `rows`.
+export interface SupplierReceiptReportByReceiptRow {
+  receipt_id: number;
+  receipt_number: string;
+  receipt_date: string;
+  invoice_number: string | null;
+  po_number: string | null;
+  supplier_id: number | null;
+  supplier_name: string | null;
+  supplier_gst: string | null;
+  line_count: Num; // pg COUNT serializes bigint as string
+  product_count: Num; // COUNT(DISTINCT product_id) — bigint-as-string
+  total_qty: Num;
+  cgst: Num;
+  sgst: Num;
+  igst: Num;
+  total_tax: Num;
+  // RUPEE AMOUNT — deliberately different from SupplierReceiptReportRow.discount (a PERCENT).
+  discount_amount: Num;
+  total_value: Num;
+}
+
 export interface SupplierReceiptReportSummary {
   total_spend: Num;
   total_qty_received: Num;
@@ -146,6 +168,7 @@ export interface SupplierReceiptReportSummary {
 
 export interface SupplierReceiptReportResponse {
   rows: SupplierReceiptReportRow[];
+  rows_by_receipt: SupplierReceiptReportByReceiptRow[];
   summary: SupplierReceiptReportSummary;
   charts: {
     spend_by_date: { date: string; spend: Num }[];

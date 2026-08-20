@@ -53,6 +53,30 @@ export const ORDER_RECEIVE_DIALOG = {
   DELETE_MESSAGE: "Are you sure you want to delete this record? This action cannot be undone.",
 } as const;
 
+// Consequence sentence for the shared DeleteDocumentDialog. Deliberately avoids
+// "cannot be undone": the backend soft-deletes — the receipt, its lines and its stock
+// history all survive, the receipt is just retired. Names the two real consequences
+// (stock reversed, payments voided) instead.
+export const ORDER_RECEIVE_DELETE_DIALOG = {
+  DOCUMENT_LABEL: "receipt",
+  CONSEQUENCE:
+    "The received stock will be taken back out of inventory and any supplier payments on this receipt will be voided. The receipt stays in your history, marked as deleted.",
+} as const;
+
+// Status filter options, mirroring Sale History's control. Receipts have no return
+// concept in this list, so the pair is All/Deleted rather than All/Return/Deleted.
+export const ORDER_RECEIVE_STATUS_FILTER = {
+  LABEL: "Status",
+  OPTIONS: ['All', 'Deleted'] as const,
+} as const;
+
+// Action tooltips for a retired receipt. The badge itself (and its who/when/why tooltip)
+// is the shared DeletedRecordBadge, so sales and receive cannot drift apart on it.
+export const ORDER_RECEIVE_DELETED_BADGE = {
+  EDIT_BLOCKED: "This receipt has been deleted and can no longer be edited.",
+  PAYMENT_BLOCKED: "This receipt has been deleted and can no longer take payments.",
+} as const;
+
 export const ORDER_RECEIVE_MODAL = {
   DETAILS_TITLE: "Details of products",
 } as const;

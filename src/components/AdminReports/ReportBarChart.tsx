@@ -43,19 +43,35 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
       ? `₹${v.toLocaleString(C.CURRENCY.LOCALE, { maximumFractionDigits: 0 })}`
       : v.toLocaleString(C.CURRENCY.LOCALE, { maximumFractionDigits: 0 });
 
+  // Compact y-axis ticks (₹60K / 6L) — full values would ellipsize inside the
+  // fixed tick area at realistic spend ranges. Tooltips keep the full value.
+  const formatAxisValue = (v: number): string => {
+    const compact = v.toLocaleString(C.CURRENCY.LOCALE, {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    });
+    return currency ? `₹${compact}` : compact;
+  };
+
   // Angle date/category ticks once they get dense so labels stay readable.
   const angled = categories.length > 6;
+  // At wide ranges (e.g. years of daily data) only label every Nth band tick.
+  // Applied only when dense: small-count charts must show EVERY label.
+  const xTickStep = Math.max(1, Math.ceil(categories.length / C.CHART.MAX_X_TICK_LABELS));
+  const thinXTicks = categories.length > C.CHART.MAX_X_TICK_LABELS;
   const axisLabelStyle = {
     fontSize: 13,
     fill: C.COLORS.TEXT_PRIMARY,
     fontFamily: C.FONT_FAMILY,
     fontWeight: 600,
   } as const;
-  const margin = {
-    ...C.CHART.MARGIN,
-    bottom: xAxisLabel ? C.CHART.MARGIN.bottom + 22 : C.CHART.MARGIN.bottom,
-    left: yAxisLabel ? C.CHART.MARGIN.left + 20 : C.CHART.MARGIN.left,
-  };
+  // x-charts v8 sizes the tick-label area from the AXIS config (height/width,
+  // defaults 25/45px), not from `margin` — an undersized axis ellipsizes every
+  // label down to an empty string (blank ticks). Give angled x labels and the
+  // rotated y title the space they actually need; `margin` stays a small pad.
+  const xAxisHeight = (angled ? C.CHART.X_AXIS_HEIGHT_ANGLED : C.CHART.X_AXIS_HEIGHT) + (xAxisLabel ? 22 : 0);
+  const yAxisWidth = C.CHART.Y_AXIS_WIDTH + (yAxisLabel ? 20 : 0);
+  const margin = C.CHART.MARGIN;
 
   return (
     <Card
@@ -77,6 +93,10 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
               scaleType: 'band',
               label: xAxisLabel,
               labelStyle: axisLabelStyle,
+              height: xAxisHeight,
+              ...(thinXTicks
+                ? { tickLabelInterval: (_value: unknown, index: number) => index % xTickStep === 0 }
+                : {}),
               tickLabelStyle: {
                 fontSize: C.CHART.TICK_LABEL_FONT_SIZE,
                 fill: C.CHART.TICK_LABEL_COLOR,
@@ -92,12 +112,13 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
               max: niceMax,
               label: yAxisLabel,
               labelStyle: axisLabelStyle,
+              width: yAxisWidth,
               tickLabelStyle: {
                 fontSize: C.CHART.TICK_LABEL_FONT_SIZE,
                 fill: C.CHART.TICK_LABEL_COLOR,
                 fontFamily: C.FONT_FAMILY,
               },
-              valueFormatter: (v: number) => formatValue(v),
+              valueFormatter: (v: number) => formatAxisValue(v),
             },
           ]}
           series={[{ data: values, label: seriesLabel, color, valueFormatter: (v) => (v == null ? '' : formatValue(v)) }]}

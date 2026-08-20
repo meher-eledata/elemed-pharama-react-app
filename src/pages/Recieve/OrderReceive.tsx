@@ -17,7 +17,6 @@ import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import "./OrderReceive.scss";
 import { ReusableTable } from "../../components/PharmaTable";
-import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
 import CommonModal from "../../components/CommonModal/CommonModal";
 import ProductDetailsModalContent from "./ProductDetailsModalContent";
 import {
@@ -25,8 +24,8 @@ import {
   ADD_RECEIVE_BUTTON,
   PURCHASE_RETURN_BUTTON,
   ORDER_RECEIVE_MESSAGES,
-  ORDER_RECEIVE_DIALOG,
   ORDER_RECEIVE_MODAL,
+  ORDER_RECEIVE_STATUS_FILTER,
 } from "../../config/label/OrderReceive.labels";
 import { ORDER_RECEIVE_CONSTANTS } from "../../config/constants/OrderReceive.constants";
 import { OrderReceiveRow, PurchaseOrderRow, ProductItem } from "./types";
@@ -106,16 +105,11 @@ const OrderReceive: React.FC = () => {
     editingRowId,
     editingDraft,
     setEditingDraft,
-    isDeleteDialogOpen,
-    setIsDeleteDialogOpen,
-    rowToDeleteId,
     snackbar,
     setSnackbar,
     handleEditClick,
     handleSaveClick,
     handleCancelClick,
-    handleDeleteClick,
-    handleConfirmDelete,
     handlePaymentDetailsClick,
     validateInlineEditing,
   } = useOrderReceiveActions(
@@ -492,6 +486,51 @@ const OrderReceive: React.FC = () => {
                           )}
                         />
                       </Box>
+                      {/* Status filter — same control, options and styling as Sale
+                          History's, so the two lists behave alike. */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#728197' }}>
+                          {ORDER_RECEIVE_STATUS_FILTER.LABEL}
+                        </Typography>
+                        <Autocomplete
+                          options={[...ORDER_RECEIVE_STATUS_FILTER.OPTIONS]}
+                          value={filters.status || 'All'}
+                          onChange={(_, newValue) => handleFilterChange('status', newValue || 'All')}
+                          disableClearable
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              placeholder="All"
+                              size="small"
+                              sx={{
+                                width: 180,
+                                '& .MuiOutlinedInput-root': {
+                                  height: 'auto',
+                                  borderRadius: '30px',
+                                  backgroundColor: '#ffffff',
+                                  fontFamily: "'Lexend', sans-serif",
+                                  fontSize: '14px',
+                                  color: '#1A212B',
+                                  '& fieldset': { borderColor: '#D1D5DB' },
+                                  '&:hover fieldset': { borderColor: '#D1D5DB' },
+                                  '&.Mui-focused fieldset': { borderColor: '#D1D5DB' },
+                                }
+                              }}
+                            />
+                          )}
+                          ListboxProps={{
+                            sx: {
+                              maxHeight: '300px',
+                              '& .MuiAutocomplete-option': {
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                '&:hover': { backgroundColor: '#5C17E5', color: '#ffffff' },
+                                '&[aria-selected="true"]': { backgroundColor: '#F3F4F6' }
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <DateRangeFilter
                           dateRange={dateRange}
@@ -578,15 +617,6 @@ const OrderReceive: React.FC = () => {
           </>
         )}
       </Box>
-
-      <ConfirmationDialog
-        open={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title={ORDER_RECEIVE_DIALOG.DELETE_TITLE}
-        message={ORDER_RECEIVE_DIALOG.DELETE_MESSAGE}
-        itemName={rowToDeleteId ? tableData.find((r) => r.reNo === rowToDeleteId)?.reNo : undefined}
-      />
 
       <Snackbar
         open={snackbar.open}

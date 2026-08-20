@@ -82,12 +82,9 @@ export const useOrderReceiveData = (activeTab: number) => {
 
   const mappedReceipts: OrderReceiveRow[] = useMemo(() => {
     return (receipts || [])
-      .filter((receipt) => {
-        if (receipt.id === 13 || receipt.receipt_id === 13) {
-          console.log("🚀 Debug RA13:", JSON.stringify(receipt, null, 2));
-        }
-        return receipt.receipt_status.toLowerCase() === 'received';
-      })
+      // Leftover per-row debug logging removed (it dumped a whole receipt to the
+      // browser console for one hard-coded id).
+      .filter((receipt) => receipt.receipt_status.toLowerCase() === 'received')
       .map((receipt) => {
         const receiptId = receipt.receipt_id || receipt.id || 0;
         const amountPaid = receipt.total_paid || 0;
@@ -152,6 +149,12 @@ export const useOrderReceiveData = (activeTab: number) => {
           amountPaid: amountPaid,
           pendingAmount: pendingAmount,
           creditAvailable: creditAvailable,
+          // COALESCEd server-side, but default defensively so a row from an older
+          // backend (pre-migration-028) reads as ACTIVE rather than undefined.
+          record_status: receipt.record_status ?? 'ACTIVE',
+          deletion_reason: receipt.deletion_reason ?? null,
+          deleted_at: receipt.deleted_at ?? null,
+          deleted_by: receipt.deleted_by ?? null,
         };
       });
   }, [receipts]);

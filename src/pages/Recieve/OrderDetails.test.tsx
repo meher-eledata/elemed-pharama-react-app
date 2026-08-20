@@ -14,6 +14,7 @@ import {
   useSubmitReceiptMutation,
   useEditReceiptMutation,
   useUploadReceiptFileMutation,
+  useDeleteReceiptMutation,
   useExtractInvoiceMutation,
   useGetReceiptsQuery,
 } from '../../redux/slices/receiveApi';
@@ -180,6 +181,7 @@ describe('OrderDetails', () => {
   const mockUseSubmitReceiptMutation = useSubmitReceiptMutation as jest.MockedFunction<typeof useSubmitReceiptMutation>;
   const mockUseEditReceiptMutation = useEditReceiptMutation as jest.MockedFunction<typeof useEditReceiptMutation>;
   const mockUseUploadReceiptFileMutation = useUploadReceiptFileMutation as jest.MockedFunction<typeof useUploadReceiptFileMutation>;
+  const mockUseDeleteReceiptMutation = useDeleteReceiptMutation as jest.MockedFunction<typeof useDeleteReceiptMutation>;
   const mockUseExtractInvoiceMutation = useExtractInvoiceMutation as jest.MockedFunction<typeof useExtractInvoiceMutation>;
   const mockUseGetReceiptsQuery = useGetReceiptsQuery as jest.MockedFunction<typeof useGetReceiptsQuery>;
 
@@ -226,6 +228,7 @@ describe('OrderDetails', () => {
     mockUseSubmitReceiptMutation.mockReturnValue(createMockMutation());
     mockUseEditReceiptMutation.mockReturnValue(createMockMutation());
     mockUseUploadReceiptFileMutation.mockReturnValue(createMockMutation());
+    mockUseDeleteReceiptMutation.mockReturnValue(createMockMutation());
     // Invoice extraction only fires when a file is attached; tests attach none, so
     // a resolved empty draft keeps the existing suite unaffected.
     mockUseExtractInvoiceMutation.mockReturnValue(
@@ -632,7 +635,7 @@ describe('OrderDetails', () => {
 
       renderWithProviders(<OrderDetails labels={orderLabels} />);
       
-      expect(screen.getByText(/Delete the full receipt/i)).toBeInTheDocument();
+      expect(screen.getByText(/^Delete Receipt$/i)).toBeInTheDocument();
     });
 
     it('should load existing receipt data in edit mode', async () => {
@@ -698,26 +701,97 @@ describe('OrderDetails', () => {
   });
 
   describe('Delete Functionality', () => {
-    it('should trigger receipt deletion when the delete button is clicked', async () => {
+    // The button used to fire a raw DELETE straight from the click — no confirmation,
+    // and no `deletion_reason`, which the endpoint REQUIRES (400 without it). It now
+    // opens a dialog that captures the mandatory reason first.
+    const openEditModeDelete = async (user: ReturnType<typeof userEvent.setup>) => {
+      mockLocation.state = { isEditMode: true, receiptId: 1, receiptNumber: 'PI-EL-26-000243' };
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+      await user.click(screen.getByText(/^Delete Receipt$/i));
+    };
+
+    it('opens the reason dialog instead of deleting straight from the click', async () => {
       const user = userEvent.setup();
+      const deleteFn = jest.fn(() => ({ unwrap: () => Promise.resolve({ message: 'ok' }) }));
+      mockUseDeleteReceiptMutation.mockReturnValue(createMockMutation(deleteFn as any));
+
+      await openEditModeDelete(user);
+
+      // Shared DeleteDocumentDialog: "Delete receipt <number>?"
+      expect(await screen.findByText(/Delete receipt PI-EL-26-000243\?/i)).toBeInTheDocument();
+      // Nothing destructive has happened yet.
+      expect(deleteFn).not.toHaveBeenCalled();
+    });
+
+    it('keeps the confirm button disabled until a reason is entered', async () => {
+      const user = userEvent.setup();
+      const deleteFn = jest.fn(() => ({ unwrap: () => Promise.resolve({ message: 'ok' }) }));
+      mockUseDeleteReceiptMutation.mockReturnValue(createMockMutation(deleteFn as any));
+
+      await openEditModeDelete(user);
+
+      const confirm = await screen.findByRole('button', { name: /^Delete$/i });
+      expect(confirm).toBeDisabled();
+
+      // Shared minimum: a one-character reason is not an audit trail.
+      await user.type(screen.getByLabelText(/Reason for deletion/i), 'ab');
+      expect(confirm).toBeDisabled();
+
+      await user.type(screen.getByLabelText(/Reason for deletion/i), 'c');
+      expect(confirm).toBeEnabled();
+    });
+
+    it('sends receipt_id + deleted_by + deletion_reason on confirm', async () => {
+      const user = userEvent.setup();
+      const deleteFn = jest.fn(() => ({ unwrap: () => Promise.resolve({ message: 'ok' }) }));
+      mockUseDeleteReceiptMutation.mockReturnValue(createMockMutation(deleteFn as any));
+
+      await openEditModeDelete(user);
+      await user.type(screen.getByLabelText(/Reason for deletion/i), '  Entered twice by mistake  ');
+      await user.click(await screen.findByRole('button', { name: /^Delete$/i }));
+
+      await waitFor(() => expect(deleteFn).toHaveBeenCalledTimes(1));
+      expect(deleteFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          receipt_id: 1,
+          // trimmed before it reaches the wire
+          deletion_reason: 'Entered twice by mistake',
+        })
+      );
+      expect((deleteFn.mock.calls as any[])[0][0]).toHaveProperty('deleted_by');
+    });
+
+    it('surfaces a refusal instead of failing silently', async () => {
+      const user = userEvent.setup();
+      const deleteFn = jest.fn(() => ({
+        unwrap: () => Promise.reject({
+          status: 409,
+          data: { error: 'RECEIPT_HAS_SUPPLIER_RETURNS' },
+        }),
+      }));
+      mockUseDeleteReceiptMutation.mockReturnValue(createMockMutation(deleteFn as any));
+
+      await openEditModeDelete(user);
+      await user.type(screen.getByLabelText(/Reason for deletion/i), 'wrong supplier');
+      await user.click(await screen.findByRole('button', { name: /^Delete$/i }));
+
+      // The pharmacist is told WHAT to do, not given an HTTP number.
+      expect(await screen.findByText(/supplier returns raised against it/i)).toBeInTheDocument();
+    });
+
+    it('a receipt that is already deleted is read-only: no Delete button, Save disabled', async () => {
       mockLocation.state = {
         isEditMode: true,
         receiptId: 1,
+        receiptNumber: 'PI-EL-26-000243',
+        selectedOrder: { record_status: 'DELETED' },
       };
 
       renderWithProviders(<OrderDetails labels={orderLabels} />);
 
-      const deleteButton = screen.getByText(/Delete the full receipt/i);
-      await user.click(deleteButton);
-
-      // The edit-mode delete button calls deleteReceipt() directly, which issues a
-      // DELETE request to the delete-receipt endpoint (no confirmation dialog).
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining('delete-receipt'),
-          expect.objectContaining({ method: 'DELETE' })
-        );
-      });
+      expect(screen.queryByText(/^Delete Receipt$/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/can no longer be edited/i)).toBeInTheDocument();
+      expect(screen.getByText(orderLabels.saveButton ?? 'Save')).toBeDisabled();
     });
   });
 

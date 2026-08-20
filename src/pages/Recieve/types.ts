@@ -36,6 +36,13 @@ export interface OrderReceiveRow {
   creditAvailable?: number; // Credit available for supplier
   invoice_number?: string; // The SUPPLIER's invoice number
   receipt_number?: string | null; // OUR goods-receipt (GRN) number; reNo stays the internal key
+  // Soft-delete state from the backend (see Receipt in receiveApi). A DELETED receipt is
+  // still LISTED — it is flagged, not hidden — but it is read-only history: edit and
+  // payment are blocked (both endpoints answer 409 RECEIPT_DELETED).
+  record_status?: 'ACTIVE' | 'DELETED';
+  deletion_reason?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
 
 export interface PurchaseOrderRow {

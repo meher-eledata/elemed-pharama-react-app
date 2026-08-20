@@ -545,6 +545,28 @@ describe('SaleHistory', () => {
     expect(editIcon).toHaveStyle({ cursor: 'not-allowed' });
   });
 
+  // Regression: a fully-returned invoice used to show a non-interactive red warning
+  // triangle (WarningIcon + "!" badge) in place of the return icon — its onClick just
+  // logged to the console, so clicking it did nothing, which read as "something is
+  // broken" rather than "no further action is available". Fixed by removing it outright:
+  // the return icon is already hidden for a full return, so nothing should render there.
+  it('shows no warning triangle (and no return icon) for a fully-returned invoice', async () => {
+    useInvoices([
+      { ...mockInvoices[0], return_status: 'Full Return', has_return: true },
+    ]);
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/inv7896/i)).toBeInTheDocument();
+    });
+
+    const row = screen.getByText(/inv7896/i).closest('tr')!;
+    expect(row.querySelector('[data-testid="WarningIcon"]')).toBeNull();
+    expect(row.querySelector('[data-testid="UndoIcon"]')).toBeNull();
+    // The Edit icon is still present (disabled, per the existing has-return rule).
+    expect(row.querySelector('[data-testid="EditIcon"]')).toBeTruthy();
+  });
+
   describe('date range filter', () => {
     // Three invoices on distinct days. invoice_date is rendered as "DD MMM YYYY";
     // the parser must read that back robustly so the range filter works.

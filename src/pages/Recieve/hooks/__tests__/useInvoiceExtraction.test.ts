@@ -91,6 +91,7 @@ const makeDraft = (): ExtractInvoiceDraft => ({
     "lines[1].received_qty",
   ],
   meta: { driver: "stub", threshold: 0.85 },
+  extraction_id: 42,
 });
 
 describe("buildRowsFromDraft", () => {
