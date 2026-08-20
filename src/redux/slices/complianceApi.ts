@@ -1,5 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
+import type { ThunkDispatch, UnknownAction } from '@reduxjs/toolkit';
 import { baseQueryWithReauth } from '../baseQuery';
+import { notificationsApi } from './notificationsApi';
 
 // Compliance module (licences, renewals, version history, expiry calendar).
 // Shapes match .claude/memory/api-contract.md → "Compliance module endpoints".
@@ -259,6 +261,33 @@ export interface UpdateComplianceNotificationSettingsRequest {
   overrides?: Array<{ document_type_id: number; lead_days: number[] | null }>;
 }
 
+// RTK Query tag invalidation is PER-SLICE, so a compliance write does NOT touch the
+// bell's cache (gotchas.md: "cross-slice invalidation is manual"). Every compliance
+// mutation can change what the bell says — filing a document RESOLVES its
+// COMPLIANCE_MISSING row, a new expiry window changes EXPIRING/EXPIRED, re-pointing
+// the current version moves the dates the alerts are computed from, archiving stops
+// alerts, and new lead days re-evaluate all of them. Without this the bell keeps
+// reading "Document missing" straight after the user filed it, which reads as "the
+// upload failed" — so it is attached to EVERY mutation in this slice, not a
+// hand-picked subset that the next endpoint would silently fall out of.
+type BellRefreshApi = {
+  dispatch: ThunkDispatch<unknown, unknown, UnknownAction>;
+  queryFulfilled: PromiseLike<unknown>;
+};
+
+const refreshNotificationBell = async (
+  _arg: unknown,
+  { dispatch, queryFulfilled }: BellRefreshApi,
+): Promise<void> => {
+  try {
+    await queryFulfilled;
+  } catch {
+    // A failed write changed nothing — leave the bell's cache alone.
+    return;
+  }
+  dispatch(notificationsApi.util.invalidateTags(['Notification']));
+};
+
 export const complianceApi = createApi({
   reducerPath: 'complianceApi',
   baseQuery: baseQueryWithReauth,
@@ -281,6 +310,7 @@ export const complianceApi = createApi({
       // 409 on a duplicate key — including against an ARCHIVED type, which must be
       // restored (PUT status: 'ACTIVE') rather than re-created. Surface, never retry.
       query: (body) => ({ url: 'compliance/document-types', method: 'POST', body }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: ['ComplianceType', 'ComplianceCalendar'],
     }),
     updateComplianceDocumentType: builder.mutation<
@@ -292,11 +322,13 @@ export const complianceApi = createApi({
         method: 'PUT',
         body,
       }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: ['ComplianceType', 'ComplianceDocument', 'ComplianceCalendar'],
     }),
     // SOFT delete — the row survives as ARCHIVED and filed documents keep resolving.
     archiveComplianceDocumentType: builder.mutation<ComplianceDocumentType, number>({
       query: (id) => ({ url: `compliance/document-types/${id}`, method: 'DELETE' }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: ['ComplianceType', 'ComplianceDocument', 'ComplianceCalendar'],
     }),
 
@@ -326,6 +358,7 @@ export const complianceApi = createApi({
       CreateComplianceDocumentRequest
     >({
       query: (body) => ({ url: 'compliance/documents', method: 'POST', body }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: [{ type: 'ComplianceDocument', id: 'LIST' }, 'ComplianceCalendar'],
     }),
     // The `versions` array is paged by the SAME limit/offset params (newest first).
@@ -345,6 +378,7 @@ export const complianceApi = createApi({
         method: 'PUT',
         body,
       }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: (_r, _e, { id }) => [
         { type: 'ComplianceDocument', id },
         { type: 'ComplianceDocument', id: 'LIST' },
@@ -374,6 +408,7 @@ export const complianceApi = createApi({
           body: formData,
         };
       },
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: (_r, _e, { documentId }) => [
         { type: 'ComplianceDocument', id: documentId },
         { type: 'ComplianceDocument', id: 'LIST' },
@@ -389,6 +424,7 @@ export const complianceApi = createApi({
         method: 'PUT',
         body,
       }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: (_r, _e, { documentId }) => [
         { type: 'ComplianceDocument', id: documentId },
         { type: 'ComplianceDocument', id: 'LIST' },
@@ -406,6 +442,7 @@ export const complianceApi = createApi({
         url: `compliance/documents/${documentId}/versions/${versionId}/make-current`,
         method: 'POST',
       }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: (_r, _e, { documentId }) => [
         { type: 'ComplianceDocument', id: documentId },
         { type: 'ComplianceDocument', id: 'LIST' },
@@ -463,6 +500,7 @@ export const complianceApi = createApi({
         method: 'PUT',
         body,
       }),
+      onQueryStarted: refreshNotificationBell,
       invalidatesTags: ['ComplianceSettings', 'ComplianceCalendar'],
     }),
   }),
