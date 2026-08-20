@@ -72,14 +72,25 @@ export const getOrderReceiveColumns = (
       key: "reNo",
       header: ORDER_RECEIVE_TABLE_HEADERS.RECEIPT_NUMBER,
       render: (row) => (
+        // Two rows, not one: the badge sits UNDER the number rather than beside it.
+        // Inline, it competed with the number for a fixed-width column and ellipsised
+        // the very thing that identifies the row ("PI-EL-26-…"). Stacking keeps the
+        // receipt number at full width on every row, deleted or not.
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: '0.125rem',
+          minHeight: '1.5rem',
+          width: '100%',
+          position: 'relative'
+        }}>
         <Box sx={{
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
           gap: '0.125rem',
-          minHeight: '1.5rem',
-          width: '100%',
-          position: 'relative'
+          width: '100%'
         }}>
           <VisibilityIcon
             sx={{
@@ -111,7 +122,12 @@ export const getOrderReceiveColumns = (
                 predates the numbering backfill. Never the supplier's invoice number. */}
             {row.receipt_number || row.reNo}
           </span>
-          {isDeletedRow(row) && <DeletedBadge row={row} />}
+        </Box>
+        {isDeletedRow(row) && (
+          <Box sx={{ pl: '1.25rem' }}>
+            <DeletedBadge row={row} />
+          </Box>
+        )}
         </Box>
       )
     },
