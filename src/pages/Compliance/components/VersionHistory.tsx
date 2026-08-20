@@ -174,10 +174,12 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
     );
   }
 
-  // A full page means the server may be holding more; past the hard cap it is.
-  const canLoadMore =
-    versions.length >= versionLimit && versionLimit < COMPLIANCE_PAGE_SIZE_MAX;
-  const isCapped = versions.length >= COMPLIANCE_PAGE_SIZE_MAX;
+  // `versions_page.has_more` is derived server-side; `total` is version_count, the
+  // true unpaged history length.
+  const versionTotal = data?.versions_page?.total ?? versions.length;
+  const hasMore = data?.versions_page?.has_more ?? false;
+  const canLoadMore = hasMore && versionLimit < COMPLIANCE_PAGE_SIZE_MAX;
+  const isCapped = hasMore && versionLimit >= COMPLIANCE_PAGE_SIZE_MAX;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1.5 }}>
@@ -371,7 +373,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
       {(canLoadMore || isCapped) && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: C.FONT }}>
-            {L.PAGING.showing(versions.length, data?.version_count ?? versions.length)}
+            {L.PAGING.showing(versions.length, versionTotal)}
           </Typography>
           {canLoadMore ? (
             <StandardButton
@@ -388,7 +390,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
             </StandardButton>
           ) : (
             <Typography sx={{ fontSize: '12px', color: '#B45309', fontFamily: C.FONT }}>
-              {L.PAGING.versionsCapped(COMPLIANCE_PAGE_SIZE_MAX)}
+              {L.PAGING.versionsCapped(versions.length, versionTotal)}
             </Typography>
           )}
         </Box>

@@ -65,9 +65,29 @@ export interface ComplianceDocument {
   version_count: number;
 }
 
-// GET /compliance/documents/:id — the list shape plus the full history (version_no DESC).
+// Paged-response metadata, shared by both paged endpoints (one server-side helper
+// builds it, so the two can never drift). `has_more` is derived server-side —
+// never re-derive it from the row count.
+export interface CompliancePage {
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+// GET /compliance/documents — an ENVELOPE, not a bare array: a full page carries no
+// signal on its own, so `total`/`has_more` come with it. `total` is the unpaged
+// count for the SAME status/type_id filters as the page.
+export interface ComplianceDocumentsResponse extends CompliancePage {
+  documents: ComplianceDocument[];
+}
+
+// GET /compliance/documents/:id — the list shape plus a PAGE of the history
+// (version_no DESC) and that page's metadata. `versions_page.total` equals
+// `version_count`, the true unpaged history length.
 export interface ComplianceDocumentDetail extends ComplianceDocument {
   versions: ComplianceVersion[];
+  versions_page: CompliancePage;
 }
 
 export interface CreateComplianceDocumentTypeRequest {
@@ -283,7 +303,10 @@ export const complianceApi = createApi({
     // PAGED (server default 50, hard cap 200). `limit`/`offset` are always sent
     // explicitly so the page never silently inherits a server default it does not
     // know about — a truncated compliance list must be visibly truncated.
-    getComplianceDocuments: builder.query<ComplianceDocument[], GetComplianceDocumentsArgs | void>({
+    getComplianceDocuments: builder.query<
+      ComplianceDocumentsResponse,
+      GetComplianceDocumentsArgs | void
+    >({
       query: (args) => ({
         url: 'compliance/documents',
         params: {
@@ -295,7 +318,7 @@ export const complianceApi = createApi({
       }),
       providesTags: (result) => [
         { type: 'ComplianceDocument' as const, id: 'LIST' },
-        ...(result ?? []).map((d) => ({ type: 'ComplianceDocument' as const, id: d.id })),
+        ...(result?.documents ?? []).map((d) => ({ type: 'ComplianceDocument' as const, id: d.id })),
       ],
     }),
     createComplianceDocument: builder.mutation<

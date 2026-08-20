@@ -21,8 +21,12 @@ beforeEach(() => {
     const url = typeof input === 'string' ? input : input.url;
     const body = url.includes('document-types') ? types
       : url.includes('notification-settings') ? { lead_days: [60, 30, 7], is_default: true, overrides: [] }
-      : url.includes('/documents/5') ? { ...documents[0], versions: [version, { ...version, id: 9, version_no: 1, is_current: false, valid_to: '2025-12-31', file_name: 'old.pdf' }] }
-      : documents;
+      : url.includes('/documents/5') ? {
+          ...documents[0],
+          versions: [version, { ...version, id: 9, version_no: 1, is_current: false, valid_to: '2025-12-31', file_name: 'old.pdf' }],
+          versions_page: { total: 2, limit: 50, offset: 0, has_more: false },
+        }
+      : { documents, total: documents.length, limit: 50, offset: 0, has_more: false };
     return { ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => body, text: async () => JSON.stringify(body), clone() { return this; } } as any;
   }) as any;
 });
@@ -66,7 +70,7 @@ it('never renders a truncated list as complete, and loads the next page', async 
       ? types
       : url.includes('notification-settings')
         ? { lead_days: [60, 30, 7], is_default: true, overrides: [] }
-        : page;
+        : { documents: page, total: 120, limit: 50, offset: 0, has_more: true };
     return {
       ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }),
       json: async () => body, text: async () => JSON.stringify(body), clone() { return this; },
@@ -74,7 +78,7 @@ it('never renders a truncated list as complete, and loads the next page', async 
   }) as any;
 
   renderPage();
-  expect(await screen.findByText('Showing 50 — there may be more.')).toBeInTheDocument();
+  expect(await screen.findByText('Showing 50 of 120')).toBeInTheDocument();
   // The first request is explicit about the page it asked for.
   expect(requested.some((url) => url.includes('limit=50') && url.includes('offset=0'))).toBe(true);
 

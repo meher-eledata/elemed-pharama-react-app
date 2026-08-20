@@ -98,7 +98,7 @@ const ComplianceDocuments: React.FC = () => {
     isError: typesError,
   } = useGetComplianceDocumentTypesQuery({ status: statusFilter });
   const {
-    data: documents = [],
+    data: documentsPage,
     isLoading: documentsLoading,
     isFetching: documentsFetching,
     isError: documentsError,
@@ -107,6 +107,10 @@ const ComplianceDocuments: React.FC = () => {
     type_id: typeFilter || undefined,
     limit,
   });
+  // The response is an ENVELOPE: rows plus the unpaged `total` for these filters
+  // and a server-derived `has_more`.
+  const documents = documentsPage?.documents ?? [];
+  const totalDocuments = documentsPage?.total ?? documents.length;
   // Read-only for every member; used only to colour the "expiring" window the same
   // way the reminders do.
   const { data: settings } = useGetComplianceNotificationSettingsQuery();
@@ -193,10 +197,11 @@ const ComplianceDocuments: React.FC = () => {
   };
 
   const isLoading = typesLoading || documentsLoading;
-  // A FULL page means the server may be holding more rows behind the limit; at the
-  // hard cap it certainly is, and the user is told to narrow the filters instead.
-  const canLoadMore = documents.length >= limit && limit < COMPLIANCE_PAGE_SIZE_MAX;
-  const isCapped = documents.length >= COMPLIANCE_PAGE_SIZE_MAX;
+  // `has_more` is the server's own answer — never re-derived from the row count.
+  // At the hard cap the remainder is only reachable by narrowing the filters.
+  const hasMore = documentsPage?.has_more ?? false;
+  const canLoadMore = hasMore && limit < COMPLIANCE_PAGE_SIZE_MAX;
+  const isCapped = hasMore && limit >= COMPLIANCE_PAGE_SIZE_MAX;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3, maxWidth: '1100px' }}>
@@ -526,12 +531,12 @@ const ComplianceDocuments: React.FC = () => {
                 {L.PAGING.LOAD_MORE}
               </StandardButton>
               <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: C.FONT }}>
-                {L.PAGING.showingAtLeast(documents.length)}
+                {L.PAGING.showing(documents.length, totalDocuments)}
               </Typography>
             </>
           ) : (
             <Alert severity="info" sx={{ fontFamily: C.FONT, width: '100%' }}>
-              {L.PAGING.documentsCapped(COMPLIANCE_PAGE_SIZE_MAX)}
+              {L.PAGING.documentsCapped(documents.length, totalDocuments)}
             </Alert>
           )}
         </Box>

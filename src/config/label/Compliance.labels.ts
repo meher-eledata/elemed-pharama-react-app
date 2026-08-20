@@ -113,14 +113,14 @@ export const COMPLIANCE_LABELS = {
   },
   PAGING: {
     LOAD_MORE: 'Load more',
-    showingAtLeast: (shown: number) => `Showing ${shown} — there may be more.`,
     showing: (shown: number, total: number) =>
       shown >= total ? `Showing all ${total}` : `Showing ${shown} of ${total}`,
-    // The server hard-caps a page at 200 rows; say so rather than letting a
-    // compliance list look complete when it is not.
-    documentsCapped: (max: number) =>
-      `Showing the first ${max}. Filter by document type or status to see the rest.`,
-    versionsCapped: (max: number) => `Showing the first ${max} versions.`,
+    // The server hard-caps a page at 200 rows; state the real remainder rather
+    // than letting a compliance list look complete when it is not.
+    documentsCapped: (shown: number, total: number) =>
+      `Showing ${shown} of ${total}. Filter by document type or status to see the remaining ${total - shown}.`,
+    versionsCapped: (shown: number, total: number) =>
+      `Showing the first ${shown} of ${total} versions.`,
     TYPE_FILTER: 'Document type',
     ALL_TYPES: 'All types',
   },
