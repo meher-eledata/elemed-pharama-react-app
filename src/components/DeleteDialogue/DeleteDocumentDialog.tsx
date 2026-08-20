@@ -7,39 +7,71 @@ import {
   Box,
   IconButton,
   TextField,
-  Typography,
   CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { StandardButton } from '../Common';
 
-interface DeleteInvoiceDialogProps {
+export interface DeleteDocumentDialogProps {
   open: boolean;
-  invoiceNumber: string;
+  /** Lower-case noun for the document being retired, e.g. "invoice" or "receipt". */
+  documentLabel: string;
+  /** The user-facing document number (invoice number / GRN). Optional — legacy rows lack one. */
+  documentNumber?: string | null;
+  /**
+   * What actually happens when this document is retired — stock movements and money.
+   * Per-document because a sale restores stock while a purchase receipt reverses it.
+   */
+  consequenceText: string;
   isDeleting?: boolean;
   onClose: () => void;
+  /** Receives the trimmed reason; only fires once it meets MIN_REASON_LENGTH. */
   onConfirm: (reason: string) => void;
 }
 
-const MIN_REASON_LENGTH = 3;
+/**
+ * Confirmation + mandatory-reason capture for retiring a whole document (sales invoice or
+ * goods receipt).
+ *
+ * ONE dialog for both on purpose. The two flows had drifted into near-duplicate components
+ * that disagreed on things nobody had chosen — minimum reason length, whether the busy state
+ * showed a spinner, whether the dialog could be dismissed mid-delete. Those are not
+ * per-feature decisions, so they live here once.
+ *
+ * What IS per-feature is the noun and the consequence sentence, which are props.
+ *
+ * `deletion_reason` is mandatory server-side on both endpoints (400 without it) and is shown
+ * back in the history forever, so Delete stays disabled until the reason is substantive —
+ * a one-character reason is not an audit trail.
+ */
+export const MIN_REASON_LENGTH = 3;
 
-const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
+const DeleteDocumentDialog: React.FC<DeleteDocumentDialogProps> = ({
   open,
-  invoiceNumber,
+  documentLabel,
+  documentNumber,
+  consequenceText,
   isDeleting = false,
   onClose,
   onConfirm,
 }) => {
   const [reason, setReason] = useState('');
+  const [touched, setTouched] = useState(false);
 
+  // Never carry a previous reason into the next deletion.
   useEffect(() => {
-    if (!open) setReason('');
+    if (!open) {
+      setReason('');
+      setTouched(false);
+    }
   }, [open]);
 
   const trimmed = reason.trim();
-  const canSubmit = trimmed.length >= MIN_REASON_LENGTH && !isDeleting;
+  const tooShort = trimmed.length < MIN_REASON_LENGTH;
+  const canSubmit = !tooShort && !isDeleting;
 
   const handleConfirm = () => {
+    setTouched(true);
     if (!canSubmit) return;
     onConfirm(trimmed);
   };
@@ -47,6 +79,8 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
   return (
     <Dialog
       open={open}
+      // Not dismissable mid-delete: the request is already in flight and closing would
+      // strand the user with no idea whether it landed.
       onClose={isDeleting ? undefined : onClose}
       PaperProps={{
         sx: {
@@ -59,10 +93,10 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
           boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.15)',
         },
       }}
-      aria-labelledby="delete-invoice-dialog-title"
+      aria-labelledby="delete-document-dialog-title"
     >
       <DialogTitle
-        id="delete-invoice-dialog-title"
+        id="delete-document-dialog-title"
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -76,17 +110,15 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
           fontFamily: "'Lexend', sans-serif",
         }}
       >
-        Delete Invoice {invoiceNumber || ''}?
+        {`Delete ${documentLabel}${documentNumber ? ` ${documentNumber}` : ''}?`}
         <IconButton
           onClick={onClose}
           size="small"
           disabled={isDeleting}
+          aria-label="Close"
           sx={{
             color: '#6B7280',
-            '&:hover': {
-              backgroundColor: '#F3F4F6',
-              color: '#374151',
-            },
+            '&:hover': { backgroundColor: '#F3F4F6', color: '#374151' },
           }}
         >
           <CloseIcon fontSize="small" />
@@ -94,7 +126,7 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ px: 3, py: 2 }}>
-        <Typography
+        <Box
           sx={{
             color: '#374151',
             fontSize: '14px',
@@ -103,9 +135,8 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
             mb: 2,
           }}
         >
-          This will permanently delete the invoice. Stock will be restored. This
-          action cannot be undone.
-        </Typography>
+          {consequenceText}
+        </Box>
 
         <TextField
           autoFocus
@@ -115,11 +146,18 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
           minRows={2}
           maxRows={4}
           label="Reason for deletion"
-          placeholder="e.g., Customer billing mistake"
+          placeholder={`e.g., Entered twice by mistake`}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
+          onBlur={() => setTouched(true)}
           disabled={isDeleting}
-          inputProps={{ maxLength: 500 }}
+          error={touched && tooShort}
+          helperText={
+            touched && tooShort
+              ? `Please enter a reason — it is recorded against this ${documentLabel}.`
+              : ' '
+          }
+          inputProps={{ 'aria-label': 'Reason for deletion', maxLength: 500 }}
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: '8px',
@@ -145,10 +183,7 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
             fontWeight: 500,
             fontSize: '14px',
             textTransform: 'none',
-            '&:hover': {
-              backgroundColor: '#E0E0E0',
-              border: '1px solid #D1D5DB',
-            },
+            '&:hover': { backgroundColor: '#E0E0E0', border: '1px solid #D1D5DB' },
           }}
         >
           Cancel
@@ -167,14 +202,8 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
             fontSize: '14px',
             textTransform: 'none',
             boxShadow: 'none',
-            '&:hover': {
-              backgroundColor: '#B91C1C',
-              boxShadow: 'none',
-            },
-            '&.Mui-disabled': {
-              backgroundColor: '#FCA5A5',
-              color: '#FFFFFF',
-            },
+            '&:hover': { backgroundColor: '#B91C1C', boxShadow: 'none' },
+            '&.Mui-disabled': { backgroundColor: '#FCA5A5', color: '#FFFFFF' },
           }}
         >
           {isDeleting ? (
@@ -191,4 +220,4 @@ const DeleteInvoiceDialog: React.FC<DeleteInvoiceDialogProps> = ({
   );
 };
 
-export default DeleteInvoiceDialog;
+export default DeleteDocumentDialog;

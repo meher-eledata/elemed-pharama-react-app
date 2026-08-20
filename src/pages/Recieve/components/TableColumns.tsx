@@ -11,51 +11,13 @@ import {
   PURCHASE_ORDER_TABLE_HEADERS,
   ORDER_RECEIVE_DELETED_BADGE,
 } from "../../../config/label/OrderReceive.labels";
+import DeletedRecordBadge, { DELETED_ACTION_SX } from "../../../components/DeletedRecord/DeletedRecordBadge";
 import { ORDER_RECEIVE_CONSTANTS } from "../../../config/constants/OrderReceive.constants";
 import { capitalizeFirstLetter } from "../utils";
 import { TickMarkIcon } from "../styles";
 
 /** A retired receipt (soft-deleted server-side) is read-only history. */
 const isDeletedRow = (row: OrderReceiveRow) => row.record_status === 'DELETED';
-
-/**
- * "Deleted" chip shown next to the receipt number.
- *
- * A retired receipt stays in the list on purpose — the history has to remain auditable —
- * so the row MUST say so, otherwise it reads as a live receipt. The tooltip carries the
- * who/when/why the backend recorded.
- */
-const DeletedBadge: React.FC<{ row: OrderReceiveRow }> = ({ row }) => (
-  <Tooltip
-    title={ORDER_RECEIVE_DELETED_BADGE.TOOLTIP(
-      row.deleted_by ?? null,
-      row.deleted_at ? new Date(row.deleted_at).toLocaleString() : null,
-      row.deletion_reason ?? null
-    )}
-    arrow
-  >
-    <Box
-      component="span"
-      sx={{
-        flexShrink: 0,
-        px: '0.375rem',
-        py: '0.0625rem',
-        borderRadius: '0.25rem',
-        backgroundColor: '#FEE2E2',
-        color: '#B91C1C',
-        border: '1px solid #FCA5A5',
-        fontSize: '0.625rem',
-        fontWeight: 600,
-        lineHeight: 1.6,
-        letterSpacing: '0.02em',
-        textTransform: 'uppercase',
-        cursor: 'default',
-      }}
-    >
-      {ORDER_RECEIVE_DELETED_BADGE.LABEL}
-    </Box>
-  </Tooltip>
-);
 
 export const getOrderReceiveColumns = (
   editingRowId: string | null,
@@ -125,7 +87,12 @@ export const getOrderReceiveColumns = (
         </Box>
         {isDeletedRow(row) && (
           <Box sx={{ pl: '1.25rem' }}>
-            <DeletedBadge row={row} />
+            <DeletedRecordBadge
+              documentLabel="receipt"
+              deletedBy={row.deleted_by}
+              deletedAt={row.deleted_at}
+              deletionReason={row.deletion_reason}
+            />
           </Box>
         )}
         </Box>
@@ -303,8 +270,9 @@ export const getOrderReceiveColumns = (
                   <EditIcon
                     aria-disabled={isDeletedRow(row)}
                     sx={{
-                      color: isDeletedRow(row) ? '#C4C7CC' : ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR,
-                      cursor: isDeletedRow(row) ? 'not-allowed' : 'pointer',
+                      ...(isDeletedRow(row)
+                        ? DELETED_ACTION_SX
+                        : { color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }),
                       fontSize: 18,
                       flexShrink: 0,
                     }}
@@ -318,13 +286,14 @@ export const getOrderReceiveColumns = (
                   aria-disabled={isDeletedRow(row)}
                   onClick={() => { if (!isDeletedRow(row)) handlePaymentDetailsClick(row); }}
                   sx={{
-                    color: isDeletedRow(row) ? '#C4C7CC' : ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR,
+                    ...(isDeletedRow(row)
+                      ? DELETED_ACTION_SX
+                      : { color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer' }),
                     fontSize: '16px',
                     fontWeight: 500,
-                    cursor: isDeletedRow(row) ? 'not-allowed' : 'pointer',
                     whiteSpace: 'nowrap',
                     '&:hover': {
-                      opacity: isDeletedRow(row) ? 1 : 0.7
+                      opacity: isDeletedRow(row) ? DELETED_ACTION_SX.opacity : 0.7
                     }
                   }}
                 >

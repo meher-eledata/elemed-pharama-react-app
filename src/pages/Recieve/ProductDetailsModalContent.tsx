@@ -4,7 +4,7 @@ import { OrderReceiveRow, ProductItem } from "./types";
 import { ReusableTable, TableColumn } from "../../components/PharmaTable";
 import { PRODUCT_DETAILS_MODAL_CONSTANTS } from "../../config/constants/ProductDetailsModal.constants";
 import { PRODUCT_DETAILS_MODAL_LABELS } from "../../config/label/ProductDetailsModal.labels";
-import { ORDER_RECEIVE_DELETED_BADGE } from "../../config/label/OrderReceive.labels";
+import { deletedRecordTooltip } from "../../components/DeletedRecord/DeletedRecordBadge";
 
 interface ProductDetailsModalContentProps {
   productData: OrderReceiveRow | null;
@@ -159,10 +159,11 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
             fontFamily: "'Lexend', sans-serif",
           }}
         >
-          {ORDER_RECEIVE_DELETED_BADGE.TOOLTIP(
-            productData.deleted_by ?? null,
-            productData.deleted_at ? new Date(productData.deleted_at).toLocaleString() : null,
-            productData.deletion_reason ?? null
+          {deletedRecordTooltip(
+            'receipt',
+            productData.deleted_by,
+            productData.deleted_at,
+            productData.deletion_reason
           )}
         </Box>
       )}

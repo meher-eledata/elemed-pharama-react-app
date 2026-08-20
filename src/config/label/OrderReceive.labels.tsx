@@ -53,33 +53,26 @@ export const ORDER_RECEIVE_DIALOG = {
   DELETE_MESSAGE: "Are you sure you want to delete this record? This action cannot be undone.",
 } as const;
 
-// Copy for deleting a WHOLE goods receipt (POST /api/receive/delete-receipt).
-// Deliberately avoids "cannot be undone": the backend soft-deletes — the receipt, its
-// lines and its stock history all survive, the receipt is just retired. The copy names
-// the two real consequences (stock reversed, payments voided) instead.
+// Consequence sentence for the shared DeleteDocumentDialog. Deliberately avoids
+// "cannot be undone": the backend soft-deletes — the receipt, its lines and its stock
+// history all survive, the receipt is just retired. Names the two real consequences
+// (stock reversed, payments voided) instead.
 export const ORDER_RECEIVE_DELETE_DIALOG = {
-  TITLE: "Delete this receipt?",
-  MESSAGE:
+  DOCUMENT_LABEL: "receipt",
+  CONSEQUENCE:
     "The received stock will be taken back out of inventory and any supplier payments on this receipt will be voided. The receipt stays in your history, marked as deleted.",
-  MESSAGE_WITH_NUMBER: (receiptNumber: string) =>
-    `Receipt ${receiptNumber} will be deleted. The received stock will be taken back out of inventory and any supplier payments on this receipt will be voided. The receipt stays in your history, marked as deleted.`,
-  REASON_LABEL: "Reason for deletion",
-  REASON_PLACEHOLDER: "e.g. Entered twice by mistake",
-  REASON_REQUIRED: "Please enter a reason — it is recorded against this receipt.",
-  CONFIRM_LABEL: "Delete receipt",
-  CONFIRM_LABEL_BUSY: "Deleting...",
-  CANCEL_LABEL: "Cancel",
 } as const;
 
-// Badge + tooltip for a receipt that has been deleted (record_status === 'DELETED').
+// Status filter options, mirroring Sale History's control. Receipts have no return
+// concept in this list, so the pair is All/Deleted rather than All/Return/Deleted.
+export const ORDER_RECEIVE_STATUS_FILTER = {
+  LABEL: "Status",
+  OPTIONS: ['All', 'Deleted'] as const,
+} as const;
+
+// Action tooltips for a retired receipt. The badge itself (and its who/when/why tooltip)
+// is the shared DeletedRecordBadge, so sales and receive cannot drift apart on it.
 export const ORDER_RECEIVE_DELETED_BADGE = {
-  LABEL: "Deleted",
-  TOOLTIP: (by: string | null, at: string | null, reason: string | null) => {
-    const who = by ? ` by ${by}` : '';
-    const when = at ? ` on ${at}` : '';
-    const why = reason ? ` — ${reason}` : '';
-    return `Deleted${who}${when}${why}`;
-  },
   EDIT_BLOCKED: "This receipt has been deleted and can no longer be edited.",
   PAYMENT_BLOCKED: "This receipt has been deleted and can no longer take payments.",
 } as const;

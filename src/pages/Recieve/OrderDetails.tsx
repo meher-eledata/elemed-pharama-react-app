@@ -22,8 +22,8 @@ import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
 import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
-import DeleteReceiptDialog from "./components/DeleteReceiptDialog";
-import { ORDER_RECEIVE_DELETED_BADGE } from "../../config/label/OrderReceive.labels";
+import DeleteDocumentDialog from "../../components/DeleteDialogue/DeleteDocumentDialog";
+import { ORDER_RECEIVE_DELETED_BADGE, ORDER_RECEIVE_DELETE_DIALOG } from "../../config/label/OrderReceive.labels";
 import { StandardButton } from "../../components/Common";
 import { orderLabels } from "../../config/label/OrderDetail.labels";
 import { themeColors, typography } from "../../config/constants/OrderDetail.constants";
@@ -754,9 +754,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         itemName={form.rowToDeleteId ? table.pharmaTableData.find(row => row.id === form.rowToDeleteId)?.productId : undefined}
       />
 
-      <DeleteReceiptDialog
+      <DeleteDocumentDialog
         open={form.isReceiptDeleteDialogOpen}
-        receiptNumber={form.receiptNumber}
+        documentLabel={ORDER_RECEIVE_DELETE_DIALOG.DOCUMENT_LABEL}
+        documentNumber={form.receiptNumber}
+        consequenceText={ORDER_RECEIVE_DELETE_DIALOG.CONSEQUENCE}
         isDeleting={form.isDeleting}
         onClose={() => form.setIsReceiptDeleteDialogOpen(false)}
         onConfirm={async (reason) => {

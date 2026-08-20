@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { getOrderReceiveColumns } from '../TableColumns';
 import { OrderReceiveRow } from '../../types';
-import { ORDER_RECEIVE_DELETED_BADGE } from '../../../../config/label/OrderReceive.labels';
 
 jest.mock('../InvoiceAttachment', () => () => null);
 
@@ -69,21 +68,21 @@ const renderCell = (key: string, row: OrderReceiveRow, handlers = {}) => {
 describe('OrderReceive table — deleted receipts', () => {
   it('flags a deleted receipt so it cannot be mistaken for a live one', () => {
     renderCell('reNo', deletedRow());
-    expect(screen.getByText(ORDER_RECEIVE_DELETED_BADGE.LABEL)).toBeInTheDocument();
+    expect(screen.getByText('Deleted')).toBeInTheDocument();
     // the number itself is still readable — the row is history, not a tombstone
     expect(screen.getByText('GRN-000700')).toBeInTheDocument();
   });
 
   it('does NOT flag an active receipt', () => {
     renderCell('reNo', baseRow());
-    expect(screen.queryByText(ORDER_RECEIVE_DELETED_BADGE.LABEL)).not.toBeInTheDocument();
+    expect(screen.queryByText('Deleted')).not.toBeInTheDocument();
   });
 
   it('carries who/when/why in the badge tooltip', async () => {
     const user = userEvent.setup();
     renderCell('reNo', deletedRow());
 
-    await user.hover(screen.getByText(ORDER_RECEIVE_DELETED_BADGE.LABEL));
+    await user.hover(screen.getByText('Deleted'));
 
     const tip = await screen.findByRole('tooltip');
     expect(tip).toHaveTextContent('testadmin');

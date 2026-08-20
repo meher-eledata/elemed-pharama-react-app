@@ -18,7 +18,7 @@ import { RootState } from '../../redux/store';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import UndoIcon from '@mui/icons-material/Undo';
-import BlockIcon from '@mui/icons-material/Block';
+import DeletedRecordBadge, { DELETED_ACTION_SX } from '../../components/DeletedRecord/DeletedRecordBadge';
 import WarningIcon from '@mui/icons-material/Warning';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
@@ -132,6 +132,8 @@ export interface SalesHistoryItem {
   databaseInvoiceId?: number;
   recordStatus?: string;
   deletionReason?: string;
+  deletedBy?: string;
+  deletedAt?: string;
   returnInfo?: {
     totalItems: number; // Total items in invoice
     returnedItems: number; // Total items returned
@@ -379,6 +381,10 @@ export default function SaleHistory() {
         createdAt: invoice.created_at,
         recordStatus: invoice.record_status || (invoice.deleted_at ? 'DELETED' : 'ACTIVE'),
         deletionReason: invoice.deletion_reason || undefined,
+        // Carried so the Deleted badge tooltip can say who and when, matching the
+        // receipts list exactly (the backend records all three on both documents).
+        deletedBy: invoice.deleted_by || undefined,
+        deletedAt: invoice.deleted_at || undefined,
       };
     });
 
@@ -1015,15 +1021,17 @@ export default function SaleHistory() {
             </span>
 
             <Box sx={{ position: 'absolute', right: 0, display: 'flex', alignItems: 'center' }}>
+              {/* Shared with the receipts list so the two screens cannot drift apart.
+                  Replaces a bare red block-icon whose tooltip said only "Invoice is
+                  deleted" — the chip names the state in words and the tooltip carries
+                  who / when / why, which the backend has always recorded. */}
               {isDeleted && (
-                <Tooltip title="Invoice is deleted" arrow placement="top">
-                  <BlockIcon
-                    sx={{
-                      fontSize: '1rem', // 16px
-                      color: '#DC2626',
-                    }}
-                  />
-                </Tooltip>
+                <DeletedRecordBadge
+                  documentLabel="invoice"
+                  deletedBy={item.deletedBy}
+                  deletedAt={item.deletedAt}
+                  deletionReason={item.deletionReason}
+                />
               )}
             </Box>
           </Box>
@@ -1107,10 +1115,7 @@ export default function SaleHistory() {
             <Typography
               variant="body2"
               sx={{
-                color: '#9CA3AF',
-                cursor: isDeleted ? 'not-allowed' : 'pointer',
-                opacity: isDeleted ? 0.5 : 1,
-                pointerEvents: isDeleted ? 'none' : 'auto',
+                ...(isDeleted ? DELETED_ACTION_SX : { color: '#9CA3AF', cursor: 'pointer' }),
                 '&:hover': isDeleted ? {} : {
                   color: '#6B7280',
                   textDecoration: 'underline'
@@ -1186,11 +1191,11 @@ export default function SaleHistory() {
                 <UndoIcon
                   sx={{
                     fontSize: '1.5rem', // 24px = 1.5rem
-                    color: isDeleted ? '#9CA3AF' : '#000000',
-                    cursor: isDeleted ? 'not-allowed' : 'pointer',
+                    // Shared with the receipts list so a disabled action looks the same
+                    // on both screens.
+                    ...(isDeleted ? DELETED_ACTION_SX : { color: '#000000', cursor: 'pointer' }),
                     padding: '0.25rem', // 4px = 0.25rem
                     borderRadius: '0.25rem', // 4px = 0.25rem
-                    opacity: isDeleted ? 0.5 : 1,
                     '&:hover': isDeleted ? {} : {
                       backgroundColor: '#f5f5f5',
                       color: '#000000'

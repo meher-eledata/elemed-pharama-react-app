@@ -129,3 +129,14 @@ export const SALES_RECEIPT_LABELS = {
   DUPLICATE_INVOICE_NUMBER_ERROR: "A duplicate sale number was detected. Please try saving the sale again.",
 };
 
+// Consequence sentence for the shared DeleteDocumentDialog (see
+// components/DeleteDialogue/DeleteDocumentDialog). CORRECTED 2026-08-20: this previously
+// read "permanently delete... cannot be undone", which misdescribed the endpoint —
+// POST /api/sales/delete-invoice is a SOFT delete (record_status='DELETED'), so the
+// invoice, its lines and its payment history all survive and stay readable in Sale
+// History. The copy now names the real consequences instead.
+export const SALES_INVOICE_DELETE_DIALOG = {
+  DOCUMENT_LABEL: "invoice",
+  CONSEQUENCE:
+    "The sold stock will be returned to inventory and any payments on this invoice will be voided. The invoice stays in your history, marked as deleted.",
+} as const;

@@ -2,7 +2,7 @@ import React, { useState, ChangeEvent, useCallback, useEffect, useMemo, useRef }
 import dayjs from 'dayjs';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
-import DeleteInvoiceDialog from '../../components/DeleteDialogue/DeleteInvoiceDialog';
+import DeleteDocumentDialog from '../../components/DeleteDialogue/DeleteDocumentDialog';
 import { StandardButton } from '../../components/Common';
 import { useDispatch, useSelector } from 'react-redux';
 import EditIcon from '@mui/icons-material/Edit';
@@ -45,7 +45,7 @@ import {
 import { RootState } from '../../redux/store';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 import { orgApi, useGetNextDocumentNumberQuery } from '../../redux/slices/orgApi';
-import { SALES_RECEIPT_LABELS } from '../../config/label/SalesReceipt.labels';
+import { SALES_RECEIPT_LABELS, SALES_INVOICE_DELETE_DIALOG } from '../../config/label/SalesReceipt.labels';
 import { SALES_RECEIPT_CONSTANTS } from '../../config/constants/SalesReceipt.constants';
 import { clearCartFromStorage, clearFormDataFromStorage, setEditInvoiceId } from '../../utils/cartStorage';
 import { decorateInvoiceNumber, invoiceLookupKey } from '../../utils/invoiceNumberPreview';
@@ -1055,9 +1055,10 @@ const SalesReceipt: React.FC = () => {
     setApplyGstToAll(false);
   };
 
-  // Permanently delete the invoice currently being edited.
-  // Backend restores stock and recalculates totals; cache invalidation refreshes the
-  // Sale History list, so we just navigate back after success.
+  // SOFT-delete the invoice currently being edited: the backend retires it
+  // (record_status='DELETED') rather than destroying it — restoring stock, voiding its
+  // payments and keeping the row readable in Sale History. Cache invalidation refreshes
+  // that list, so we just navigate back after success.
   const handleConfirmDeleteInvoice = async (reason: string) => {
     if (!resolvedInvoiceId || resolvedInvoiceId <= 0) {
       showToast('Invoice ID could not be resolved. Please refresh and try again.', 'error');
@@ -2130,9 +2131,11 @@ const SalesReceipt: React.FC = () => {
           existingPayments={splitPayments}
         />
 
-        <DeleteInvoiceDialog
+        <DeleteDocumentDialog
           open={isDeleteDialogOpen}
-          invoiceNumber={invoiceNumber || ''}
+          documentLabel={SALES_INVOICE_DELETE_DIALOG.DOCUMENT_LABEL}
+          documentNumber={invoiceNumber || ''}
+          consequenceText={SALES_INVOICE_DELETE_DIALOG.CONSEQUENCE}
           isDeleting={isDeletingInvoice}
           onClose={() => setIsDeleteDialogOpen(false)}
           onConfirm={handleConfirmDeleteInvoice}

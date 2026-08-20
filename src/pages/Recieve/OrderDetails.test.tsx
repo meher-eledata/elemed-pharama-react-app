@@ -717,7 +717,8 @@ describe('OrderDetails', () => {
 
       await openEditModeDelete(user);
 
-      expect(await screen.findByText(/Delete this receipt\?/i)).toBeInTheDocument();
+      // Shared DeleteDocumentDialog: "Delete receipt <number>?"
+      expect(await screen.findByText(/Delete receipt PI-EL-26-000243\?/i)).toBeInTheDocument();
       // Nothing destructive has happened yet.
       expect(deleteFn).not.toHaveBeenCalled();
     });
@@ -729,10 +730,14 @@ describe('OrderDetails', () => {
 
       await openEditModeDelete(user);
 
-      const confirm = await screen.findByRole('button', { name: /^Delete receipt$/i });
+      const confirm = await screen.findByRole('button', { name: /^Delete$/i });
       expect(confirm).toBeDisabled();
 
-      await user.type(screen.getByLabelText(/Reason for deletion/i), 'Entered twice by mistake');
+      // Shared minimum: a one-character reason is not an audit trail.
+      await user.type(screen.getByLabelText(/Reason for deletion/i), 'ab');
+      expect(confirm).toBeDisabled();
+
+      await user.type(screen.getByLabelText(/Reason for deletion/i), 'c');
       expect(confirm).toBeEnabled();
     });
 
@@ -743,7 +748,7 @@ describe('OrderDetails', () => {
 
       await openEditModeDelete(user);
       await user.type(screen.getByLabelText(/Reason for deletion/i), '  Entered twice by mistake  ');
-      await user.click(await screen.findByRole('button', { name: /^Delete receipt$/i }));
+      await user.click(await screen.findByRole('button', { name: /^Delete$/i }));
 
       await waitFor(() => expect(deleteFn).toHaveBeenCalledTimes(1));
       expect(deleteFn).toHaveBeenCalledWith(
@@ -768,7 +773,7 @@ describe('OrderDetails', () => {
 
       await openEditModeDelete(user);
       await user.type(screen.getByLabelText(/Reason for deletion/i), 'wrong supplier');
-      await user.click(await screen.findByRole('button', { name: /^Delete receipt$/i }));
+      await user.click(await screen.findByRole('button', { name: /^Delete$/i }));
 
       // The pharmacist is told WHAT to do, not given an HTTP number.
       expect(await screen.findByText(/supplier returns raised against it/i)).toBeInTheDocument();
