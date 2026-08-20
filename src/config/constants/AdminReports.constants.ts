@@ -129,6 +129,9 @@ export const ADMIN_REPORTS_CONSTANTS = {
     AXIS_STROKE: '#6B7280',
     GRID_STROKE: '#E5E7EB',
     MARGIN: { top: 20, bottom: 60, left: 70, right: 10 },
+    // Cap on rendered x-axis tick labels — wide date ranges skip intermediate
+    // ticks instead of overlapping into an unreadable smear.
+    MAX_X_TICK_LABELS: 12,
   },
 
   TABLE: {

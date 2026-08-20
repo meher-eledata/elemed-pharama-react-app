@@ -53,6 +53,9 @@ export interface TableColumn<T> {
     render?: (item: T) => React.ReactNode;
     headerRender?: () => React.ReactNode;
     columnWidth?: string;
+    // Prevent body cells wrapping mid-value (numeric / code columns). The table
+    // container scrolls horizontally instead, so figures stay readable.
+    nowrap?: boolean;
     // Optional override for header text alignment.
     // When omitted, default behavior is preserved (actions: center, everything else: left).
     headerAlign?: 'left' | 'center' | 'right';
@@ -490,7 +493,12 @@ export const ReusableTable = <T,>({
                     }}>
                         <TableHead>
                             <TableRow>
-                                {visibleColumns.map((column, index) => (
+                                {visibleColumns.map((column, index) => {
+                                    // The whole header cell toggles asc/desc — the arrows are
+                                    // indicators (their own clicks stopPropagation, same action).
+                                    const isHeaderSortable =
+                                        column.sortable !== false && column.key !== 'checkbox' && totalRows > 0;
+                                    return (
                                     <TableCell
                                         key={index}
                                         sx={{
@@ -516,12 +524,15 @@ export const ReusableTable = <T,>({
                                           display="flex"
                                           alignItems="center"
                                           gap={0.5}
+                                          onClick={isHeaderSortable ? () => onSortRequest(column.key as string) : undefined}
                                           sx={{
                                             justifyContent: column.headerAlign === 'center'
                                               ? 'center'
                                               : column.headerAlign === 'right'
                                               ? 'flex-end'
                                               : 'flex-start',
+                                            cursor: isHeaderSortable ? 'pointer' : 'default',
+                                            userSelect: isHeaderSortable ? 'none' : 'auto',
                                           }}
                                         >
                                             {column.key === 'checkbox' && totalRows > 0 ? (
@@ -531,11 +542,7 @@ export const ReusableTable = <T,>({
                                                     sx={{ p: 0 }}
                                                 />
                                             ) : column.key !== 'checkbox' ? (
-                                                <Box
-                                                    sx={{
-                                                        pointerEvents: column.sortable !== false ? 'none' : 'auto'
-                                                    }}
-                                                >
+                                                <Box>
                                                     {column.headerRender ? column.headerRender() : column.header}
                                                 </Box>
                                             ) : null}
@@ -592,7 +599,8 @@ export const ReusableTable = <T,>({
                                             )}
                                         </Box>
                                     </TableCell>
-                                ))}
+                                    );
+                                })}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -626,8 +634,8 @@ export const ReusableTable = <T,>({
                                                         lineHeight: '20px',
                                                         color: '#374151',
                                                         padding: column.key === 'actions' ? '3px' : '12px 16px',
-                                                        whiteSpace: 'normal',
-                                                        wordBreak: 'break-word',
+                                                        whiteSpace: column.nowrap ? 'nowrap' : 'normal',
+                                                        wordBreak: column.nowrap ? 'normal' : 'break-word',
                                                         width: column?.columnWidth || 'auto',
                                                         minWidth: column?.columnWidth ? undefined : 'auto',
                                                         maxWidth: column?.columnWidth || 'none',

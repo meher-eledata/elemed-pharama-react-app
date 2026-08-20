@@ -161,6 +161,49 @@ describe('ReusableTable', () => {
       }
     });
 
+    it('calls onSortRequest when the header text is clicked (whole cell is the affordance)', () => {
+      const onSortRequest = jest.fn();
+      renderWithTheme(
+        <ReusableTable
+          {...defaultProps}
+          onSortRequest={onSortRequest}
+        />
+      );
+
+      fireEvent.click(screen.getByText('Name'));
+      expect(onSortRequest).toHaveBeenCalledWith('name');
+      expect(onSortRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call onSortRequest when a non-sortable header is clicked', () => {
+      const onSortRequest = jest.fn();
+      renderWithTheme(
+        <ReusableTable
+          {...defaultProps}
+          onSortRequest={onSortRequest}
+        />
+      );
+
+      // Email column has sortable: false.
+      fireEvent.click(screen.getByText('Email'));
+      expect(onSortRequest).not.toHaveBeenCalled();
+    });
+
+    it('does not call onSortRequest from header clicks when the table is empty', () => {
+      const onSortRequest = jest.fn();
+      renderWithTheme(
+        <ReusableTable
+          {...defaultProps}
+          data={[]}
+          totalRows={0}
+          onSortRequest={onSortRequest}
+        />
+      );
+
+      fireEvent.click(screen.getByText('Name'));
+      expect(onSortRequest).not.toHaveBeenCalled();
+    });
+
     it('displays active sort indicator for ascending sort', () => {
       renderWithTheme(
         <ReusableTable

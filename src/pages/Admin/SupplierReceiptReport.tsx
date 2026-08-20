@@ -176,16 +176,17 @@ const SupplierReceiptReport: React.FC = () => {
     { key: 'supplier_gst', header: L.TABLE.GSTIN, sortable: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
     { key: 'product_name', header: L.TABLE.PRODUCT, sortable: true, render: (r) => <CellText>{r.product_name}</CellText> },
     { key: 'product_code', header: L.TABLE.PRODUCT_CODE, sortable: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
-    { key: 'hsn_code', header: L.TABLE.HSN, sortable: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
-    { key: 'mrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
-    { key: 'purchasePriceN', header: L.TABLE.PURCHASE_PRICE, sortable: true, render: (r) => <CellText>{formatCurrency(r.purchasePriceN)}</CellText> },
-    { key: 'qtyN', header: L.TABLE.RECEIVED_QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
-    { key: 'cgstN', header: L.TABLE.CGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
-    { key: 'sgstN', header: L.TABLE.SGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
-    { key: 'igstN', header: L.TABLE.IGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
-    { key: 'totalTaxN', header: L.TABLE.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
-    { key: 'discountN', header: L.TABLE.DISCOUNT, sortable: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
-    { key: 'totalN', header: L.TABLE.TOTAL_VALUE, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalN)}</CellText> },
+    { key: 'hsn_code', header: L.TABLE.HSN, sortable: true, nowrap: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
+    // On-screen MRP is currency like Purchase Price; the CSV export stays numeric ("MRP (₹)").
+    { key: 'mrpN', header: L.TABLE.MRP, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.mrpN)}</CellText> },
+    { key: 'purchasePriceN', header: L.TABLE.PURCHASE_PRICE, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.purchasePriceN)}</CellText> },
+    { key: 'qtyN', header: L.TABLE.RECEIVED_QTY, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
+    { key: 'cgstN', header: L.TABLE.CGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
+    { key: 'sgstN', header: L.TABLE.SGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
+    { key: 'igstN', header: L.TABLE.IGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
+    { key: 'totalTaxN', header: L.TABLE.TOTAL_TAX, sortable: true, nowrap: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
+    { key: 'discountN', header: L.TABLE.DISCOUNT, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
+    { key: 'totalN', header: L.TABLE.TOTAL_VALUE, sortable: true, nowrap: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalN)}</CellText> },
   ];
 
   const byReceiptColumns: TableColumn<ByReceiptRow>[] = [
@@ -195,15 +196,15 @@ const SupplierReceiptReport: React.FC = () => {
     { key: 'po_number', header: L.TABLE_BY_RECEIPT.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
     { key: 'supplier_name', header: L.TABLE_BY_RECEIPT.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
     { key: 'supplier_gst', header: L.TABLE_BY_RECEIPT.GSTIN, sortable: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
-    { key: 'lineCountN', header: L.TABLE_BY_RECEIPT.LINES, sortable: true, render: (r) => <CellText>{formatCount(r.lineCountN)}</CellText> },
-    { key: 'productCountN', header: L.TABLE_BY_RECEIPT.PRODUCTS, sortable: true, render: (r) => <CellText>{formatCount(r.productCountN)}</CellText> },
-    { key: 'qtyN', header: L.TABLE_BY_RECEIPT.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
-    { key: 'cgstN', header: L.TABLE_BY_RECEIPT.CGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
-    { key: 'sgstN', header: L.TABLE_BY_RECEIPT.SGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
-    { key: 'igstN', header: L.TABLE_BY_RECEIPT.IGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
-    { key: 'totalTaxN', header: L.TABLE_BY_RECEIPT.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
-    { key: 'discountAmountN', header: L.TABLE_BY_RECEIPT.DISCOUNT_AMOUNT, sortable: true, render: (r) => <CellText>{formatCurrency(r.discountAmountN)}</CellText> },
-    { key: 'totalN', header: L.TABLE_BY_RECEIPT.TOTAL_VALUE, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalN)}</CellText> },
+    { key: 'lineCountN', header: L.TABLE_BY_RECEIPT.LINES, sortable: true, nowrap: true, render: (r) => <CellText>{formatCount(r.lineCountN)}</CellText> },
+    { key: 'productCountN', header: L.TABLE_BY_RECEIPT.PRODUCTS, sortable: true, nowrap: true, render: (r) => <CellText>{formatCount(r.productCountN)}</CellText> },
+    { key: 'qtyN', header: L.TABLE_BY_RECEIPT.QTY, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
+    { key: 'cgstN', header: L.TABLE_BY_RECEIPT.CGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
+    { key: 'sgstN', header: L.TABLE_BY_RECEIPT.SGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
+    { key: 'igstN', header: L.TABLE_BY_RECEIPT.IGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
+    { key: 'totalTaxN', header: L.TABLE_BY_RECEIPT.TOTAL_TAX, sortable: true, nowrap: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
+    { key: 'discountAmountN', header: L.TABLE_BY_RECEIPT.DISCOUNT_AMOUNT, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.discountAmountN)}</CellText> },
+    { key: 'totalN', header: L.TABLE_BY_RECEIPT.TOTAL_VALUE, sortable: true, nowrap: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalN)}</CellText> },
   ];
 
   // Charts
@@ -397,7 +398,10 @@ const SupplierReceiptReport: React.FC = () => {
         </Box>
       ) : tab === 'byReceipt' ? (
         <TableShell>
+          {/* key={tab}: remount on tab switch so the scroll container's
+              horizontal offset resets (matches the page/sort/selection resets). */}
           <ReusableTable
+            key={tab}
             columns={byReceiptColumns}
             data={sortedByReceiptRows}
             selectedRows={selectedRows}
@@ -421,6 +425,7 @@ const SupplierReceiptReport: React.FC = () => {
       ) : (
         <TableShell>
           <ReusableTable
+            key={tab}
             columns={columns}
             data={sortedRows}
             selectedRows={selectedRows}

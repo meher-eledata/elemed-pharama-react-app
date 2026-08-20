@@ -307,6 +307,9 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
     <FormControl size="small">
       <Select
         value={value}
+        // The "all" sentinel is value='' — without displayEmpty MUI renders the
+        // closed control BLANK instead of the empty-value option's label.
+        displayEmpty
         onChange={(e: SelectChangeEvent) => onChange(e.target.value)}
         sx={{
           width,

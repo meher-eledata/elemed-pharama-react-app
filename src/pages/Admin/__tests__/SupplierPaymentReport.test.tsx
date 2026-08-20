@@ -144,6 +144,13 @@ describe('SupplierPaymentReport page', () => {
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 
+  // Shared FilterSelect: the '' "all" sentinel must render its label when closed
+  // (displayEmpty), not a blank control (bugs.md 2026-08-20).
+  it('shows "All Suppliers" as the closed supplier-filter value by default', () => {
+    renderPage();
+    expect(screen.getByText('All Suppliers')).toBeInTheDocument();
+  });
+
   // The "Receipt #" column used to render receipt_id (the internal PK). It must show the
   // server-generated GRN number, which is opaque and never rebuilt client-side.
   it('renders the generated receipt number in the Receipt # column, not the internal PK', () => {

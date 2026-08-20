@@ -200,6 +200,24 @@ describe('SupplierReceiptReport page', () => {
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 
+  // MUI Select with the '' "all" sentinel renders BLANK unless displayEmpty is set —
+  // the closed control must show the default label (bugs.md 2026-08-20).
+  it('shows "All Suppliers" as the closed supplier-filter value by default', () => {
+    renderPage();
+    expect(screen.getByText('All Suppliers')).toBeInTheDocument();
+  });
+
+  // MRP is a rupee value like Purchase Price — on screen it is currency-formatted,
+  // while the CSV keeps the raw numeric string under the "MRP (₹)" heading.
+  it('formats MRP as currency on the Detailed tab but exports it numeric in the CSV', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Detailed Table'));
+    const row = screen.getByText('GRN-000501').closest('tr')!;
+    expect(within(row).getByText('₹120.00')).toBeInTheDocument(); // mrp '120.00'
+    expect(within(row).queryByText('120.00')).not.toBeInTheDocument(); // no unformatted copy
+    expect(mockCsvRows[0]['MRP (₹)']).toBe('120.00');
+  });
+
   // The "Receipt #" column used to render receipt_id (the internal PK). It must show the
   // server-generated GRN number, which is opaque and never rebuilt client-side.
   it('renders the generated receipt number in the Receipt # column, not the internal PK', () => {
@@ -274,10 +292,16 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     // Default: receipt_date desc — newest receipt first.
     expect(grnOrder()).toEqual(['GRN-000501', 'GRN-000400']);
 
-    // User flips the sort (receipt_number asc) — the ReusableTable sort trigger
-    // is the arrow-icon box beside the header text, not the text itself.
+    // User flips the sort (receipt_number asc) via the arrow indicator…
     const sortArrow = screen.getByText('Receipt #').parentElement!.querySelector('svg')!;
     fireEvent.click(sortArrow);
+    expect(grnOrder()).toEqual(['GRN-000400', 'GRN-000501']);
+
+    // …and the WHOLE header cell is clickable too — clicking the label text
+    // toggles the same column back to desc.
+    fireEvent.click(screen.getByText('Receipt #'));
+    expect(grnOrder()).toEqual(['GRN-000501', 'GRN-000400']);
+    fireEvent.click(screen.getByText('Receipt #'));
     expect(grnOrder()).toEqual(['GRN-000400', 'GRN-000501']);
 
     // …then a tab round-trip restores the date-desc default (no stale sort key,

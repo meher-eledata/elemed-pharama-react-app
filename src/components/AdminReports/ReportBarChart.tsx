@@ -43,8 +43,20 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
       ? `₹${v.toLocaleString(C.CURRENCY.LOCALE, { maximumFractionDigits: 0 })}`
       : v.toLocaleString(C.CURRENCY.LOCALE, { maximumFractionDigits: 0 });
 
+  // Compact y-axis ticks (₹60K / 6L) — full values would ellipsize inside the
+  // fixed tick area at realistic spend ranges. Tooltips keep the full value.
+  const formatAxisValue = (v: number): string => {
+    const compact = v.toLocaleString(C.CURRENCY.LOCALE, {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    });
+    return currency ? `₹${compact}` : compact;
+  };
+
   // Angle date/category ticks once they get dense so labels stay readable.
   const angled = categories.length > 6;
+  // At wide ranges (e.g. years of daily data) only label every Nth band tick.
+  const xTickStep = Math.max(1, Math.ceil(categories.length / C.CHART.MAX_X_TICK_LABELS));
   const axisLabelStyle = {
     fontSize: 13,
     fill: C.COLORS.TEXT_PRIMARY,
@@ -77,6 +89,7 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
               scaleType: 'band',
               label: xAxisLabel,
               labelStyle: axisLabelStyle,
+              tickLabelInterval: (_value: unknown, index: number) => index % xTickStep === 0,
               tickLabelStyle: {
                 fontSize: C.CHART.TICK_LABEL_FONT_SIZE,
                 fill: C.CHART.TICK_LABEL_COLOR,
@@ -97,7 +110,7 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
                 fill: C.CHART.TICK_LABEL_COLOR,
                 fontFamily: C.FONT_FAMILY,
               },
-              valueFormatter: (v: number) => formatValue(v),
+              valueFormatter: (v: number) => formatAxisValue(v),
             },
           ]}
           series={[{ data: values, label: seriesLabel, color, valueFormatter: (v) => (v == null ? '' : formatValue(v)) }]}
