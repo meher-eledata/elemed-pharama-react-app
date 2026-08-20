@@ -23,6 +23,7 @@ import { SUPPLIER_RECEIPT_REPORT_LABELS as L } from '../../config/label/Supplier
 import {
   useGetSupplierReceiptReportQuery,
   SupplierReceiptReportRow,
+  SupplierReceiptReportByReceiptRow,
 } from '../../redux/slices/reportsApi';
 import { useGetSuppliersQuery } from '../../redux/slices/masterApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
@@ -36,7 +37,7 @@ import {
   csvString,
 } from '../../utils/reportFormat';
 
-type Tab = 'overview' | 'detailed';
+type Tab = 'overview' | 'byReceipt' | 'detailed';
 
 interface ReceiptRow extends SupplierReceiptReportRow {
   _id: number;
@@ -48,6 +49,19 @@ interface ReceiptRow extends SupplierReceiptReportRow {
   igstN: number;
   totalTaxN: number;
   discountN: number;
+  totalN: number;
+}
+
+interface ByReceiptRow extends SupplierReceiptReportByReceiptRow {
+  _id: number;
+  lineCountN: number;
+  productCountN: number;
+  qtyN: number;
+  cgstN: number;
+  sgstN: number;
+  igstN: number;
+  totalTaxN: number;
+  discountAmountN: number;
   totalN: number;
 }
 
@@ -96,6 +110,23 @@ const SupplierReceiptReport: React.FC = () => {
     }));
   }, [data]);
 
+  const byReceiptRows: ByReceiptRow[] = useMemo(() => {
+    if (!data?.rows_by_receipt) return [];
+    return data.rows_by_receipt.map((r, i) => ({
+      ...r,
+      _id: i,
+      lineCountN: toNum(r.line_count),
+      productCountN: toNum(r.product_count),
+      qtyN: toNum(r.total_qty),
+      cgstN: toNum(r.cgst),
+      sgstN: toNum(r.sgst),
+      igstN: toNum(r.igst),
+      totalTaxN: toNum(r.total_tax),
+      discountAmountN: toNum(r.discount_amount),
+      totalN: toNum(r.total_value),
+    }));
+  }, [data]);
+
   // Sorting / pagination
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -104,9 +135,9 @@ const SupplierReceiptReport: React.FC = () => {
     direction: C.TABLE.DEFAULT_SORT_DIRECTION,
   });
 
-  const sortedRows = useMemo(() => {
+  const sortRows = <T,>(arr: T[]) => {
     const { key, direction } = sortConfig;
-    return [...rows].sort((a, b) => {
+    return [...arr].sort((a, b) => {
       const av = (a as any)[key];
       const bv = (b as any)[key];
       if (typeof av === 'number' && typeof bv === 'number') {
@@ -118,13 +149,23 @@ const SupplierReceiptReport: React.FC = () => {
       });
       return direction === 'asc' ? cmp : -cmp;
     });
-  }, [rows, sortConfig]);
+  };
+
+  const sortedRows = useMemo(() => sortRows(rows), [rows, sortConfig]);
+  const sortedByReceiptRows = useMemo(() => sortRows(byReceiptRows), [byReceiptRows, sortConfig]);
 
   const handleSortRequest = (key: string) =>
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
     }));
+
+  const handleTabChange = (newTab: Tab) => {
+    setTab(newTab);
+    setCurrentPage(1);
+    setSelectedRows([]);
+    setSortConfig({ key: 'receipt_date', direction: C.TABLE.DEFAULT_SORT_DIRECTION });
+  };
 
   const columns: TableColumn<ReceiptRow>[] = [
     { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
@@ -147,6 +188,24 @@ const SupplierReceiptReport: React.FC = () => {
     { key: 'totalN', header: L.TABLE.TOTAL_VALUE, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalN)}</CellText> },
   ];
 
+  const byReceiptColumns: TableColumn<ByReceiptRow>[] = [
+    { key: 'receipt_number', header: L.TABLE_BY_RECEIPT.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
+    { key: 'receipt_date', header: L.TABLE_BY_RECEIPT.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
+    { key: 'invoice_number', header: L.TABLE_BY_RECEIPT.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'po_number', header: L.TABLE_BY_RECEIPT.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
+    { key: 'supplier_name', header: L.TABLE_BY_RECEIPT.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
+    { key: 'supplier_gst', header: L.TABLE_BY_RECEIPT.GSTIN, sortable: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
+    { key: 'lineCountN', header: L.TABLE_BY_RECEIPT.LINES, sortable: true, render: (r) => <CellText>{formatCount(r.lineCountN)}</CellText> },
+    { key: 'productCountN', header: L.TABLE_BY_RECEIPT.PRODUCTS, sortable: true, render: (r) => <CellText>{formatCount(r.productCountN)}</CellText> },
+    { key: 'qtyN', header: L.TABLE_BY_RECEIPT.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
+    { key: 'cgstN', header: L.TABLE_BY_RECEIPT.CGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
+    { key: 'sgstN', header: L.TABLE_BY_RECEIPT.SGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
+    { key: 'igstN', header: L.TABLE_BY_RECEIPT.IGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
+    { key: 'totalTaxN', header: L.TABLE_BY_RECEIPT.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
+    { key: 'discountAmountN', header: L.TABLE_BY_RECEIPT.DISCOUNT_AMOUNT, sortable: true, render: (r) => <CellText>{formatCurrency(r.discountAmountN)}</CellText> },
+    { key: 'totalN', header: L.TABLE_BY_RECEIPT.TOTAL_VALUE, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalN)}</CellText> },
+  ];
+
   // Charts
   const spendByDate = useMemo(() => {
     const c = data?.charts.spend_by_date || [];
@@ -165,32 +224,51 @@ const SupplierReceiptReport: React.FC = () => {
     return { categories: c.map((p) => p.product_name), values: c.map((p) => toNum(p.value)) };
   }, [data]);
 
-  // CSV
-  const csvData = useMemo(
-    () =>
-      sortedRows.map((r) => ({
-        [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
-        [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
-        [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
-        [L.TABLE.PO_NUMBER]: csvString(r.po_number),
-        [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
-        [L.TABLE.GSTIN]: csvString(r.supplier_gst),
-        [L.TABLE.PRODUCT]: csvString(r.product_name),
-        [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
-        [L.TABLE.HSN]: csvString(r.hsn_code),
-        [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
-        [`${L.TABLE.PURCHASE_PRICE} (₹)`]: r.purchasePriceN.toFixed(2),
-        [L.TABLE.RECEIVED_QTY]: r.qtyN.toFixed(2),
-        [L.TABLE.CGST]: r.cgstN.toFixed(2),
-        [L.TABLE.SGST]: r.sgstN.toFixed(2),
-        [L.TABLE.IGST]: r.igstN.toFixed(2),
-        [L.TABLE.TOTAL_TAX]: r.totalTaxN.toFixed(2),
-        [`${L.TABLE.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
-        [`${L.TABLE.TOTAL_VALUE} (₹)`]: r.totalN.toFixed(2),
-      })),
-    [sortedRows]
-  );
-  const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${start ? start.format('YYYY-MM-DD') : ''}_${
+  // CSV — per-tab rows (byReceipt vs detailed)
+  const csvData = useMemo(() => {
+    if (tab === 'byReceipt') {
+      return sortedByReceiptRows.map((r) => ({
+        [L.TABLE_BY_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
+        [L.TABLE_BY_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
+        [L.TABLE_BY_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_BY_RECEIPT.PO_NUMBER]: csvString(r.po_number),
+        [L.TABLE_BY_RECEIPT.SUPPLIER]: csvString(r.supplier_name),
+        [L.TABLE_BY_RECEIPT.GSTIN]: csvString(r.supplier_gst),
+        [L.TABLE_BY_RECEIPT.LINES]: String(r.lineCountN),
+        [L.TABLE_BY_RECEIPT.PRODUCTS]: String(r.productCountN),
+        [L.TABLE_BY_RECEIPT.QTY]: r.qtyN.toFixed(2),
+        [L.TABLE_BY_RECEIPT.CGST]: r.cgstN.toFixed(2),
+        [L.TABLE_BY_RECEIPT.SGST]: r.sgstN.toFixed(2),
+        [L.TABLE_BY_RECEIPT.IGST]: r.igstN.toFixed(2),
+        [L.TABLE_BY_RECEIPT.TOTAL_TAX]: r.totalTaxN.toFixed(2),
+        [L.TABLE_BY_RECEIPT.DISCOUNT_AMOUNT]: r.discountAmountN.toFixed(2),
+        [`${L.TABLE_BY_RECEIPT.TOTAL_VALUE} (₹)`]: r.totalN.toFixed(2),
+      }));
+    }
+    return sortedRows.map((r) => ({
+      [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
+      [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
+      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.PO_NUMBER]: csvString(r.po_number),
+      [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
+      [L.TABLE.GSTIN]: csvString(r.supplier_gst),
+      [L.TABLE.PRODUCT]: csvString(r.product_name),
+      [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
+      [L.TABLE.HSN]: csvString(r.hsn_code),
+      [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
+      [`${L.TABLE.PURCHASE_PRICE} (₹)`]: r.purchasePriceN.toFixed(2),
+      [L.TABLE.RECEIVED_QTY]: r.qtyN.toFixed(2),
+      [L.TABLE.CGST]: r.cgstN.toFixed(2),
+      [L.TABLE.SGST]: r.sgstN.toFixed(2),
+      [L.TABLE.IGST]: r.igstN.toFixed(2),
+      [L.TABLE.TOTAL_TAX]: r.totalTaxN.toFixed(2),
+      // PERCENT (pol.discount) — not rupees; the byReceipt tab carries the rupee amount.
+      [L.TABLE.DISCOUNT]: r.discountN.toFixed(2),
+      [`${L.TABLE.TOTAL_VALUE} (₹)`]: r.totalN.toFixed(2),
+    }));
+  }, [tab, sortedRows, sortedByReceiptRows]);
+  const csvLevel = tab === 'byReceipt' ? 'by_receipt' : 'detailed';
+  const csvFilename = `${L.PAGE.CSV_FILENAME_PREFIX}_${csvLevel}_${start ? start.format('YYYY-MM-DD') : ''}_${
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
@@ -208,8 +286,8 @@ const SupplierReceiptReport: React.FC = () => {
         title={L.PAGE.TITLE}
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
-        onDownloadCsv={tab === 'detailed' ? handleDownloadCsv : undefined}
-        downloadDisabled={!rows.length}
+        onDownloadCsv={tab !== 'overview' ? handleDownloadCsv : undefined}
+        downloadDisabled={!csvData.length}
         dateRange={dateRange}
         onDateRangeChange={(r) => {
           setDateRange(r);
@@ -230,9 +308,10 @@ const SupplierReceiptReport: React.FC = () => {
 
       <ReportSwitcher
         active={tab}
-        onChange={setTab}
+        onChange={handleTabChange}
         options={[
           { value: 'overview', label: L.TABS.OVERVIEW },
+          { value: 'byReceipt', label: L.TABS.BY_RECEIPT },
           { value: 'detailed', label: L.TABS.DETAILED },
         ]}
       />
@@ -316,6 +395,29 @@ const SupplierReceiptReport: React.FC = () => {
             </Grid>
           </Grid>
         </Box>
+      ) : tab === 'byReceipt' ? (
+        <TableShell>
+          <ReusableTable
+            columns={byReceiptColumns}
+            data={sortedByReceiptRows}
+            selectedRows={selectedRows}
+            setSelectedRows={setSelectedRows}
+            emptyMessage={L.EMPTY_TABLE}
+            searchAndFilterConfig={{ filterOptions: [] }}
+            currentSearchTerm=""
+            onSearchChange={() => {}}
+            showFilters={false}
+            onShowFiltersToggle={() => {}}
+            currentFilterKey=""
+            onFilterSelect={() => {}}
+            totalRows={sortedByReceiptRows.length}
+            rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onSortRequest={handleSortRequest}
+            sortConfig={sortConfig}
+          />
+        </TableShell>
       ) : (
         <TableShell>
           <ReusableTable

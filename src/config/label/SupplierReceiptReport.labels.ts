@@ -14,6 +14,7 @@ export const SUPPLIER_RECEIPT_REPORT_LABELS = {
   },
   TABS: {
     OVERVIEW: 'Overview',
+    BY_RECEIPT: 'By Receipt',
     DETAILED: 'Detailed Table',
   },
   FILTER: {
@@ -63,7 +64,26 @@ export const SUPPLIER_RECEIPT_REPORT_LABELS = {
     SGST: 'SGST ₹',
     IGST: 'IGST ₹',
     TOTAL_TAX: 'Total Tax ₹',
-    DISCOUNT: 'Discount',
+    // Per-line PERCENT (pol.discount) — distinct from TABLE_BY_RECEIPT.DISCOUNT_AMOUNT (rupees).
+    DISCOUNT: 'Discount (%)',
+    TOTAL_VALUE: 'Total Value',
+  },
+  TABLE_BY_RECEIPT: {
+    RECEIPT_NUMBER: 'Receipt #',
+    RECEIPT_DATE: 'Receipt Date',
+    INVOICE_NUMBER: 'Invoice #',
+    PO_NUMBER: 'PO Number',
+    SUPPLIER: 'Supplier',
+    GSTIN: 'GSTIN',
+    LINES: 'Lines',
+    PRODUCTS: 'Products',
+    QTY: 'Qty',
+    CGST: 'CGST ₹',
+    SGST: 'SGST ₹',
+    IGST: 'IGST ₹',
+    TOTAL_TAX: 'Total Tax ₹',
+    // Rupee AMOUNT — never a percent (contrast TABLE.DISCOUNT).
+    DISCOUNT_AMOUNT: 'Discount (₹)',
     TOTAL_VALUE: 'Total Value',
   },
   EMPTY_TABLE: 'No receipts for the selected period.',
