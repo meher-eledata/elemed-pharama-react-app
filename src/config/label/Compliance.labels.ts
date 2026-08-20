@@ -64,6 +64,10 @@ export const COMPLIANCE_LABELS = {
     HISTORICAL_VERSION: 'Superseded — kept for the record. Dates can still be corrected.',
     NOTHING_FILED: 'No file has been uploaded for this document yet.',
     NOTHING_FILED_TYPE: 'Nothing has been filed for this document type yet.',
+    // Shown INSTEAD of the above while the list is truncated — an empty group on a
+    // partial page is not evidence that nothing was filed.
+    NOT_ON_THIS_PAGE:
+      'Nothing for this type on this page — load more, or filter by document type to check.',
     MAKE_CURRENT: 'Point this document at this version instead. Changes the expiry reminders.',
     ARCHIVED_TYPE: 'This document type is archived. New documents cannot be filed against it.',
     RENEWAL_MONTHS: (months: number) => `Renews every ${months} months`,
@@ -137,6 +141,8 @@ export const COMPLIANCE_LABELS = {
     OVERDUE: 'Overdue',
     OVERDUE_HINT: 'Lapsed licences. These are always shown, whatever month you are viewing.',
     UPCOMING: 'Upcoming in this window',
+    UPCOMING_HINT:
+      'Only renewals dated inside this window. A licence expiring later is not missing — see Documents for everything filed.',
     NOTHING_FILED: 'Nothing filed yet',
     NOTHING_FILED_HINT: 'Required document types with no document at all.',
     NO_EXPIRY: 'Documents that do not expire',

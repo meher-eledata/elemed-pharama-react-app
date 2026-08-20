@@ -81,10 +81,16 @@ export interface NotificationRoute {
   state: {
     tab?: string;
     nearExpiryMonths?: number;
-    // Compliance deep links: the documents page expands this document's history.
-    // COMPLIANCE_MISSING has TWO subject shapes — a type with no document at all
-    // carries neither key.
+    // Compliance deep links — THREE keys, one per action the documents page
+    // implements, because "which document" and "what to do with it" are different
+    // questions:
+    //   complianceDocumentId       -> expand that document's version history
+    //   complianceUploadDocumentId -> open its upload step (nothing filed yet)
+    //   complianceDocumentTypeId   -> open the create flow for a type with no
+    //                                 document at all
+    // COMPLIANCE_MISSING carries TWO subject shapes and must map onto the last two.
     complianceDocumentId?: number;
+    complianceUploadDocumentId?: number;
     complianceDocumentTypeId?: number;
   };
 }
@@ -121,14 +127,17 @@ export const getNotificationRoute = (
       };
     case 'COMPLIANCE_MISSING':
       // Two shapes in one type: (a) no document exists for a required type — there
-      // is nothing to deep-link to, so land on the page by type; (b) a document
-      // exists but has no version — link to the document.
+      // is nothing to link to, so open the CREATE flow on that type; (b) a document
+      // exists but has no version (NO_VERSION) — open its UPLOAD step, NOT its
+      // history, which for a document with no version is an empty panel.
+      // The calendar routes the identical fact to the identical key
+      // (ComplianceCalendar.openItem) — the two surfaces must never diverge here.
       return {
         path: COMPLIANCE_CONSTANTS.ROUTE_BASE,
         state:
           notification.payload?.document_id == null
             ? { complianceDocumentTypeId: notification.payload?.document_type_id }
-            : { complianceDocumentId: notification.payload.document_id },
+            : { complianceUploadDocumentId: notification.payload.document_id },
       };
     default:
       // Unknown type (the registry grows without DDL) — render the row, but

@@ -191,3 +191,35 @@ describe('notificationMenuMaxHeight', () => {
     expect(NOTIFICATION_CONSTANTS.MENU_VIEWPORT_RESERVE).toBeGreaterThanOrEqual(64);
   });
 });
+
+describe('getNotificationRoute — compliance deep links', () => {
+  it('COMPLIANCE_EXPIRING / COMPLIANCE_EXPIRED -> the document, by id', () => {
+    ['COMPLIANCE_EXPIRING', 'COMPLIANCE_EXPIRED'].forEach((type) => {
+      expect(getNotificationRoute(item({ type, payload: { document_id: 5 } }))).toEqual({
+        path: '/compliance',
+        state: { complianceDocumentId: 5 },
+      });
+    });
+  });
+
+  // COMPLIANCE_MISSING carries TWO subject shapes and they take DIFFERENT actions.
+  it('COMPLIANCE_MISSING with no document at all -> the create flow, by type', () => {
+    expect(
+      getNotificationRoute(
+        item({ type: 'COMPLIANCE_MISSING', payload: { document_id: null, document_type_id: 7 } }),
+      ),
+    ).toEqual({ path: '/compliance', state: { complianceDocumentTypeId: 7 } });
+  });
+
+  it('COMPLIANCE_MISSING for an existing document -> its UPLOAD step, not its history', () => {
+    // Regression guard: `complianceDocumentId` would expand the version history,
+    // which for a document with no version is an empty panel. The calendar routes
+    // this same fact to `complianceUploadDocumentId`
+    // (asserted against this function in ComplianceCalendar.test.tsx).
+    expect(
+      getNotificationRoute(
+        item({ type: 'COMPLIANCE_MISSING', payload: { document_id: 9, document_type_id: 8 } }),
+      ),
+    ).toEqual({ path: '/compliance', state: { complianceUploadDocumentId: 9 } });
+  });
+});

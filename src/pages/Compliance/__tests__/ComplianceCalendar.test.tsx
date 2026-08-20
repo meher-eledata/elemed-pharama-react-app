@@ -7,6 +7,8 @@ import dayjs from 'dayjs';
 import authReducer from '../../../redux/slices/authSlice';
 import { complianceApi, type ComplianceCalendarItem } from '../../../redux/slices/complianceApi';
 import ComplianceCalendar from '../ComplianceCalendar';
+import { getNotificationRoute } from '../../../config/constants/Notifications.constants';
+import type { NotificationItem } from '../../../redux/slices/notificationsApi';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -91,4 +93,33 @@ it('routes a type-only row to the create flow and a no-version row to its upload
   expect(mockNavigate).toHaveBeenCalledWith('/compliance', {
     state: { complianceUploadDocumentId: 9 },
   });
+});
+
+// The calendar and the bell describe the SAME facts; when they disagree on what to
+// DO about one, the user gets two different answers for one licence. This pins the
+// two surfaces together (the divergence class this module has been bitten by twice).
+it('routes each missing shape to the same place the bell does', async () => {
+  const bellRoute = (payload: Record<string, unknown>) =>
+    getNotificationRoute({
+      id: 1, module: 'compliance', type: 'COMPLIANCE_MISSING', severity: 'HIGH',
+      title: 't', body: null, payload, status: 'ACTIVE',
+      first_seen_at: '', last_seen_at: '', read_at: null, dismissed_at: null, resolved_at: null,
+    } as NotificationItem);
+
+  renderPage();
+  await screen.findByText('Expired 10 days ago');
+
+  // (a) nothing filed for the type at all.
+  fireEvent.click(screen.getByText('File this document'));
+  expect(mockNavigate).toHaveBeenLastCalledWith(
+    '/compliance',
+    { state: bellRoute({ document_id: null, document_type_id: 7 })!.state },
+  );
+
+  // (b) the document exists but has no version.
+  fireEvent.click(screen.getByText('Upload the first version'));
+  expect(mockNavigate).toHaveBeenLastCalledWith(
+    '/compliance',
+    { state: bellRoute({ document_id: 9, document_type_id: 8 })!.state },
+  );
 });

@@ -330,26 +330,38 @@ const ComplianceDocuments: React.FC = () => {
               </Typography>
             )}
 
-            {/* A type with nothing filed is an ACTION, never a hidden gap. */}
-            {typeDocuments.length === 0 && (
-              <Alert
-                severity={type.is_required ? 'warning' : 'info'}
-                sx={{ mt: 2, fontFamily: C.FONT }}
-                action={
-                  type.status === 'ACTIVE' ? (
-                    <StandardButton
-                      variant="outline"
-                      size="small"
-                      onClick={() => openCreate(type.id)}
-                    >
-                      {L.ACTIONS.ADD_DOCUMENT}
-                    </StandardButton>
-                  ) : undefined
-                }
-              >
-                {L.HINTS.NOTHING_FILED_TYPE}
-              </Alert>
-            )}
+            {/* A type with nothing filed is an ACTION, never a hidden gap — but
+                ONLY when this page holds the whole list. The list is paged and
+                ordered by valid_to, so a type's documents are scattered across
+                pages: while `has_more` is true, an empty group means "not on this
+                page", NOT "nothing filed". Claiming a filed licence is missing is
+                the worst thing this screen could say. */}
+            {typeDocuments.length === 0 &&
+              (hasMore ? (
+                <Typography
+                  sx={{ fontSize: '13px', color: '#6B7280', fontFamily: C.FONT, mt: 2 }}
+                >
+                  {L.HINTS.NOT_ON_THIS_PAGE}
+                </Typography>
+              ) : (
+                <Alert
+                  severity={type.is_required ? 'warning' : 'info'}
+                  sx={{ mt: 2, fontFamily: C.FONT }}
+                  action={
+                    type.status === 'ACTIVE' ? (
+                      <StandardButton
+                        variant="outline"
+                        size="small"
+                        onClick={() => openCreate(type.id)}
+                      >
+                        {L.ACTIONS.ADD_DOCUMENT}
+                      </StandardButton>
+                    ) : undefined
+                  }
+                >
+                  {L.HINTS.NOTHING_FILED_TYPE}
+                </Alert>
+              ))}
 
             {typeDocuments.map((document) => {
               // `current_version` is the server's explicit pointer — never max(version_no).

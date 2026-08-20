@@ -395,7 +395,9 @@ export const complianceApi = createApi({
         'ComplianceCalendar',
       ],
     }),
-    // owner/admin only — corrective re-pointing of current_version_id.
+    // MEMBER-level (deliberately NOT owner/admin, and must not be tightened back):
+    // deciding which version is in force is the same class of act as uploading it.
+    // Corrective re-pointing of current_version_id.
     makeComplianceVersionCurrent: builder.mutation<
       ComplianceDocument,
       { documentId: number; versionId: number }

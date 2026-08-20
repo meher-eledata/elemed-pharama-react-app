@@ -336,6 +336,7 @@ const ComplianceCalendar: React.FC = () => {
           />
           <AgendaSection
             title={L.CALENDAR.UPCOMING}
+            hint={L.CALENDAR.UPCOMING_HINT}
             emptyText={L.CALENDAR.NOTHING_DUE}
             items={upcoming}
             onOpen={openItem}
