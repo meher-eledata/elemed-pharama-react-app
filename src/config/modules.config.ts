@@ -1,13 +1,14 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import StorageIcon from '@mui/icons-material/Storage';
+import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
 import DollarIcon from '../assets/Dollor.svg';
 import BoxIcon from '../assets/Box.svg';
 import MailIcon from '../assets/Mail.svg';
 
 // Client-side module registry. Mirrors the backend `config/modules.js`.
 // An org enables a subset of these; the UI is gated by `state.org.activeModules`.
-export type ModuleKey = 'pharmacy' | 'inpatient';
+export type ModuleKey = 'pharmacy' | 'compliance' | 'inpatient';
 
 // Shape compatible with SideBar.tsx's local `SidebarItem` interface so module
 // items can be rendered by the existing sidebar without any mapping.
@@ -68,6 +69,16 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
       { id: 'master', icon: React.createElement(WhiteIcon, null, React.createElement(StorageIcon, { sx: { fontSize: 24 } })), alt: 'Master', label: 'Master', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/master', isComponent: true },
     ],
   },
+  // Mirrors backend config/modules.js — `compliance` is in DEFAULT_MODULES, so
+  // every org (existing, via migration 030, and new) has it enabled.
+  compliance: {
+    key: 'compliance',
+    label: 'Compliance',
+    description: 'Licences, renewals and expiry reminders',
+    sidebarItems: [
+      { id: 'compliance', icon: React.createElement(WhiteIcon, null, React.createElement(VerifiedUserOutlinedIcon, { sx: { fontSize: 24 } })), alt: 'Compliance', label: 'Compliance', iconWidth: '24px', iconHeight: '24px', marginTop: '5px', route: '/compliance', isComponent: true },
+    ],
+  },
   inpatient: {
     key: 'inpatient',
     label: 'Inpatient',
@@ -77,4 +88,4 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
 };
 
 // Registry order — used to render module sidebar items deterministically.
-export const ALL_MODULE_KEYS: ModuleKey[] = ['pharmacy', 'inpatient'];
+export const ALL_MODULE_KEYS: ModuleKey[] = ['pharmacy', 'compliance', 'inpatient'];

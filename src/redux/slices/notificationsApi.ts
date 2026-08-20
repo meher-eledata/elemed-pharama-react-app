@@ -12,7 +12,10 @@ export type NotificationType =
   | 'NEAR_EXPIRY'
   | 'EXPIRED'
   | 'LOW_STOCK'
-  | 'EXCESS_STOCK';
+  | 'EXCESS_STOCK'
+  | 'COMPLIANCE_EXPIRING'
+  | 'COMPLIANCE_EXPIRED'
+  | 'COMPLIANCE_MISSING';
 export type NotificationSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 // JSONB column — this interface IS the contract (Postgres enforces nothing).
@@ -33,11 +36,26 @@ export interface NotificationPayload {
   window?: '1month' | '3month'; // NEAR_EXPIRY only
   min_qty?: number; // LOW_STOCK only
   max_qty?: number; // EXCESS_STOCK only
+  // Compliance types (module 'compliance'). Dates here are plain 'YYYY-MM-DD'.
+  // COMPLIANCE_MISSING has two shapes: `document_id`/`title` are null when no
+  // document exists at all for a required type.
+  document_id?: number | null;
+  document_type_id?: number;
+  type_key?: string;
+  type_name?: string;
+  category?: string | null;
+  title?: string | null;
+  reference_number?: string | null;
+  version_id?: number | null;
+  valid_from?: string | null;
+  valid_to?: string;
+  is_required?: boolean;
+  lead_days?: number[]; // largest-first; the LAST entry is the innermost threshold
 }
 
 export interface NotificationItem {
   id: number;
-  module: string; // 'pharmacy' today
+  module: string; // 'pharmacy' | 'compliance' (registry-driven, open string)
   type: NotificationType | (string & {});
   severity: NotificationSeverity | (string & {}); // server-determined — never re-derive
   title: string; // server-rendered human string — display as-is

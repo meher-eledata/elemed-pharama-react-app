@@ -1,4 +1,5 @@
 import type { NotificationItem } from '../../redux/slices/notificationsApi';
+import { COMPLIANCE_CONSTANTS } from './Compliance.constants';
 
 export const NOTIFICATION_CONSTANTS = {
   LIST_LIMIT: 50, // server default + "load more" step; must be an integer 1..200
@@ -77,7 +78,15 @@ export const notificationTypeFilters = (
 
 export interface NotificationRoute {
   path: string;
-  state: { tab: string; nearExpiryMonths?: number };
+  state: {
+    tab?: string;
+    nearExpiryMonths?: number;
+    // Compliance deep links: the documents page expands this document's history.
+    // COMPLIANCE_MISSING has TWO subject shapes — a type with no document at all
+    // carries neither key.
+    complianceDocumentId?: number;
+    complianceDocumentTypeId?: number;
+  };
 }
 
 // Frontend-owned `type` -> deep link: the backend deliberately stores no routes,
@@ -103,6 +112,23 @@ export const getNotificationRoute = (
           tab: 'nearExpiry',
           nearExpiryMonths: notification.payload?.window === '1month' ? 1 : 3,
         },
+      };
+    case 'COMPLIANCE_EXPIRING':
+    case 'COMPLIANCE_EXPIRED':
+      return {
+        path: COMPLIANCE_CONSTANTS.ROUTE_BASE,
+        state: { complianceDocumentId: notification.payload?.document_id ?? undefined },
+      };
+    case 'COMPLIANCE_MISSING':
+      // Two shapes in one type: (a) no document exists for a required type — there
+      // is nothing to deep-link to, so land on the page by type; (b) a document
+      // exists but has no version — link to the document.
+      return {
+        path: COMPLIANCE_CONSTANTS.ROUTE_BASE,
+        state:
+          notification.payload?.document_id == null
+            ? { complianceDocumentTypeId: notification.payload?.document_type_id }
+            : { complianceDocumentId: notification.payload.document_id },
       };
     default:
       // Unknown type (the registry grows without DDL) — render the row, but

@@ -23,6 +23,9 @@ export const NOTIFICATION_LABELS = {
     EXPIRED: 'Expired',
     LOW_STOCK: 'Low stock',
     EXCESS_STOCK: 'Excess stock',
+    COMPLIANCE_EXPIRING: 'Licence expiring',
+    COMPLIANCE_EXPIRED: 'Licence expired',
+    COMPLIANCE_MISSING: 'Document missing',
   } as Record<string, string>,
   TYPE_FALLBACK: 'Alert',
   // MUI palette paths (theme tokens, not hex) keyed by the SERVER's severity.

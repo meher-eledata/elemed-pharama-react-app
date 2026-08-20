@@ -33,6 +33,7 @@ import SupplierTaxReport from "./Admin/SupplierTaxReport";
 import HistoricalData from "./Admin/HistoricalData";
 import SupplierCredit from "./Admin/SupplierCredit";
 import UserProfile from "./Profile/UserProfile";
+import ComplianceDocuments from "./Compliance/ComplianceDocuments";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
@@ -83,6 +84,13 @@ export const Pages = () => {
             <Route path="drafts" element={<SaleDrafts />} />
             <Route path="receipt" element={<SalesReceipt />} />
             <Route path="sale-return" element={<SaleReturn />} />
+          </Route>
+        </Route>
+
+        {/* Compliance module routes - gated by the org's active modules */}
+        <Route element={<ModuleGuard module="compliance" />}>
+          <Route path="/compliance" element={<DashboardLayout />}>
+            <Route index element={<ComplianceDocuments />} />
           </Route>
         </Route>
 
