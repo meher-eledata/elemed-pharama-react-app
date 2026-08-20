@@ -14,6 +14,7 @@ import {
   useMakeComplianceVersionCurrentMutation,
   useUpdateComplianceVersionMutation,
   type ComplianceVersion,
+  type UpdateComplianceVersionRequest,
 } from '../../../redux/slices/complianceApi';
 import { extractErrorMessage, logError } from '../../../utils/errorUtils';
 import {
@@ -95,10 +96,10 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
     if (!form) return;
     const from = toApiDate(form.validFrom);
     const to = toApiDate(form.validTo);
-    // The PUT accepts a null valid_from, but a document without a start date is a
-    // data-entry slip rather than an intent — guard it here instead of exposing it.
+    // `valid_from` is NOT clearable server-side (400 'valid_from cannot be
+    // cleared'), so a blanked field is caught here rather than sent as null.
     if (!from && version.valid_from) {
-      setFormError(L.VALIDATION.VALID_FROM_REQUIRED);
+      setFormError(L.VALIDATION.VALID_FROM_NOT_CLEARABLE);
       return;
     }
     // Cross-field rule is evaluated on the merged values, exactly like the server.
@@ -109,8 +110,9 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
 
     const issuedBy = form.issuedBy.trim() || null;
     const notes = form.notes.trim() || null;
-    const patch: Record<string, string | null> = {};
-    if (from !== (version.valid_from ?? null)) patch.valid_from = from;
+    const patch: Omit<UpdateComplianceVersionRequest, 'documentId' | 'versionId'> = {};
+    // Only ever sent as a real date — never null (see the guard above).
+    if (from && from !== version.valid_from) patch.valid_from = from;
     // Clearing the expiry (null) is the explicit "does not expire" verb.
     if (to !== (version.valid_to ?? null)) patch.valid_to = to;
     if (issuedBy !== (version.issued_by ?? null)) patch.issued_by = issuedBy;

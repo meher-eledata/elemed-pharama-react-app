@@ -7,10 +7,14 @@ import { MemoryRouter } from 'react-router-dom';
 import AdminDashboard from '../AdminDashboard';
 import { ADMIN_LABELS } from '../../../config/label/Admin.labels';
 
+// The dashboard reads org context too (the compliance tile is module-gated), so
+// the fixture store carries an `org` slice alongside `auth`.
+const orgState = { organization: null, activeModules: ['pharmacy', 'compliance'], loaded: true };
+
 const renderWithUser = (user: unknown) => {
   const store = configureStore({
-    reducer: { auth: (state = { user }) => state },
-    preloadedState: { auth: { user } },
+    reducer: { auth: (state = { user }) => state, org: (state = orgState) => state },
+    preloadedState: { auth: { user }, org: orgState },
   });
   return render(
     <Provider store={store}>

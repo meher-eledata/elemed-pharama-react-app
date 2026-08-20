@@ -122,7 +122,9 @@ export interface UploadComplianceVersionRequest {
 export interface UpdateComplianceVersionRequest {
   documentId: number;
   versionId: number;
-  valid_from?: string | null;
+  // NOT nullable: the server rejects `valid_from: null` with
+  // 400 { error: 'valid_from cannot be cleared' }. `valid_to` IS clearable.
+  valid_from?: string;
   valid_to?: string | null;
   issued_by?: string | null;
   notes?: string | null;
@@ -139,22 +141,22 @@ export interface ComplianceDownloadLink {
 }
 
 // ---------------------------------------------------------------------------
-// CALENDAR TYPES — PROVISIONAL. The backend is revising the exact response shape
-// of GET /compliance/calendar; the calendar page is a follow-up and must be built
-// against the final shape. Everything calendar-specific is kept in this one block
-// so the revision lands here and nowhere else.
+// CALENDAR TYPES — FINAL shape (backend commit c05824ee). ONE CalendarItem across
+// all three lists: the same key set everywhere, with `null` (never an absent key)
+// where a value cannot apply, so no consumer has to branch on key presence.
 // ---------------------------------------------------------------------------
-export type ComplianceState =
-  | 'VALID'
-  | 'EXPIRING'
+export type ComplianceCalendarState =
   | 'EXPIRED'
-  | 'NO_EXPIRY'
+  | 'EXPIRING'
+  | 'VALID'
   | 'NO_VERSION'
-  | 'MISSING';
+  | 'MISSING'
+  | 'NO_EXPIRY';
 
 export interface ComplianceCalendarItem {
-  document_id: number;
-  title: string;
+  // null on a type-only MISSING row (nothing filed for a required type at all).
+  document_id: number | null;
+  title: string | null;
   reference_number: string | null;
   document_type_id: number;
   type_key: string;
@@ -163,45 +165,31 @@ export interface ComplianceCalendarItem {
   is_required: boolean;
   version_id: number | null;
   version_no: number | null;
-  valid_from: string | null;
-  valid_to: string; // always present in `items` — this is the calendar date
+  valid_from: string | null; // 'YYYY-MM-DD'
+  valid_to: string | null; // 'YYYY-MM-DD'; null on MISSING / NO_VERSION / NO_EXPIRY
   issued_by: string | null;
-  daysUntilExpiry: number | null; // EXPIRING / VALID only; 0 = expires TODAY
+  daysUntilExpiry: number | null; // 0 = expires TODAY; null on EXPIRED and undated rows
   daysPastExpiry: number | null; // EXPIRED only
   lead_days: number[]; // effective lead days, largest-first
-  innermost_lead_day: number;
-  state: 'EXPIRING' | 'VALID' | 'EXPIRED';
-}
-
-// `missing` is a CONCATENATION of two row shapes — branch on `document_id`:
-// state 'NO_VERSION' carries the document fields, state 'MISSING' is type-only
-// (title/valid_to/version ids and innermost_lead_day are ABSENT, not null).
-export interface ComplianceMissingRow {
-  document_id: number | null;
-  document_type_id: number;
-  type_key: string;
-  type_name: string;
-  category: string | null;
-  is_required: boolean;
-  lead_days: number[];
-  state: 'NO_VERSION' | 'MISSING';
-  title?: string | null;
-  reference_number?: string | null;
-  version_id?: number | null;
-  version_no?: number | null;
-  valid_from?: string | null;
-  valid_to?: string | null;
-  issued_by?: string | null;
-  daysUntilExpiry?: number | null;
-  daysPastExpiry?: number | null;
-  innermost_lead_day?: number;
+  innermost_lead_day: number; // = lead_days[lead_days.length - 1]
+  state: ComplianceCalendarState;
 }
 
 export interface ComplianceCalendarResponse {
-  from: string; // the RESOLVED window (defaults to today .. today + 90d)
+  // The RESOLVED window (defaults to today .. today + 90 days server-side).
+  from: string;
   to: string;
+  // Rows whose valid_to falls inside [from, to] PLUS every still-unresolved EXPIRED
+  // row regardless of `from`, so a lapsed licence is never hidden by a forward
+  // window. Already sorted expired-first / most overdue first / then by valid_to —
+  // render in the order received.
   items: ComplianceCalendarItem[];
-  missing: ComplianceMissingRow[];
+  // Required types with nothing filed. Deep-equals the notification bell's missing
+  // set — never filter it client-side or the two surfaces would disagree.
+  missing: ComplianceCalendarItem[];
+  // Filed documents with no expiry date. Part of the compliance picture, but NOT
+  // calendar events — never given a synthesised date.
+  no_expiry: ComplianceCalendarItem[];
 }
 
 export interface ComplianceCalendarArgs {

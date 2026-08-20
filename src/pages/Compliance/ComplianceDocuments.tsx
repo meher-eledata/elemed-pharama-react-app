@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
@@ -38,7 +38,9 @@ import {
 } from '../../redux/slices/complianceApi';
 import { RootState } from '../../redux/store';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
+import ComplianceNav from './components/ComplianceNav';
 import CreateDocumentModal from './components/CreateDocumentModal';
+import EditDocumentModal from './components/EditDocumentModal';
 import UploadVersionModal from './components/UploadVersionModal';
 import VersionHistory from './components/VersionHistory';
 import { deriveComplianceState, formatApiDate, triggerBlobDownload } from './compliance.utils';
@@ -65,9 +67,13 @@ const ComplianceDocuments: React.FC = () => {
   const deepLink = location.state as {
     complianceDocumentId?: number;
     complianceDocumentTypeId?: number;
+    complianceUploadDocumentId?: number;
   } | null;
   const focusedDocumentId = deepLink?.complianceDocumentId;
   const focusedTypeId = deepLink?.complianceDocumentTypeId;
+  // A calendar "nothing filed" row for an EXISTING document jumps straight to its
+  // upload step (the title is only known once the list resolves).
+  const uploadDocumentId = deepLink?.complianceUploadDocumentId;
 
   const [statusFilter, setStatusFilter] = useState<ComplianceStatusFilter>('ACTIVE');
   const [expandedDocumentId, setExpandedDocumentId] = useState<number | null>(
@@ -77,6 +83,7 @@ const ComplianceDocuments: React.FC = () => {
   const [createTypeId, setCreateTypeId] = useState<number | null>(focusedTypeId ?? null);
   const [createOpen, setCreateOpen] = useState(focusedTypeId != null);
   const [uploadTarget, setUploadTarget] = useState<{ id: number; title: string } | null>(null);
+  const [editTarget, setEditTarget] = useState<ComplianceDocument | null>(null);
   const [downloadingVersionId, setDownloadingVersionId] = useState<number | null>(null);
   const [toast, setToast] = useState<ToastState>({ open: false, message: '', severity: 'success' });
 
@@ -145,6 +152,15 @@ const ComplianceDocuments: React.FC = () => {
 
   const activeTypes = useMemo(() => types.filter((type) => type.status === 'ACTIVE'), [types]);
 
+  const handledUploadDeepLink = useRef(false);
+  useEffect(() => {
+    if (!uploadDocumentId || handledUploadDeepLink.current) return;
+    const target = documents.find((document) => document.id === uploadDocumentId);
+    if (!target) return;
+    handledUploadDeepLink.current = true;
+    setUploadTarget({ id: target.id, title: target.title });
+  }, [uploadDocumentId, documents]);
+
   const handleDownload = async (documentId: number, version: ComplianceVersion) => {
     setDownloadingVersionId(version.id);
     try {
@@ -175,17 +191,21 @@ const ComplianceDocuments: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3, maxWidth: '1100px' }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
-        <Box sx={{ flex: 1, minWidth: '260px' }}>
-          <Typography
-            sx={{ fontSize: '32px', color: '#1A212B', fontFamily: C.FONT, fontWeight: 600 }}
-          >
-            {L.PAGE_TITLE}
-          </Typography>
-          <Typography sx={{ fontSize: '14px', color: '#6B7280', fontFamily: C.FONT }}>
-            {L.PAGE_SUBTITLE}
-          </Typography>
-        </Box>
+      <Box>
+        <Typography
+          sx={{ fontSize: '32px', color: '#1A212B', fontFamily: C.FONT, fontWeight: 600 }}
+        >
+          {L.PAGE_TITLE}
+        </Typography>
+        <Typography sx={{ fontSize: '14px', color: '#6B7280', fontFamily: C.FONT }}>
+          {L.PAGE_SUBTITLE}
+        </Typography>
+      </Box>
+
+      <ComplianceNav />
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ flex: 1, minWidth: '120px' }} />
         <TextField
           select
           label={L.FILTER.LABEL}
@@ -408,6 +428,13 @@ const ComplianceDocuments: React.FC = () => {
                         {L.ACTIONS.EDIT_DETAILS}
                       </StandardButton>
                     )}
+                    <StandardButton
+                      variant="text"
+                      size="small"
+                      onClick={() => setEditTarget(document)}
+                    >
+                      {L.DOCUMENT_EDIT.ACTION}
+                    </StandardButton>
                     {document.version_count > 0 && (
                       <StandardButton
                         variant="text"
@@ -460,6 +487,13 @@ const ComplianceDocuments: React.FC = () => {
         // Two-step create: hand the empty document straight to the upload step so it
         // is only briefly in the "nothing filed" state.
         onCreated={(id, title) => setUploadTarget({ id, title })}
+      />
+
+      <EditDocumentModal
+        open={editTarget !== null}
+        document={editTarget}
+        onClose={() => setEditTarget(null)}
+        onToast={showToast}
       />
 
       <UploadVersionModal

@@ -5,7 +5,10 @@ import {
   type ComplianceDocumentState,
 } from '../../config/constants/Compliance.constants';
 import { COMPLIANCE_LABELS } from '../../config/label/Compliance.labels';
-import type { ComplianceVersion } from '../../redux/slices/complianceApi';
+import type {
+  ComplianceCalendarItem,
+  ComplianceVersion,
+} from '../../redux/slices/complianceApi';
 
 // Explicit-format parsing so a DATEONLY 'YYYY-MM-DD' is read in LOCAL time — the
 // native Date parser reads it as UTC and shifts the day back for us (the invoice
@@ -112,4 +115,65 @@ export const triggerBlobDownload = (blob: Blob, fileName: string): void => {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(objectUrl);
+};
+
+// --- Calendar helpers -------------------------------------------------------
+
+// Maps a server CalendarItem state onto the same chip palette the documents page
+// uses, so one document reads identically on both screens. EXPIRING splits on the
+// item's own innermost lead day (the threshold at which the bell escalates).
+export const calendarStateChipKey = (item: ComplianceCalendarItem): ComplianceDocumentState => {
+  switch (item.state) {
+    case 'EXPIRED':
+      return 'EXPIRED';
+    case 'EXPIRING':
+      return item.daysUntilExpiry !== null && item.daysUntilExpiry <= item.innermost_lead_day
+        ? 'EXPIRING_INNER'
+        : 'EXPIRING';
+    case 'VALID':
+      return 'VALID';
+    case 'NO_EXPIRY':
+      return 'NO_EXPIRY';
+    default:
+      // MISSING / NO_VERSION — nothing filed, which is an action, not a date.
+      return 'NO_VERSION';
+  }
+};
+
+export const calendarStateLabel = (item: ComplianceCalendarItem): string => {
+  switch (item.state) {
+    case 'EXPIRED':
+      return L.STATE.EXPIRED(item.daysPastExpiry ?? 0);
+    case 'MISSING':
+      return L.CALENDAR.NOT_FILED;
+    case 'NO_VERSION':
+      return L.STATE.NO_VERSION;
+    case 'NO_EXPIRY':
+      return L.CALENDAR.NO_EXPIRY_STATE;
+    default:
+      // daysUntilExpiry === 0 is "expires today" — the most urgent non-expired
+      // value, so it is compared explicitly and never truthiness-checked.
+      if (item.daysUntilExpiry === null) return L.DASH;
+      return item.daysUntilExpiry === 0
+        ? L.STATE.EXPIRES_TODAY
+        : L.STATE.EXPIRES_IN(item.daysUntilExpiry);
+  }
+};
+
+// A calendar row's display name: a type-only MISSING row has no title.
+export const calendarItemTitle = (item: ComplianceCalendarItem): string =>
+  item.title || item.type_name;
+
+// Dated events keyed by 'YYYY-MM-DD' for the month grid's day slot.
+export const groupByValidTo = (
+  items: ComplianceCalendarItem[],
+): Map<string, ComplianceCalendarItem[]> => {
+  const map = new Map<string, ComplianceCalendarItem[]>();
+  items.forEach((item) => {
+    if (!item.valid_to) return;
+    const bucket = map.get(item.valid_to);
+    if (bucket) bucket.push(item);
+    else map.set(item.valid_to, [item]);
+  });
+  return map;
 };

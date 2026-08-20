@@ -10,9 +10,11 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import StorageIcon from '@mui/icons-material/Storage';
+import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
+import { selectActiveModules, selectOrgLoaded } from '../../redux/slices/orgSlice';
 import { ADMIN_LABELS } from '../../config/label/Admin.labels';
 import { ADMIN_CONSTANTS } from '../../config/constants/Admin.constants';
 
@@ -88,6 +90,10 @@ const AdminDashboard: React.FC = () => {
   // Same source the TopBar greets from — auth state is rehydrated from
   // localStorage when the store is created, so it is present on first render.
   const user = useSelector((state: RootState) => state.auth.user);
+  // Module-gated tile, loading-safe like the sidebar: shown until /me says otherwise.
+  const activeModules = useSelector(selectActiveModules);
+  const orgLoaded = useSelector(selectOrgLoaded);
+  const showCompliance = !orgLoaded || activeModules.includes('compliance');
   const displayName = user
     ? (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username)
     : '';
@@ -198,6 +204,16 @@ const AdminDashboard: React.FC = () => {
           onAction={() => navigate('/admin/supplier-credit')}
           iconBgColor={ADMIN_CONSTANTS.ICON_COLORS.SUPPLIER_CREDIT}
         />
+        {showCompliance && (
+          <Card
+            icon={<VerifiedUserOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
+            title="Compliance"
+            desc="Licences and statutory papers, their renewal dates and expiry reminders."
+            action="Go to Compliance"
+            onAction={() => navigate('/admin/compliance')}
+            iconBgColor="#EDE9FE"
+          />
+        )}
         <Card
           icon={<AssignmentOutlinedIcon sx={{ fontSize: ADMIN_CONSTANTS.CARDS.ICON_SIZE }} />}
           title={ADMIN_LABELS.SECTIONS.AUDIT.TITLE}

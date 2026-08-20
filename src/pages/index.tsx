@@ -34,6 +34,8 @@ import HistoricalData from "./Admin/HistoricalData";
 import SupplierCredit from "./Admin/SupplierCredit";
 import UserProfile from "./Profile/UserProfile";
 import ComplianceDocuments from "./Compliance/ComplianceDocuments";
+import ComplianceCalendar from "./Compliance/ComplianceCalendar";
+import ComplianceSettings from "./Compliance/ComplianceSettings";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
@@ -91,6 +93,7 @@ export const Pages = () => {
         <Route element={<ModuleGuard module="compliance" />}>
           <Route path="/compliance" element={<DashboardLayout />}>
             <Route index element={<ComplianceDocuments />} />
+            <Route path="calendar" element={<ComplianceCalendar />} />
           </Route>
         </Route>
 
@@ -114,6 +117,13 @@ export const Pages = () => {
             <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
             <Route path="historical-data" element={<HistoricalData />} />
             <Route path="supplier-credit" element={<SupplierCredit />} />
+            {/* Compliance under the admin portal — same endpoints as /compliance;
+                the role decides capability, not the route (like /admin/master). */}
+            <Route element={<ModuleGuard module="compliance" />}>
+              <Route path="compliance" element={<ComplianceDocuments />} />
+              <Route path="compliance/calendar" element={<ComplianceCalendar />} />
+              <Route path="compliance/settings" element={<ComplianceSettings />} />
+            </Route>
             <Route path="settings" element={<AdminSettings />} />
             <Route path="audit" element={<AuditLog />} />
           </Route>

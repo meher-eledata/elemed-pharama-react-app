@@ -2,6 +2,8 @@
 
 export const COMPLIANCE_CONSTANTS = {
   ROUTE_BASE: '/compliance',
+  // The same pages under the admin portal (role decides capability, not route).
+  ADMIN_ROUTE_BASE: '/admin/compliance',
   FONT: "'Lexend', sans-serif",
   ACCENT: '#5C17E5',
   // Client-side pre-checks mirroring POST /compliance/documents/:id/versions
