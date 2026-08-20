@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import DeleteDocumentDialog from '../../components/DeleteDialogue/DeleteDocumentDialog';
+import DeleteDocumentTrigger from '../../components/DeleteDialogue/DeleteDocumentTrigger';
 import { StandardButton } from '../../components/Common';
 import { useDispatch, useSelector } from 'react-redux';
 import EditIcon from '@mui/icons-material/Edit';
@@ -1968,31 +1969,10 @@ const SalesReceipt: React.FC = () => {
                 </Box>
               </Box>
               {isEditMode && resolvedInvoiceId > 0 && (
-                <Typography
+                <DeleteDocumentTrigger
+                  label="Delete Invoice"
                   onClick={() => setIsDeleteDialogOpen(true)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setIsDeleteDialogOpen(true);
-                    }
-                  }}
-                  sx={{
-                    color: '#DC2626',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                    fontFamily: "'Lexend', sans-serif",
-                    userSelect: 'none',
-                    '&:hover': {
-                      color: '#B91C1C',
-                      textDecoration: 'underline',
-                    },
-                  }}
-                >
-                  Delete Invoice
-                </Typography>
+                />
               )}
             </Box>
             <ActionButtons

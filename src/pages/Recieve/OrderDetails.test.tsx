@@ -635,7 +635,7 @@ describe('OrderDetails', () => {
 
       renderWithProviders(<OrderDetails labels={orderLabels} />);
       
-      expect(screen.getByText(/Delete the full receipt/i)).toBeInTheDocument();
+      expect(screen.getByText(/^Delete Receipt$/i)).toBeInTheDocument();
     });
 
     it('should load existing receipt data in edit mode', async () => {
@@ -707,7 +707,7 @@ describe('OrderDetails', () => {
     const openEditModeDelete = async (user: ReturnType<typeof userEvent.setup>) => {
       mockLocation.state = { isEditMode: true, receiptId: 1, receiptNumber: 'PI-EL-26-000243' };
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      await user.click(screen.getByText(/Delete the full receipt/i));
+      await user.click(screen.getByText(/^Delete Receipt$/i));
     };
 
     it('opens the reason dialog instead of deleting straight from the click', async () => {
@@ -789,7 +789,7 @@ describe('OrderDetails', () => {
 
       renderWithProviders(<OrderDetails labels={orderLabels} />);
 
-      expect(screen.queryByText(/Delete the full receipt/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^Delete Receipt$/i)).not.toBeInTheDocument();
       expect(screen.getByText(/can no longer be edited/i)).toBeInTheDocument();
       expect(screen.getByText(orderLabels.saveButton ?? 'Save')).toBeDisabled();
     });

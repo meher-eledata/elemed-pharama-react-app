@@ -23,6 +23,7 @@ import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution
 import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
 import DeleteDocumentDialog from "../../components/DeleteDialogue/DeleteDocumentDialog";
+import DeleteDocumentTrigger from "../../components/DeleteDialogue/DeleteDocumentTrigger";
 import { ORDER_RECEIVE_DELETED_BADGE, ORDER_RECEIVE_DELETE_DIALOG } from "../../config/label/OrderReceive.labels";
 import { StandardButton } from "../../components/Common";
 import { orderLabels } from "../../config/label/OrderDetail.labels";
@@ -679,38 +680,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         </Box>
 
         {form.isEditMode && !form.isDeletedReceipt && (
-          <Button
-            variant="contained"
-            disableRipple
+          // Opens the reason dialog — never deletes straight from the click. The endpoint
+          // requires a deletion_reason, and a one-click destructive action with no
+          // confirmation was how this used to behave.
+          <DeleteDocumentTrigger
+            label={labels.deleteReceipt}
             disabled={form.isDeleting}
-            // Opens the reason dialog — never deletes straight from the click. The
-            // endpoint requires a deletion_reason, and a one-click destructive action
-            // with no confirmation was how this button behaved before.
             onClick={() => form.setIsReceiptDeleteDialogOpen(true)}
-            sx={{
-              backgroundColor: "#EF4444",
-              color: "#FFFFFF",
-              border: "2px solid #EF4444",
-              height: "48px",
-              borderRadius: "12px",
-              fontFamily: "'Lexend', sans-serif",
-              fontWeight: 500,
-              fontSize: "12px",
-              textTransform: "none",
-              minWidth: "140px",
-              boxShadow: "none",
-              "&:hover": { backgroundColor: "#DC2626", borderColor: "#DC2626" },
-              "&:disabled": { backgroundColor: "#6B7280", borderColor: "#6B7280", color: "#FFFFFF" },
-            }}
-          >
-            {form.isDeleting ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : form.deleteSuccess ? (
-              "Deleted!"
-            ) : (
-              "Delete the full receipt"
-            )}
-          </Button>
+          />
         )}
       </Box>
 
