@@ -1,6 +1,6 @@
 import React, { useState, useMemo, ChangeEvent, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Box, Typography, IconButton, TextField, InputAdornment, Badge, Tooltip, Chip, FormControl, Autocomplete, Tabs, Tab } from '@mui/material';
+import { Box, Typography, IconButton, TextField, InputAdornment, Tooltip, Chip, FormControl, Autocomplete, Tabs, Tab } from '@mui/material';
 import { StandardButton } from '../../components/Common';
 import DateRangeFilter from '../../components/mainDashboard/DateRangeFilter/DateRangeFilter';
 import dayjs, { Dayjs } from 'dayjs';
@@ -19,7 +19,6 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import UndoIcon from '@mui/icons-material/Undo';
 import DeletedRecordBadge, { DELETED_ACTION_SX } from '../../components/DeletedRecord/DeletedRecordBadge';
-import WarningIcon from '@mui/icons-material/Warning';
 import CommonModal from '../../components/CommonModal/CommonModal';
 import PrintPreviewModal from '../../components/Modal/PrintPreview/PrintPreviewModal';
 import SaleConfirmationDialog from '../../components/Modal/SaleConfirmation/SaleConfirmationDialog';
@@ -951,24 +950,6 @@ export default function SaleHistory() {
   }, [navigate, salesHistoryData]);
 
   // Helper function to get return details for tooltip
-  const getReturnTooltipContent = (item: SalesHistoryItem) => {
-    if (!item.returnInfo || item.returnInfo.returnedItems === 0) {
-      return 'No returns';
-    }
-    const { returnedItems, totalItems, returnDetails } = item.returnInfo;
-    let content = `${returnedItems} of ${totalItems} items returned`;
-    if (returnDetails && returnDetails.length > 0) {
-      content += '\n\nReturned items:';
-      returnDetails.forEach(detail => {
-        content += `\n• ${detail.productName}: ${detail.returnedQuantity}/${detail.originalQuantity}`;
-        if (detail.returnDate) {
-          content += ` (${detail.returnDate})`;
-        }
-      });
-    }
-    return content;
-  };
-
   const columns: TableColumn<SalesHistoryItem>[] = [
     {
       key: 'invoiceNumber',
@@ -1205,43 +1186,6 @@ export default function SaleHistory() {
                 />
               </Tooltip>
             )}
-            {returnStatus.status === 'full' && (() => {
-              const tooltipContent = getReturnTooltipContent(item);
-              return (
-                <Tooltip title={tooltipContent} arrow placement="top">
-                  <Badge
-                    badgeContent="!"
-                    color="error"
-                    sx={{
-                      marginRight: '0.5rem',
-                      '& .MuiBadge-badge': {
-                        fontSize: '0.625rem',
-                        minWidth: '1rem',
-                        height: '1rem',
-                        padding: '0 0.125rem',
-                      }
-                    }}
-                  >
-                    <WarningIcon
-                      sx={{
-                        fontSize: '1.25rem',
-                        color: '#DC2626',
-                        cursor: 'pointer',
-                        padding: '0.125rem',
-                        borderRadius: '0.25rem',
-                        '&:hover': {
-                          backgroundColor: '#FEE2E2',
-                          color: '#DC2626'
-                        }
-                      }}
-                      onClick={() => {
-                        console.log('Alert clicked for invoice:', item.id, 'Return info:', item.returnInfo);
-                      }}
-                    />
-                  </Badge>
-                </Tooltip>
-              );
-            })()}
           </Box>
         );
       },
