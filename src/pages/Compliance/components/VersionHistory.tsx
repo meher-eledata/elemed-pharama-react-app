@@ -10,6 +10,8 @@ import {
 } from '../../../config/constants/Compliance.constants';
 import { COMPLIANCE_LABELS } from '../../../config/label/Compliance.labels';
 import {
+  COMPLIANCE_PAGE_SIZE,
+  COMPLIANCE_PAGE_SIZE_MAX,
   useGetComplianceDocumentQuery,
   useMakeComplianceVersionCurrentMutation,
   useUpdateComplianceVersionMutation,
@@ -30,8 +32,6 @@ const C = COMPLIANCE_CONSTANTS;
 
 interface VersionHistoryProps {
   documentId: number;
-  // owner/admin — the make-current route is role-gated server-side.
-  canMakeCurrent: boolean;
   // Controlled by the page so the row-level "Edit details" button can open the
   // current version's form directly.
   editingVersionId: number | null;
@@ -59,14 +59,20 @@ const MetaField: React.FC<{ label: string; value: string }> = ({ label, value })
 
 const VersionHistory: React.FC<VersionHistoryProps> = ({
   documentId,
-  canMakeCurrent,
   editingVersionId,
   onEditingVersionChange,
   onDownload,
   onToast,
 }) => {
-  // Only this endpoint returns the history; the list carries the current version only.
-  const { data, isFetching, isError } = useGetComplianceDocumentQuery(documentId);
+  // Only this endpoint returns the history; the list carries the current version
+  // only. The array is PAGED (default 50, server cap 200) — "load more" grows the
+  // page like the notification panel does, and the cap is stated rather than
+  // silently swallowing older versions.
+  const [versionLimit, setVersionLimit] = useState(COMPLIANCE_PAGE_SIZE);
+  const { data, isFetching, isError } = useGetComplianceDocumentQuery({
+    id: documentId,
+    limit: versionLimit,
+  });
   const [updateVersion, { isLoading: isSaving }] = useUpdateComplianceVersionMutation();
   const [makeCurrent, { isLoading: isRepointing }] = useMakeComplianceVersionCurrentMutation();
 
@@ -168,6 +174,11 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
     );
   }
 
+  // A full page means the server may be holding more; past the hard cap it is.
+  const canLoadMore =
+    versions.length >= versionLimit && versionLimit < COMPLIANCE_PAGE_SIZE_MAX;
+  const isCapped = versions.length >= COMPLIANCE_PAGE_SIZE_MAX;
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1.5 }}>
       {versions.map((version) => {
@@ -224,15 +235,16 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                   {L.ACTIONS.EDIT_DETAILS}
                 </StandardButton>
               )}
+              {/* Which version is in force is a MEMBER-level operation — the same
+                  control for staff as for an admin (upload, metadata edit and
+                  make-current are all member-level server-side). */}
               {!isCurrent && (
-                <Tooltip
-                  title={canMakeCurrent ? L.HINTS.MAKE_CURRENT : L.HINTS.MAKE_CURRENT_DENIED}
-                >
+                <Tooltip title={L.HINTS.MAKE_CURRENT}>
                   <span>
                     <StandardButton
                       variant="outline"
                       size="small"
-                      disabled={!canMakeCurrent || isRepointing}
+                      disabled={isRepointing}
                       onClick={() => handleMakeCurrent(version.id)}
                     >
                       {L.ACTIONS.MAKE_CURRENT}
@@ -355,6 +367,32 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
           </Box>
         );
       })}
+
+      {(canLoadMore || isCapped) && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: C.FONT }}>
+            {L.PAGING.showing(versions.length, data?.version_count ?? versions.length)}
+          </Typography>
+          {canLoadMore ? (
+            <StandardButton
+              variant="text"
+              size="small"
+              disabled={isFetching}
+              onClick={() =>
+                setVersionLimit((current) =>
+                  Math.min(current + COMPLIANCE_PAGE_SIZE, COMPLIANCE_PAGE_SIZE_MAX),
+                )
+              }
+            >
+              {L.PAGING.LOAD_MORE}
+            </StandardButton>
+          ) : (
+            <Typography sx={{ fontSize: '12px', color: '#B45309', fontFamily: C.FONT }}>
+              {L.PAGING.versionsCapped(COMPLIANCE_PAGE_SIZE_MAX)}
+            </Typography>
+          )}
+        </Box>
+      )}
     </Box>
   );
 };

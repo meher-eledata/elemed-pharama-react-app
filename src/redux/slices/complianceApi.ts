@@ -90,6 +90,26 @@ export interface UpdateComplianceDocumentTypeRequest {
   status?: ComplianceStatus; // also how an ARCHIVED type is restored
 }
 
+// Paging (both paged endpoints share one parser server-side): `limit` defaults to
+// 50 and is CLAMPED to 200 rather than rejected; `offset` defaults to 0.
+// A non-integer/`< 1` limit or a negative offset is a 400.
+export const COMPLIANCE_PAGE_SIZE = 50;
+export const COMPLIANCE_PAGE_SIZE_MAX = 200;
+
+export interface CompliancePagingArgs {
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetComplianceDocumentsArgs extends CompliancePagingArgs {
+  status?: ComplianceStatusFilter;
+  type_id?: number;
+}
+
+export interface GetComplianceDocumentArgs extends CompliancePagingArgs {
+  id: number;
+}
+
 export interface CreateComplianceDocumentRequest {
   document_type_id: number;
   title: string;
@@ -260,15 +280,17 @@ export const complianceApi = createApi({
       invalidatesTags: ['ComplianceType', 'ComplianceDocument', 'ComplianceCalendar'],
     }),
 
-    getComplianceDocuments: builder.query<
-      ComplianceDocument[],
-      { status?: ComplianceStatusFilter; type_id?: number } | void
-    >({
+    // PAGED (server default 50, hard cap 200). `limit`/`offset` are always sent
+    // explicitly so the page never silently inherits a server default it does not
+    // know about — a truncated compliance list must be visibly truncated.
+    getComplianceDocuments: builder.query<ComplianceDocument[], GetComplianceDocumentsArgs | void>({
       query: (args) => ({
         url: 'compliance/documents',
         params: {
           ...(args?.status ? { status: args.status } : {}),
           ...(args?.type_id ? { type_id: args.type_id } : {}),
+          limit: args?.limit ?? COMPLIANCE_PAGE_SIZE,
+          offset: args?.offset ?? 0,
         },
       }),
       providesTags: (result) => [
@@ -283,9 +305,13 @@ export const complianceApi = createApi({
       query: (body) => ({ url: 'compliance/documents', method: 'POST', body }),
       invalidatesTags: [{ type: 'ComplianceDocument', id: 'LIST' }, 'ComplianceCalendar'],
     }),
-    getComplianceDocument: builder.query<ComplianceDocumentDetail, number>({
-      query: (id) => `compliance/documents/${id}`,
-      providesTags: (_r, _e, id) => [{ type: 'ComplianceDocument', id }],
+    // The `versions` array is paged by the SAME limit/offset params (newest first).
+    getComplianceDocument: builder.query<ComplianceDocumentDetail, GetComplianceDocumentArgs>({
+      query: ({ id, limit, offset }) => ({
+        url: `compliance/documents/${id}`,
+        params: { limit: limit ?? COMPLIANCE_PAGE_SIZE, offset: offset ?? 0 },
+      }),
+      providesTags: (_r, _e, { id }) => [{ type: 'ComplianceDocument', id }],
     }),
     updateComplianceDocument: builder.mutation<
       ComplianceDocument,

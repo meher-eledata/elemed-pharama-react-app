@@ -51,6 +51,45 @@ it('renders grouped documents, the nothing-filed action and the version history'
   expect(screen.getByText('old.pdf (2 KB)')).toBeInTheDocument();
 });
 
+it('never renders a truncated list as complete, and loads the next page', async () => {
+  // A FULL page (50 rows) means the server may hold more behind the limit.
+  const page = Array.from({ length: 50 }, (_, i) => ({
+    ...documents[0],
+    id: 100 + i,
+    title: `Licence ${i}`,
+  }));
+  const requested: string[] = [];
+  global.fetch = jest.fn(async (input: any) => {
+    const url = typeof input === 'string' ? input : input.url;
+    requested.push(url);
+    const body = url.includes('document-types')
+      ? types
+      : url.includes('notification-settings')
+        ? { lead_days: [60, 30, 7], is_default: true, overrides: [] }
+        : page;
+    return {
+      ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => body, text: async () => JSON.stringify(body), clone() { return this; },
+    } as any;
+  }) as any;
+
+  renderPage();
+  expect(await screen.findByText('Showing 50 — there may be more.')).toBeInTheDocument();
+  // The first request is explicit about the page it asked for.
+  expect(requested.some((url) => url.includes('limit=50') && url.includes('offset=0'))).toBe(true);
+
+  fireEvent.click(screen.getByText('Load more'));
+  await waitFor(() => expect(requested.some((url) => url.includes('limit=100'))).toBe(true));
+});
+
+it('offers make-current to any member (staff included)', async () => {
+  renderPage();
+  fireEvent.click(await screen.findByText('Show 1 earlier version'));
+  const makeCurrent = await screen.findByText('Make current');
+  // Version-in-force is member-level — the control is live for a staff user.
+  expect(makeCurrent.closest('button')).not.toBeDisabled();
+});
+
 it('opens the upload modal with valid_to marked optional', async () => {
   renderPage();
   fireEvent.click(await screen.findByText('Upload new version'));

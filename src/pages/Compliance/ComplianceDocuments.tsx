@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import {
   Alert,
   Box,
@@ -25,6 +24,8 @@ import {
 } from '../../config/constants/Compliance.constants';
 import { COMPLIANCE_LABELS } from '../../config/label/Compliance.labels';
 import {
+  COMPLIANCE_PAGE_SIZE,
+  COMPLIANCE_PAGE_SIZE_MAX,
   useGetComplianceDocumentTypesQuery,
   useGetComplianceDocumentsQuery,
   useGetComplianceNotificationSettingsQuery,
@@ -36,7 +37,6 @@ import {
   type ComplianceStatusFilter,
   type ComplianceVersion,
 } from '../../redux/slices/complianceApi';
-import { RootState } from '../../redux/store';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
 import ComplianceNav from './components/ComplianceNav';
 import CreateDocumentModal from './components/CreateDocumentModal';
@@ -76,6 +76,11 @@ const ComplianceDocuments: React.FC = () => {
   const uploadDocumentId = deepLink?.complianceUploadDocumentId;
 
   const [statusFilter, setStatusFilter] = useState<ComplianceStatusFilter>('ACTIVE');
+  const [typeFilter, setTypeFilter] = useState<number | ''>('');
+  // The list is PAGED server-side (default 50, hard cap 200). "Load more" grows the
+  // page exactly like the notification panel; a compliance list is never allowed to
+  // look complete when it is truncated.
+  const [limit, setLimit] = useState(COMPLIANCE_PAGE_SIZE);
   const [expandedDocumentId, setExpandedDocumentId] = useState<number | null>(
     focusedDocumentId ?? null,
   );
@@ -95,19 +100,19 @@ const ComplianceDocuments: React.FC = () => {
   const {
     data: documents = [],
     isLoading: documentsLoading,
+    isFetching: documentsFetching,
     isError: documentsError,
-  } = useGetComplianceDocumentsQuery({ status: statusFilter });
+  } = useGetComplianceDocumentsQuery({
+    status: statusFilter,
+    type_id: typeFilter || undefined,
+    limit,
+  });
   // Read-only for every member; used only to colour the "expiring" window the same
   // way the reminders do.
   const { data: settings } = useGetComplianceNotificationSettingsQuery();
 
   const [triggerDownloadLink] = useLazyGetComplianceVersionDownloadLinkQuery();
   const [triggerVersionBlob] = useLazyGetComplianceVersionBlobQuery();
-
-  // The make-current route is requireRole('owner','admin') — the JWT `org_role`
-  // is the source, not the legacy numeric role.
-  const orgRole = useSelector((state: RootState) => state.auth.user?.org_role);
-  const canMakeCurrent = orgRole === 'owner' || orgRole === 'admin';
 
   const showToast = useCallback((message: string, severity: 'success' | 'error') => {
     setToast({ open: true, message, severity });
@@ -188,6 +193,10 @@ const ComplianceDocuments: React.FC = () => {
   };
 
   const isLoading = typesLoading || documentsLoading;
+  // A FULL page means the server may be holding more rows behind the limit; at the
+  // hard cap it certainly is, and the user is told to narrow the filters instead.
+  const canLoadMore = documents.length >= limit && limit < COMPLIANCE_PAGE_SIZE_MAX;
+  const isCapped = documents.length >= COMPLIANCE_PAGE_SIZE_MAX;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3, maxWidth: '1100px' }}>
@@ -208,9 +217,32 @@ const ComplianceDocuments: React.FC = () => {
         <Box sx={{ flex: 1, minWidth: '120px' }} />
         <TextField
           select
+          label={L.PAGING.TYPE_FILTER}
+          value={typeFilter}
+          onChange={(e) => {
+            setTypeFilter(e.target.value === '' ? '' : Number(e.target.value));
+            setLimit(COMPLIANCE_PAGE_SIZE);
+          }}
+          size="small"
+          sx={{ ...COMPLIANCE_FIELD_SX, minWidth: '210px' }}
+        >
+          <MenuItem value="" sx={{ fontFamily: C.FONT, fontSize: '14px' }}>
+            {L.PAGING.ALL_TYPES}
+          </MenuItem>
+          {types.map((type) => (
+            <MenuItem key={type.id} value={type.id} sx={{ fontFamily: C.FONT, fontSize: '14px' }}>
+              {type.name}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
           label={L.FILTER.LABEL}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as ComplianceStatusFilter)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as ComplianceStatusFilter);
+            setLimit(COMPLIANCE_PAGE_SIZE);
+          }}
           size="small"
           sx={{ ...COMPLIANCE_FIELD_SX, minWidth: '190px' }}
         >
@@ -465,7 +497,6 @@ const ComplianceDocuments: React.FC = () => {
                   <Collapse in={isExpanded} timeout={200} unmountOnExit>
                     <VersionHistory
                       documentId={document.id}
-                      canMakeCurrent={canMakeCurrent}
                       editingVersionId={editingVersionId}
                       onEditingVersionChange={setEditingVersionId}
                       onDownload={(version) => handleDownload(document.id, version)}
@@ -477,6 +508,34 @@ const ComplianceDocuments: React.FC = () => {
             })}
           </Box>
         ))}
+
+      {!isLoading && !typesError && !documentsError && (canLoadMore || isCapped) && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          {canLoadMore ? (
+            <>
+              <StandardButton
+                variant="secondary"
+                size="small"
+                disabled={documentsFetching}
+                onClick={() =>
+                  setLimit((current) =>
+                    Math.min(current + COMPLIANCE_PAGE_SIZE, COMPLIANCE_PAGE_SIZE_MAX),
+                  )
+                }
+              >
+                {L.PAGING.LOAD_MORE}
+              </StandardButton>
+              <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: C.FONT }}>
+                {L.PAGING.showingAtLeast(documents.length)}
+              </Typography>
+            </>
+          ) : (
+            <Alert severity="info" sx={{ fontFamily: C.FONT, width: '100%' }}>
+              {L.PAGING.documentsCapped(COMPLIANCE_PAGE_SIZE_MAX)}
+            </Alert>
+          )}
+        </Box>
+      )}
 
       <CreateDocumentModal
         open={createOpen}

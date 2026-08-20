@@ -65,7 +65,6 @@ export const COMPLIANCE_LABELS = {
     NOTHING_FILED: 'No file has been uploaded for this document yet.',
     NOTHING_FILED_TYPE: 'Nothing has been filed for this document type yet.',
     MAKE_CURRENT: 'Point this document at this version instead. Changes the expiry reminders.',
-    MAKE_CURRENT_DENIED: 'Only an owner or admin can change which version is current.',
     ARCHIVED_TYPE: 'This document type is archived. New documents cannot be filed against it.',
     RENEWAL_MONTHS: (months: number) => `Renews every ${months} months`,
     VERSION_COUNT: (count: number) => (count === 1 ? '1 version' : `${count} versions`),
@@ -111,6 +110,19 @@ export const COMPLIANCE_LABELS = {
     UPLOAD_ERROR: 'Could not upload the version.',
     UPDATE_ERROR: 'Could not save the version details.',
     MAKE_CURRENT_ERROR: 'Could not change the current version.',
+  },
+  PAGING: {
+    LOAD_MORE: 'Load more',
+    showingAtLeast: (shown: number) => `Showing ${shown} — there may be more.`,
+    showing: (shown: number, total: number) =>
+      shown >= total ? `Showing all ${total}` : `Showing ${shown} of ${total}`,
+    // The server hard-caps a page at 200 rows; say so rather than letting a
+    // compliance list look complete when it is not.
+    documentsCapped: (max: number) =>
+      `Showing the first ${max}. Filter by document type or status to see the rest.`,
+    versionsCapped: (max: number) => `Showing the first ${max} versions.`,
+    TYPE_FILTER: 'Document type',
+    ALL_TYPES: 'All types',
   },
   NAV: {
     DOCUMENTS: 'Documents',
