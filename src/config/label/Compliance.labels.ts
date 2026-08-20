@@ -217,6 +217,9 @@ export const COMPLIANCE_LABELS = {
   },
   DOCUMENT_EDIT: {
     TITLE: 'Edit document',
+    // Provenance of the RECORD (who opened it); who filed each FILE is on the
+    // version rows.
+    createdBy: (who: string, when: string) => `Added by ${who} on ${when}`,
     ACTION: 'Edit document',
     STATUS: 'Status',
     ACTIVE: 'Active',

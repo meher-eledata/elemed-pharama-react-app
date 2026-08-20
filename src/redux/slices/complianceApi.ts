@@ -45,7 +45,11 @@ export interface ComplianceVersion {
   valid_to: string | null; // 'YYYY-MM-DD'; NULL = DOES NOT EXPIRE
   issued_by: string | null;
   notes: string | null;
-  uploaded_by: number | null; // users.id — the API never expands a name
+  uploaded_by: number | null; // users.id
+  // WHO FILED THIS. null when that user was deleted OR belongs to another org (the
+  // join is org-scoped so it cannot leak another tenant's username) — the numeric
+  // `uploaded_by` is unchanged and stays the `User #<id>` fallback.
+  uploaded_by_username: string | null;
   uploaded_at: string; // ISO
   // Computed server-side against the parent's current_version_id. NEVER re-derive
   // "current" from max(version_no) / max(valid_to) on the client.
@@ -59,6 +63,8 @@ export interface ComplianceDocument {
   status: ComplianceStatus;
   notes: string | null;
   created_by: number | null;
+  // Same join and the same null cases as `uploaded_by_username`.
+  created_by_username: string | null;
   created_at: string;
   updated_at: string;
   document_type: ComplianceDocumentTypeRef;

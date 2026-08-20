@@ -24,6 +24,7 @@ import {
   formatBytes,
   formatTimestamp,
   parseApiDate,
+  personLabel,
   toApiDate,
 } from '../compliance.utils';
 
@@ -270,7 +271,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
               <MetaField label={L.FIELDS.UPLOADED_AT} value={formatTimestamp(version.uploaded_at)} />
               <MetaField
                 label={L.FIELDS.UPLOADED_BY}
-                value={version.uploaded_by ? L.HINTS.USER_REF(version.uploaded_by) : L.DASH}
+                value={personLabel(version.uploaded_by_username, version.uploaded_by)}
               />
               <MetaField label={L.FIELDS.VALID_FROM} value={formatApiDate(version.valid_from)} />
               <MetaField

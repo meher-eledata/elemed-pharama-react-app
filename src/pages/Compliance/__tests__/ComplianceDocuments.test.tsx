@@ -11,9 +11,9 @@ const types = [
   { id: 1, key: 'pharmacy_licence', name: 'Pharmacy Licence', description: null, category: 'Licence', is_required: true, default_validity_months: null, status: 'ACTIVE', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
   { id: 2, key: 'ndps_licence', name: 'NDPS Licence', description: null, category: 'Licence', is_required: true, default_validity_months: 12, status: 'ACTIVE', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
 ];
-const version = { id: 10, document_id: 5, version_no: 2, file_name: 'licence.pdf', file_type: 'application/pdf', size_bytes: 2048, valid_from: '2026-01-01', valid_to: null, issued_by: 'Drug Control', notes: null, uploaded_by: 3, uploaded_at: '2026-01-02T10:00:00Z', is_current: true };
+const version = { id: 10, document_id: 5, version_no: 2, file_name: 'licence.pdf', file_type: 'application/pdf', size_bytes: 2048, valid_from: '2026-01-01', valid_to: null, issued_by: 'Drug Control', notes: null, uploaded_by: 3, uploaded_by_username: 'r.patel', uploaded_at: '2026-01-02T10:00:00Z', is_current: true };
 const documents = [
-  { id: 5, title: 'Pharmacy Licence', reference_number: 'PL-1', status: 'ACTIVE', notes: null, created_by: 1, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z', document_type: { id: 1, key: 'pharmacy_licence', name: 'Pharmacy Licence', category: 'Licence', is_required: true, default_validity_months: null, status: 'ACTIVE' }, current_version_id: 10, current_version: version, version_count: 2 },
+  { id: 5, title: 'Pharmacy Licence', reference_number: 'PL-1', status: 'ACTIVE', notes: null, created_by: 1, created_by_username: 'a.owner', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z', document_type: { id: 1, key: 'pharmacy_licence', name: 'Pharmacy Licence', category: 'Licence', is_required: true, default_validity_months: null, status: 'ACTIVE' }, current_version_id: 10, current_version: version, version_count: 2 },
 ];
 
 beforeEach(() => {
@@ -23,7 +23,7 @@ beforeEach(() => {
       : url.includes('notification-settings') ? { lead_days: [60, 30, 7], is_default: true, overrides: [] }
       : url.includes('/documents/5') ? {
           ...documents[0],
-          versions: [version, { ...version, id: 9, version_no: 1, is_current: false, valid_to: '2025-12-31', file_name: 'old.pdf' }],
+          versions: [version, { ...version, id: 9, version_no: 1, is_current: false, valid_to: '2025-12-31', file_name: 'old.pdf', uploaded_by_username: null }],
           versions_page: { total: 2, limit: 50, offset: 0, has_more: false },
         }
       : { documents, total: documents.length, limit: 50, offset: 0, has_more: false };
@@ -92,6 +92,15 @@ it('offers make-current to any member (staff included)', async () => {
   const makeCurrent = await screen.findByText('Make current');
   // Version-in-force is member-level — the control is live for a staff user.
   expect(makeCurrent.closest('button')).not.toBeDisabled();
+});
+
+it('names the uploader, falling back to the id when the join could not resolve it', async () => {
+  renderPage();
+  fireEvent.click(await screen.findByText('Show 1 earlier version'));
+  // Current version: joined username.
+  expect(await screen.findByText('r.patel')).toBeInTheDocument();
+  // Older version: null username (deleted user, or one outside this org) -> raw id.
+  expect(screen.getByText('User #3')).toBeInTheDocument();
 });
 
 it('opens the upload modal with valid_to marked optional', async () => {

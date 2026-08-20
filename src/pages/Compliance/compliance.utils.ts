@@ -177,3 +177,10 @@ export const groupByValidTo = (
   });
   return map;
 };
+
+// Who did it: the joined username when the API could resolve it, else the raw id.
+// `null` username is legitimate (deleted user, or a user outside the caller's org —
+// the join is org-scoped on purpose), so the id remains the fallback rather than an
+// error state.
+export const personLabel = (username: string | null, id: number | null): string =>
+  username ?? (id != null ? L.HINTS.USER_REF(id) : L.DASH);

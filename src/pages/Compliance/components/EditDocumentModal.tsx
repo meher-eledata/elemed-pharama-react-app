@@ -14,6 +14,7 @@ import {
   type UpdateComplianceDocumentRequest,
 } from '../../../redux/slices/complianceApi';
 import { extractErrorMessage, logError } from '../../../utils/errorUtils';
+import { formatTimestamp, personLabel } from '../compliance.utils';
 
 const L = COMPLIANCE_LABELS;
 const C = COMPLIANCE_CONSTANTS;
@@ -91,6 +92,14 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
       }
       content={
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 1 }}>
+          {document && (
+            <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: C.FONT }}>
+              {L.DOCUMENT_EDIT.createdBy(
+                personLabel(document.created_by_username, document.created_by),
+                formatTimestamp(document.created_at),
+              )}
+            </Typography>
+          )}
           <TextField
             label={`${L.FIELDS.TITLE} *`}
             value={title}
