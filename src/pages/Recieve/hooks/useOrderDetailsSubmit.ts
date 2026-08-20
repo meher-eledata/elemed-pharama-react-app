@@ -1,14 +1,13 @@
 import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
 import dayjs from "dayjs";
 import {
-  receiveApi,
   useSubmitReceiptMutation,
   useEditReceiptMutation,
   useUploadReceiptFileMutation,
+  useDeleteReceiptMutation,
 } from "../../../redux/slices/receiveApi";
 import { useIdempotencyKey } from "../../../hooks/useIdempotencyKey";
-import { duplicateDocumentNumberMessage } from "../../../utils/errorUtils";
+import { duplicateDocumentNumberMessage, extractErrorMessage } from "../../../utils/errorUtils";
 import { PharmaTableRow, SupplierOption, ProductOption } from "../types";
 
 // Every submit/edit failure surfaces through setSaveError. The 409 DUPLICATE_RECEIPT_NUMBER
@@ -24,6 +23,27 @@ const resolveReceiptSaveError = (error: any): string => {
     if (Array.isArray(error.data.errors) && error.data.errors.length > 0) return error.data.errors[0];
   }
   return error?.message || 'Failed to submit receipt';
+};
+
+// The delete endpoint answers with DISCRIMINABLE codes rather than prose, so the
+// pharmacist gets told what to do instead of an HTTP number. These are refusals, not
+// faults: the receipt is intact and the message says why it stayed that way.
+const resolveReceiptDeleteError = (error: any): string => {
+  const code = error?.data?.error;
+  switch (code) {
+    case 'RECEIPT_HAS_SUPPLIER_RETURNS':
+      return 'This receipt has supplier returns raised against it. Cancel those returns first, then delete the receipt.';
+    case 'RECEIPT_STOCK_ALREADY_CONSUMED':
+      return error?.data?.message
+        || 'This receipt cannot be deleted because its stock has already been sold or adjusted.';
+    case 'RECEIPT_DELETED':
+      return 'This receipt has already been deleted.';
+    default:
+      break;
+  }
+  if (error?.data?.message) return error.data.message;
+  if (typeof error?.data?.error === 'string') return error.data.error;
+  return extractErrorMessage(error, 'Failed to delete the receipt. Please try again.');
 };
 
 interface SubmitHookParams {
@@ -66,11 +86,10 @@ interface SubmitHookParams {
 
 export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const token = useSelector((state: any) => state.auth.token);
   const [submitReceipt, { isLoading: isSubmittingReceipt }] = useSubmitReceiptMutation();
   const [editReceipt, { isLoading: isEditingReceipt }] = useEditReceiptMutation();
   const [uploadReceiptFile] = useUploadReceiptFileMutation();
+  const [deleteReceiptMutation] = useDeleteReceiptMutation();
   // One key per pending logical submission: reused on retry of the same failed
   // payload, regenerated when the payload changes, cleared after success.
   const { getKey: getIdempotencyKey, reset: resetIdempotencyKey } = useIdempotencyKey();
@@ -611,41 +630,49 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     }
   };
 
-  const deleteReceipt = async () => {
+  // Soft-deletes the whole receipt. `deletionReason` is REQUIRED — the endpoint 400s
+  // without it, and it is the audit trail for why the stock was reversed, so the caller
+  // must collect it from the user first (see the delete dialog in OrderDetails).
+  //
+  // Goes through the RTK Query mutation rather than a hand-rolled fetch so the cache
+  // invalidation is the slice's (Receive + Dashboard + Inventory + Reports — a delete
+  // moves stock and changes the purchase/GST reports, and the old hand-rolled call
+  // invalidated only 'Receive', leaving stale inventory and report screens behind).
+  const deleteReceipt = async (deletionReason: string) => {
     if (!isEditMode || !receiptId) {
       setDeleteError('No receipt selected for deletion');
       return;
     }
+
+    const reason = (deletionReason || '').trim();
+    if (!reason) {
+      setDeleteError('A reason is required to delete a receipt.');
+      return;
+    }
+
+    // Server-authoritative attribution is the audit username; this is the
+    // who-asked-for-it field the endpoint stamps on the receipt row.
+    const deletedBy = user?.username || user?.first_name || 'unknown';
 
     try {
       setIsDeleting(true);
       setDeleteError(null);
       setDeleteSuccess(false);
 
-      const response = await fetch(
-        `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/+$/, '')}/receive/delete-receipt/${receiptId}/`,
-        {
-          method: 'DELETE',
-          headers: { 
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      await deleteReceiptMutation({
+        receipt_id: receiptId,
+        deleted_by: deletedBy,
+        deletion_reason: reason,
+      }).unwrap();
 
       setDeleteSuccess(true);
-      dispatch(receiveApi.util.invalidateTags(['Receive']));
 
       setTimeout(() => {
         navigate('/receive/order-receive');
       }, 2000);
 
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : 'Failed to delete receipt');
+      setDeleteError(resolveReceiptDeleteError(error));
     } finally {
       setIsDeleting(false);
     }

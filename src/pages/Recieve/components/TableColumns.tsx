@@ -9,10 +9,53 @@ import InvoiceAttachment from "./InvoiceAttachment";
 import {
   ORDER_RECEIVE_TABLE_HEADERS,
   PURCHASE_ORDER_TABLE_HEADERS,
+  ORDER_RECEIVE_DELETED_BADGE,
 } from "../../../config/label/OrderReceive.labels";
 import { ORDER_RECEIVE_CONSTANTS } from "../../../config/constants/OrderReceive.constants";
 import { capitalizeFirstLetter } from "../utils";
 import { TickMarkIcon } from "../styles";
+
+/** A retired receipt (soft-deleted server-side) is read-only history. */
+const isDeletedRow = (row: OrderReceiveRow) => row.record_status === 'DELETED';
+
+/**
+ * "Deleted" chip shown next to the receipt number.
+ *
+ * A retired receipt stays in the list on purpose — the history has to remain auditable —
+ * so the row MUST say so, otherwise it reads as a live receipt. The tooltip carries the
+ * who/when/why the backend recorded.
+ */
+const DeletedBadge: React.FC<{ row: OrderReceiveRow }> = ({ row }) => (
+  <Tooltip
+    title={ORDER_RECEIVE_DELETED_BADGE.TOOLTIP(
+      row.deleted_by ?? null,
+      row.deleted_at ? new Date(row.deleted_at).toLocaleString() : null,
+      row.deletion_reason ?? null
+    )}
+    arrow
+  >
+    <Box
+      component="span"
+      sx={{
+        flexShrink: 0,
+        px: '0.375rem',
+        py: '0.0625rem',
+        borderRadius: '0.25rem',
+        backgroundColor: '#FEE2E2',
+        color: '#B91C1C',
+        border: '1px solid #FCA5A5',
+        fontSize: '0.625rem',
+        fontWeight: 600,
+        lineHeight: 1.6,
+        letterSpacing: '0.02em',
+        textTransform: 'uppercase',
+        cursor: 'default',
+      }}
+    >
+      {ORDER_RECEIVE_DELETED_BADGE.LABEL}
+    </Box>
+  </Tooltip>
+);
 
 export const getOrderReceiveColumns = (
   editingRowId: string | null,
@@ -68,6 +111,7 @@ export const getOrderReceiveColumns = (
                 predates the numbering backfill. Never the supplier's invoice number. */}
             {row.receipt_number || row.reNo}
           </span>
+          {isDeletedRow(row) && <DeletedBadge row={row} />}
         </Box>
       )
     },
@@ -232,26 +276,45 @@ export const getOrderReceiveColumns = (
               />
             </Box>
           ) : (
+            // A retired receipt is read-only: the backend answers 409 RECEIPT_DELETED to
+            // both edit-receipt and upsert-purchase-order-payments, so the row must not
+            // offer either action. (Routing into edit mode was how a deleted receipt
+            // could previously be re-saved.) Both controls stay VISIBLE but disabled,
+            // with a tooltip saying why, rather than silently vanishing.
             <Box sx={{ display: 'flex', gap: '0.5rem', alignItems: 'center', minWidth: '60px' }}>
-              <EditIcon
-                sx={{ color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR, cursor: 'pointer', fontSize: 18, flexShrink: 0 }}
-                onClick={() => handleEditClick(row)}
-              />
-              <Typography
-                onClick={() => handlePaymentDetailsClick(row)}
-                sx={{
-                  color: ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR,
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  '&:hover': {
-                    opacity: 0.7
-                  }
-                }}
-              >
-                ₹
-              </Typography>
+              <Tooltip title={isDeletedRow(row) ? ORDER_RECEIVE_DELETED_BADGE.EDIT_BLOCKED : ''} arrow>
+                <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
+                  <EditIcon
+                    aria-disabled={isDeletedRow(row)}
+                    sx={{
+                      color: isDeletedRow(row) ? '#C4C7CC' : ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR,
+                      cursor: isDeletedRow(row) ? 'not-allowed' : 'pointer',
+                      fontSize: 18,
+                      flexShrink: 0,
+                    }}
+                    onClick={() => { if (!isDeletedRow(row)) handleEditClick(row); }}
+                  />
+                </Box>
+              </Tooltip>
+              <Tooltip title={isDeletedRow(row) ? ORDER_RECEIVE_DELETED_BADGE.PAYMENT_BLOCKED : ''} arrow>
+                <Typography
+                  component="span"
+                  aria-disabled={isDeletedRow(row)}
+                  onClick={() => { if (!isDeletedRow(row)) handlePaymentDetailsClick(row); }}
+                  sx={{
+                    color: isDeletedRow(row) ? '#C4C7CC' : ORDER_RECEIVE_CONSTANTS.ICONS.DEFAULT_COLOR,
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    cursor: isDeletedRow(row) ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    '&:hover': {
+                      opacity: isDeletedRow(row) ? 1 : 0.7
+                    }
+                  }}
+                >
+                  ₹
+                </Typography>
+              </Tooltip>
             </Box>
           )}
         </Box>

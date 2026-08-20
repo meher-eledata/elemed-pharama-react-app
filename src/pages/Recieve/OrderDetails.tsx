@@ -22,6 +22,8 @@ import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import ScheduleAttributionModal from "../../components/Modal/ScheduleAttribution/ScheduleAttributionModal";
 import NewSupplierModal from "../../components/Modal/NewSupplier/NewSupplierModal";
 import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
+import DeleteReceiptDialog from "./components/DeleteReceiptDialog";
+import { ORDER_RECEIVE_DELETED_BADGE } from "../../config/label/OrderReceive.labels";
 import { StandardButton } from "../../components/Common";
 import { orderLabels } from "../../config/label/OrderDetail.labels";
 import { themeColors, typography } from "../../config/constants/OrderDetail.constants";
@@ -474,11 +476,35 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
             variant="h4"
             sx={{ fontWeight: "bold", color: themeColors.textPrimary, fontSize: typography.headerSize }}
           >
-            {form.isEditMode ? `${labels.orderDetails} (Editing ${form.receiptNumber})` : labels.orderDetails}
+            {form.isEditMode
+              ? `${labels.orderDetails} (${form.isDeletedReceipt ? 'Viewing' : 'Editing'} ${form.receiptNumber})`
+              : labels.orderDetails}
           </Typography>
         </Box>
       </Box>
       <Divider sx={{ marginTop: "16px", border: "0.5px solid #CBD4E1" }} />
+
+      {/* A retired receipt is read-only history. Reachable by deep link / browser-back
+          even though the list disables its edit icon, so say so plainly here too. */}
+      {form.isEditMode && form.isDeletedReceipt && (
+        <Box
+          role="status"
+          sx={{
+            mt: 2,
+            px: 2,
+            py: 1.25,
+            borderRadius: '8px',
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            color: '#B91C1C',
+            fontSize: '13px',
+            lineHeight: 1.6,
+            fontFamily: "'Lexend', sans-serif",
+          }}
+        >
+          {ORDER_RECEIVE_DELETED_BADGE.EDIT_BLOCKED}
+        </Box>
+      )}
 
       {/* Supplier Section */}
       <SupplierSection
@@ -632,7 +658,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           <StandardButton
             variant="primary"
             size="large"
-            disabled={!validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
+            // A retired receipt cannot be saved — the endpoint answers 409 RECEIPT_DELETED.
+            disabled={form.isDeletedReceipt || !validateRequiredFields() || form.isSaving || submit.isSubmittingReceipt}
             onClick={form.isEditMode ? handleSubmitReceipt : handleProceedToPaymentClick}
             sx={{ height: "48px", width: "160px", fontSize: "12px" }}
           >
@@ -651,12 +678,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           )}
         </Box>
 
-        {form.isEditMode && (
+        {form.isEditMode && !form.isDeletedReceipt && (
           <Button
             variant="contained"
             disableRipple
             disabled={form.isDeleting}
-            onClick={submit.deleteReceipt}
+            // Opens the reason dialog — never deletes straight from the click. The
+            // endpoint requires a deletion_reason, and a one-click destructive action
+            // with no confirmation was how this button behaved before.
+            onClick={() => form.setIsReceiptDeleteDialogOpen(true)}
             sx={{
               backgroundColor: "#EF4444",
               color: "#FFFFFF",
@@ -724,15 +754,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         itemName={form.rowToDeleteId ? table.pharmaTableData.find(row => row.id === form.rowToDeleteId)?.productId : undefined}
       />
 
-      <ConfirmationDialog
+      <DeleteReceiptDialog
         open={form.isReceiptDeleteDialogOpen}
+        receiptNumber={form.receiptNumber}
+        isDeleting={form.isDeleting}
         onClose={() => form.setIsReceiptDeleteDialogOpen(false)}
-        onConfirm={async () => {
+        onConfirm={async (reason) => {
           form.setIsReceiptDeleteDialogOpen(false);
-          await submit.deleteReceipt();
+          await submit.deleteReceipt(reason);
         }}
-        title="Delete Receipt"
-        message="Are you sure you want to delete this entire receipt? This action cannot be undone."
       />
 
       <ConfirmationDialog

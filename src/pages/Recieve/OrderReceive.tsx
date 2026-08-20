@@ -17,7 +17,6 @@ import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import "./OrderReceive.scss";
 import { ReusableTable } from "../../components/PharmaTable";
-import ConfirmationDialog from "../../components/DeleteDialogue/ConfirmationDialog";
 import CommonModal from "../../components/CommonModal/CommonModal";
 import ProductDetailsModalContent from "./ProductDetailsModalContent";
 import {
@@ -25,7 +24,6 @@ import {
   ADD_RECEIVE_BUTTON,
   PURCHASE_RETURN_BUTTON,
   ORDER_RECEIVE_MESSAGES,
-  ORDER_RECEIVE_DIALOG,
   ORDER_RECEIVE_MODAL,
 } from "../../config/label/OrderReceive.labels";
 import { ORDER_RECEIVE_CONSTANTS } from "../../config/constants/OrderReceive.constants";
@@ -106,16 +104,11 @@ const OrderReceive: React.FC = () => {
     editingRowId,
     editingDraft,
     setEditingDraft,
-    isDeleteDialogOpen,
-    setIsDeleteDialogOpen,
-    rowToDeleteId,
     snackbar,
     setSnackbar,
     handleEditClick,
     handleSaveClick,
     handleCancelClick,
-    handleDeleteClick,
-    handleConfirmDelete,
     handlePaymentDetailsClick,
     validateInlineEditing,
   } = useOrderReceiveActions(
@@ -578,15 +571,6 @@ const OrderReceive: React.FC = () => {
           </>
         )}
       </Box>
-
-      <ConfirmationDialog
-        open={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title={ORDER_RECEIVE_DIALOG.DELETE_TITLE}
-        message={ORDER_RECEIVE_DIALOG.DELETE_MESSAGE}
-        itemName={rowToDeleteId ? tableData.find((r) => r.reNo === rowToDeleteId)?.reNo : undefined}
-      />
 
       <Snackbar
         open={snackbar.open}

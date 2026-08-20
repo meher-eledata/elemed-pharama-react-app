@@ -39,6 +39,16 @@ export interface Receipt {
   last_payment_method: string | null;
   last_payment_vendor: string | null;
   last_transaction_number: string | null;
+  // ---- Soft-delete state (backend migration 028; POST /api/receive/delete-receipt) ----
+  // A retired receipt is NOT hidden from this list — the row stays visible and carries
+  // who deleted it, when and why, so the history is auditable. Treat every one of these
+  // as read-only history: a DELETED receipt cannot be edited or paid (both endpoints
+  // answer 409 RECEIPT_DELETED). `record_status` is COALESCEd server-side, so it is
+  // always present; the other three are null on an ACTIVE receipt.
+  record_status: 'ACTIVE' | 'DELETED';
+  deletion_reason: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
   // Legacy fields for backward compatibility
   id?: number; // Alias for receipt_id
   total_amount?: number; // Alias for po_total_amount (converted to number)
@@ -152,6 +162,11 @@ export interface ReceiptLine {
   batch_number?: string; // Batch number field from backend
   hsn_id?: string; // HSN ID field from backend
   hsn_code?: string; // HSN code field from backend (if exists)
+  // Soft-delete state of the PARENT receipt, repeated on every line (see Receipt above).
+  record_status?: 'ACTIVE' | 'DELETED';
+  deletion_reason?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
 
 export interface GetReceiptLinesRequest {
@@ -177,12 +192,29 @@ export interface EditReceiptLineQuantityResponse {
   updated_at: string;
 }
 
+// POST /api/receive/delete-receipt — SOFT delete. Nothing is destroyed: stock is
+// reversed with a posted `Receipt_Delete_OUT` transaction, supplier payments are
+// VOIDed, and the receipt is flagged record_status='DELETED'.
+// `deleted_by` and `deletion_reason` are BOTH mandatory server-side (400 otherwise) —
+// they are the audit trail, so the UI must collect a reason before calling this.
 export interface DeleteReceiptRequest {
-  id: number;
+  receipt_id: number;
+  deleted_by: string;
+  deletion_reason: string;
 }
 
 export interface DeleteReceiptResponse {
   message: string;
+  receipt_id: number;
+  receipt_number: string | null;
+  po_id: number;
+  record_status: 'DELETED';
+  deleted_by: string;
+  deletion_reason: string;
+  reversed_line_count: number;
+  reversed_unit_quantity: number;
+  voided_payment_count: number;
+  reversed_credit_txn_count: number;
 }
 
 export interface DeleteReceiptLineRequest {
@@ -371,7 +403,11 @@ export const receiveApi = createApi({
 
     deleteReceipt: builder.mutation<DeleteReceiptResponse, DeleteReceiptRequest>({
       query: (body) => ({
-        url: "receive/delete-receipts/",
+        // Singular. The old "receive/delete-receipts/" (plural) never existed on the
+        // backend — this mutation 404'd for its whole life until the endpoint landed
+        // 2026-08-19. Invalidates Inventory/Reports below because a delete reverses
+        // stock and removes the receipt from the purchase + GST reports.
+        url: "receive/delete-receipt",
         method: "POST",
         body,
       }),

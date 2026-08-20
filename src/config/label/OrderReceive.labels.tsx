@@ -53,6 +53,37 @@ export const ORDER_RECEIVE_DIALOG = {
   DELETE_MESSAGE: "Are you sure you want to delete this record? This action cannot be undone.",
 } as const;
 
+// Copy for deleting a WHOLE goods receipt (POST /api/receive/delete-receipt).
+// Deliberately avoids "cannot be undone": the backend soft-deletes — the receipt, its
+// lines and its stock history all survive, the receipt is just retired. The copy names
+// the two real consequences (stock reversed, payments voided) instead.
+export const ORDER_RECEIVE_DELETE_DIALOG = {
+  TITLE: "Delete this receipt?",
+  MESSAGE:
+    "The received stock will be taken back out of inventory and any supplier payments on this receipt will be voided. The receipt stays in your history, marked as deleted.",
+  MESSAGE_WITH_NUMBER: (receiptNumber: string) =>
+    `Receipt ${receiptNumber} will be deleted. The received stock will be taken back out of inventory and any supplier payments on this receipt will be voided. The receipt stays in your history, marked as deleted.`,
+  REASON_LABEL: "Reason for deletion",
+  REASON_PLACEHOLDER: "e.g. Entered twice by mistake",
+  REASON_REQUIRED: "Please enter a reason — it is recorded against this receipt.",
+  CONFIRM_LABEL: "Delete receipt",
+  CONFIRM_LABEL_BUSY: "Deleting...",
+  CANCEL_LABEL: "Cancel",
+} as const;
+
+// Badge + tooltip for a receipt that has been deleted (record_status === 'DELETED').
+export const ORDER_RECEIVE_DELETED_BADGE = {
+  LABEL: "Deleted",
+  TOOLTIP: (by: string | null, at: string | null, reason: string | null) => {
+    const who = by ? ` by ${by}` : '';
+    const when = at ? ` on ${at}` : '';
+    const why = reason ? ` — ${reason}` : '';
+    return `Deleted${who}${when}${why}`;
+  },
+  EDIT_BLOCKED: "This receipt has been deleted and can no longer be edited.",
+  PAYMENT_BLOCKED: "This receipt has been deleted and can no longer take payments.",
+} as const;
+
 export const ORDER_RECEIVE_MODAL = {
   DETAILS_TITLE: "Details of products",
 } as const;

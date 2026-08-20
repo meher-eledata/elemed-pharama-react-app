@@ -15,6 +15,7 @@ import { PharmaTableRow } from "../../types";
 
 const mockSubmitReceipt = jest.fn();
 const mockEditReceipt = jest.fn();
+const mockDeleteReceipt = jest.fn();
 
 jest.mock("react-router-dom", () => ({
   useNavigate: () => jest.fn(),
@@ -30,6 +31,7 @@ jest.mock("../../../../redux/slices/receiveApi", () => ({
   useSubmitReceiptMutation: () => [mockSubmitReceipt, { isLoading: false }],
   useEditReceiptMutation: () => [mockEditReceipt, { isLoading: false }],
   useUploadReceiptFileMutation: () => [jest.fn()],
+  useDeleteReceiptMutation: () => [mockDeleteReceipt, { isLoading: false }],
 }));
 
 const row: PharmaTableRow = {

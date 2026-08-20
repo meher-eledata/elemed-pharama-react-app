@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import {
   useEditReceiptMutation,
-  useDeleteReceiptMutation,
   EditReceiptRequest,
   Receipt
 } from "../../../redux/slices/receiveApi";
@@ -19,8 +18,6 @@ export const useOrderReceiveActions = (
   const navigate = useNavigate();
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<OrderReceiveRow | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
-  const [rowToDeleteId, setRowToDeleteId] = useState<string | null>(null);
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -33,7 +30,6 @@ export const useOrderReceiveActions = (
   });
 
   const [editReceipt, { isLoading: saving }] = useEditReceiptMutation();
-  const [deleteReceipt, { isLoading: deleting }] = useDeleteReceiptMutation();
 
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'success') => {
     setSnackbar({ open: true, message, severity });
@@ -148,38 +144,6 @@ export const useOrderReceiveActions = (
     setEditingDraft(null);
   };
 
-  const handleDeleteClick = (rowNo: string) => {
-    setRowToDeleteId(rowNo);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!rowToDeleteId) {
-      setIsDeleteDialogOpen(false);
-      return;
-    }
-    const row = tableData.find((r) => r.reNo === rowToDeleteId);
-    if (!row) {
-      setIsDeleteDialogOpen(false);
-      setRowToDeleteId(null);
-      return;
-    }
-
-    const receiptId = Number(row.reNo.replace('RA', ''));
-
-    try {
-      await deleteReceipt({ id: receiptId }).unwrap();
-      setTableData(tableData.filter((r) => r.reNo !== rowToDeleteId));
-      await refetchReceipts();
-      showSnackbar('Deleted successfully', 'success');
-    } catch (e) {
-      showSnackbar(`Delete failed: ${extractErrorMessage(e)}`, 'error');
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setRowToDeleteId(null);
-    }
-  };
-
   const handlePaymentDetailsClick = (row: OrderReceiveRow) => {
     navigate('/receive/payment-details', {
       state: {
@@ -207,20 +171,13 @@ export const useOrderReceiveActions = (
     setEditingRowId,
     editingDraft,
     setEditingDraft,
-    isDeleteDialogOpen,
-    setIsDeleteDialogOpen,
-    rowToDeleteId,
-    setRowToDeleteId,
     snackbar,
     setSnackbar,
     handleEditClick,
     handleSaveClick,
     handleCancelClick,
-    handleDeleteClick,
-    handleConfirmDelete,
     handlePaymentDetailsClick,
     validateInlineEditing,
-    saving,
-    deleting
+    saving
   };
 };

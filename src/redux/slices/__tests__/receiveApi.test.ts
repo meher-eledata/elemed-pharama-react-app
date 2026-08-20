@@ -233,31 +233,42 @@ describe('Receive API Endpoints', () => {
     });
   });
 
-  describe('POST receive/delete-receipts/ (deleteReceipt mutation)', () => {
-    it('builds the correct request', async () => {
-      mockOk({ message: 'deleted' });
+  // The route is SINGULAR. This mutation used to POST "receive/delete-receipts/"
+  // (plural), which never existed on the backend, and carried `{ id }` — a shape the
+  // real endpoint rejects. Both were corrected when the delete feature landed.
+  describe('POST receive/delete-receipt (deleteReceipt mutation)', () => {
+    it('builds the correct request, carrying the mandatory audit fields', async () => {
+      mockOk({ message: 'Receipt deleted successfully' });
       const store = makeStore();
-      const body = { id: 3 };
+      const body = {
+        receipt_id: 3,
+        deleted_by: 'testadmin',
+        deletion_reason: 'Entered twice by mistake',
+      };
       const result = await store.dispatch(
         receiveApi.endpoints.deleteReceipt.initiate(body)
       );
 
-      expect(result.data).toEqual({ message: 'deleted' });
+      expect(result.data).toEqual({ message: 'Receipt deleted successfully' });
       expect(mockBaseQuery).toHaveBeenCalledWith(
-        { url: 'receive/delete-receipts/', method: 'POST', body },
+        { url: 'receive/delete-receipt', method: 'POST', body },
         expectExtraArgs,
         undefined
       );
     });
 
     it('handles error', async () => {
-      mockErr(404);
+      mockErr(409);
       const store = makeStore();
       const result = await store.dispatch(
-        receiveApi.endpoints.deleteReceipt.initiate({ id: 3 })
+        receiveApi.endpoints.deleteReceipt.initiate({
+          receipt_id: 3,
+          deleted_by: 'testadmin',
+          deletion_reason: 'x',
+        })
       );
       expect(result.error).toBeDefined();
-      expect((result.error as { status: number }).status).toBe(404);
+      expect((result.error as { status: number }).status).toBe(409);
     });
   });
 

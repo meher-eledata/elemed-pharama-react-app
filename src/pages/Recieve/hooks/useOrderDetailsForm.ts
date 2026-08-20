@@ -33,6 +33,12 @@ export const useOrderDetailsForm = () => {
   const navigationPaymentVendor = locationState.paymentVendor || "";
   const navigationInvoiceDate = locationState.invoiceDate || "";
   const navigationInvoiceNumber = locationState.invoiceNumber || "";
+  // Deep-link / browser-back safety net: the receipts list already disables the edit
+  // icon on a retired receipt, but the page can still be reached with its router state
+  // (e.g. Back after a delete). A retired receipt is read-only — the backend answers 409
+  // RECEIPT_DELETED to edit-receipt — so the page renders read-only rather than offering
+  // a Save that is guaranteed to fail.
+  const isDeletedReceipt = (selectedOrder as any)?.record_status === 'DELETED';
 
   // Form fields state
   const [supplierName, setSupplierName] = useState<string>(
@@ -157,6 +163,7 @@ export const useOrderDetailsForm = () => {
     isEditMode,
     receiptId,
     receiptNumber,
+    isDeletedReceipt,
     navigationTransactionNumber,
     navigationPaymentVendor,
     navigationInvoiceDate,
