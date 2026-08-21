@@ -139,14 +139,12 @@ export const COMPLIANCE_LABELS = {
     LOAD_ERROR: 'Could not load the compliance calendar.',
     windowLabel: (from: string, to: string) => `Showing ${from} to ${to}`,
     OVERDUE: 'Overdue',
-    OVERDUE_HINT: 'Lapsed licences. These are always shown, whatever month you are viewing.',
-    UPCOMING: 'Upcoming in this window',
-    UPCOMING_HINT:
-      'Only renewals dated inside this window. A licence expiring later is not missing — see Documents for everything filed.',
+    // `days` is the length of the loaded window; null while it is still loading.
+    UPCOMING: (days: number | null) =>
+      days === null ? 'Upcoming' : `Upcoming (${days} ${days === 1 ? 'day' : 'days'})`,
     NOTHING_FILED: 'Nothing filed yet',
     NOTHING_FILED_HINT: 'Required document types with no document at all.',
-    NO_EXPIRY: 'Documents that do not expire',
-    NO_EXPIRY_HINT: 'Filed and in force. Not calendar events — they have no renewal date.',
+    NO_EXPIRY: 'Documents without Expiry',
     ON_DATE: (date: string) => `On ${date}`,
     CLEAR_DATE: 'Show the whole window',
     NOTHING_DUE: 'Nothing due in this window.',

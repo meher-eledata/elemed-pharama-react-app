@@ -217,6 +217,15 @@ const ComplianceCalendar: React.FC = () => {
   const noExpiry = data?.no_expiry ?? [];
   const eventsByDate = useMemo(() => groupByValidTo(data?.items ?? []), [data]);
 
+  // Window length for the section heading — inclusive of both endpoints, matching
+  // the backend (a document expiring exactly on `to` is inside the window).
+  const windowDays = useMemo(() => {
+    const from = dayjs(data?.from);
+    const to = dayjs(data?.to);
+    if (!data?.from || !data?.to || !from.isValid() || !to.isValid()) return null;
+    return to.diff(from, 'day') + 1;
+  }, [data]);
+
   const selectedKey = selectedDate?.format(C.API_DATE_FORMAT) ?? null;
   const selectedItems = selectedKey ? (eventsByDate.get(selectedKey) ?? []) : [];
 
@@ -328,15 +337,13 @@ const ComplianceCalendar: React.FC = () => {
 
           <AgendaSection
             title={L.CALENDAR.OVERDUE}
-            hint={L.CALENDAR.OVERDUE_HINT}
             emptyText={L.CALENDAR.NOTHING_OVERDUE}
             items={overdue}
             onOpen={openItem}
             accent={COMPLIANCE_STATE_CHIP.EXPIRED.color}
           />
           <AgendaSection
-            title={L.CALENDAR.UPCOMING}
-            hint={L.CALENDAR.UPCOMING_HINT}
+            title={L.CALENDAR.UPCOMING(windowDays)}
             emptyText={L.CALENDAR.NOTHING_DUE}
             items={upcoming}
             onOpen={openItem}
@@ -351,7 +358,6 @@ const ComplianceCalendar: React.FC = () => {
           />
           <AgendaSection
             title={L.CALENDAR.NO_EXPIRY}
-            hint={L.CALENDAR.NO_EXPIRY_HINT}
             emptyText={L.CALENDAR.NONE}
             items={noExpiry}
             onOpen={openItem}
