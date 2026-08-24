@@ -1,5 +1,5 @@
 import type { NotificationItem } from '../../redux/slices/notificationsApi';
-import { COMPLIANCE_CONSTANTS } from './Compliance.constants';
+import { COMPLIANCE_CONSTANTS, complianceDocumentsRoute } from './Compliance.constants';
 
 export const NOTIFICATION_CONSTANTS = {
   LIST_LIMIT: 50, // server default + "load more" step; must be an integer 1..200
@@ -122,7 +122,7 @@ export const getNotificationRoute = (
     case 'COMPLIANCE_EXPIRING':
     case 'COMPLIANCE_EXPIRED':
       return {
-        path: COMPLIANCE_CONSTANTS.ROUTE_BASE,
+        path: complianceDocumentsRoute(COMPLIANCE_CONSTANTS.ROUTE_BASE),
         state: { complianceDocumentId: notification.payload?.document_id ?? undefined },
       };
     case 'COMPLIANCE_MISSING':
@@ -133,7 +133,7 @@ export const getNotificationRoute = (
       // The calendar routes the identical fact to the identical key
       // (ComplianceCalendar.openItem) — the two surfaces must never diverge here.
       return {
-        path: COMPLIANCE_CONSTANTS.ROUTE_BASE,
+        path: complianceDocumentsRoute(COMPLIANCE_CONSTANTS.ROUTE_BASE),
         state:
           notification.payload?.document_id == null
             ? { complianceDocumentTypeId: notification.payload?.document_type_id }

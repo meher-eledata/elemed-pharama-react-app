@@ -48,11 +48,29 @@ it('renders grouped documents, the nothing-filed action and the version history'
   expect(await screen.findByText('NDPS Licence')).toBeInTheDocument();
   expect(await screen.findByText('Nothing has been filed for this document type yet.')).toBeInTheDocument();
   expect(await screen.findByText('Does not expire')).toBeInTheDocument();
-  expect(screen.getAllByText('Current').length).toBeGreaterThan(0);
   fireEvent.click(await screen.findByText('Show 1 earlier version'));
   await waitFor(() => expect(screen.getByText('Version 1')).toBeInTheDocument());
+  // The "Current" badge lives in version history, where rows differ. The document
+  // row itself shows only its current version, so a badge there said nothing.
+  expect(screen.getAllByText('Current').length).toBeGreaterThan(0);
   expect(screen.getByText('Superseded')).toBeInTheDocument();
   expect(screen.getByText('old.pdf (2 KB)')).toBeInTheDocument();
+});
+
+it('keeps both edit actions behind the row overflow menu, distinctly labelled', async () => {
+  renderPage();
+  await screen.findByTestId('compliance-document-5');
+
+  // Neither edit action crowds the row until the menu is opened.
+  expect(screen.queryByText('Edit version details')).not.toBeInTheDocument();
+  expect(screen.queryByText('Edit document')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getAllByLabelText('More actions')[0]);
+
+  // Both are reachable, and neither is the bare "Edit details" that used to read
+  // as a near-homonym of the document action sitting next to it.
+  expect(await screen.findByText('Edit version details')).toBeInTheDocument();
+  expect(screen.getByText('Edit document')).toBeInTheDocument();
 });
 
 it('never renders a truncated list as complete, and loads the next page', async () => {

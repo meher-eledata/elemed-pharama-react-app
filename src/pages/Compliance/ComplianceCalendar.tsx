@@ -13,6 +13,7 @@ import {
   COMPLIANCE_CHIP_BASE_SX,
   COMPLIANCE_CONSTANTS,
   COMPLIANCE_STATE_CHIP,
+  complianceDocumentsRoute,
 } from '../../config/constants/Compliance.constants';
 import { COMPLIANCE_LABELS } from '../../config/label/Compliance.labels';
 import {
@@ -137,7 +138,6 @@ const CalendarRow: React.FC<RowProps> = ({ item, onOpen }) => {
 
 interface SectionProps {
   title: string;
-  hint?: string;
   emptyText: string;
   items: ComplianceCalendarItem[];
   onOpen: (item: ComplianceCalendarItem) => void;
@@ -146,7 +146,6 @@ interface SectionProps {
 
 const AgendaSection: React.FC<SectionProps> = ({
   title,
-  hint,
   emptyText,
   items,
   onOpen,
@@ -163,11 +162,6 @@ const AgendaSection: React.FC<SectionProps> = ({
         sx={{ ...COMPLIANCE_CHIP_BASE_SX, backgroundColor: '#F3F4F6', color: '#4B5563' }}
       />
     </Box>
-    {hint && (
-      <Typography sx={{ fontSize: '12px', color: '#6B7280', fontFamily: C.FONT, mt: 0.5 }}>
-        {hint}
-      </Typography>
-    )}
     {items.length === 0 ? (
       <Typography sx={{ fontSize: '13px', color: '#6B7280', fontFamily: C.FONT, mt: 1.5 }}>
         {emptyText}
@@ -212,9 +206,11 @@ const ComplianceCalendar: React.FC = () => {
     [data],
   );
   // `missing` carries BOTH shapes: type-only rows (document_id null) and documents
-  // that exist but have no file yet (state NO_VERSION, document_id set).
+  // that exist but have no file yet (state NO_VERSION, document_id set). It no
+  // longer has a section of its own, but it still counts towards the "next action"
+  // banner — an unfiled required licence is the loudest thing this page can say.
+  // (`no_expiry` is fetched but deliberately not rendered here.)
   const missing = data?.missing ?? [];
-  const noExpiry = data?.no_expiry ?? [];
   const eventsByDate = useMemo(() => groupByValidTo(data?.items ?? []), [data]);
 
   // Window length for the section heading — inclusive of both endpoints, matching
@@ -232,10 +228,12 @@ const ComplianceCalendar: React.FC = () => {
   const openItem = (item: ComplianceCalendarItem) => {
     if (item.document_id === null) {
       // Nothing filed for the type at all — open the create-document flow on it.
-      navigate(base, { state: { complianceDocumentTypeId: item.document_type_id } });
+      navigate(complianceDocumentsRoute(base), {
+        state: { complianceDocumentTypeId: item.document_type_id },
+      });
       return;
     }
-    navigate(base, {
+    navigate(complianceDocumentsRoute(base), {
       state:
         item.state === 'NO_VERSION'
           ? { complianceUploadDocumentId: item.document_id }
@@ -346,20 +344,6 @@ const ComplianceCalendar: React.FC = () => {
             title={L.CALENDAR.UPCOMING(windowDays)}
             emptyText={L.CALENDAR.NOTHING_DUE}
             items={upcoming}
-            onOpen={openItem}
-          />
-          <AgendaSection
-            title={L.CALENDAR.NOTHING_FILED}
-            hint={L.CALENDAR.NOTHING_FILED_HINT}
-            emptyText={L.CALENDAR.ALL_FILED}
-            items={missing}
-            onOpen={openItem}
-            accent={COMPLIANCE_STATE_CHIP.NO_VERSION.color}
-          />
-          <AgendaSection
-            title={L.CALENDAR.NO_EXPIRY}
-            emptyText={L.CALENDAR.NONE}
-            items={noExpiry}
             onOpen={openItem}
           />
         </Box>

@@ -36,11 +36,13 @@ const ComplianceNav: React.FC = () => {
   const base = complianceBasePath(location.pathname);
   const isAdminPortal = base === C.ADMIN_ROUTE_BASE;
 
+  // Calendar leads: it is the module's landing surface (the base path redirects
+  // here), so the first tab and the default destination are the same page.
   // Settings (document types + reminder lead days) is an admin-portal surface only.
   const tabs = [
-    { label: L.NAV.DOCUMENTS, path: base },
-    { label: L.NAV.CALENDAR, path: `${base}/calendar` },
-    ...(isAdminPortal ? [{ label: L.NAV.SETTINGS, path: `${base}/settings` }] : []),
+    { label: L.NAV.CALENDAR, path: `${base}/${C.CALENDAR_PATH}` },
+    { label: L.NAV.DOCUMENTS, path: `${base}/${C.DOCUMENTS_PATH}` },
+    ...(isAdminPortal ? [{ label: L.NAV.SETTINGS, path: `${base}/${C.SETTINGS_PATH}` }] : []),
   ];
 
   const active = tabs.findIndex((tab) => tab.path === location.pathname);

@@ -40,6 +40,7 @@ import {
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
 import ComplianceNav from './components/ComplianceNav';
 import CreateDocumentModal from './components/CreateDocumentModal';
+import DocumentRowMenu from './components/DocumentRowMenu';
 import EditDocumentModal from './components/EditDocumentModal';
 import UploadVersionModal from './components/UploadVersionModal';
 import VersionHistory from './components/VersionHistory';
@@ -410,24 +411,12 @@ const ComplianceDocuments: React.FC = () => {
                   </Box>
 
                   {current ? (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        flexWrap: 'wrap',
-                        mt: 0.75,
-                      }}
-                    >
-                      <Chip
-                        label={L.BADGE.CURRENT}
-                        size="small"
-                        sx={{
-                          ...COMPLIANCE_CHIP_BASE_SX,
-                          backgroundColor: '#EDE9FE',
-                          color: '#6D28D9',
-                        }}
-                      />
+                    // The version shown on a document row is the current one by
+                    // definition, so the old "Current" chip was noise here (it still
+                    // earns its place in version history, where rows differ).
+                    // File identity leads; the validity window is the quieter second
+                    // line rather than a third chip competing on the same row.
+                    <Box sx={{ mt: 0.75 }}>
                       <Typography sx={{ fontSize: '13px', color: '#374151', fontFamily: C.FONT }}>
                         {`${L.HINTS.VERSION_NO(current.version_no)} · ${current.file_name}`}
                       </Typography>
@@ -465,25 +454,25 @@ const ComplianceDocuments: React.FC = () => {
                         {L.ACTIONS.DOWNLOAD}
                       </StandardButton>
                     )}
-                    {current && (
-                      <StandardButton
-                        variant="text"
-                        size="small"
-                        onClick={() => {
-                          setExpandedDocumentId(document.id);
-                          setEditingVersionId(current.id);
-                        }}
-                      >
-                        {L.ACTIONS.EDIT_DETAILS}
-                      </StandardButton>
-                    )}
-                    <StandardButton
-                      variant="text"
-                      size="small"
-                      onClick={() => setEditTarget(document)}
-                    >
-                      {L.DOCUMENT_EDIT.ACTION}
-                    </StandardButton>
+                    {/* The two edit actions are near-homonyms ("Edit version
+                        details" vs "Edit document") and are both secondary to
+                        filing a version, so they live behind one overflow menu
+                        instead of widening the row. */}
+                    <DocumentRowMenu
+                      onEditVersion={
+                        current
+                          ? () => {
+                              setExpandedDocumentId(document.id);
+                              setEditingVersionId(current.id);
+                            }
+                          : undefined
+                      }
+                      onEditDocument={() => setEditTarget(document)}
+                    />
+
+                    {/* History is a disclosure, not an action — it sits apart from
+                        the action cluster, at the far end of the row. */}
+                    <Box sx={{ flex: 1 }} />
                     {document.version_count > 0 && (
                       <StandardButton
                         variant="text"

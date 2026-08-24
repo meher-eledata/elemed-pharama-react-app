@@ -7,8 +7,6 @@ import dayjs from 'dayjs';
 import authReducer from '../../../redux/slices/authSlice';
 import { complianceApi, type ComplianceCalendarItem } from '../../../redux/slices/complianceApi';
 import ComplianceCalendar from '../ComplianceCalendar';
-import { getNotificationRoute } from '../../../config/constants/Notifications.constants';
-import type { NotificationItem } from '../../../redux/slices/notificationsApi';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -72,54 +70,52 @@ const renderPage = () => {
   );
 };
 
-it('separates overdue, upcoming, nothing-filed and no-expiry rows', async () => {
+it('separates overdue and upcoming rows', async () => {
   renderPage();
   expect(await screen.findByText('Expired 10 days ago')).toBeInTheDocument();
   expect(screen.getByText('Expires in 5 days')).toBeInTheDocument();
-  // Type-only MISSING renders from type_name, NO_VERSION keeps its own title.
-  expect(screen.getByText('Affidavit')).toBeInTheDocument();
-  expect(screen.getByText('Transport Permit')).toBeInTheDocument();
-  expect(screen.getByText('Shop Licence')).toBeInTheDocument();
 });
 
-it('routes a type-only row to the create flow and a no-version row to its upload', async () => {
+// The "Nothing filed yet" and "Documents without Expiry" sections were removed from
+// this page. The payload still carries `missing` and `no_expiry` (the banner below
+// counts `missing`), so this pins that they are not rendered as agenda rows —
+// re-adding a section should be a deliberate act, not a silent regression.
+it('no longer renders the nothing-filed or no-expiry sections', async () => {
   renderPage();
   await screen.findByText('Expired 10 days ago');
-  fireEvent.click(screen.getByText('File this document'));
-  expect(mockNavigate).toHaveBeenCalledWith('/compliance', {
-    state: { complianceDocumentTypeId: 7 },
-  });
-  fireEvent.click(screen.getByText('Upload the first version'));
-  expect(mockNavigate).toHaveBeenCalledWith('/compliance', {
-    state: { complianceUploadDocumentId: 9 },
-  });
+  expect(screen.queryByText('Nothing filed yet')).not.toBeInTheDocument();
+  expect(screen.queryByText('Documents without Expiry')).not.toBeInTheDocument();
+  // Type-only MISSING rendered from type_name; NO_VERSION kept its own title.
+  expect(screen.queryByText('Affidavit')).not.toBeInTheDocument();
+  expect(screen.queryByText('Transport Permit')).not.toBeInTheDocument();
+  expect(screen.queryByText('Shop Licence')).not.toBeInTheDocument();
 });
 
-// The calendar and the bell describe the SAME facts; when they disagree on what to
-// DO about one, the user gets two different answers for one licence. This pins the
-// two surfaces together (the divergence class this module has been bitten by twice).
-it('routes each missing shape to the same place the bell does', async () => {
-  const bellRoute = (payload: Record<string, unknown>) =>
-    getNotificationRoute({
-      id: 1, module: 'compliance', type: 'COMPLIANCE_MISSING', severity: 'HIGH',
-      title: 't', body: null, payload, status: 'ACTIVE',
-      first_seen_at: '', last_seen_at: '', read_at: null, dismissed_at: null, resolved_at: null,
-    } as NotificationItem);
+// An unfiled required licence is still the loudest fact this page can state, so it
+// must survive the section's removal at the top of the page.
+it('still counts unfiled documents in the next-action banner', async () => {
+  renderPage();
+  expect(await screen.findByText(/Next action:/)).toBeInTheDocument();
+});
 
+// REMOVED WITH THE "Nothing filed yet" SECTION: two tests used to pin the calendar's
+// missing-row actions ("File this document" / "Upload the first version") to the
+// exact destinations the notification bell uses for the same facts — the divergence
+// class this module had been bitten by twice. The calendar no longer renders those
+// rows, so there is nothing left to click and the guard could not be kept.
+//
+// The bell side is still covered on its own in
+// src/config/constants/__tests__/Notifications.constants.test.ts, but NOTHING now
+// holds the two surfaces to the same answer. If a missing/no-version section is ever
+// restored here, restore that parity test with it.
+//
+// Overdue and upcoming rows still route through the same openItem(), covered below.
+it('routes an overdue row to its document', async () => {
   renderPage();
   await screen.findByText('Expired 10 days ago');
-
-  // (a) nothing filed for the type at all.
-  fireEvent.click(screen.getByText('File this document'));
-  expect(mockNavigate).toHaveBeenLastCalledWith(
-    '/compliance',
-    { state: bellRoute({ document_id: null, document_type_id: 7 })!.state },
-  );
-
-  // (b) the document exists but has no version.
-  fireEvent.click(screen.getByText('Upload the first version'));
-  expect(mockNavigate).toHaveBeenLastCalledWith(
-    '/compliance',
-    { state: bellRoute({ document_id: 9, document_type_id: 8 })!.state },
-  );
+  // Overdue is the first section, so its row is the first "Open document".
+  fireEvent.click(screen.getAllByText('Open document')[0]);
+  expect(mockNavigate).toHaveBeenLastCalledWith('/compliance/documents', {
+    state: { complianceDocumentId: 2 },
+  });
 });

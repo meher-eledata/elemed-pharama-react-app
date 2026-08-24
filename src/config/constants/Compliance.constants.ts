@@ -4,6 +4,13 @@ export const COMPLIANCE_CONSTANTS = {
   ROUTE_BASE: '/compliance',
   // The same pages under the admin portal (role decides capability, not route).
   ADMIN_ROUTE_BASE: '/admin/compliance',
+  // Child segments under either base. The base itself renders nothing — it
+  // redirects to CALENDAR, which is the module's landing surface. Every page
+  // therefore has exactly ONE canonical URL, so the nav tabs can match the
+  // pathname exactly instead of falling back to a default tab.
+  CALENDAR_PATH: 'calendar',
+  DOCUMENTS_PATH: 'documents',
+  SETTINGS_PATH: 'settings',
   FONT: "'Lexend', sans-serif",
   ACCENT: '#5C17E5',
   // Client-side pre-checks mirroring POST /compliance/documents/:id/versions
@@ -24,6 +31,12 @@ export const COMPLIANCE_CONSTANTS = {
   // notification severity itself is always taken from the server.
   DEFAULT_LEAD_DAYS: [60, 30, 7],
 } as const;
+
+// Full URL of the Documents page under either portal. Deep links (notification
+// rows, calendar items) target the DOCUMENTS page specifically, never the base —
+// the base redirects to the calendar and would drop the link's router state.
+export const complianceDocumentsRoute = (base: string): string =>
+  `${base}/${COMPLIANCE_CONSTANTS.DOCUMENTS_PATH}`;
 
 // The lifecycle state of a document, derived from its CURRENT version only.
 export type ComplianceDocumentState =

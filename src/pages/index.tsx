@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthLayout } from "../components/Layout";
 import LogInLeft from "./LogIn/LogInLeft/LogInLeft";
 import ForgotPassword from "../pages/LogIn/ForgotPassword/ForgotPassword";
@@ -37,6 +37,7 @@ import ComplianceDocuments from "./Compliance/ComplianceDocuments";
 import ComplianceCalendar from "./Compliance/ComplianceCalendar";
 import ComplianceSettings from "./Compliance/ComplianceSettings";
 import { ADMIN_CONSTANTS } from "../config/constants/Admin.constants";
+import { COMPLIANCE_CONSTANTS as C } from "../config/constants/Compliance.constants";
 import { orderLabels } from '../config/label/OrderDetail.labels'
 import { ProtectedRoute } from "../guards/ProtectedRoute";
 import { RoleGuard } from "../guards/RoleGuard";
@@ -89,11 +90,14 @@ export const Pages = () => {
           </Route>
         </Route>
 
-        {/* Compliance module routes - gated by the org's active modules */}
+        {/* Compliance module routes - gated by the org's active modules.
+            The base redirects to the calendar: it is the module's landing
+            surface (what is due / lapsed), with Documents as the filing drill-down. */}
         <Route element={<ModuleGuard module="compliance" />}>
           <Route path="/compliance" element={<DashboardLayout />}>
-            <Route index element={<ComplianceDocuments />} />
-            <Route path="calendar" element={<ComplianceCalendar />} />
+            <Route index element={<Navigate to={C.CALENDAR_PATH} replace />} />
+            <Route path={C.CALENDAR_PATH} element={<ComplianceCalendar />} />
+            <Route path={C.DOCUMENTS_PATH} element={<ComplianceDocuments />} />
           </Route>
         </Route>
 
@@ -120,9 +124,12 @@ export const Pages = () => {
             {/* Compliance under the admin portal — same endpoints as /compliance;
                 the role decides capability, not the route (like /admin/master). */}
             <Route element={<ModuleGuard module="compliance" />}>
-              <Route path="compliance" element={<ComplianceDocuments />} />
-              <Route path="compliance/calendar" element={<ComplianceCalendar />} />
-              <Route path="compliance/settings" element={<ComplianceSettings />} />
+              <Route path="compliance">
+                <Route index element={<Navigate to={C.CALENDAR_PATH} replace />} />
+                <Route path={C.CALENDAR_PATH} element={<ComplianceCalendar />} />
+                <Route path={C.DOCUMENTS_PATH} element={<ComplianceDocuments />} />
+                <Route path={C.SETTINGS_PATH} element={<ComplianceSettings />} />
+              </Route>
             </Route>
             <Route path="settings" element={<AdminSettings />} />
             <Route path="audit" element={<AuditLog />} />

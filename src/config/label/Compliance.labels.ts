@@ -15,6 +15,12 @@ export const COMPLIANCE_LABELS = {
     FILE_FIRST_VERSION: 'Upload the first version',
     DOWNLOAD: 'Download',
     EDIT_DETAILS: 'Edit details',
+    // Used only where the version action sits directly beside the DOCUMENT action
+    // (the document row's overflow menu), where a bare "Edit details" reads as a
+    // near-homonym of "Edit document". Inside version history the row already
+    // supplies the context, so EDIT_DETAILS stays as it is there.
+    EDIT_VERSION_DETAILS: 'Edit version details',
+    MORE_ACTIONS: 'More actions',
     MAKE_CURRENT: 'Make current',
     SAVE: 'Save',
     CANCEL: 'Cancel',
@@ -135,22 +141,19 @@ export const COMPLIANCE_LABELS = {
   },
   CALENDAR: {
     TITLE: 'Compliance calendar',
-    SUBTITLE: 'Renewals due, lapsed licences and papers still to be filed.',
+    // "papers still to be filed" was dropped with the "Nothing filed yet" section —
+    // the page no longer lists them, so the subtitle must not promise them.
+    SUBTITLE: 'Renewals due and lapsed licences.',
     LOAD_ERROR: 'Could not load the compliance calendar.',
     windowLabel: (from: string, to: string) => `Showing ${from} to ${to}`,
     OVERDUE: 'Overdue',
     // `days` is the length of the loaded window; null while it is still loading.
     UPCOMING: (days: number | null) =>
       days === null ? 'Upcoming' : `Upcoming (${days} ${days === 1 ? 'day' : 'days'})`,
-    NOTHING_FILED: 'Nothing filed yet',
-    NOTHING_FILED_HINT: 'Required document types with no document at all.',
-    NO_EXPIRY: 'Documents without Expiry',
     ON_DATE: (date: string) => `On ${date}`,
     CLEAR_DATE: 'Show the whole window',
     NOTHING_DUE: 'Nothing due in this window.',
     NOTHING_OVERDUE: 'Nothing is overdue.',
-    ALL_FILED: 'Every required document type has something filed.',
-    NONE: 'None.',
     ALL_CLEAR: 'Nothing needs your attention right now.',
     NEXT_ACTION: 'Next action',
     FILE_IT: 'File this document',

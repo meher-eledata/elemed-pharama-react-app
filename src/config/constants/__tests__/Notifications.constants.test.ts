@@ -196,7 +196,7 @@ describe('getNotificationRoute — compliance deep links', () => {
   it('COMPLIANCE_EXPIRING / COMPLIANCE_EXPIRED -> the document, by id', () => {
     ['COMPLIANCE_EXPIRING', 'COMPLIANCE_EXPIRED'].forEach((type) => {
       expect(getNotificationRoute(item({ type, payload: { document_id: 5 } }))).toEqual({
-        path: '/compliance',
+        path: '/compliance/documents',
         state: { complianceDocumentId: 5 },
       });
     });
@@ -208,7 +208,7 @@ describe('getNotificationRoute — compliance deep links', () => {
       getNotificationRoute(
         item({ type: 'COMPLIANCE_MISSING', payload: { document_id: null, document_type_id: 7 } }),
       ),
-    ).toEqual({ path: '/compliance', state: { complianceDocumentTypeId: 7 } });
+    ).toEqual({ path: '/compliance/documents', state: { complianceDocumentTypeId: 7 } });
   });
 
   it('COMPLIANCE_MISSING for an existing document -> its UPLOAD step, not its history', () => {
@@ -220,6 +220,6 @@ describe('getNotificationRoute — compliance deep links', () => {
       getNotificationRoute(
         item({ type: 'COMPLIANCE_MISSING', payload: { document_id: 9, document_type_id: 8 } }),
       ),
-    ).toEqual({ path: '/compliance', state: { complianceUploadDocumentId: 9 } });
+    ).toEqual({ path: '/compliance/documents', state: { complianceUploadDocumentId: 9 } });
   });
 });
