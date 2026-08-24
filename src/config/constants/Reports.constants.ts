@@ -18,15 +18,6 @@ export const REPORTS_CONSTANTS = {
     PADDING_BOTTOM: '24px',
   },
   DAILY_SALES_REPORT: {
-    HEADER: {
-      TITLE_VARIANT: 'h5' as const,
-      TITLE_FONT_WEIGHT: 700,
-      TITLE_COLOR: '#1A212B',
-      DATE_PICKER: {
-        WIDTH: 180,
-        HEIGHT: 44,
-      },
-    },
     CARD: {
       BORDER_RADIUS: '12px',
       BOX_SHADOW: '0 1px 3px rgba(0,0,0,0.1)',
@@ -75,12 +66,6 @@ export const REPORTS_CONSTANTS = {
       CHART_COLOR: '#7C3AED',
       TICK_LABEL_FONT_SIZE: 12,
       TICK_LABEL_COLOR: '#728197',
-    },
-    LINK: {
-      COLOR: '#5C17E5',
-      FONT_SIZE: '16px',
-      FONT_WEIGHT: 500,
-      ARROW_SIZE: '16px',
     },
   },
 } as const;

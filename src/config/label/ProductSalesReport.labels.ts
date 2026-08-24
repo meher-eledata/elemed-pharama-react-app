@@ -12,6 +12,10 @@ export const PRODUCT_SALES_REPORT_LABELS = {
       'Line-level gross sales per product with quantity, discount, GST and line totals.',
     ACTION: 'View Report',
   },
+  TABS: {
+    OVERVIEW: 'Overview',
+    PRODUCT: 'Product-wise',
+  },
   FILTER: {
     PRODUCT_LABEL: 'Product',
     PRODUCT_ALL: 'All Products',

@@ -8,11 +8,13 @@ import {
   ReportHeader,
   ReportLoading,
   ReportError,
+  ReportEmpty,
+  ReportSwitcher,
   FilterSelect,
   FilterSelectOption,
   CellText,
   TableShell,
-  SummaryBar,
+  MetricCardGrid,
   BackLink,
 } from '../../components/AdminReports/ReportShared';
 import { ADMIN_REPORTS_CONSTANTS as C } from '../../config/constants/AdminReports.constants';
@@ -59,6 +61,7 @@ const ProductSalesReport: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
+  const [tab, setTab] = useState<'overview' | 'product'>('overview');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [productId, setProductId] = useState<string>('');
   const [patientType, setPatientType] = useState<string>(''); // '', '0', '1'
@@ -213,17 +216,17 @@ const ProductSalesReport: React.FC = () => {
   );
 
   const summary = data?.summary;
-  const summaryStats = useMemo(
+  const summaryCards = useMemo(
     () => [
-      { label: L.SUMMARY.LINES, value: formatCount(summary?.line_count ?? 0) },
-      { label: L.SUMMARY.TOTAL_QTY, value: formatNumber(toNum(summary?.total_quantity)) },
-      { label: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
-      { label: L.SUMMARY.INVOICES, value: formatCount(summary?.invoice_count ?? 0) },
-      { label: L.SUMMARY.TOTAL_CGST, value: formatCurrency(toNum(summary?.total_cgst)) },
-      { label: L.SUMMARY.TOTAL_SGST, value: formatCurrency(toNum(summary?.total_sgst)) },
-      { label: L.SUMMARY.TOTAL_IGST, value: formatCurrency(toNum(summary?.total_igst)) },
-      { label: L.SUMMARY.TOTAL_TAX, value: formatCurrency(toNum(summary?.total_tax)) },
-      { label: L.SUMMARY.TOTAL_SALES, value: formatCurrency(toNum(summary?.total_sales)), highlight: true },
+      { title: L.SUMMARY.LINES, value: formatCount(summary?.line_count ?? 0) },
+      { title: L.SUMMARY.TOTAL_QTY, value: formatNumber(toNum(summary?.total_quantity)) },
+      { title: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
+      { title: L.SUMMARY.INVOICES, value: formatCount(summary?.invoice_count ?? 0) },
+      { title: L.SUMMARY.TOTAL_CGST, value: formatCurrency(toNum(summary?.total_cgst)) },
+      { title: L.SUMMARY.TOTAL_SGST, value: formatCurrency(toNum(summary?.total_sgst)) },
+      { title: L.SUMMARY.TOTAL_IGST, value: formatCurrency(toNum(summary?.total_igst)) },
+      { title: L.SUMMARY.TOTAL_TAX, value: formatCurrency(toNum(summary?.total_tax)) },
+      { title: L.SUMMARY.TOTAL_SALES, value: formatCurrency(toNum(summary?.total_sales)), accentColor: C.COLORS.PURPLE },
     ],
     [summary]
   );
@@ -292,7 +295,7 @@ const ProductSalesReport: React.FC = () => {
         title={L.PAGE.TITLE}
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
-        onDownloadCsv={handleDownloadCsv}
+        onDownloadCsv={tab !== 'overview' ? handleDownloadCsv : undefined}
         downloadDisabled={!rows.length}
         dateRange={dateRange}
         onDateRangeChange={(r) => {
@@ -322,13 +325,30 @@ const ProductSalesReport: React.FC = () => {
         />
       </ReportHeader>
 
+      <ReportSwitcher
+        active={tab}
+        onChange={(newTab) => {
+          setTab(newTab);
+          setCurrentPage(1);
+        }}
+        options={[
+          { value: 'overview', label: L.TABS.OVERVIEW },
+          { value: 'product', label: L.TABS.PRODUCT },
+        ]}
+      />
+
       {isLoading ? (
         <ReportLoading />
       ) : isError ? (
         <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
+      ) : tab === 'overview' ? (
+        rows.length > 0 ? (
+          <MetricCardGrid cards={summaryCards} />
+        ) : (
+          <ReportEmpty message={L.EMPTY_TABLE} />
+        )
       ) : (
         <>
-          {rows.length > 0 && <SummaryBar stats={summaryStats} />}
           <TableShell>
             <ReusableTable
               columns={columns}

@@ -12,10 +12,10 @@ export const SUPPLIER_TAX_REPORT_LABELS = {
       'Input GST on receipts, toggle between receipt-level and supplier-level aggregation.',
     ACTION: 'View Report',
   },
-  LEVEL_TOGGLE: {
-    LABEL: 'View By',
-    RECEIPT: 'By Receipt',
-    SUPPLIER: 'By Supplier',
+  TABS: {
+    OVERVIEW: 'Overview',
+    RECEIPT: 'Receipt-wise',
+    SUPPLIER: 'Supplier-wise',
   },
   FILTER: {
     SUPPLIER_LABEL: 'Supplier',

@@ -14,8 +14,9 @@ export const SUPPLIER_RECEIPT_REPORT_LABELS = {
   },
   TABS: {
     OVERVIEW: 'Overview',
-    BY_RECEIPT: 'By Receipt',
-    DETAILED: 'Detailed Table',
+    RECEIPT: 'Receipt-wise',
+    // Line/item-level rows (one per received product line), hence "Item-wise".
+    ITEM: 'Item-wise',
   },
   FILTER: {
     SUPPLIER_LABEL: 'Supplier',

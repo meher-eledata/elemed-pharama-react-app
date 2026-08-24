@@ -8,6 +8,7 @@ import {
   ReportHeader,
   ReportLoading,
   ReportError,
+  ReportEmpty,
   ReportSwitcher,
   FilterSelect,
   FilterSelectOption,
@@ -65,7 +66,9 @@ const SupplierTaxReport: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
-  const [level, setLevel] = useState<SupplierTaxLevel>('receipt');
+  const [tab, setTab] = useState<'overview' | SupplierTaxLevel>('overview');
+  // Overview shows the range aggregates only; its summary comes from a receipt-level fetch.
+  const level: SupplierTaxLevel = tab === 'overview' ? 'receipt' : tab;
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [supplierId, setSupplierId] = useState<string>('');
 
@@ -93,7 +96,7 @@ const SupplierTaxReport: React.FC = () => {
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
-    key: level === 'receipt' ? 'receipt_date' : 'totalWithTaxN',
+    key: 'receipt_date',
     direction: C.TABLE.DEFAULT_SORT_DIRECTION,
   });
 
@@ -245,11 +248,11 @@ const SupplierTaxReport: React.FC = () => {
     logDownload({ category: 'report', name: 'Supplier Tax Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
-  const handleLevelChange = (newLevel: SupplierTaxLevel) => {
-    setLevel(newLevel);
+  const handleTabChange = (newTab: 'overview' | SupplierTaxLevel) => {
+    setTab(newTab);
     setCurrentPage(1);
     setSortConfig({
-      key: newLevel === 'receipt' ? 'receipt_date' : 'totalWithTaxN',
+      key: newTab === 'supplier' ? 'totalWithTaxN' : 'receipt_date',
       direction: C.TABLE.DEFAULT_SORT_DIRECTION,
     });
   };
@@ -262,7 +265,7 @@ const SupplierTaxReport: React.FC = () => {
         title={L.PAGE.TITLE}
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
-        onDownloadCsv={handleDownloadCsv}
+        onDownloadCsv={tab !== 'overview' ? handleDownloadCsv : undefined}
         downloadDisabled={!hasRows}
         dateRange={dateRange}
         onDateRangeChange={(r) => {
@@ -283,11 +286,12 @@ const SupplierTaxReport: React.FC = () => {
       </ReportHeader>
 
       <ReportSwitcher
-        active={level}
-        onChange={handleLevelChange}
+        active={tab}
+        onChange={handleTabChange}
         options={[
-          { value: 'receipt', label: L.LEVEL_TOGGLE.RECEIPT },
-          { value: 'supplier', label: L.LEVEL_TOGGLE.SUPPLIER },
+          { value: 'overview', label: L.TABS.OVERVIEW },
+          { value: 'receipt', label: L.TABS.RECEIPT },
+          { value: 'supplier', label: L.TABS.SUPPLIER },
         ]}
       />
 
@@ -295,9 +299,14 @@ const SupplierTaxReport: React.FC = () => {
         <ReportLoading />
       ) : isError ? (
         <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
+      ) : tab === 'overview' ? (
+        hasRows ? (
+          <MetricCardGrid cards={summaryCards} />
+        ) : (
+          <ReportEmpty message={L.EMPTY_TABLE} />
+        )
       ) : (
         <>
-          {hasRows && <MetricCardGrid cards={summaryCards} />}
           <TableShell>
             {level === 'receipt' ? (
               <ReusableTable

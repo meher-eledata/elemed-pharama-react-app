@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
+import dayjs from 'dayjs';
 import DetailedSalesTable from '../DetailedSalesTable';
 import * as reportsApi from '../../../redux/slices/reportsApi';
 
@@ -28,17 +29,6 @@ jest.mock('react-csv', () => {
         'data-csv': JSON.stringify(props.data),
       })
     ),
-  };
-});
-
-// The MUI date picker needs a LocalizationProvider; stub it like sibling report
-// tests stub DateRangeFilter.
-jest.mock('../../../components/Common', () => {
-  const actual = jest.requireActual('../../../components/Common');
-  return {
-    __esModule: true,
-    ...actual,
-    PharmaDatePicker: () => <div data-testid="date-picker" />,
   };
 });
 
@@ -108,12 +98,14 @@ const createStore = () =>
     middleware: (gDM) => gDM().concat(reportsApi.reportsApi.middleware),
   });
 
+// The table is now an embedded view of the Sales Report (Invoice-wise tab) —
+// the date range arrives as props from the parent page.
 const renderPage = () =>
   render(
     <Provider store={createStore()}>
       <ThemeProvider theme={theme}>
         <MemoryRouter>
-          <DetailedSalesTable />
+          <DetailedSalesTable startDate={dayjs('2026-07-16')} endDate={dayjs('2026-07-16')} />
         </MemoryRouter>
       </ThemeProvider>
     </Provider>
@@ -128,12 +120,7 @@ beforeEach(() => {
   });
 });
 
-describe('DetailedSalesTable page', () => {
-  it('renders the page title', () => {
-    renderPage();
-    expect(screen.getByText('Detailed sales table')).toBeInTheDocument();
-  });
-
+describe('DetailedSalesTable view', () => {
   it('renders the Customer Details column with sale-row value and a dash for null', () => {
     renderPage();
     expect(screen.getByText('Customer Details')).toBeInTheDocument();

@@ -312,8 +312,8 @@ const SupplierReceiptReport: React.FC = () => {
         onChange={handleTabChange}
         options={[
           { value: 'overview', label: L.TABS.OVERVIEW },
-          { value: 'byReceipt', label: L.TABS.BY_RECEIPT },
-          { value: 'detailed', label: L.TABS.DETAILED },
+          { value: 'byReceipt', label: L.TABS.RECEIPT },
+          { value: 'detailed', label: L.TABS.ITEM },
         ]}
       />
 

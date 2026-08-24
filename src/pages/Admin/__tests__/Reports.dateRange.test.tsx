@@ -40,22 +40,24 @@ jest.mock('react-csv', () => {
   return {
     __esModule: true,
     CSVLink: ReactLib.forwardRef((props: any, _ref: any) =>
-      ReactLib.createElement('div', { 'data-testid': 'csv-link' }, props.children)
+      ReactLib.createElement(
+        'div',
+        { 'data-testid': 'csv-link', 'data-csv': JSON.stringify(props.data) },
+        props.children
+      )
     ),
   };
 });
 
-// Render each date picker as its formatted value so we can assert the default.
-jest.mock('../../../components/Common', () => {
-  const actual = jest.requireActual('../../../components/Common');
-  return {
-    __esModule: true,
-    ...actual,
-    PharmaDatePicker: ({ value }: any) => (
-      <div data-testid="date-picker">{value ? value.format('YYYY-MM-DD') : 'none'}</div>
-    ),
-  };
-});
+// Render the shared date-range filter as its formatted values so we can assert the default.
+jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', () => ({
+  __esModule: true,
+  default: ({ dateRange }: any) => (
+    <div data-testid="date-range-filter">
+      {dateRange.map((d: any) => (d ? d.format('YYYY-MM-DD') : 'none')).join('_')}
+    </div>
+  ),
+}));
 
 jest.mock('../../../redux/slices/reportsApi', () => {
   const actual = jest.requireActual('../../../redux/slices/reportsApi');
@@ -128,13 +130,38 @@ describe('Reports — Sales Report header (rename + date-range defaults)', () =>
     expect(REPORTS_LABELS.DAILY_SALES_REPORT.TITLE).toBe('Sales Report');
   });
 
-  it('defaults both the start and end date pickers to today', async () => {
+  it('defaults the shared date-range filter to the last 30 days', async () => {
     renderReports();
     await screen.findByText('Sales Report');
 
-    const today = dayjs().format('YYYY-MM-DD');
-    const pickers = screen.getAllByTestId('date-picker');
-    expect(pickers).toHaveLength(2);
-    pickers.forEach((p) => expect(p).toHaveTextContent(today));
+    const end = dayjs().format('YYYY-MM-DD');
+    const start = dayjs().subtract(29, 'day').format('YYYY-MM-DD');
+    expect(screen.getByTestId('date-range-filter')).toHaveTextContent(`${start}_${end}`);
+  });
+
+  it('renders the Overview / Invoice-wise switcher without the landing tab pair', async () => {
+    renderReports();
+    await screen.findByText('Sales Report');
+
+    expect(screen.getByText('Overview')).toBeInTheDocument();
+    expect(screen.getByText('Invoice-wise')).toBeInTheDocument();
+    // A report is open — the KPI's / Detailed Reports landing tabs must be hidden.
+    expect(screen.queryByText("KPI's")).not.toBeInTheDocument();
+    expect(screen.queryByText('Detailed Reports')).not.toBeInTheDocument();
+    // The old bottom link is gone.
+    expect(screen.queryByText('View Detailed Sales Table')).not.toBeInTheDocument();
+  });
+
+  it('keeps the Overview summary CSV export: enabled header button + summary rows', async () => {
+    renderReports();
+    await screen.findByText('Sales Report');
+
+    // Overview is the default tab and its summary export stays available.
+    expect(screen.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
+    const csvRows = JSON.parse(
+      screen.getByTestId('csv-link').getAttribute('data-csv') || '[]'
+    );
+    expect(csvRows.some((r: any) => r.Section === 'Summary' && r.Metric === 'Total Bills')).toBe(true);
+    expect(csvRows.some((r: any) => r.Section === 'Tax Summary' && r.Metric === 'CGST (₹)')).toBe(true);
   });
 });

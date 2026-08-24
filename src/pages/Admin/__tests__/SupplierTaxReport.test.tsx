@@ -1,7 +1,7 @@
 global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -122,21 +122,34 @@ describe('SupplierTaxReport page', () => {
     expect(screen.getAllByText('Supplier Tax Report').length).toBeGreaterThan(0);
   });
 
-  it('renders the receipt/supplier level toggle', () => {
+  it('renders the Overview / Receipt-wise / Supplier-wise switcher', () => {
     renderPage();
-    expect(screen.getByText('By Receipt')).toBeInTheDocument();
-    expect(screen.getByText('By Supplier')).toBeInTheDocument();
+    expect(screen.getByText('Overview')).toBeInTheDocument();
+    expect(screen.getByText('Receipt-wise')).toBeInTheDocument();
+    expect(screen.getByText('Supplier-wise')).toBeInTheDocument();
   });
 
-  it('renders key tax table columns for the default receipt level', () => {
+  it('shows the aggregate cards on the default Overview tab, without the table', () => {
     renderPage();
+    expect(screen.getByText('Total Taxable')).toBeInTheDocument();
+    expect(screen.getByText('₹5,000.00')).toBeInTheDocument();
+    // Table columns belong to the detailed tabs only.
+    expect(screen.queryByText('Receipt Total')).not.toBeInTheDocument();
+  });
+
+  it('renders key tax table columns on the Receipt-wise tab, without the aggregate cards', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Receipt-wise'));
     expect(screen.getByText('Taxable Value')).toBeInTheDocument();
     expect(screen.getByText('Receipt Total')).toBeInTheDocument();
     expect(screen.getByText('Acme Pharma')).toBeInTheDocument();
+    // Aggregates live on Overview only.
+    expect(screen.queryByText('Total Taxable')).not.toBeInTheDocument();
   });
 
   it('formats the receipt total as ₹ and never renders NaN', () => {
     renderPage();
+    fireEvent.click(screen.getByText('Receipt-wise'));
     // receipt_total "1234.50" -> ₹1,234.50
     expect(screen.getAllByText('₹1,234.50').length).toBeGreaterThan(0);
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
@@ -146,6 +159,7 @@ describe('SupplierTaxReport page', () => {
   // server-generated GRN number, which is opaque and never rebuilt client-side.
   it('renders the generated receipt number in the Receipt # column, not the internal PK', () => {
     renderPage();
+    fireEvent.click(screen.getByText('Receipt-wise'));
     expect(screen.getByText('GRN-000501')).toBeInTheDocument();
     expect(screen.queryByText('501')).not.toBeInTheDocument();
   });
@@ -166,6 +180,7 @@ describe('SupplierTaxReport page', () => {
       refetch: jest.fn(),
     });
     renderPage();
+    fireEvent.click(screen.getByText('Receipt-wise'));
     expect(screen.getByText('GRN/26-27/000042')).toBeInTheDocument();
     expect(mockCsvRows[0]['Receipt #']).toBe('GRN/26-27/000042');
   });

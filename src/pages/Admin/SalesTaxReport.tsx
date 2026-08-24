@@ -8,6 +8,7 @@ import {
   ReportHeader,
   ReportLoading,
   ReportError,
+  ReportEmpty,
   ReportSwitcher,
   FilterSelect,
   FilterSelectOption,
@@ -91,7 +92,9 @@ const SalesTaxReport: React.FC = () => {
   const navigate = useNavigate();
   const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
-  const [level, setLevel] = useState<SalesTaxLevel>('product');
+  const [tab, setTab] = useState<'overview' | SalesTaxLevel>('overview');
+  // Overview shows the range aggregates only; its summary comes from a product-level fetch.
+  const level: SalesTaxLevel = tab === 'overview' ? 'product' : tab;
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [productId, setProductId] = useState<string>('');
   const [patientType, setPatientType] = useState<string>('');
@@ -444,11 +447,11 @@ const SalesTaxReport: React.FC = () => {
     logDownload({ category: 'report', name: 'Sales Tax Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
-  const handleLevelChange = (newLevel: SalesTaxLevel) => {
-    setLevel(newLevel);
+  const handleTabChange = (newTab: 'overview' | SalesTaxLevel) => {
+    setTab(newTab);
     setCurrentPage(1);
     setSortConfig({
-      key: newLevel === 'hsn' ? 'lineTotalN' : 'sale_date',
+      key: newTab === 'hsn' ? 'lineTotalN' : 'sale_date',
       direction: C.TABLE.DEFAULT_SORT_DIRECTION,
     });
   };
@@ -466,7 +469,7 @@ const SalesTaxReport: React.FC = () => {
         title={L.PAGE.TITLE}
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
-        onDownloadCsv={handleDownloadCsv}
+        onDownloadCsv={tab !== 'overview' ? handleDownloadCsv : undefined}
         downloadDisabled={!hasRows}
         dateRange={dateRange}
         onDateRangeChange={(r) => {
@@ -507,12 +510,13 @@ const SalesTaxReport: React.FC = () => {
       </ReportHeader>
 
       <ReportSwitcher
-        active={level}
-        onChange={handleLevelChange}
+        active={tab}
+        onChange={handleTabChange}
         options={[
-          { value: 'product', label: L.LEVEL_TOGGLE.PRODUCT },
-          { value: 'hsn', label: L.LEVEL_TOGGLE.HSN },
-          { value: 'invoice', label: L.LEVEL_TOGGLE.INVOICE },
+          { value: 'overview', label: L.TABS.OVERVIEW },
+          { value: 'product', label: L.TABS.PRODUCT },
+          { value: 'hsn', label: L.TABS.HSN },
+          { value: 'invoice', label: L.TABS.INVOICE },
         ]}
       />
 
@@ -520,14 +524,17 @@ const SalesTaxReport: React.FC = () => {
         <ReportLoading />
       ) : isError ? (
         <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
+      ) : tab === 'overview' ? (
+        hasRows ? (
+          <>
+            <SectionTitle>{L.SUMMARY.TITLE}</SectionTitle>
+            <MetricCardGrid cards={summaryCards} />
+          </>
+        ) : (
+          <ReportEmpty message={L.EMPTY_TABLE} />
+        )
       ) : (
         <>
-          {hasRows && (
-            <>
-              <SectionTitle>{L.SUMMARY.TITLE}</SectionTitle>
-              <MetricCardGrid cards={summaryCards} />
-            </>
-          )}
           <TableShell>
             {level === 'product' ? (
               <ReusableTable

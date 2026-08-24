@@ -149,17 +149,6 @@ export const ADMIN_REPORTS_CONSTANTS = {
   },
 
   // Summary / totals bar (matches DetailedSalesTable grand-totals bar).
-  TOTALS_BAR: {
-    BACKGROUND: '#F9FAFB',
-    BORDER: '1px solid #E5E7EB',
-    BORDER_RADIUS: '12px',
-    BOX_SHADOW: '0 1px 2px rgba(0,0,0,0.05)',
-    LABEL_FONT_SIZE: '12px',
-    LABEL_COLOR: '#6B7280',
-    VALUE_FONT_SIZE: '14px',
-    VALUE_COLOR: '#1A212B',
-    VALUE_FONT_WEIGHT: 600,
-  },
 
   CURRENCY: {
     LOCALE: 'en-IN',

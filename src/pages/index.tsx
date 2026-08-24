@@ -24,7 +24,6 @@ import Users from "./Admin/Users";
 import Reports from "./Admin/Reports";
 import AdminSettings from "./Admin/Settings";
 import AuditLog from "./Admin/AuditLog";
-import DetailedSalesTable from "./Admin/DetailedSalesTable";
 import SupplierReceiptReport from "./Admin/SupplierReceiptReport";
 import SupplierPaymentReport from "./Admin/SupplierPaymentReport";
 import ProductSalesReport from "./Admin/ProductSalesReport";
@@ -112,7 +111,18 @@ export const Pages = () => {
             <Route path="master" element={<Masterpage enableDownload />} />
             <Route path="users" element={<Users />} />
             <Route path="reports" element={<Reports />} />
-            <Route path="reports/detailed-sales" element={<DetailedSalesTable />} />
+            {/* Legacy deep link: the detailed sales table is now the Sales Report's
+                Invoice-wise tab. */}
+            <Route
+              path="reports/detailed-sales"
+              element={
+                <Navigate
+                  to="/admin/reports"
+                  replace
+                  state={{ activeTab: 'detailed', selectedReport: 'daily-sales', salesTab: 'invoice' }}
+                />
+              }
+            />
             <Route path="reports/supplier-receipt" element={<SupplierReceiptReport />} />
             <Route path="reports/supplier-payments" element={<SupplierPaymentReport />} />
             <Route path="reports/product-sales" element={<ProductSalesReport />} />

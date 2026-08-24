@@ -155,7 +155,7 @@ describe('SupplierPaymentReport page', () => {
   // server-generated GRN number, which is opaque and never rebuilt client-side.
   it('renders the generated receipt number in the Receipt # column, not the internal PK', () => {
     renderPage();
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Payment-wise'));
     expect(screen.getByText('GRN-000501')).toBeInTheDocument();
     expect(screen.queryByText('501')).not.toBeInTheDocument();
   });
@@ -177,7 +177,7 @@ describe('SupplierPaymentReport page', () => {
       refetch: jest.fn(),
     });
     renderPage();
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Payment-wise'));
     expect(screen.queryByText('GRN-000501')).not.toBeInTheDocument();
     expect(screen.getAllByText('-').length).toBeGreaterThan(0);
     expect(mockCsvRows[0]['Receipt #']).toBe('');

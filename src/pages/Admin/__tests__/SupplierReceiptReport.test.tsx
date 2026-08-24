@@ -211,7 +211,7 @@ describe('SupplierReceiptReport page', () => {
   // while the CSV keeps the raw numeric string under the "MRP (₹)" heading.
   it('formats MRP as currency on the Detailed tab but exports it numeric in the CSV', () => {
     renderPage();
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Item-wise'));
     const row = screen.getByText('GRN-000501').closest('tr')!;
     expect(within(row).getByText('₹120.00')).toBeInTheDocument(); // mrp '120.00'
     expect(within(row).queryByText('120.00')).not.toBeInTheDocument(); // no unformatted copy
@@ -222,7 +222,7 @@ describe('SupplierReceiptReport page', () => {
   // server-generated GRN number, which is opaque and never rebuilt client-side.
   it('renders the generated receipt number in the Receipt # column, not the internal PK', () => {
     renderPage();
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Item-wise'));
     expect(screen.getByText('GRN-000501')).toBeInTheDocument();
     expect(screen.queryByText('501')).not.toBeInTheDocument();
   });
@@ -240,25 +240,25 @@ describe('SupplierReceiptReport page', () => {
       refetch: jest.fn(),
     });
     renderPage();
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Item-wise'));
     expect(screen.getByText('GRN/26-27/000042')).toBeInTheDocument();
     expect(mockCsvRows[0]['Receipt #']).toBe('GRN/26-27/000042');
   });
 });
 
 // ===========================================================================
-// "By Receipt" tab — rows_by_receipt rollup (contract addition 2026-08-20).
+// "Receipt-wise" tab — rows_by_receipt rollup (contract addition 2026-08-20).
 // One table row per receipt; counts are pg bigint-as-string and must be
 // Number()ed; discount_amount is a RUPEE AMOUNT, distinct from the detail
 // tab's percent discount.
 // ===========================================================================
-describe('SupplierReceiptReport — By Receipt tab', () => {
+describe('SupplierReceiptReport — Receipt-wise tab', () => {
   // GRN cells in DOCUMENT order — with one table on screen this is row order.
   const grnOrder = () => screen.getAllByText(/^GRN-000/).map((el) => el.textContent);
 
   it('renders the receipt-level table: receipt number, supplier, numeric counts and ₹ values', () => {
     renderPage();
-    fireEvent.click(screen.getByText('By Receipt'));
+    fireEvent.click(screen.getByText('Receipt-wise'));
 
     const row501 = screen.getByText('GRN-000501').closest('tr')!;
     expect(within(row501).getByText('Acme Pharma')).toBeInTheDocument();
@@ -277,18 +277,18 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
   it('labels the two discount columns distinctly: "Discount (%)" on detail, "Discount (₹)" by receipt', () => {
     renderPage();
 
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Item-wise'));
     expect(screen.getByText('Discount (%)')).toBeInTheDocument();
     expect(screen.queryByText('Discount (₹)')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('By Receipt'));
+    fireEvent.click(screen.getByText('Receipt-wise'));
     expect(screen.getByText('Discount (₹)')).toBeInTheDocument();
     expect(screen.queryByText('Discount (%)')).not.toBeInTheDocument();
   });
 
   it('sorts by receipt_date desc by default and resets sort state on tab switch', () => {
     renderPage();
-    fireEvent.click(screen.getByText('By Receipt'));
+    fireEvent.click(screen.getByText('Receipt-wise'));
     // Default: receipt_date desc — newest receipt first.
     expect(grnOrder()).toEqual(['GRN-000501', 'GRN-000400']);
 
@@ -306,14 +306,14 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
 
     // …then a tab round-trip restores the date-desc default (no stale sort key,
     // no crash from carrying detail-tab sort state onto the rollup table).
-    fireEvent.click(screen.getByText('Detailed Table'));
-    fireEvent.click(screen.getByText('By Receipt'));
+    fireEvent.click(screen.getByText('Item-wise'));
+    fireEvent.click(screen.getByText('Receipt-wise'));
     expect(grnOrder()).toEqual(['GRN-000501', 'GRN-000400']);
   });
 
   it('renders "-" for null invoice / PO / supplier / GST fields', () => {
     renderPage();
-    fireEvent.click(screen.getByText('By Receipt'));
+    fireEvent.click(screen.getByText('Receipt-wise'));
 
     const row400 = screen.getByText('GRN-000400').closest('tr')!;
     // invoice_number, po_number, supplier_name, supplier_gst — all null → '-'.
@@ -326,7 +326,7 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
   it('CSV follows the active tab: per-tab columns and a by_receipt vs detailed filename suffix', () => {
     renderPage();
 
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Item-wise'));
     expect(mockCsvMeta.filename).toMatch(
       /^supplier_receipt_report_detailed_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/
     );
@@ -334,7 +334,7 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     expect(mockCsvRows[0]['Product']).toBe('Amoxicillin 500mg');
     expect(mockCsvRows[0]['Discount (%)']).toBe('5.00'); // PERCENT on the detail export
 
-    fireEvent.click(screen.getByText('By Receipt'));
+    fireEvent.click(screen.getByText('Receipt-wise'));
     expect(mockCsvMeta.filename).toMatch(
       /^supplier_receipt_report_by_receipt_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/
     );
@@ -351,10 +351,10 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     renderPage();
     expect(screen.queryByRole('button', { name: 'Download CSV' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('By Receipt'));
+    fireEvent.click(screen.getByText('Receipt-wise'));
     expect(screen.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
 
-    fireEvent.click(screen.getByText('Detailed Table'));
+    fireEvent.click(screen.getByText('Item-wise'));
     expect(screen.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
   });
 });

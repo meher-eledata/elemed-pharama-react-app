@@ -186,27 +186,39 @@ describe('SalesTaxReport page', () => {
     expect(screen.getAllByText('Sales Tax Report').length).toBeGreaterThan(0);
   });
 
-  it('renders key tax table columns and the row product', () => {
+  it('shows the Range Aggregates on the default Overview tab, without a table', () => {
     renderPage();
+    expect(screen.getByText('Range Aggregates')).toBeInTheDocument();
+    expect(screen.getByText('Total Taxable Value')).toBeInTheDocument();
+    // Table rows belong to the detailed tabs only.
+    expect(screen.queryByText('Amoxicillin 500mg')).not.toBeInTheDocument();
+  });
+
+  it('renders key tax table columns and the row product on the Product-wise tab', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Product-wise'));
     expect(screen.getByText('Taxable Value')).toBeInTheDocument();
     expect(screen.getAllByText('Total Tax').length).toBeGreaterThan(0);
     expect(screen.getByText('Amoxicillin 500mg')).toBeInTheDocument();
+    // Aggregates live on Overview only.
+    expect(screen.queryByText('Range Aggregates')).not.toBeInTheDocument();
   });
 
   it('shows the Customer Details column on the product-wise tab only', () => {
     renderPage();
-    // Product-wise (default) tab carries the per-invoice detail.
+    // Product-wise carries the per-invoice detail.
+    fireEvent.click(screen.getByText('Product-wise'));
     expect(screen.getByText('Customer Details')).toBeInTheDocument();
     expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
     // HSN-wise rows are aggregated and must NOT show the column.
-    fireEvent.click(screen.getByText('HSN-code-wise'));
+    fireEvent.click(screen.getByText('HSN-wise'));
     expect(screen.queryByText('Customer Details')).not.toBeInTheDocument();
     expect(screen.queryByText('Ward 4 follow-up')).not.toBeInTheDocument();
   });
 
   it('shows CGST/SGST/IGST rate columns and values in the HSN-level table', () => {
     renderPage();
-    fireEvent.click(screen.getByText('HSN-code-wise'));
+    fireEvent.click(screen.getByText('HSN-wise'));
     expect(screen.getByText('CGST%')).toBeInTheDocument();
     expect(screen.getByText('SGST%')).toBeInTheDocument();
     expect(screen.getByText('IGST%')).toBeInTheDocument();
@@ -220,32 +232,27 @@ describe('SalesTaxReport page', () => {
     fireEvent.click(screen.getByText('Invoice-wise'));
     expect(screen.getByText('Invoice No')).toBeInTheDocument();
     expect(screen.getByText('Customer')).toBeInTheDocument();
-    // 'Lines' appears both as a summary card title and the invoice table header.
-    expect(screen.getAllByText('Lines').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Lines')).toBeInTheDocument();
     expect(screen.getByText('Invoice Total')).toBeInTheDocument();
     expect(screen.getByText('INV-300')).toBeInTheDocument();
     expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
   });
 
-  it('shows the SIGNED 2dp summary Round-off figure on every level', () => {
+  it('shows the SIGNED 2dp summary Round-off figure on the Overview tab', () => {
     renderPage();
-    // Product-wise (default): summary round_off "-0.40" -> -₹0.40.
+    // Overview: summary round_off "-0.40" -> -₹0.40.
     expect(screen.getByText('Round-off')).toBeInTheDocument();
-    expect(screen.getByText('-₹0.40')).toBeInTheDocument();
-    // HSN-wise keeps the shared summary figure.
-    fireEvent.click(screen.getByText('HSN-code-wise'));
     expect(screen.getByText('-₹0.40')).toBeInTheDocument();
   });
 
   it('renders a signed 2dp Round-off column in the invoice-wise table', () => {
     renderPage();
     fireEvent.click(screen.getByText('Invoice-wise'));
-    // Tile + column header both say Round-off.
-    expect(screen.getAllByText('Round-off').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Round-off')).toBeInTheDocument();
     // Per-row round_off "0.50" -> +₹0.50 (signed, paise kept).
     expect(screen.getByText('+₹0.50')).toBeInTheDocument();
-    // Summary figure (tile + totals footer) stays signed 2dp.
-    expect(screen.getAllByText('-₹0.40').length).toBeGreaterThanOrEqual(2);
+    // Totals-footer figure stays signed 2dp.
+    expect(screen.getByText('-₹0.40')).toBeInTheDocument();
   });
 
   it('renders invoice_total as a WHOLE-RUPEE amount (no ".00" paise tail)', () => {
@@ -258,7 +265,8 @@ describe('SalesTaxReport page', () => {
 
   it('formats the line total as ₹ and never renders NaN', () => {
     renderPage();
-    // line_total "1234.50" -> ₹1,234.50 (table cell) and total_sales summary card.
+    fireEvent.click(screen.getByText('Product-wise'));
+    // line_total "1234.50" -> ₹1,234.50 (table cell).
     expect(screen.getAllByText('₹1,234.50').length).toBeGreaterThan(0);
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });

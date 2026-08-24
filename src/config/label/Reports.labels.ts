@@ -2,11 +2,22 @@ export const REPORTS_LABELS = {
   PAGE_TITLE: 'Reports',
   SUBTITLE: 'Access detailed analytics on system usage, performance metrics, and activity trends.',
   TABS: {
-    KPI: 'KPI',
-    DETAILED_VIEW: 'Detailed View Reports',
+    KPIS: "KPI's",
+    DETAILED_REPORTS: 'Detailed Reports',
   },
+  CARD_ACTION: 'View Report',
   DAILY_SALES_REPORT: {
     TITLE: 'Sales Report',
+    SUBTITLE: 'Sales, payment methods, taxes and trends for the selected period.',
+    DOWNLOAD_CSV: 'Download CSV',
+    DISCOVERY_CARD: {
+      TITLE: 'Sales Report',
+      DESCRIPTION: 'View detailed sales information including payment methods, taxes, and trends',
+    },
+    TABS: {
+      OVERVIEW: 'Overview',
+      INVOICE: 'Invoice-wise',
+    },
     METRICS: {
       TOTAL_BILLS: 'Total Bills',
       TOTAL_SALES: 'Total Sales',
@@ -32,9 +43,6 @@ export const REPORTS_LABELS = {
       SGST: 'SGST',
       IGST: 'IGST',
       TOTAL_TAX_COLLECTED: 'Total Tax Collected',
-    },
-    LINK: {
-      VIEW_DETAILED_SALES_TABLE: 'View Detailed Sales Table',
     },
   },
 } as const;

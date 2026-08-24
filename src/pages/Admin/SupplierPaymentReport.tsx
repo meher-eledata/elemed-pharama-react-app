@@ -228,7 +228,7 @@ const SupplierPaymentReport: React.FC = () => {
         onChange={setTab}
         options={[
           { value: 'overview', label: L.TABS.OVERVIEW },
-          { value: 'detailed', label: L.TABS.DETAILED },
+          { value: 'detailed', label: L.TABS.PAYMENT },
         ]}
       />
 

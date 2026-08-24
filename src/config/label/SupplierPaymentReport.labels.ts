@@ -14,7 +14,7 @@ export const SUPPLIER_PAYMENT_REPORT_LABELS = {
   },
   TABS: {
     OVERVIEW: 'Overview',
-    DETAILED: 'Detailed Table',
+    PAYMENT: 'Payment-wise',
   },
   FILTER: {
     SUPPLIER_LABEL: 'Supplier',

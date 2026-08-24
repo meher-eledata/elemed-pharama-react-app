@@ -1,5 +1,4 @@
 export const DETAILED_SALES_TABLE_LABELS = {
-  PAGE_TITLE: 'Detailed sales table',
   SEARCH_PLACEHOLDER: 'Search by customer, sale #, payment, or sale type',
   TABLE: {
     TRANSACTION_DATE: 'Sale date',

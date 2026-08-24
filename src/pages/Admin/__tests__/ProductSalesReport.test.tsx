@@ -1,7 +1,7 @@
 global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -121,21 +121,35 @@ describe('ProductSalesReport page', () => {
     expect(screen.getAllByText('Product Sales Report').length).toBeGreaterThan(0);
   });
 
-  it('renders key table columns and the row product', () => {
+  it('shows the summary metric cards on the default Overview tab, without the table', () => {
     renderPage();
+    expect(screen.getByText('Total Sales')).toBeInTheDocument();
+    // total_sales "1234.50" -> ₹1,234.50 on the highlighted card.
+    expect(screen.getByText('₹1,234.50')).toBeInTheDocument();
+    // Table rows belong to the Product-wise tab only.
+    expect(screen.queryByText('Amoxicillin 500mg')).not.toBeInTheDocument();
+  });
+
+  it('renders key table columns and the row product on the Product-wise tab', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Product-wise'));
     expect(screen.getByText('Invoice #')).toBeInTheDocument();
     expect(screen.getAllByText('Product').length).toBeGreaterThan(0);
     expect(screen.getByText('Amoxicillin 500mg')).toBeInTheDocument();
+    // Aggregate cards live on Overview only.
+    expect(screen.queryByText('Total Sales')).not.toBeInTheDocument();
   });
 
   it('renders the Customer Details column with the invoice-level value', () => {
     renderPage();
+    fireEvent.click(screen.getByText('Product-wise'));
     expect(screen.getByText('Customer Details')).toBeInTheDocument();
     expect(screen.getByText('Ward 4 follow-up')).toBeInTheDocument();
   });
 
   it('formats the line total as ₹ and never renders NaN', () => {
     renderPage();
+    fireEvent.click(screen.getByText('Product-wise'));
     // line_total "1234.50" -> ₹1,234.50
     expect(screen.getAllByText('₹1,234.50').length).toBeGreaterThan(0);
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();

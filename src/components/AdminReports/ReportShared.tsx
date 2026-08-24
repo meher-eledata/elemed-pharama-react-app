@@ -334,63 +334,6 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
   </Box>
 );
 
-// ---- Summary totals bar (matches DetailedSalesTable grand-totals bar) -------
-
-export interface SummaryStat {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}
-
-export const SummaryBar: React.FC<{ title?: string; stats: SummaryStat[] }> = ({ title, stats }) => (
-  <Box
-    sx={{
-      display: 'flex',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 4,
-      mb: 3,
-      p: 2,
-      backgroundColor: C.TOTALS_BAR.BACKGROUND,
-      border: C.TOTALS_BAR.BORDER,
-      borderRadius: C.TOTALS_BAR.BORDER_RADIUS,
-      boxShadow: C.TOTALS_BAR.BOX_SHADOW,
-    }}
-  >
-    {title && (
-      <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: C.COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
-        {title}
-      </Typography>
-    )}
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-      {stats.map((s) => (
-        <Box key={s.label} sx={s.highlight ? { borderLeft: `2px solid ${C.COLORS.BORDER}`, pl: 3 } : undefined}>
-          <Typography
-            sx={{
-              fontSize: C.TOTALS_BAR.LABEL_FONT_SIZE,
-              color: s.highlight ? C.COLORS.PURPLE : C.TOTALS_BAR.LABEL_COLOR,
-              fontWeight: s.highlight ? 600 : 400,
-              fontFamily: FONT,
-            }}
-          >
-            {s.label}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: s.highlight ? '18px' : C.TOTALS_BAR.VALUE_FONT_SIZE,
-              color: C.TOTALS_BAR.VALUE_COLOR,
-              fontWeight: s.highlight ? 700 : C.TOTALS_BAR.VALUE_FONT_WEIGHT,
-              fontFamily: FONT,
-            }}
-          >
-            {s.value}
-          </Typography>
-        </Box>
-      ))}
-    </Box>
-  </Box>
-);
-
 // ---- Grid of metric cards from a list of stats -----------------------------
 
 export const MetricCardGrid: React.FC<{ cards: { title: string; value: string; accentColor?: string }[] }> = ({

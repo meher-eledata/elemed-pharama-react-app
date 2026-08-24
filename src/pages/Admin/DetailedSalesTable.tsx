@@ -1,17 +1,14 @@
-import React, { useState, useMemo, useRef, ChangeEvent } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useImperativeHandle, forwardRef, ChangeEvent } from 'react';
 import { Box, Typography, TextField, InputAdornment, IconButton, CircularProgress } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
-import DownloadIcon from '@mui/icons-material/Download';
 import { CSVLink } from 'react-csv';
 import dayjs, { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { DETAILED_SALES_TABLE_CONSTANTS } from '../../config/constants/DetailedSalesTable.constants';
 import { DETAILED_SALES_TABLE_LABELS } from '../../config/label/DetailedSalesTable.labels';
-import { StandardButton, PharmaDatePicker } from '../../components/Common';
+import { StandardButton } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
@@ -36,11 +33,23 @@ interface SalesData {
   patientType: string;
 }
 
-const DetailedSalesTable: React.FC = () => {
-  const navigate = useNavigate();
+interface DetailedSalesTableProps {
+  /** Date range shared with the parent Sales Report page. */
+  startDate: Dayjs | null;
+  endDate: Dayjs | null;
+  /** Notifies the parent when the CSV export becomes (un)available, so it can
+      disable its header Download button like every other report. */
+  onCanDownloadChange?: (canDownload: boolean) => void;
+}
+
+export interface DetailedSalesTableHandle {
+  /** Triggers the CSV export (wired to the parent header's Download CSV button). */
+  downloadCsv: () => void;
+}
+
+const DetailedSalesTable = forwardRef<DetailedSalesTableHandle, DetailedSalesTableProps>(
+  ({ startDate, endDate, onCanDownloadChange }, ref) => {
   const csvLinkRef = useRef<any>(null);
-  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
-  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
   const [logDownload] = useLogDownloadMutation();
   // With the custom scheme on, invoice_number is stored in full (prefix included) and the
   // API returns it verbatim — so localStorage keys must NOT have the legacy "INV" stripped.
@@ -442,9 +451,19 @@ const DetailedSalesTable: React.FC = () => {
   };
 
   const handleDownloadCSV = () => {
-    csvLinkRef.current?.link?.click();
+    // The hidden CSVLink is unmounted during loading/error, and an empty table
+    // has nothing to export — bail out without logging a phantom download.
+    if (!csvLinkRef.current?.link || !sortedData.length) return;
+    csvLinkRef.current.link.click();
     logDownload({ category: 'report', name: 'Detailed Sales Table', format: 'csv', count: sortedData.length }).catch(() => {});
   };
+
+  useImperativeHandle(ref, () => ({ downloadCsv: handleDownloadCSV }));
+
+  const canDownload = !isLoading && !isError && sortedData.length > 0;
+  useEffect(() => {
+    onCanDownloadChange?.(canDownload);
+  }, [canDownload, onCanDownloadChange]);
 
   // Prepare CSV data
   const csvData = useMemo(() => {
@@ -491,36 +510,8 @@ const DetailedSalesTable: React.FC = () => {
   }
 
   return (
-    <Box sx={{ padding: 3 }}>
-      {/* Header with Back Button */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
-        <Box
-          onClick={() => navigate('/admin/reports', { state: { activeTab: 'detailed', selectedReport: 'daily-sales' } })}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            color: '#5C17E5',
-            '&:hover': {
-              opacity: 0.8,
-            },
-          }}
-        >
-          <KeyboardArrowLeftIcon sx={{ fontSize: 24 }} />
-        </Box>
-        <Typography
-          variant="h5"
-          fontWeight={700}
-          sx={{
-            fontFamily: "'Lexend', sans-serif",
-            color: '#1A212B',
-          }}
-        >
-          {DETAILED_SALES_TABLE_LABELS.PAGE_TITLE}
-        </Typography>
-      </Box>
-
-      {/* Search Bar and Download Button */}
+    <Box>
+      {/* Search Bar */}
       <Box sx={{
         display: 'flex',
         alignItems: 'center',
@@ -616,33 +607,6 @@ const DetailedSalesTable: React.FC = () => {
               },
             }}
           />
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <PharmaDatePicker
-            value={startDate}
-            onChange={setStartDate}
-            maxDate={endDate ?? undefined}
-            width={200}
-            height={40}
-          />
-          <PharmaDatePicker
-            value={endDate}
-            onChange={setEndDate}
-            minDate={startDate ?? undefined}
-            width={200}
-            height={40}
-          />
-          <StandardButton
-            variant="primary"
-            size="medium"
-            startIcon={<DownloadIcon />}
-            onClick={handleDownloadCSV}
-            sx={{
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Download CSV
-          </StandardButton>
         </Box>
       </Box>
 
@@ -803,6 +767,8 @@ const DetailedSalesTable: React.FC = () => {
       />
     </Box>
   );
-};
+});
+
+DetailedSalesTable.displayName = 'DetailedSalesTable';
 
 export default DetailedSalesTable;

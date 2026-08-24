@@ -1,9 +1,8 @@
 import React, { useState, Suspense, lazy, useRef, useMemo } from 'react';
-import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip, Button } from '@mui/material';
+import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
-import DownloadIcon from '@mui/icons-material/Download';
 import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
 import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
@@ -13,83 +12,77 @@ import { SUPPLIER_PAYMENT_REPORT_LABELS } from '../../config/label/SupplierPayme
 import { PRODUCT_SALES_REPORT_LABELS } from '../../config/label/ProductSalesReport.labels';
 import { SALES_TAX_REPORT_LABELS } from '../../config/label/SalesTaxReport.labels';
 import { SUPPLIER_TAX_REPORT_LABELS } from '../../config/label/SupplierTaxReport.labels';
-import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
-import RightArrow from '../../assets/Right.svg';
+import {
+  BackLink,
+  ReportHeader,
+  ReportSwitcher,
+  ReportLoading,
+  ReportError,
+} from '../../components/AdminReports/ReportShared';
 import DashboardMain from '../DashboardMain/DashboardMain';
+import DetailedSalesTable, { DetailedSalesTableHandle } from './DetailedSalesTable';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatWholeCurrency, defaultDateRange } from '../../utils/reportFormat';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
 const PaymentTypePieChart = lazy(() => import('../../components/Charts/PaymentTypePieChart'));
 
 type ReportTab = 'kpis' | 'detailed';
+type SalesReportTab = 'overview' | 'invoice';
 
 const Reports: React.FC = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<ReportTab>(
     (location.state as any)?.activeTab === 'detailed' ? 'detailed' : 'kpis'
   );
+  const [selectedReport, setSelectedReport] = useState<string | null>(
+    (location.state as any)?.selectedReport || null
+  );
+  // Consumed once from router state (legacy /admin/reports/detailed-sales deep link);
+  // re-opening from the grid always starts on Overview.
+  const [salesInitialTab, setSalesInitialTab] = useState<SalesReportTab>(
+    (location.state as any)?.salesTab === 'invoice' ? 'invoice' : 'overview'
+  );
+
+  // A report is open — hide the landing tab pair, show only a back link + the report.
+  if (selectedReport === 'daily-sales') {
+    return (
+      <Box sx={{ paddingBottom: REPORTS_CONSTANTS.PAGE.PADDING_BOTTOM }}>
+        <BackLink onClick={() => setSelectedReport(null)} />
+        <DailySalesReport initialTab={salesInitialTab} />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ paddingBottom: REPORTS_CONSTANTS.PAGE.PADDING_BOTTOM }}>
-      <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-        <Button
-          onClick={() => setActiveTab('kpis')}
-          sx={{
-            backgroundColor: activeTab === 'kpis' ? '#5C17E5' : 'transparent',
-            color: activeTab === 'kpis' ? '#FFFFFF' : '#1A212B',
-            border: activeTab === 'kpis' ? 'none' : '1px solid #D1D5DB',
-            borderRadius: '0.5rem',
-            textTransform: 'none',
-            fontWeight: 600,
-            fontSize: '14px',
-            padding: '8px 16px',
-            minWidth: '120px',
-            '&:hover': {
-              backgroundColor: activeTab === 'kpis' ? '#4C14C7' : 'transparent',
-            },
-          }}
-        >
-          KPI's
-        </Button>
-        <Button
-          onClick={() => setActiveTab('detailed')}
-          sx={{
-            backgroundColor: activeTab === 'detailed' ? '#5C17E5' : 'transparent',
-            color: activeTab === 'detailed' ? '#FFFFFF' : '#1A212B',
-            border: activeTab === 'detailed' ? 'none' : '1px solid #D1D5DB',
-            borderRadius: '0.5rem',
-            textTransform: 'none',
-            fontWeight: 600,
-            fontSize: '14px',
-            padding: '8px 16px',
-            minWidth: '120px',
-            '&:hover': {
-              backgroundColor: activeTab === 'detailed' ? '#4C14C7' : 'transparent',
-            },
-          }}
-        >
-          Detailed Reports
-        </Button>
-      </Box>
+      <ReportSwitcher
+        active={activeTab}
+        onChange={setActiveTab}
+        options={[
+          { value: 'kpis', label: REPORTS_LABELS.TABS.KPIS },
+          { value: 'detailed', label: REPORTS_LABELS.TABS.DETAILED_REPORTS },
+        ]}
+      />
 
       {activeTab === 'kpis' ? (
         <DashboardMain hideButtons={true} />
       ) : (
-        <DetailedReportsView />
+        <DetailedReportsView
+          onOpenDailySales={() => {
+            setSalesInitialTab('overview');
+            setSelectedReport('daily-sales');
+          }}
+        />
       )}
     </Box>
   );
 };
 
-const DetailedReportsView: React.FC = () => {
-  const location = useLocation();
+const DetailedReportsView: React.FC<{ onOpenDailySales: () => void }> = ({ onOpenDailySales }) => {
   const navigate = useNavigate();
-  const [selectedReport, setSelectedReport] = useState<string | null>(
-    (location.state as any)?.selectedReport || null
-  );
 
   const reportCards: {
     id: string;
@@ -99,8 +92,8 @@ const DetailedReportsView: React.FC = () => {
   }[] = [
     {
       id: 'daily-sales',
-      title: 'Sales Report',
-      description: 'View detailed sales information including payment methods, taxes, and trends',
+      title: REPORTS_LABELS.DAILY_SALES_REPORT.DISCOVERY_CARD.TITLE,
+      description: REPORTS_LABELS.DAILY_SALES_REPORT.DISCOVERY_CARD.DESCRIPTION,
     },
     {
       id: 'supplier-receipt',
@@ -138,27 +131,9 @@ const DetailedReportsView: React.FC = () => {
     if (report.route) {
       navigate(report.route);
     } else {
-      setSelectedReport(report.id);
+      onOpenDailySales();
     }
   };
-
-  if (selectedReport === 'daily-sales') {
-    return (
-      <Box>
-        <Button
-          onClick={() => setSelectedReport(null)}
-          sx={{
-            mb: 2,
-            textTransform: 'none',
-            color: '#5C17E5',
-          }}
-        >
-          ← Back to Reports
-        </Button>
-        <DailySalesReport />
-      </Box>
-    );
-  }
 
   return (
     <Box>
@@ -211,7 +186,7 @@ const DetailedReportsView: React.FC = () => {
                   alignSelf: 'flex-start',
                 }}
               >
-                View Report
+                {REPORTS_LABELS.CARD_ACTION}
               </StandardButton>
             </Card>
           </Grid>
@@ -221,14 +196,16 @@ const DetailedReportsView: React.FC = () => {
   );
 };
 
-const DailySalesReport: React.FC = () => {
-  const navigate = useNavigate();
-  const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
-  const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
+const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTab = 'overview' }) => {
+  const [tab, setTab] = useState<SalesReportTab>(initialTab);
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
+  const [startDate, endDate] = dateRange;
+  const tableRef = useRef<DetailedSalesTableHandle>(null);
+  const [invoiceCanDownload, setInvoiceCanDownload] = useState(false);
   const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
 
-  const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
+  const { data: apiData, isLoading, isError, refetch } = useGetDailySalesReportQuery(
     {
       start_date: (startDate ?? dayjs()).format('YYYY-MM-DD'),
       end_date: (endDate ?? dayjs()).format('YYYY-MM-DD'),
@@ -377,7 +354,7 @@ const DailySalesReport: React.FC = () => {
     return Math.ceil((maxValue + 5) / 10) * 10; // Round up to nearest 10 with some padding
   }, [reportData]);
 
-  // Prepare CSV data
+  // Overview summary CSV (Summary / Sales Breakdown / Payment Type / Tax Summary rows).
   const csvData = useMemo(() => {
     if (!reportData) return [];
 
@@ -424,93 +401,54 @@ const DailySalesReport: React.FC = () => {
     return s === e ? `sales_report_${s}.csv` : `sales_report_${s}_to_${e}.csv`;
   }, [startDate, endDate]);
 
-  const handleDownloadCSV = () => {
-    csvLinkRef.current?.link?.click();
+  const handleOverviewDownloadCSV = () => {
+    if (!csvLinkRef.current?.link || !csvData.length) return;
+    csvLinkRef.current.link.click();
     logDownload({ category: 'report', name: 'Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-        <CircularProgress size={40} />
-      </Box>
-    );
-  }
-
-  if (isError || !reportData) {
-    return (
-      <Box sx={{ textAlign: 'center', mt: 4 }}>
-        <Typography color="error">Failed to load report data. Please try again later.</Typography>
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 1 }}>
-          <PharmaDatePicker
-            value={startDate}
-            onChange={setStartDate}
-            maxDate={endDate ?? undefined}
-            width={200}
-          />
-          <PharmaDatePicker
-            value={endDate}
-            onChange={setEndDate}
-            minDate={startDate ?? undefined}
-            width={200}
-          />
-        </Box>
-      </Box>
-    );
-  }
-
   return (
     <Box>
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3,
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Typography
-          variant={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.TITLE_VARIANT}
-          fontWeight={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.TITLE_FONT_WEIGHT}
-          sx={{
-            fontFamily: "'Lexend', sans-serif",
-            color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.TITLE_COLOR,
-          }}
-        >
-          {REPORTS_LABELS.DAILY_SALES_REPORT.TITLE}
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <PharmaDatePicker
-            value={startDate}
-            onChange={setStartDate}
-            maxDate={endDate ?? undefined}
-            width={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.WIDTH}
-            height={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.HEIGHT}
-          />
-          <PharmaDatePicker
-            value={endDate}
-            onChange={setEndDate}
-            minDate={startDate ?? undefined}
-            width={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.WIDTH}
-            height={REPORTS_CONSTANTS.DAILY_SALES_REPORT.HEADER.DATE_PICKER.HEIGHT}
-          />
-          <StandardButton
-            variant="primary"
-            size="medium"
-            startIcon={<DownloadIcon />}
-            onClick={handleDownloadCSV}
-            sx={{
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Download CSV
-          </StandardButton>
-        </Box>
-      </Box>
+      <ReportHeader
+        title={REPORTS_LABELS.DAILY_SALES_REPORT.TITLE}
+        subtitle={REPORTS_LABELS.DAILY_SALES_REPORT.SUBTITLE}
+        downloadLabel={REPORTS_LABELS.DAILY_SALES_REPORT.DOWNLOAD_CSV}
+        // Each tab keeps its own export: the Overview summary CSV (a pre-existing
+        // feature) and the Invoice-wise table CSV.
+        onDownloadCsv={
+          tab === 'invoice' ? () => tableRef.current?.downloadCsv() : handleOverviewDownloadCSV
+        }
+        downloadDisabled={tab === 'invoice' ? !invoiceCanDownload : !reportData}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+      />
 
+      <ReportSwitcher
+        active={tab}
+        onChange={setTab}
+        options={[
+          { value: 'overview', label: REPORTS_LABELS.DAILY_SALES_REPORT.TABS.OVERVIEW },
+          { value: 'invoice', label: REPORTS_LABELS.DAILY_SALES_REPORT.TABS.INVOICE },
+        ]}
+      />
+
+      {tab === 'invoice' ? (
+        <DetailedSalesTable
+          ref={tableRef}
+          startDate={startDate}
+          endDate={endDate}
+          onCanDownloadChange={setInvoiceCanDownload}
+        />
+      ) : isLoading ? (
+        <ReportLoading />
+      ) : isError || !reportData ? (
+        <ReportError
+          message={ADMIN_REPORTS_CONSTANTS.STATES.ERROR}
+          retryLabel={ADMIN_REPORTS_CONSTANTS.STATES.RETRY}
+          onRetry={refetch}
+        />
+      ) : (
+        <Box>
       {/* Key Metrics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={2}>
@@ -1214,42 +1152,6 @@ const DailySalesReport: React.FC = () => {
               </Box>
             </Stack>
           </Card>
-          {/* View Detailed Sales Table Link */}
-          <Box sx={{ mt: 2 }}>
-            <Box
-              onClick={() => navigate('/admin/reports/detailed-sales')}
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 1,
-                color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.COLOR,
-                fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.FONT_SIZE,
-                fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.FONT_WEIGHT,
-                textDecoration: 'none',
-                fontFamily: "'Lexend', sans-serif",
-                cursor: 'pointer',
-                '&:hover': {
-                  textDecoration: 'underline',
-                },
-              }}
-            >
-              <Typography
-                sx={{
-                  color: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.COLOR,
-                  fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.FONT_SIZE,
-                  fontWeight: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.FONT_WEIGHT,
-                  fontFamily: "'Lexend', sans-serif",
-                }}
-              >
-                {REPORTS_LABELS.DAILY_SALES_REPORT.LINK.VIEW_DETAILED_SALES_TABLE}
-              </Typography>
-              <img
-                src={RightArrow}
-                alt="arrow"
-                style={{ width: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.ARROW_SIZE, height: REPORTS_CONSTANTS.DAILY_SALES_REPORT.LINK.ARROW_SIZE }}
-              />
-            </Box>
-          </Box>
         </Grid>
 
         {/* Weekly Sales Trend Section */}
@@ -1349,8 +1251,10 @@ const DailySalesReport: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+        </Box>
+      )}
 
-      {/* Hidden CSV Link */}
+      {/* Hidden CSV Link (Overview summary export) */}
       <CSVLink
         data={csvData}
         filename={csvFilename}

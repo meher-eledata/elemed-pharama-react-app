@@ -12,9 +12,10 @@ export const SALES_TAX_REPORT_LABELS = {
       'Per-line GST extraction (CGST / SGST / IGST) plus prominent taxable, tax and sales aggregates.',
     ACTION: 'View Report',
   },
-  LEVEL_TOGGLE: {
+  TABS: {
+    OVERVIEW: 'Overview',
     PRODUCT: 'Product-wise',
-    HSN: 'HSN-code-wise',
+    HSN: 'HSN-wise',
     INVOICE: 'Invoice-wise',
   },
   FILTER: {
