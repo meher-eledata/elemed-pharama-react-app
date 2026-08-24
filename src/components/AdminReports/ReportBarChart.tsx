@@ -37,6 +37,10 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
 
   const maxVal = Math.max(...values, 0);
   const niceMax = maxVal > 0 ? Math.ceil(maxVal * 1.1) : 10;
+  // Net series (e.g. Sales by Date) can dip below zero on heavy-return days —
+  // give the axis a matching padded floor. Non-negative series keep the 0 floor.
+  const minVal = Math.min(...values, 0);
+  const niceMin = minVal < 0 ? Math.floor(minVal * 1.1) : 0;
 
   const formatValue = (v: number): string =>
     currency
@@ -108,7 +112,7 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
           ]}
           yAxis={[
             {
-              min: 0,
+              min: niceMin,
               max: niceMax,
               label: yAxisLabel,
               labelStyle: axisLabelStyle,

@@ -31,6 +31,7 @@ import {
   toNum,
   formatCurrency,
   formatNumber,
+  formatQty,
   formatCount,
   formatPercent,
   formatReportDate,
@@ -223,7 +224,7 @@ const ProductSalesReport: React.FC = () => {
   const summaryCards = useMemo(
     () => [
       { title: L.SUMMARY.LINES, value: formatCount(summary?.line_count ?? 0) },
-      { title: L.SUMMARY.TOTAL_QTY, value: formatNumber(toNum(summary?.total_quantity)) },
+      { title: L.SUMMARY.TOTAL_QTY, value: formatQty(toNum(summary?.total_quantity)) },
       { title: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
       { title: L.SUMMARY.INVOICES, value: formatCount(summary?.invoice_count ?? 0) },
       { title: L.SUMMARY.TOTAL_CGST, value: formatCurrency(toNum(summary?.total_cgst)) },

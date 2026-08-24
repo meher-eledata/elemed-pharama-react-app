@@ -1,7 +1,6 @@
 import React, { useState, Suspense, lazy, useRef, useMemo } from 'react';
 import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
-import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
@@ -19,11 +18,13 @@ import {
   ReportSwitcher,
   ReportLoading,
   ReportError,
+  PieLegend,
 } from '../../components/AdminReports/ReportShared';
+import ReportBarChart from '../../components/AdminReports/ReportBarChart';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import DetailedSalesTable, { DetailedSalesTableHandle } from './DetailedSalesTable';
-import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
-import { formatWholeCurrency, defaultDateRange } from '../../utils/reportFormat';
+import { useGetDailySalesReportQuery, useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
+import { formatWholeCurrency, defaultDateRange, toNum, seriesByDate, isReturnRow } from '../../utils/reportFormat';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
@@ -216,10 +217,14 @@ const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTa
     }
   );
 
-  const { data: weeklyApiData } = useGetWeeklyBillCountsQuery(
-    { end_date: (endDate ?? dayjs()).format('YYYY-MM-DD') },
+  // Same args as the Invoice-wise child's query — RTK Query dedupes the fetch.
+  const { data: tableData } = useGetDailySalesTableQuery(
     {
-      skip: !endDate,
+      start_date: (startDate ?? dayjs()).format('YYYY-MM-DD'),
+      end_date: (endDate ?? dayjs()).format('YYYY-MM-DD'),
+    },
+    {
+      skip: !startDate || !endDate,
       refetchOnMountOrArgChange: true
     }
   );
@@ -324,14 +329,18 @@ const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTa
         sgst: parseVal(apiData.total_sgst),
         igst: parseVal(apiData.total_igst),
       },
-      weeklyTrend: {
-        days: weeklyApiData ? weeklyApiData.map(item => dayjs(item.day).format('ddd')) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        values: weeklyApiData ? weeklyApiData.map(item => parseVal(item.total_bills)) : [0, 0, 0, 0, 0, 0, 0],
-        inpatient: weeklyApiData ? weeklyApiData.map(item => parseVal(item.inpatient_bills)) : [0, 0, 0, 0, 0, 0, 0],
-        outpatient: weeklyApiData ? weeklyApiData.map(item => parseVal(item.outpatient_bills)) : [0, 0, 0, 0, 0, 0, 0],
-      },
     };
-  }, [apiData, weeklyApiData]);
+  }, [apiData]);
+
+  // Range-honoring per-day net sales, derived from the invoice-level table rows
+  // (returns/refunds subtract, matching the Invoice-wise table's sign convention).
+  const salesByDate = useMemo(() => {
+    const rows = (tableData ?? []).map((item) => ({
+      date: item.transaction_date,
+      value: toNum(item.total_amount) * (isReturnRow(item.transaction_type) ? -1 : 1),
+    }));
+    return seriesByDate(rows, (r) => r.date, (r) => r.value);
+  }, [tableData]);
 
   const formatCurrency = (amount: number) => {
     return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -345,13 +354,6 @@ const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTa
   const sortedPaymentData = useMemo(() => {
     if (!reportData) return [];
     return [...reportData.paymentTypeData].sort((a, b) => b.value - a.value);
-  }, [reportData]);
-
-  // Calculate max for Y axis
-  const maxBills = useMemo(() => {
-    if (!reportData?.weeklyTrend.values.length) return 60;
-    const maxValue = Math.max(...reportData.weeklyTrend.values);
-    return Math.ceil((maxValue + 5) / 10) * 10; // Round up to nearest 10 with some padding
   }, [reportData]);
 
   // Overview summary CSV (Summary / Sales Breakdown / Payment Type / Tax Summary rows).
@@ -860,21 +862,13 @@ const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTa
               boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
               border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
               display: 'flex',
-              flexDirection: 'row',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 3,
-              justifyContent: 'center',
+              gap: 2,
             }}
           >
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                position: 'relative',
-              }}
-            >
-              {totalPaymentValue > 0 ? (
+            {totalPaymentValue > 0 ? (
+              <>
                 <Suspense
                   fallback={
                     <Box
@@ -892,80 +886,50 @@ const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTa
                 >
                   <PaymentTypePieChart data={reportData.paymentTypeData} />
                 </Suspense>
-              ) : (
-                <Box
+                <PieLegend
+                  items={sortedPaymentData.map((item) => ({
+                    id: item.id,
+                    label: item.label,
+                    color: item.color,
+                    value: `${((item.value / totalPaymentValue) * 100).toFixed(1)}%`,
+                  }))}
+                />
+              </>
+            ) : (
+              <Box
+                sx={{
+                  width: 380,
+                  height: 380,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  border: '2px dashed #E5E7EB',
+                  borderRadius: '50%',
+                  backgroundColor: '#F9FAFB',
+                }}
+              >
+                <Typography
                   sx={{
-                    width: 380,
-                    height: 380,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    border: '2px dashed #E5E7EB',
-                    borderRadius: '50%',
-                    backgroundColor: '#F9FAFB',
+                    color: '#9CA3AF',
+                    fontSize: '14px',
+                    fontFamily: "'Lexend', sans-serif",
+                    fontWeight: 500,
                   }}
                 >
-                  <Typography
-                    sx={{
-                      color: '#9CA3AF',
-                      fontSize: '14px',
-                      fontFamily: "'Lexend', sans-serif",
-                      fontWeight: 500,
-                    }}
-                  >
-                    No sales data
-                  </Typography>
-                  <Typography
-                    sx={{
-                      color: '#9CA3AF',
-                      fontSize: '12px',
-                      fontFamily: "'Lexend', sans-serif",
-                    }}
-                  >
-                    for this date
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-            <Box sx={{ flexGrow: 1, ml: 4 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-                {sortedPaymentData.map((item) => (
-                  <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Box
-                        sx={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '2px',
-                          backgroundColor: item.color,
-                        }}
-                      />
-                      <Typography
-                        sx={{
-                          fontSize: '14px',
-                          color: '#4B5563',
-                          fontWeight: 500,
-                          fontFamily: "'Lexend', sans-serif",
-                        }}
-                      >
-                        {item.label}
-                      </Typography>
-                    </Box>
-                    <Typography
-                      sx={{
-                        fontSize: '14px',
-                        color: '#1A212B',
-                        fontWeight: 600,
-                        fontFamily: "'Lexend', sans-serif",
-                      }}
-                    >
-                      {totalPaymentValue > 0 ? `${((item.value / totalPaymentValue) * 100).toFixed(1)}%` : '0%'}
-                    </Typography>
-                  </Box>
-                ))}
+                  No sales data
+                </Typography>
+                <Typography
+                  sx={{
+                    color: '#9CA3AF',
+                    fontSize: '12px',
+                    fontFamily: "'Lexend', sans-serif",
+                  }}
+                >
+                  for this date
+                </Typography>
               </Box>
-            </Box>
+            )}
           </Card>
         </Grid>
       </Grid>
@@ -1154,7 +1118,7 @@ const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTa
           </Card>
         </Grid>
 
-        {/* Weekly Sales Trend Section */}
+        {/* Sales by Date Section */}
         <Grid item xs={12} md={6}>
           <Typography
             sx={{
@@ -1165,90 +1129,17 @@ const DailySalesReport: React.FC<{ initialTab?: SalesReportTab }> = ({ initialTa
               fontFamily: "'Lexend', sans-serif",
             }}
           >
-            {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.WEEKLY_SALES_TREND}
+            {REPORTS_LABELS.DAILY_SALES_REPORT.SECTIONS.SALES_BY_DATE}
           </Typography>
-          <Card
-            sx={{
-              p: 3,
-              width: '100%',
-              height: 'auto',
-              borderRadius: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER_RADIUS,
-              boxShadow: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BOX_SHADOW,
-              border: REPORTS_CONSTANTS.DAILY_SALES_REPORT.CARD.BORDER,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-            }}
-          >
-            <Box sx={{ width: '100%', height: '350px', mt: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <BarChart
-                xAxis={[
-                  {
-                    data: reportData.weeklyTrend.days,
-                    scaleType: 'band',
-                    tickLabelStyle: {
-                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_FONT_SIZE,
-                      fill: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_COLOR,
-                      fontFamily: "'Lexend', sans-serif",
-                    },
-                    labelStyle: {
-                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_FONT_SIZE,
-                      fill: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_COLOR,
-                      fontFamily: "'Lexend', sans-serif",
-                    },
-                  },
-                ]}
-                yAxis={[
-                  {
-                    tickLabelStyle: {
-                      fontSize: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_FONT_SIZE,
-                      fill: REPORTS_CONSTANTS.DAILY_SALES_REPORT.WEEKLY_TREND.TICK_LABEL_COLOR,
-                      fontFamily: "'Lexend', sans-serif",
-                    },
-                    min: 0,
-                    max: maxBills,
-                    tickInterval: [0, Math.floor(maxBills / 3), Math.floor((maxBills * 2) / 3), maxBills],
-                  },
-                ]}
-                series={[
-                  {
-                    data: reportData.weeklyTrend.inpatient,
-                    label: 'In Patient',
-                    color: '#3B82F6',
-                    stack: 'total',
-                  },
-                  {
-                    data: reportData.weeklyTrend.outpatient,
-                    label: 'Out Patient',
-                    color: '#10B981',
-                    stack: 'total',
-                  },
-                ]}
-                width={650}
-                height={320}
-                margin={{ top: 20, bottom: 60, left: 50, right: 10 }}
-                grid={{ vertical: false, horizontal: true }}
-                sx={{
-                  '& .MuiChartsAxis-root': {
-                    stroke: '#6B7280',
-                    strokeWidth: 1,
-                  },
-                  '& .MuiChartsAxis-line': {
-                    stroke: '#6B7280',
-                    strokeWidth: 1,
-                  },
-                  '& .MuiChartsAxis-tick': {
-                    stroke: '#6B7280',
-                    strokeWidth: 1,
-                  },
-                  '& .MuiChartsGrid-root': {
-                    stroke: '#E5E7EB',
-                    strokeDasharray: 'none',
-                  },
-                }}
-              />
-            </Box>
-          </Card>
+          <ReportBarChart
+            categories={salesByDate.categories}
+            values={salesByDate.values}
+            seriesLabel={REPORTS_LABELS.DAILY_SALES_REPORT.CHART.SERIES_SALES}
+            emptyMessage={REPORTS_LABELS.DAILY_SALES_REPORT.CHART.EMPTY}
+            xAxisLabel={REPORTS_LABELS.DAILY_SALES_REPORT.CHART.AXIS_DATE}
+            yAxisLabel={REPORTS_LABELS.DAILY_SALES_REPORT.CHART.SERIES_SALES}
+            currency
+          />
         </Grid>
       </Grid>
         </Box>

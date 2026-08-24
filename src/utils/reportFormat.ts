@@ -58,6 +58,10 @@ export const formatCount = (amount: number): string =>
     maximumFractionDigits: 0,
   });
 
+/** Format a quantity: grouped integer when whole, 2dp only when genuinely fractional. */
+export const formatQty = (qty: number): string =>
+  Number.isInteger(qty) ? formatCount(qty) : formatNumber(qty);
+
 /** Format a percentage value (already a percent number, e.g. 12.5 => "12.50%"). */
 export const formatPercent = (pct: number): string => `${pct.toFixed(2)}%`;
 
@@ -83,6 +87,16 @@ export const defaultDateRange = (): [Dayjs, Dayjs] => {
 /** Stringify a value safely for CSV cells. */
 export const csvString = (val: string | number | null | undefined): string =>
   val === null || val === undefined ? '' : String(val);
+
+/**
+ * True for outbound-return daily-sales rows ('return' or 'refund', case/space
+ * insensitive). Single source of the sign convention shared by the Invoice-wise
+ * table and the Sales by Date aggregation — amounts on these rows subtract.
+ */
+export const isReturnRow = (transactionType: string | null | undefined): boolean => {
+  const type = (transactionType || '').trim().toLowerCase();
+  return type === 'return' || type === 'refund';
+};
 
 // ---- Overview chart aggregation (feeds ReportBarChart) ---------------------
 

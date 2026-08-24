@@ -131,40 +131,48 @@ interface MetricCardProps {
   accentColor?: string;
 }
 
-export const MetricCard: React.FC<MetricCardProps> = ({ title, value, accentColor }) => (
-  <Card
-    sx={{
-      p: C.CARD.PADDING,
-      borderRadius: C.CARD.BORDER_RADIUS,
-      boxShadow: C.CARD.BOX_SHADOW,
-      border: C.CARD.BORDER,
-      backgroundColor: C.CARD.BACKGROUND,
-      height: '100%',
-    }}
-  >
-    <Typography
+export const MetricCard: React.FC<MetricCardProps> = ({ title, value, accentColor }) => {
+  const display = String(value);
+  return (
+    <Card
       sx={{
-        fontSize: C.CARD.TITLE.FONT_SIZE,
-        fontWeight: C.CARD.TITLE.FONT_WEIGHT,
-        color: C.CARD.TITLE.COLOR,
-        mb: 1,
-        fontFamily: FONT,
+        p: C.CARD.PADDING,
+        borderRadius: C.CARD.BORDER_RADIUS,
+        boxShadow: C.CARD.BOX_SHADOW,
+        border: C.CARD.BORDER,
+        backgroundColor: C.CARD.BACKGROUND,
+        height: '100%',
       }}
     >
-      {title}
-    </Typography>
-    <Typography
-      sx={{
-        fontSize: C.CARD.VALUE.FONT_SIZE,
-        fontWeight: C.CARD.VALUE.FONT_WEIGHT,
-        color: accentColor || C.CARD.VALUE.COLOR,
-        fontFamily: FONT,
-      }}
-    >
-      {value}
-    </Typography>
-  </Card>
-);
+      <Typography
+        sx={{
+          fontSize: C.CARD.TITLE.FONT_SIZE,
+          fontWeight: C.CARD.TITLE.FONT_WEIGHT,
+          color: C.CARD.TITLE.COLOR,
+          mb: 1,
+          fontFamily: FONT,
+        }}
+      >
+        {title}
+      </Typography>
+      <Typography
+        sx={{
+          // Long values shrink a step and wrap instead of clipping at the tile edge.
+          fontSize:
+            display.length > C.CARD.VALUE.LONG_THRESHOLD
+              ? C.CARD.VALUE.FONT_SIZE_LONG
+              : C.CARD.VALUE.FONT_SIZE,
+          overflowWrap: 'anywhere',
+          fontWeight: C.CARD.VALUE.FONT_WEIGHT,
+          color: accentColor || C.CARD.VALUE.COLOR,
+          fontFamily: FONT,
+        }}
+      >
+        {display}
+      </Typography>
+    </Card>
+  );
+};
 
 // ---- Section title ---------------------------------------------------------
 
@@ -331,6 +339,34 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
         ))}
       </Select>
     </FormControl>
+  </Box>
+);
+
+// ---- Pie legend (below-the-chart, shared by every report pie) --------------
+
+export interface PieLegendItem {
+  id: number;
+  label: string;
+  color: string;
+  /** Pre-formatted display value (₹ amount or percentage). */
+  value: string;
+}
+
+export const PieLegend: React.FC<{ items: PieLegendItem[] }> = ({ items }) => (
+  <Box sx={{ width: '100%' }}>
+    {items.map((m) => (
+      <Box key={m.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ width: 12, height: 12, borderRadius: '2px', backgroundColor: m.color }} />
+          <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: C.COLORS.TEXT_SECONDARY, fontWeight: 500 }}>
+            {m.label}
+          </Typography>
+        </Box>
+        <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: C.COLORS.TEXT_PRIMARY, fontWeight: 600 }}>
+          {m.value}
+        </Typography>
+      </Box>
+    ))}
   </Box>
 );
 

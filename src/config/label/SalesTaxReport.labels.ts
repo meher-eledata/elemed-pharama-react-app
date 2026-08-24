@@ -50,7 +50,6 @@ export const SALES_TAX_REPORT_LABELS = {
   },
   EMPTY_CHART: 'No data for the selected period.',
   SUMMARY: {
-    TITLE: 'Range Aggregates',
     TOTAL_TAXABLE: 'Total Taxable Value',
     TOTAL_CGST: 'Total CGST',
     TOTAL_SGST: 'Total SGST',

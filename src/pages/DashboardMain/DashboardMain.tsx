@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import dayjs, { Dayjs } from "dayjs";
+import { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { StandardButton } from "../../components/Common";
@@ -10,6 +10,7 @@ import DateRangeFilter from "../../components/mainDashboard/DateRangeFilter/Date
 import ThreeChartsComponent from "../../components/mainDashboard/Charts/SimpleAreaCharts";
 import { DASHBOARD_MAIN_CONSTANTS } from "../../config/constants/DashboardMain.constants";
 import { DASHBOARD_MAIN_LABELS } from "../../config/label/DashboardMain.labels";
+import { defaultDateRange } from "../../utils/reportFormat";
 
 interface RootState {
   auth: {
@@ -41,10 +42,8 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ hideButtons = false }) =>
     return "G";
   };
 
-  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([
-    dayjs().subtract(30, 'day'),
-    dayjs(),
-  ]);
+  // Same last-30-days default window as every report page.
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
 
   const apiDateRange = {
     startDate: dateRange[0] ? dateRange[0].format("YYYY-MM-DD") : null,
@@ -54,19 +53,21 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ hideButtons = false }) =>
   return (
     <Box sx={{ minHeight: DASHBOARD_MAIN_CONSTANTS.PAGE.MIN_HEIGHT, paddingBottom: DASHBOARD_MAIN_CONSTANTS.PAGE.PADDING_BOTTOM }}>
 
-      {!hideButtons && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: 'wrap',
-            columnGap: '12px',
-            rowGap: '12px',
-            mb: 1,
-            minWidth: 0,
-          }}
-        >
+      {/* Header row: welcome + actions on the left/right, with the date filter
+          top-right — same placement as the report pages' ReportHeader. */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          flexWrap: 'wrap',
+          columnGap: '12px',
+          rowGap: '12px',
+          mb: '24px',
+          minWidth: 0,
+        }}
+      >
+        {!hideButtons && (
           <Typography
             sx={{
               fontFamily: DASHBOARD_MAIN_CONSTANTS.HEADER.FONT_FAMILY,
@@ -85,35 +86,43 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ hideButtons = false }) =>
           >
             {DASHBOARD_MAIN_LABELS.WELCOME_PREFIX} {displayName}
           </Typography>
-
-        {!hideButtons && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: DASHBOARD_MAIN_CONSTANTS.TOOLBAR.GAP }}>
-            <StandardButton
-              variant="secondary"
-              size="large"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/sales')}
-            >
-              {DASHBOARD_MAIN_LABELS.CREATE_INVOICE}
-            </StandardButton>
-
-            <StandardButton
-              variant="primary"
-              size="large"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/receive/order-details')}
-            >
-              {DASHBOARD_MAIN_LABELS.ADD_RECEIVE}
-            </StandardButton>
-          </Box>
         )}
-      </Box>
-      )}
-       <Box sx={{ mb: '24px' }}>
-        <DateRangeFilter
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-        />
+
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'flex-end',
+            gap: DASHBOARD_MAIN_CONSTANTS.TOOLBAR.GAP,
+            ml: 'auto',
+          }}
+        >
+          {!hideButtons && (
+            <>
+              <StandardButton
+                variant="secondary"
+                size="large"
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/sales')}
+              >
+                {DASHBOARD_MAIN_LABELS.CREATE_INVOICE}
+              </StandardButton>
+
+              <StandardButton
+                variant="primary"
+                size="large"
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/receive/order-details')}
+              >
+                {DASHBOARD_MAIN_LABELS.ADD_RECEIVE}
+              </StandardButton>
+            </>
+          )}
+          <DateRangeFilter
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+        </Box>
       </Box>
        <Box >
         <ThreeChartsComponent dateRange={apiDateRange} />

@@ -195,9 +195,10 @@ describe('SalesTaxReport page', () => {
     expect(screen.getAllByText('Sales Tax Report').length).toBeGreaterThan(0);
   });
 
-  it('shows the Range Aggregates on the default Overview tab, without a table', () => {
+  it('shows the aggregate tiles on the default Overview tab, without a table or heading', () => {
     renderPage();
-    expect(screen.getByText('Range Aggregates')).toBeInTheDocument();
+    // No "Range Aggregates" heading — Overviews are heading-less like the other reports.
+    expect(screen.queryByText('Range Aggregates')).not.toBeInTheDocument();
     expect(screen.getByText('Total Taxable Value')).toBeInTheDocument();
     // Table rows belong to the detailed tabs only.
     expect(screen.queryByText('Amoxicillin 500mg')).not.toBeInTheDocument();

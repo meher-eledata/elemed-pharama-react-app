@@ -1,17 +1,13 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "../baseQuery";
 
-// All three daily-sales endpoints accept an optional inclusive [start_date, end_date]
+// Both daily-sales endpoints accept an optional inclusive [start_date, end_date]
 // range ("YYYY-MM-DD"). `date` is the legacy single-day field kept for backward compat;
 // with all three omitted the backend defaults to today.
 export interface DailySalesReportRequest {
   start_date?: string;
   end_date?: string;
   date?: string;
-}
-
-export interface WeeklyBillCountsRequest {
-  end_date: string;
 }
 
 export interface DailySalesTableRequest {
@@ -36,13 +32,6 @@ export interface DailySalesTableItem {
   patient_type: string;
   // Invoice-level free-text detail (Sale + Refund rows; null where not applicable)
   customer_details: string | null;
-}
-
-export interface WeeklyBillCountItem {
-  day: string;
-  inpatient_bills: string;
-  outpatient_bills: string;
-  total_bills: string;
 }
 
 export interface PaymentMethodBreakdown {
@@ -480,14 +469,6 @@ export const reportsApi = createApi({
       }),
       providesTags: ["Reports"],
     }),
-    getWeeklyBillCounts: builder.query<WeeklyBillCountItem[], WeeklyBillCountsRequest>({
-      query: (body) => ({
-        url: "reports/dailySalesReport/get-weekly-bill-counts",
-        method: "POST",
-        body,
-      }),
-      providesTags: ["Reports"],
-    }),
     getDailySalesTable: builder.query<DailySalesTableItem[], DailySalesTableRequest>({
       query: (body) => ({
         url: "reports/dailySalesReport/get-daily-sales-table",
@@ -541,7 +522,6 @@ export const reportsApi = createApi({
 
 export const {
   useGetDailySalesReportQuery,
-  useGetWeeklyBillCountsQuery,
   useGetDailySalesTableQuery,
   useGetSupplierReceiptReportQuery,
   useGetSupplierPaymentReportQuery,

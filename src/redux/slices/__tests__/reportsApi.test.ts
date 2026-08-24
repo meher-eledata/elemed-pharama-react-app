@@ -95,49 +95,6 @@ describe('Reports API Endpoints', () => {
     });
   });
 
-  describe('POST reports/dailySalesReport/get-weekly-bill-counts (getWeeklyBillCounts)', () => {
-    const body = { end_date: '2026-06-16' };
-
-    it('should successfully fetch weekly bill counts', async () => {
-      const mockResponse = [
-        { day: 'Monday', inpatient_bills: '2', outpatient_bills: '3', total_bills: '5' },
-      ];
-      mockBaseQuery.mockResolvedValueOnce({
-        data: mockResponse,
-        meta: mockMeta(200, 'OK', 'reports/dailySalesReport/get-weekly-bill-counts'),
-      });
-
-      const store = makeStore();
-      const result = await store.dispatch(
-        reportsApi.endpoints.getWeeklyBillCounts.initiate(body)
-      );
-
-      expect(result.data).toEqual(mockResponse);
-      expect(mockBaseQuery).toHaveBeenCalledWith(
-        { url: 'reports/dailySalesReport/get-weekly-bill-counts', method: 'POST', body },
-        apiObject,
-        undefined
-      );
-    });
-
-    it('should handle error when fetching weekly bill counts fails', async () => {
-      mockBaseQuery.mockResolvedValueOnce({
-        error: { status: 500, data: { message: 'error' } },
-        meta: mockMeta(500, 'Internal Server Error', 'reports/dailySalesReport/get-weekly-bill-counts'),
-      });
-
-      const store = makeStore();
-      const result = await store.dispatch(
-        reportsApi.endpoints.getWeeklyBillCounts.initiate(body)
-      );
-
-      expect(result.error).toBeDefined();
-      if ('status' in (result.error || {})) {
-        expect((result.error as { status: number }).status).toBe(500);
-      }
-    });
-  });
-
   describe('POST reports/dailySalesReport/get-daily-sales-table (getDailySalesTable)', () => {
     // Range request: inclusive [start_date, end_date]
     const body = { start_date: '2026-06-16', end_date: '2026-06-18' };
@@ -261,14 +218,12 @@ describe('Reports API Endpoints', () => {
   describe('Endpoint Configuration', () => {
     it('should have all endpoints defined', () => {
       expect(reportsApi.endpoints.getDailySalesReport).toBeDefined();
-      expect(reportsApi.endpoints.getWeeklyBillCounts).toBeDefined();
       expect(reportsApi.endpoints.getDailySalesTable).toBeDefined();
       expect(reportsApi.endpoints.getSalesTaxReport).toBeDefined();
     });
 
     it('should export correct hooks', () => {
       expect(reportsApi.useGetDailySalesReportQuery).toBeDefined();
-      expect(reportsApi.useGetWeeklyBillCountsQuery).toBeDefined();
       expect(reportsApi.useGetDailySalesTableQuery).toBeDefined();
       expect(reportsApi.useGetSalesTaxReportQuery).toBeDefined();
     });

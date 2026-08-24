@@ -12,7 +12,7 @@ import { StandardButton } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatWholeCurrency, isReturnRow } from '../../utils/reportFormat';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 
 interface SalesData {
@@ -87,7 +87,7 @@ const DetailedSalesTable = forwardRef<DetailedSalesTableHandle, DetailedSalesTab
       const invoiceNum = String(item.invoice_number || '').trim();
       const apiCustomerName = (item.customer_name && String(item.customer_name).trim()) ? item.customer_name : null;
       const resolvedCustomerName = apiCustomerName || localNameMap.get(invoiceNum) || 'N/A';
-      const isReturn = item.transaction_type?.toLowerCase() === 'return' || item.transaction_type?.toLowerCase() === 'refund';
+      const isReturn = isReturnRow(item.transaction_type);
       const multiplier = isReturn ? -1 : 1;
 
       return {
@@ -104,7 +104,8 @@ const DetailedSalesTable = forwardRef<DetailedSalesTableHandle, DetailedSalesTab
         invoiceNumber: item.invoice_number,
         customerName: resolvedCustomerName,
         customerDetails: (item.customer_details && String(item.customer_details).trim()) ? item.customer_details : '',
-        doctorName: (item.doctor_name && String(item.doctor_name).trim()) ? item.doctor_name : 'N/A',
+        // Empty-cell convention: '-' (matches Customer Details and the report tables).
+        doctorName: (item.doctor_name && String(item.doctor_name).trim()) ? item.doctor_name : '-',
         paymentType: (() => {
           const raw = (item.payment_type || '').trim().toUpperCase();
           if (!raw || raw === 'UNKNOWN' || raw === 'NULL') {

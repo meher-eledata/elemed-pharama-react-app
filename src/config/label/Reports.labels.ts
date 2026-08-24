@@ -12,7 +12,7 @@ export const REPORTS_LABELS = {
     DOWNLOAD_CSV: 'Download CSV',
     DISCOVERY_CARD: {
       TITLE: 'Sales Report',
-      DESCRIPTION: 'View detailed sales information including payment methods, taxes, and trends',
+      DESCRIPTION: 'View detailed sales information including payment methods, taxes, and trends.',
     },
     TABS: {
       OVERVIEW: 'Overview',
@@ -28,7 +28,12 @@ export const REPORTS_LABELS = {
       SALES_BREAKDOWN: 'Sales Breakdown',
       SALES_BY_PAYMENT_TYPE: 'Sales by Payment Type',
       TAX_SUMMARY: 'Tax Summary',
-      WEEKLY_SALES_TREND: 'Weekly Sales Trend',
+      SALES_BY_DATE: 'Sales by Date',
+    },
+    CHART: {
+      SERIES_SALES: 'Sales (₹)',
+      AXIS_DATE: 'Date',
+      EMPTY: 'No data for the selected period.',
     },
     SALES: {
       CASH_SALES: 'Cash Sales',

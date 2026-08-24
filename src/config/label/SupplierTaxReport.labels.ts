@@ -9,7 +9,7 @@ export const SUPPLIER_TAX_REPORT_LABELS = {
   DISCOVERY_CARD: {
     TITLE: 'Supplier Tax Report',
     DESCRIPTION:
-      'Input GST on receipts, toggle between receipt-level and supplier-level aggregation.',
+      'Input GST on receipts with an overview plus receipt-wise and supplier-wise breakdowns.',
     ACTION: 'View Report',
   },
   TABS: {

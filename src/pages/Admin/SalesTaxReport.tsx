@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, Suspense, lazy } from 'react';
-import { Box, Grid, Card, Typography, CircularProgress, TableRow, TableCell } from '@mui/material';
+import { Box, Grid, Card, CircularProgress, TableRow, TableCell } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
@@ -10,6 +10,7 @@ import {
   ReportError,
   ReportEmpty,
   ReportSwitcher,
+  PieLegend,
   FilterSelect,
   FilterSelectOption,
   CellText,
@@ -558,7 +559,6 @@ const SalesTaxReport: React.FC = () => {
       ) : tab === 'overview' ? (
         hasRows ? (
           <Box>
-            <SectionTitle>{L.SUMMARY.TITLE}</SectionTitle>
             <MetricCardGrid cards={summaryCards} />
 
             <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -592,21 +592,9 @@ const SalesTaxReport: React.FC = () => {
                     <Suspense fallback={<CircularProgress size={40} />}>
                       <PaymentTypePieChart data={taxComposition} />
                     </Suspense>
-                    <Box sx={{ width: '100%' }}>
-                      {taxComposition.map((m) => (
-                        <Box key={m.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{ width: 12, height: 12, borderRadius: '2px', backgroundColor: m.color }} />
-                            <Typography sx={{ fontFamily: C.FONT_FAMILY, fontSize: '14px', color: C.COLORS.TEXT_SECONDARY, fontWeight: 500 }}>
-                              {m.label}
-                            </Typography>
-                          </Box>
-                          <Typography sx={{ fontFamily: C.FONT_FAMILY, fontSize: '14px', color: C.COLORS.TEXT_PRIMARY, fontWeight: 600 }}>
-                            {formatCurrency(m.value)}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
+                    <PieLegend
+                      items={taxComposition.map((m) => ({ ...m, value: formatCurrency(m.value) }))}
+                    />
                   </Card>
                 ) : (
                   <ReportEmpty message={L.EMPTY_CHART} />

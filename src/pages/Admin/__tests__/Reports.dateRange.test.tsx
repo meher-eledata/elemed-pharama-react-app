@@ -65,7 +65,7 @@ jest.mock('../../../redux/slices/reportsApi', () => {
     __esModule: true,
     ...actual,
     useGetDailySalesReportQuery: jest.fn(),
-    useGetWeeklyBillCountsQuery: jest.fn(),
+    useGetDailySalesTableQuery: jest.fn(),
   };
 });
 jest.mock('../../../redux/slices/activityApi', () => {
@@ -79,7 +79,7 @@ jest.mock('../../../redux/slices/activityApi', () => {
 
 const mockedReports = reportsApi as unknown as {
   useGetDailySalesReportQuery: jest.Mock;
-  useGetWeeklyBillCountsQuery: jest.Mock;
+  useGetDailySalesTableQuery: jest.Mock;
 };
 
 const createStore = () =>
@@ -116,7 +116,7 @@ beforeEach(() => {
     isLoading: false,
     isError: false,
   });
-  mockedReports.useGetWeeklyBillCountsQuery.mockReturnValue({ data: [] });
+  mockedReports.useGetDailySalesTableQuery.mockReturnValue({ data: [], isLoading: false, isError: false });
 });
 
 describe('Reports — Sales Report header (rename + date-range defaults)', () => {

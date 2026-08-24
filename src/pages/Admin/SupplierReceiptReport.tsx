@@ -31,6 +31,7 @@ import {
   toNum,
   formatCurrency,
   formatNumber,
+  formatQty,
   formatCount,
   formatReportDate,
   defaultDateRange,
@@ -328,7 +329,7 @@ const SupplierReceiptReport: React.FC = () => {
               <MetricCard title={L.KPIS.TOTAL_SPEND} value={formatCurrency(toNum(summary?.total_spend))} />
             </Grid>
             <Grid item xs={12} sm={6} md={2.4}>
-              <MetricCard title={L.KPIS.TOTAL_QTY} value={formatNumber(toNum(summary?.total_qty_received))} />
+              <MetricCard title={L.KPIS.TOTAL_QTY} value={formatQty(toNum(summary?.total_qty_received))} />
             </Grid>
             <Grid item xs={12} sm={6} md={2.4}>
               <MetricCard title={L.KPIS.RECEIPTS} value={formatCount(summary?.receipt_count ?? 0)} />

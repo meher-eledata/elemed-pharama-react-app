@@ -77,6 +77,9 @@ export const ADMIN_REPORTS_CONSTANTS = {
     },
     VALUE: {
       FONT_SIZE: '24px',
+      // Long values (e.g. crore-range ₹ amounts) shrink instead of clipping.
+      FONT_SIZE_LONG: '18px',
+      LONG_THRESHOLD: 14,
       FONT_WEIGHT: 700,
       COLOR: '#1A212B',
     },

@@ -1,4 +1,4 @@
-import { seriesByDate, topNSeries } from '../reportFormat';
+import { seriesByDate, topNSeries, isReturnRow } from '../reportFormat';
 
 interface Row {
   date: string;
@@ -82,5 +82,21 @@ describe('topNSeries — per-label top-N aggregation', () => {
     const series = topNSeries(rows, (r) => r.label, (r) => r.value);
     expect(series.categories).toEqual(['A']);
     expect(series.values).toEqual([3]);
+  });
+});
+
+describe('isReturnRow — shared daily-sales sign convention', () => {
+  it('matches return and refund case/space-insensitively', () => {
+    expect(isReturnRow('return')).toBe(true);
+    expect(isReturnRow('Refund')).toBe(true);
+    expect(isReturnRow(' RETURN ')).toBe(true);
+  });
+
+  it('is false for sales, deletions, null and empty', () => {
+    expect(isReturnRow('Sale')).toBe(false);
+    expect(isReturnRow('deletion')).toBe(false);
+    expect(isReturnRow(null)).toBe(false);
+    expect(isReturnRow(undefined)).toBe(false);
+    expect(isReturnRow('')).toBe(false);
   });
 });

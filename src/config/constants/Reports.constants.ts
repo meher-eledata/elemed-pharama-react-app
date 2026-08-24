@@ -60,13 +60,6 @@ export const REPORTS_CONSTANTS = {
       BORDER_BOTTOM: '1px solid #E5E7EB',
       BORDER_BOTTOM_LIGHT: '1px solid #F3F4F6',
     },
-    WEEKLY_TREND: {
-      CARD_WIDTH: '515px',
-      CARD_HEIGHT: '201px',
-      CHART_COLOR: '#7C3AED',
-      TICK_LABEL_FONT_SIZE: 12,
-      TICK_LABEL_COLOR: '#728197',
-    },
   },
 } as const;
 
