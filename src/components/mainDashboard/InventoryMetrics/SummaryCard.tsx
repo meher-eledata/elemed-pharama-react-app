@@ -35,7 +35,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
         borderRadius: SUMMARY_CARD_CONSTANTS.BORDER_RADIUS,
         mt: 0,
         border: `1px solid ${SUMMARY_CARD_CONSTANTS.BORDER_COLOR}`,
-        fontFamily: "Plus Jakarta Sans",
       }}
     >
       <CardContent>
