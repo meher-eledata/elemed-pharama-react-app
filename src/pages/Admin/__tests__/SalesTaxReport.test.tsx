@@ -22,6 +22,15 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   __esModule: true,
   default: () => <div data-testid="date-range-filter" />,
 }));
+// Stub the chart components (canvas/measurement machinery jsdom can't run).
+jest.mock('../../../components/AdminReports/ReportBarChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="report-bar-chart" />,
+}));
+jest.mock('../../../components/Charts/PaymentTypePieChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="pie-chart" />,
+}));
 jest.mock('react-csv', () => ({
   __esModule: true,
   CSVLink: () => <div data-testid="csv-link" />,
@@ -192,6 +201,22 @@ describe('SalesTaxReport page', () => {
     expect(screen.getByText('Total Taxable Value')).toBeInTheDocument();
     // Table rows belong to the detailed tabs only.
     expect(screen.queryByText('Amoxicillin 500mg')).not.toBeInTheDocument();
+  });
+
+  it('shows the Overview charts on the Overview tab only', () => {
+    renderPage();
+    expect(screen.getByText('Tax Collected by Date')).toBeInTheDocument();
+    expect(screen.getByText('Top Products by Taxable Value')).toBeInTheDocument();
+    expect(screen.getByText('Tax Composition')).toBeInTheDocument();
+    expect(screen.getAllByTestId('report-bar-chart')).toHaveLength(2);
+    // Composition legend: CGST/SGST present; IGST is 0 in the fixture — filtered out.
+    expect(screen.getByText('CGST')).toBeInTheDocument();
+    expect(screen.getByText('SGST')).toBeInTheDocument();
+    expect(screen.queryByText('IGST')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Product-wise'));
+    expect(screen.queryByTestId('report-bar-chart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tax Collected by Date')).not.toBeInTheDocument();
   });
 
   it('renders key tax table columns and the row product on the Product-wise tab', () => {

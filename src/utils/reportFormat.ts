@@ -83,3 +83,51 @@ export const defaultDateRange = (): [Dayjs, Dayjs] => {
 /** Stringify a value safely for CSV cells. */
 export const csvString = (val: string | number | null | undefined): string =>
   val === null || val === undefined ? '' : String(val);
+
+// ---- Overview chart aggregation (feeds ReportBarChart) ---------------------
+
+export interface ChartSeries {
+  categories: string[];
+  values: number[];
+}
+
+/**
+ * Sum `valueOf` per calendar day (YYYY-MM-DD `dateOf`), ordered by date
+ * ascending, with categories formatted for the x-axis via formatReportDate.
+ */
+export const seriesByDate = <T,>(
+  rows: T[],
+  dateOf: (r: T) => string,
+  valueOf: (r: T) => number
+): ChartSeries => {
+  const byDate = new Map<string, number>();
+  rows.forEach((r) => {
+    const key = dateOf(r);
+    if (!key) return;
+    byDate.set(key, (byDate.get(key) ?? 0) + valueOf(r));
+  });
+  const keys = Array.from(byDate.keys()).sort();
+  return { categories: keys.map(formatReportDate), values: keys.map((k) => byDate.get(k) ?? 0) };
+};
+
+/**
+ * Sum `valueOf` per label and keep the top N groups by value descending
+ * (same truncation as the Supplier Receipt overview's backend charts).
+ */
+export const topNSeries = <T,>(
+  rows: T[],
+  labelOf: (r: T) => string,
+  valueOf: (r: T) => number,
+  n: number = ADMIN_REPORTS_CONSTANTS.CHART.TOP_N
+): ChartSeries => {
+  const byLabel = new Map<string, number>();
+  rows.forEach((r) => {
+    const key = labelOf(r);
+    if (!key) return;
+    byLabel.set(key, (byLabel.get(key) ?? 0) + valueOf(r));
+  });
+  const top = Array.from(byLabel.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n);
+  return { categories: top.map(([label]) => label), values: top.map(([, value]) => value) };
+};

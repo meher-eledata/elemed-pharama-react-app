@@ -22,6 +22,11 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   __esModule: true,
   default: () => <div data-testid="date-range-filter" />,
 }));
+// Stub the chart component (canvas/measurement machinery jsdom can't run).
+jest.mock('../../../components/AdminReports/ReportBarChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="report-bar-chart" />,
+}));
 jest.mock('react-csv', () => ({
   __esModule: true,
   CSVLink: () => <div data-testid="csv-link" />,
@@ -128,6 +133,18 @@ describe('ProductSalesReport page', () => {
     expect(screen.getByText('₹1,234.50')).toBeInTheDocument();
     // Table rows belong to the Product-wise tab only.
     expect(screen.queryByText('Amoxicillin 500mg')).not.toBeInTheDocument();
+  });
+
+  it('shows the Overview charts on the Overview tab only', () => {
+    renderPage();
+    expect(screen.getByText('Sales by Date')).toBeInTheDocument();
+    expect(screen.getByText('Top Products by Sales Value')).toBeInTheDocument();
+    expect(screen.getByText('Top Products by Qty')).toBeInTheDocument();
+    expect(screen.getAllByTestId('report-bar-chart')).toHaveLength(3);
+
+    fireEvent.click(screen.getByText('Product-wise'));
+    expect(screen.queryByTestId('report-bar-chart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sales by Date')).not.toBeInTheDocument();
   });
 
   it('renders key table columns and the row product on the Product-wise tab', () => {

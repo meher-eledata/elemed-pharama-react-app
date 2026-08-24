@@ -21,6 +21,21 @@ export const SUPPLIER_TAX_REPORT_LABELS = {
     SUPPLIER_LABEL: 'Supplier',
     SUPPLIER_ALL: 'All Suppliers',
   },
+  SECTIONS: {
+    TAX_BY_DATE: 'Tax by Date',
+    TOP_SUPPLIERS: 'Top Suppliers by Total (incl tax)',
+  },
+  CHART_SERIES: {
+    TAX: 'Tax (₹)',
+    TOTAL: 'Total (₹)',
+  },
+  AXIS: {
+    DATE: 'Date',
+    TAX: 'Tax (₹)',
+    SUPPLIER: 'Supplier',
+    TOTAL: 'Total (₹)',
+  },
+  EMPTY_CHART: 'No data for the selected period.',
   SUMMARY: {
     RECEIPTS: 'Receipts',
     SUPPLIERS: 'Suppliers',

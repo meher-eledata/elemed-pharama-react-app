@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Box, TableCell, TableRow } from '@mui/material';
+import { Box, Grid, TableCell, TableRow } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
@@ -10,6 +10,7 @@ import {
   ReportError,
   ReportEmpty,
   ReportSwitcher,
+  SectionTitle,
   FilterSelect,
   FilterSelectOption,
   CellText,
@@ -17,6 +18,7 @@ import {
   MetricCardGrid,
   BackLink,
 } from '../../components/AdminReports/ReportShared';
+import ReportBarChart from '../../components/AdminReports/ReportBarChart';
 import { ADMIN_REPORTS_CONSTANTS as C } from '../../config/constants/AdminReports.constants';
 import { PRODUCT_SALES_REPORT_LABELS as L } from '../../config/label/ProductSalesReport.labels';
 import {
@@ -34,6 +36,8 @@ import {
   formatReportDate,
   defaultDateRange,
   csvString,
+  seriesByDate,
+  topNSeries,
 } from '../../utils/reportFormat';
 
 const PATIENT_TYPE_DISPLAY: Record<string, string> = {
@@ -231,6 +235,21 @@ const ProductSalesReport: React.FC = () => {
     [summary]
   );
 
+  // Overview charts — derived from the line-level rows (each carries
+  // sale_date / product_name), so no extra fetch is needed.
+  const salesByDate = useMemo(
+    () => seriesByDate(rows, (r) => r.sale_date, (r) => r.lineTotalN),
+    [rows]
+  );
+  const topProductsByValue = useMemo(
+    () => topNSeries(rows, (r) => r.product_name || '', (r) => r.lineTotalN),
+    [rows]
+  );
+  const topProductsByQty = useMemo(
+    () => topNSeries(rows, (r) => r.product_name || '', (r) => r.qtyN),
+    [rows]
+  );
+
   const csvData = useMemo(() => {
     const dataRows = sortedRows.map((r) => ({
       [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
@@ -343,7 +362,52 @@ const ProductSalesReport: React.FC = () => {
         <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
       ) : tab === 'overview' ? (
         rows.length > 0 ? (
-          <MetricCardGrid cards={summaryCards} />
+          <Box>
+            <MetricCardGrid cards={summaryCards} />
+
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} md={6}>
+                <SectionTitle>{L.SECTIONS.SALES_BY_DATE}</SectionTitle>
+                <ReportBarChart
+                  categories={salesByDate.categories}
+                  values={salesByDate.values}
+                  seriesLabel={L.CHART_SERIES.SALES}
+                  emptyMessage={L.EMPTY_CHART}
+                  xAxisLabel={L.AXIS.DATE}
+                  yAxisLabel={L.AXIS.SALES}
+                  currency
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <SectionTitle>{L.SECTIONS.TOP_PRODUCTS_BY_VALUE}</SectionTitle>
+                <ReportBarChart
+                  categories={topProductsByValue.categories}
+                  values={topProductsByValue.values}
+                  seriesLabel={L.CHART_SERIES.VALUE}
+                  color={C.COLORS.BLUE}
+                  emptyMessage={L.EMPTY_CHART}
+                  xAxisLabel={L.AXIS.PRODUCT}
+                  yAxisLabel={L.AXIS.VALUE}
+                  currency
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <SectionTitle>{L.SECTIONS.TOP_PRODUCTS_BY_QTY}</SectionTitle>
+                <ReportBarChart
+                  categories={topProductsByQty.categories}
+                  values={topProductsByQty.values}
+                  seriesLabel={L.CHART_SERIES.QTY}
+                  color={C.COLORS.BLUE}
+                  emptyMessage={L.EMPTY_CHART}
+                  xAxisLabel={L.AXIS.PRODUCT}
+                  yAxisLabel={L.AXIS.QTY}
+                />
+              </Grid>
+            </Grid>
+          </Box>
         ) : (
           <ReportEmpty message={L.EMPTY_TABLE} />
         )

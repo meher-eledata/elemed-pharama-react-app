@@ -139,6 +139,9 @@ export const ADMIN_REPORTS_CONSTANTS = {
     // Cap on rendered x-axis tick labels — wide date ranges skip intermediate
     // ticks instead of overlapping into an unreadable smear.
     MAX_X_TICK_LABELS: 12,
+    // "Top N" bar-chart truncation — matches the backend LIMIT on the Supplier
+    // Receipt overview's top-suppliers/top-products chart queries.
+    TOP_N: 10,
   },
 
   TABLE: {

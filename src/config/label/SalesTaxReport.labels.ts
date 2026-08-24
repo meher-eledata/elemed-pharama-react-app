@@ -28,6 +28,27 @@ export const SALES_TAX_REPORT_LABELS = {
     HSN_LABEL: 'HSN Code',
     HSN_ALL: 'All HSN Codes',
   },
+  SECTIONS: {
+    TAX_BY_DATE: 'Tax Collected by Date',
+    TOP_PRODUCTS_BY_TAXABLE: 'Top Products by Taxable Value',
+    TAX_COMPOSITION: 'Tax Composition',
+  },
+  CHART_SERIES: {
+    TAX: 'Tax (₹)',
+    TAXABLE: 'Taxable Value (₹)',
+  },
+  AXIS: {
+    DATE: 'Date',
+    TAX: 'Tax (₹)',
+    PRODUCT: 'Product',
+    TAXABLE: 'Taxable Value (₹)',
+  },
+  TAX_TYPES: {
+    CGST: 'CGST',
+    SGST: 'SGST',
+    IGST: 'IGST',
+  },
+  EMPTY_CHART: 'No data for the selected period.',
   SUMMARY: {
     TITLE: 'Range Aggregates',
     TOTAL_TAXABLE: 'Total Taxable Value',

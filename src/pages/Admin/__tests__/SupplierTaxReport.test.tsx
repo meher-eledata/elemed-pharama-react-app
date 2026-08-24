@@ -22,6 +22,11 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   __esModule: true,
   default: () => <div data-testid="date-range-filter" />,
 }));
+// Stub the chart component (canvas/measurement machinery jsdom can't run).
+jest.mock('../../../components/AdminReports/ReportBarChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="report-bar-chart" />,
+}));
 // The CSV export is a SEPARATE code path from the table columns, so the mock captures
 // the rows handed to CSVLink and the tests assert on them directly.
 const mockCsvRows: Record<string, string>[] = [];
@@ -135,6 +140,17 @@ describe('SupplierTaxReport page', () => {
     expect(screen.getByText('₹5,000.00')).toBeInTheDocument();
     // Table columns belong to the detailed tabs only.
     expect(screen.queryByText('Receipt Total')).not.toBeInTheDocument();
+  });
+
+  it('shows the Overview charts on the Overview tab only', () => {
+    renderPage();
+    expect(screen.getByText('Tax by Date')).toBeInTheDocument();
+    expect(screen.getByText('Top Suppliers by Total (incl tax)')).toBeInTheDocument();
+    expect(screen.getAllByTestId('report-bar-chart')).toHaveLength(2);
+
+    fireEvent.click(screen.getByText('Receipt-wise'));
+    expect(screen.queryByTestId('report-bar-chart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tax by Date')).not.toBeInTheDocument();
   });
 
   it('renders key tax table columns on the Receipt-wise tab, without the aggregate cards', () => {

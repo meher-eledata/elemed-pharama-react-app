@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Box } from '@mui/material';
+import { Box, Grid } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
@@ -10,6 +10,7 @@ import {
   ReportError,
   ReportEmpty,
   ReportSwitcher,
+  SectionTitle,
   FilterSelect,
   FilterSelectOption,
   CellText,
@@ -17,6 +18,7 @@ import {
   MetricCardGrid,
   BackLink,
 } from '../../components/AdminReports/ReportShared';
+import ReportBarChart from '../../components/AdminReports/ReportBarChart';
 import { ADMIN_REPORTS_CONSTANTS as C } from '../../config/constants/AdminReports.constants';
 import { SUPPLIER_TAX_REPORT_LABELS as L } from '../../config/label/SupplierTaxReport.labels';
 import {
@@ -36,6 +38,8 @@ import {
   formatReportDate,
   defaultDateRange,
   csvString,
+  seriesByDate,
+  topNSeries,
 } from '../../utils/reportFormat';
 
 // Parsed row shapes (numeric-strings parsed to numbers).
@@ -204,6 +208,17 @@ const SupplierTaxReport: React.FC = () => {
     [summary]
   );
 
+  // Overview charts — derived from the receipt-level rows (each carries
+  // receipt_date / supplier_name), so no extra fetch is needed.
+  const taxByDate = useMemo(
+    () => seriesByDate(receiptRows, (r) => r.receipt_date, (r) => r.totalTaxN),
+    [receiptRows]
+  );
+  const topSuppliersByTotal = useMemo(
+    () => topNSeries(receiptRows, (r) => r.supplier_name || '', (r) => r.receiptTotalN),
+    [receiptRows]
+  );
+
   const hasRows = level === 'receipt' ? receiptRows.length > 0 : supplierRows.length > 0;
   const totalRows = level === 'receipt' ? sortedReceiptRows.length : sortedSupplierRows.length;
 
@@ -301,7 +316,37 @@ const SupplierTaxReport: React.FC = () => {
         <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
       ) : tab === 'overview' ? (
         hasRows ? (
-          <MetricCardGrid cards={summaryCards} />
+          <Box>
+            <MetricCardGrid cards={summaryCards} />
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <SectionTitle>{L.SECTIONS.TAX_BY_DATE}</SectionTitle>
+                <ReportBarChart
+                  categories={taxByDate.categories}
+                  values={taxByDate.values}
+                  seriesLabel={L.CHART_SERIES.TAX}
+                  emptyMessage={L.EMPTY_CHART}
+                  xAxisLabel={L.AXIS.DATE}
+                  yAxisLabel={L.AXIS.TAX}
+                  currency
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <SectionTitle>{L.SECTIONS.TOP_SUPPLIERS}</SectionTitle>
+                <ReportBarChart
+                  categories={topSuppliersByTotal.categories}
+                  values={topSuppliersByTotal.values}
+                  seriesLabel={L.CHART_SERIES.TOTAL}
+                  color={C.COLORS.BLUE}
+                  emptyMessage={L.EMPTY_CHART}
+                  xAxisLabel={L.AXIS.SUPPLIER}
+                  yAxisLabel={L.AXIS.TOTAL}
+                  currency
+                />
+              </Grid>
+            </Grid>
+          </Box>
         ) : (
           <ReportEmpty message={L.EMPTY_TABLE} />
         )

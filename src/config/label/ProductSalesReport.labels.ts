@@ -24,6 +24,24 @@ export const PRODUCT_SALES_REPORT_LABELS = {
     PATIENT_TYPE_INPATIENT: 'In Patient',
     PATIENT_TYPE_OUTPATIENT: 'Out Patient',
   },
+  SECTIONS: {
+    SALES_BY_DATE: 'Sales by Date',
+    TOP_PRODUCTS_BY_VALUE: 'Top Products by Sales Value',
+    TOP_PRODUCTS_BY_QTY: 'Top Products by Qty',
+  },
+  CHART_SERIES: {
+    SALES: 'Sales (₹)',
+    VALUE: 'Value (₹)',
+    QTY: 'Qty',
+  },
+  AXIS: {
+    DATE: 'Date',
+    SALES: 'Sales (₹)',
+    PRODUCT: 'Product',
+    VALUE: 'Value (₹)',
+    QTY: 'Qty',
+  },
+  EMPTY_CHART: 'No data for the selected period.',
   SUMMARY: {
     LINES: 'Lines',
     TOTAL_QTY: 'Total Qty',

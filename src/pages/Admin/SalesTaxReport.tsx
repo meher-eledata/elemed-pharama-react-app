@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Box, TableRow, TableCell } from '@mui/material';
+import React, { useState, useMemo, useRef, Suspense, lazy } from 'react';
+import { Box, Grid, Card, Typography, CircularProgress, TableRow, TableCell } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
@@ -18,6 +18,7 @@ import {
   MetricCardGrid,
   BackLink,
 } from '../../components/AdminReports/ReportShared';
+import ReportBarChart from '../../components/AdminReports/ReportBarChart';
 import { ADMIN_REPORTS_CONSTANTS as C } from '../../config/constants/AdminReports.constants';
 import { SALES_TAX_REPORT_LABELS as L } from '../../config/label/SalesTaxReport.labels';
 import {
@@ -40,7 +41,11 @@ import {
   formatReportDate,
   defaultDateRange,
   csvString,
+  seriesByDate,
+  topNSeries,
 } from '../../utils/reportFormat';
+
+const PaymentTypePieChart = lazy(() => import('../../components/Charts/PaymentTypePieChart'));
 
 interface TaxRow extends SalesTaxReportRow {
   _id: number;
@@ -326,6 +331,32 @@ const SalesTaxReport: React.FC = () => {
     [summary]
   );
 
+  // Overview charts — derived from the product-level rows (each line carries
+  // sale_date / product_name), so no extra fetch is needed.
+  const taxByDate = useMemo(
+    () => seriesByDate(rows, (r) => r.sale_date, (r) => r.totalTaxN),
+    [rows]
+  );
+  const topProductsByTaxable = useMemo(
+    () => topNSeries(rows, (r) => r.product_name || '', (r) => r.taxableN),
+    [rows]
+  );
+  const taxComposition = useMemo(
+    () =>
+      // Palette index is fixed PER TAX TYPE (pre-filter), so e.g. SGST keeps its
+      // color even when a zero CGST slice is filtered out.
+      [
+        { id: 0, label: L.TAX_TYPES.CGST, value: toNum(summary?.total_cgst), color: C.CHART_PALETTE[0] },
+        { id: 1, label: L.TAX_TYPES.SGST, value: toNum(summary?.total_sgst), color: C.CHART_PALETTE[1] },
+        { id: 2, label: L.TAX_TYPES.IGST, value: toNum(summary?.total_igst), color: C.CHART_PALETTE[2] },
+      ].filter((p) => p.value > 0),
+    [summary]
+  );
+  const taxCompositionTotal = useMemo(
+    () => taxComposition.reduce((s, p) => s + p.value, 0),
+    [taxComposition]
+  );
+
   // Totals footer values keyed by column key; driven by backend summary (not the
   // visible page) so they stay correct under filters and pagination.
   const productTotals: Record<string, string> = {
@@ -526,10 +557,79 @@ const SalesTaxReport: React.FC = () => {
         <ReportError message={C.STATES.ERROR} retryLabel={C.STATES.RETRY} onRetry={refetch} />
       ) : tab === 'overview' ? (
         hasRows ? (
-          <>
+          <Box>
             <SectionTitle>{L.SUMMARY.TITLE}</SectionTitle>
             <MetricCardGrid cards={summaryCards} />
-          </>
+
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} md={7}>
+                <SectionTitle>{L.SECTIONS.TAX_BY_DATE}</SectionTitle>
+                <ReportBarChart
+                  categories={taxByDate.categories}
+                  values={taxByDate.values}
+                  seriesLabel={L.CHART_SERIES.TAX}
+                  emptyMessage={L.EMPTY_CHART}
+                  xAxisLabel={L.AXIS.DATE}
+                  yAxisLabel={L.AXIS.TAX}
+                  currency
+                />
+              </Grid>
+              <Grid item xs={12} md={5}>
+                <SectionTitle>{L.SECTIONS.TAX_COMPOSITION}</SectionTitle>
+                {taxCompositionTotal > 0 ? (
+                  <Card
+                    sx={{
+                      p: 3,
+                      borderRadius: C.CARD.BORDER_RADIUS,
+                      boxShadow: C.CARD.BOX_SHADOW,
+                      border: C.CARD.BORDER,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                    }}
+                  >
+                    <Suspense fallback={<CircularProgress size={40} />}>
+                      <PaymentTypePieChart data={taxComposition} />
+                    </Suspense>
+                    <Box sx={{ width: '100%' }}>
+                      {taxComposition.map((m) => (
+                        <Box key={m.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ width: 12, height: 12, borderRadius: '2px', backgroundColor: m.color }} />
+                            <Typography sx={{ fontFamily: C.FONT_FAMILY, fontSize: '14px', color: C.COLORS.TEXT_SECONDARY, fontWeight: 500 }}>
+                              {m.label}
+                            </Typography>
+                          </Box>
+                          <Typography sx={{ fontFamily: C.FONT_FAMILY, fontSize: '14px', color: C.COLORS.TEXT_PRIMARY, fontWeight: 600 }}>
+                            {formatCurrency(m.value)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Card>
+                ) : (
+                  <ReportEmpty message={L.EMPTY_CHART} />
+                )}
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <SectionTitle>{L.SECTIONS.TOP_PRODUCTS_BY_TAXABLE}</SectionTitle>
+                <ReportBarChart
+                  categories={topProductsByTaxable.categories}
+                  values={topProductsByTaxable.values}
+                  seriesLabel={L.CHART_SERIES.TAXABLE}
+                  color={C.COLORS.BLUE}
+                  emptyMessage={L.EMPTY_CHART}
+                  xAxisLabel={L.AXIS.PRODUCT}
+                  yAxisLabel={L.AXIS.TAXABLE}
+                  currency
+                />
+              </Grid>
+            </Grid>
+          </Box>
         ) : (
           <ReportEmpty message={L.EMPTY_TABLE} />
         )
