@@ -128,20 +128,20 @@ const SupplierPaymentReport: React.FC = () => {
     }));
 
   const columns: TableColumn<PaymentRow>[] = [
-    { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number || '-'}</CellText> },
-    { key: 'invoice_date', header: L.TABLE.INVOICE_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.invoice_date)}</CellText> },
+    { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.receipt_number || '-'}</CellText> },
+    { key: 'invoice_date', header: L.TABLE.INVOICE_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.invoice_date)}</CellText> },
     { key: 'supplier_name', header: L.TABLE.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
-    { key: 'billN', header: L.TABLE.TOTAL_BILL, sortable: true, render: (r) => <CellText>{formatNumber(r.billN)}</CellText> },
-    { key: 'cgstN', header: L.TABLE.CGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
-    { key: 'sgstN', header: L.TABLE.SGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
-    { key: 'igstN', header: L.TABLE.IGST, sortable: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
-    { key: 'totalTaxN', header: L.TABLE.TOTAL_TAX, sortable: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
-    { key: 'discountN', header: L.TABLE.DISCOUNT, sortable: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
-    { key: 'paidN', header: L.TABLE.PAYMENT_DONE, sortable: true, render: (r) => <CellText weight={600} color={C.COLORS.POSITIVE}>{formatCurrency(r.paidN)}</CellText> },
-    { key: 'transaction_date', header: L.TABLE.TRANSACTION_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.transaction_date)}</CellText> },
-    { key: 'payment_method', header: L.TABLE.PAYMENT_METHOD, sortable: true, render: (r) => <CellText>{r.payment_method || '-'}</CellText> },
+    { key: 'billN', header: L.TABLE.TOTAL_BILL, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.billN)}</CellText> },
+    { key: 'cgstN', header: L.TABLE.CGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.cgstN)}</CellText> },
+    { key: 'sgstN', header: L.TABLE.SGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.sgstN)}</CellText> },
+    { key: 'igstN', header: L.TABLE.IGST, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.igstN)}</CellText> },
+    { key: 'totalTaxN', header: L.TABLE.TOTAL_TAX, sortable: true, nowrap: true, render: (r) => <CellText weight={600}>{formatCurrency(r.totalTaxN)}</CellText> },
+    { key: 'discountN', header: L.TABLE.DISCOUNT, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
+    { key: 'paidN', header: L.TABLE.PAYMENT_DONE, sortable: true, nowrap: true, render: (r) => <CellText weight={600} color={C.COLORS.POSITIVE}>{formatCurrency(r.paidN)}</CellText> },
+    { key: 'transaction_date', header: L.TABLE.TRANSACTION_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.transaction_date)}</CellText> },
+    { key: 'payment_method', header: L.TABLE.PAYMENT_METHOD, sortable: true, nowrap: true, render: (r) => <CellText>{r.payment_method || '-'}</CellText> },
     { key: 'details', header: L.TABLE.DETAILS, sortable: true, render: (r) => <CellText>{r.details || '-'}</CellText> },
-    { key: 'pendingN', header: L.TABLE.PENDING_DUE, sortable: true, render: (r) => <CellText color={r.pendingN > 0 ? C.COLORS.NEGATIVE : C.COLORS.TEXT_PRIMARY}>{formatCurrency(r.pendingN)}</CellText> },
+    { key: 'pendingN', header: L.TABLE.PENDING_DUE, sortable: true, nowrap: true, render: (r) => <CellText color={r.pendingN > 0 ? C.COLORS.NEGATIVE : C.COLORS.TEXT_PRIMARY}>{formatCurrency(r.pendingN)}</CellText> },
   ];
 
   // Charts

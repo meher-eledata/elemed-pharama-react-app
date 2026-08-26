@@ -169,14 +169,14 @@ const SupplierReceiptReport: React.FC = () => {
   };
 
   const columns: TableColumn<ReceiptRow>[] = [
-    { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
-    { key: 'receipt_date', header: L.TABLE.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
-    { key: 'invoice_number', header: L.TABLE.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
-    { key: 'po_number', header: L.TABLE.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
+    { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
+    { key: 'receipt_date', header: L.TABLE.RECEIPT_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
+    { key: 'invoice_number', header: L.TABLE.INVOICE_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'po_number', header: L.TABLE.PO_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
     { key: 'supplier_name', header: L.TABLE.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name}</CellText> },
     { key: 'supplier_gst', header: L.TABLE.GSTIN, sortable: true, nowrap: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
     { key: 'product_name', header: L.TABLE.PRODUCT, sortable: true, render: (r) => <CellText>{r.product_name}</CellText> },
-    { key: 'product_code', header: L.TABLE.PRODUCT_CODE, sortable: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
+    { key: 'product_code', header: L.TABLE.PRODUCT_CODE, sortable: true, nowrap: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
     { key: 'hsn_code', header: L.TABLE.HSN, sortable: true, nowrap: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
     // On-screen MRP is currency like Purchase Price; the CSV export stays numeric ("MRP (₹)").
     { key: 'mrpN', header: L.TABLE.MRP, sortable: true, nowrap: true, render: (r) => <CellText>{formatCurrency(r.mrpN)}</CellText> },
@@ -191,10 +191,10 @@ const SupplierReceiptReport: React.FC = () => {
   ];
 
   const byReceiptColumns: TableColumn<ByReceiptRow>[] = [
-    { key: 'receipt_number', header: L.TABLE_BY_RECEIPT.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
-    { key: 'receipt_date', header: L.TABLE_BY_RECEIPT.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
-    { key: 'invoice_number', header: L.TABLE_BY_RECEIPT.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
-    { key: 'po_number', header: L.TABLE_BY_RECEIPT.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
+    { key: 'receipt_number', header: L.TABLE_BY_RECEIPT.RECEIPT_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
+    { key: 'receipt_date', header: L.TABLE_BY_RECEIPT.RECEIPT_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
+    { key: 'invoice_number', header: L.TABLE_BY_RECEIPT.INVOICE_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'po_number', header: L.TABLE_BY_RECEIPT.PO_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
     { key: 'supplier_name', header: L.TABLE_BY_RECEIPT.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
     { key: 'supplier_gst', header: L.TABLE_BY_RECEIPT.GSTIN, sortable: true, nowrap: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
     { key: 'lineCountN', header: L.TABLE_BY_RECEIPT.LINES, sortable: true, nowrap: true, render: (r) => <CellText>{formatCount(r.lineCountN)}</CellText> },
