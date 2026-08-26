@@ -188,7 +188,7 @@ const ScheduledDrugsReport: React.FC = () => {
     { key: 'document_number', header: L.TABLE.DOC_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.document_number || '-'}</CellText> },
     { key: 'party_name', header: L.TABLE.PATIENT, sortable: true, columnWidth: '160px', render: (r) => <CellText>{r.party_name || '-'}</CellText> },
     { key: 'party_address', header: L.TABLE.ADDRESS, sortable: true, columnWidth: '200px', render: (r) => <CellText>{r.party_address || '-'}</CellText> },
-    { key: 'doctor_name', header: L.TABLE.DOCTOR, sortable: true, columnWidth: '160px', render: (r) => <CellText>{r.doctor_name || '-'}</CellText> },
+    { key: 'doctor_name', header: L.TABLE.DOCTOR, sortable: true, nowrap: true, render: (r) => <CellText>{r.doctor_name || '-'}</CellText> },
     { key: 'product_name', header: L.TABLE.DRUG, sortable: true, columnWidth: '160px', render: (r) => <CellText>{r.product_name || '-'}</CellText> },
     { key: 'schedule', header: L.TABLE.SCHEDULE, sortable: true, nowrap: true, render: (r) => <CellText>{formatSchedule(r.schedule) || '-'}</CellText> },
     { key: 'batch_number', header: L.TABLE.BATCH, sortable: true, nowrap: true, render: (r) => <CellText>{r.batch_number || '-'}</CellText> },
@@ -210,10 +210,10 @@ const ScheduledDrugsReport: React.FC = () => {
     { key: 'product_name', header: L.TABLE.DRUG, sortable: true, columnWidth: '160px', render: (r) => <CellText>{r.product_name || '-'}</CellText> },
     { key: 'product_code', header: L.TABLE.CODE, sortable: true, nowrap: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
     { key: 'schedule', header: L.TABLE.SCHEDULE, sortable: true, nowrap: true, render: (r) => <CellText>{formatSchedule(r.schedule) || '-'}</CellText> },
-    { key: 'openingN', header: L.TABLE.OPENING, sortable: true, render: (r) => <CellText>{formatQty(r.openingN)}</CellText> },
-    { key: 'inN', header: L.TABLE.IN, sortable: true, render: (r) => <CellText color={C.COLORS.POSITIVE}>{formatQty(r.inN)}</CellText> },
-    { key: 'outN', header: L.TABLE.OUT, sortable: true, render: (r) => <CellText color={C.COLORS.NEGATIVE}>{formatQty(r.outN)}</CellText> },
-    { key: 'closingN', header: L.TABLE.CLOSING, sortable: true, render: (r) => <CellText weight={700}>{formatQty(r.closingN)}</CellText> },
+    { key: 'openingN', header: L.TABLE.OPENING, sortable: true, nowrap: true, render: (r) => <CellText>{formatQty(r.openingN)}</CellText> },
+    { key: 'inN', header: L.TABLE.IN, sortable: true, nowrap: true, render: (r) => <CellText color={C.COLORS.POSITIVE}>{formatQty(r.inN)}</CellText> },
+    { key: 'outN', header: L.TABLE.OUT, sortable: true, nowrap: true, render: (r) => <CellText color={C.COLORS.NEGATIVE}>{formatQty(r.outN)}</CellText> },
+    { key: 'closingN', header: L.TABLE.CLOSING, sortable: true, nowrap: true, render: (r) => <CellText weight={700}>{formatQty(r.closingN)}</CellText> },
   ];
 
   const summary = data?.summary;
