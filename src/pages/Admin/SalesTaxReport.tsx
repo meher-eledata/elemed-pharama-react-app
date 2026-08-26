@@ -257,11 +257,11 @@ const SalesTaxReport: React.FC = () => {
   const columns: TableColumn<TaxRow>[] = [
     { key: 'invoice_number', header: L.TABLE.INVOICE_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
     { key: 'sale_date', header: L.TABLE.SALE_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.sale_date)}</CellText> },
-    { key: 'product_name', header: L.TABLE.PRODUCT, sortable: true, render: (r) => <CellText>{r.product_name || '-'}</CellText> },
+    { key: 'product_name', header: L.TABLE.PRODUCT, sortable: true, columnWidth: '160px', render: (r) => <CellText>{r.product_name || '-'}</CellText> },
     { key: 'product_code', header: L.TABLE.CODE, sortable: true, nowrap: true, render: (r) => <CellText>{r.product_code || '-'}</CellText> },
     { key: 'hsn_code', header: L.TABLE.HSN, sortable: true, nowrap: true, render: (r) => <CellText>{r.hsn_code || '-'}</CellText> },
     { key: 'batch_number', header: L.TABLE.BATCH_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.batch_number || '-'}</CellText> },
-    { key: 'customer_details', header: L.TABLE.CUSTOMER_DETAILS, sortable: true, render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
+    { key: 'customer_details', header: L.TABLE.CUSTOMER_DETAILS, sortable: true, columnWidth: '200px', render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
     { key: 'qtyN', header: L.TABLE.QTY, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
     { key: 'mrpN', header: L.TABLE.MRP, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
     { key: 'spN', header: L.TABLE.SP, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.spN)}</CellText> },
@@ -297,7 +297,7 @@ const SalesTaxReport: React.FC = () => {
   const invoiceColumns: TableColumn<InvoiceRow>[] = [
     { key: 'invoice_number', header: L.TABLE_INVOICE.INVOICE_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
     { key: 'sale_date', header: L.TABLE_INVOICE.SALE_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.sale_date)}</CellText> },
-    { key: 'customer_details', header: L.TABLE_INVOICE.CUSTOMER, sortable: true, render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
+    { key: 'customer_details', header: L.TABLE_INVOICE.CUSTOMER, sortable: true, columnWidth: '200px', render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
     { key: 'line_count', header: L.TABLE_INVOICE.LINES, sortable: true, nowrap: true, render: (r) => <CellText>{formatCount(r.line_count)}</CellText> },
     { key: 'quantityN', header: L.TABLE_INVOICE.QTY, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.quantityN)}</CellText> },
     { key: 'taxableN', header: L.TABLE_INVOICE.TAXABLE_VALUE, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },

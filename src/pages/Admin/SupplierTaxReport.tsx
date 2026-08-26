@@ -166,7 +166,7 @@ const SupplierTaxReport: React.FC = () => {
     { key: 'receipt_number', header: L.TABLE_RECEIPT.RECEIPT_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
     { key: 'receipt_date', header: L.TABLE_RECEIPT.RECEIPT_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
     { key: 'invoice_number', header: L.TABLE_RECEIPT.INVOICE_NUMBER, sortable: true, nowrap: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
-    { key: 'supplier_name', header: L.TABLE_RECEIPT.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
+    { key: 'supplier_name', header: L.TABLE_RECEIPT.SUPPLIER, sortable: true, columnWidth: '200px', render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
     { key: 'supplier_gst', header: L.TABLE_RECEIPT.GST, sortable: true, nowrap: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
     { key: 'taxableN', header: L.TABLE_RECEIPT.TAXABLE_VALUE, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
     { key: 'discountN', header: L.TABLE_RECEIPT.DISCOUNT, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
@@ -179,7 +179,7 @@ const SupplierTaxReport: React.FC = () => {
   ];
 
   const supplierColumns: TableColumn<SupplierViewRow>[] = [
-    { key: 'supplier_name', header: L.TABLE_SUPPLIER.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
+    { key: 'supplier_name', header: L.TABLE_SUPPLIER.SUPPLIER, sortable: true, columnWidth: '200px', render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
     { key: 'supplier_gst', header: L.TABLE_SUPPLIER.GST, sortable: true, nowrap: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
     { key: 'receipt_count', header: L.TABLE_SUPPLIER.RECEIPTS, sortable: true, nowrap: true, render: (r) => <CellText>{formatCount(r.receipt_count)}</CellText> },
     { key: 'taxableN', header: L.TABLE_SUPPLIER.TAXABLE_VALUE, sortable: true, nowrap: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
