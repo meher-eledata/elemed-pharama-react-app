@@ -94,7 +94,12 @@ export const COMPLIANCE_LABELS = {
     CHOOSE_FILE: 'Choose file',
   },
   EMPTY: {
-    NO_TYPES: 'No document types are set up for this pharmacy yet.',
+    // A pharmacy's catalogue now starts EMPTY, so this is the first thing a new org
+    // sees here — it must name the next step, not just state the absence.
+    NO_TYPES:
+      'No document types are set up yet. Add the documents this pharmacy keeps, then file them here.',
+    SET_UP_TYPES: 'Set up document types',
+    NO_TYPES_TOOLTIP: 'Add a document type before filing a document against it.',
     NO_DOCUMENTS: 'Nothing has been filed yet. Add your first compliance document.',
   },
   VALIDATION: {
@@ -158,13 +163,14 @@ export const COMPLIANCE_LABELS = {
     NEXT_ACTION: 'Next action',
     FILE_IT: 'File this document',
     OPEN_DOCUMENT: 'Open document',
+    NO_TYPES: 'No document types are set up yet, so there is nothing to track here.',
     NOT_FILED: 'Not filed yet',
     NO_EXPIRY_STATE: 'Does not expire',
   },
   TYPES: {
     TITLE: 'Document types',
     SUBTITLE:
-      'The papers this pharmacy must keep. Archiving a type keeps the documents already filed against it.',
+      'The papers this pharmacy keeps. Add them from the standard list or define your own; archiving a type keeps the documents already filed against it.',
     ADD: 'Add document type',
     EDIT_TITLE: 'Edit document type',
     ADD_TITLE: 'Add a document type',
@@ -193,7 +199,41 @@ export const COMPLIANCE_LABELS = {
     // with the same key must be RESTORED, never re-created.
     RESTORE_CONFLICT: 'Restore the archived type',
     LOAD_ERROR: 'Could not load document types.',
-    EMPTY: 'No document types yet.',
+    EMPTY: 'No document types yet. Add the papers this pharmacy keeps from the standard list.',
+  },
+  // The shipped catalogue is a PICK LIST, not a preset: a new pharmacy starts with
+  // none of these and adds only the ones it actually keeps.
+  LIBRARY: {
+    TITLE: 'Add a document type',
+    SUBTITLE: 'Pick from the papers most pharmacies keep, or define one of your own.',
+    STANDARD: 'Standard document types',
+    ADD: 'Add',
+    ADDED: 'Already added',
+    RESTORE: 'Restore',
+    REQUIRED_TOGGLE: 'Required',
+    CUSTOM: 'Define a custom type',
+    CUSTOM_HINT: 'Not on the list? Define a type of your own.',
+    NO_RENEWAL: 'No fixed renewal cycle',
+    ALL_ADDED: 'Every standard document type has already been added.',
+    LOAD_ERROR: 'Could not load the standard document types.',
+    added: (name: string) => `${name} added.`,
+  },
+  // DELETE is now a REAL delete when nothing is filed against the type; the backend
+  // refuses with 409 otherwise and archiving is the way out.
+  DELETE: {
+    ACTION: 'Delete',
+    TITLE: 'Delete document type',
+    confirm: (name: string) => `Delete "${name}"? This cannot be undone.`,
+    HINT: 'Nothing has been filed against this type. If you may need it later, archive it instead.',
+    CONFIRM_ACTION: 'Delete permanently',
+    DELETED: 'Document type deleted.',
+    ERROR: 'Could not delete the document type.',
+    blocked: (name: string, count: number) =>
+      count === 1
+        ? `"${name}" cannot be deleted: 1 document is filed against it and would be destroyed.`
+        : `"${name}" cannot be deleted: ${count} documents are filed against it and would be destroyed.`,
+    BLOCKED_HINT: 'Archive it instead — the documents already filed against it are kept.',
+    ARCHIVE_INSTEAD: 'Archive instead',
   },
   REMINDERS: {
     TITLE: 'Renewal reminders',

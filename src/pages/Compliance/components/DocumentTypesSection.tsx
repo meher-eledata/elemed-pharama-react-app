@@ -8,12 +8,13 @@ import {
 } from '../../../config/constants/Compliance.constants';
 import { COMPLIANCE_LABELS } from '../../../config/label/Compliance.labels';
 import {
-  useArchiveComplianceDocumentTypeMutation,
   useGetComplianceDocumentTypesQuery,
   useUpdateComplianceDocumentTypeMutation,
   type ComplianceDocumentType,
 } from '../../../redux/slices/complianceApi';
 import { extractErrorMessage, logError } from '../../../utils/errorUtils';
+import DeleteDocumentTypeDialog from './DeleteDocumentTypeDialog';
+import DocumentTypeLibraryModal from './DocumentTypeLibraryModal';
 import DocumentTypeModal from './DocumentTypeModal';
 
 const L = COMPLIANCE_LABELS;
@@ -31,22 +32,24 @@ const DocumentTypesSection: React.FC<DocumentTypesSectionProps> = ({ canEdit, on
   const { data: types = [], isLoading, isError } = useGetComplianceDocumentTypesQuery({
     status: 'all',
   });
-  const [archiveType] = useArchiveComplianceDocumentTypeMutation();
   const [updateType] = useUpdateComplianceDocumentTypeMutation();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [editing, setEditing] = useState<ComplianceDocumentType | null>(null);
+  const [deleting, setDeleting] = useState<ComplianceDocumentType | null>(null);
 
   const openModal = (type: ComplianceDocumentType | null) => {
     setEditing(type);
     setModalOpen(true);
   };
 
-  // Archive is a SOFT delete: the row survives and documents filed against it keep
-  // resolving, so it is reversible from the Restore button right beside it.
+  // Archive keeps the row and every document filed against it, so it stays
+  // un-confirmed and reversible from the Restore button right beside it. It is a
+  // PUT: DELETE is now a real delete, not an archive.
   const handleArchive = async (type: ComplianceDocumentType) => {
     try {
-      await archiveType(type.id).unwrap();
+      await updateType({ id: type.id, status: 'ARCHIVED' }).unwrap();
       onToast(L.TYPES.ARCHIVED, 'success');
     } catch (error: unknown) {
       logError(error, 'ComplianceSettings.archiveDocumentType');
@@ -76,7 +79,7 @@ const DocumentTypesSection: React.FC<DocumentTypesSectionProps> = ({ canEdit, on
           </Typography>
         </Box>
         {canEdit && (
-          <StandardButton variant="primary" size="small" onClick={() => openModal(null)}>
+          <StandardButton variant="primary" size="small" onClick={() => setLibraryOpen(true)}>
             {L.TYPES.ADD}
           </StandardButton>
         )}
@@ -92,10 +95,22 @@ const DocumentTypesSection: React.FC<DocumentTypesSectionProps> = ({ canEdit, on
           {L.TYPES.LOAD_ERROR}
         </Alert>
       )}
+      {/* A pharmacy's catalogue now starts EMPTY. That is a setup step, not an
+          error, so it says what to do next and offers the library right here. */}
       {!isLoading && !isError && types.length === 0 && (
-        <Typography sx={{ fontSize: '13px', color: '#6B7280', fontFamily: C.FONT, mt: 2 }}>
+        <Alert
+          severity="info"
+          sx={{ mt: 2, fontFamily: C.FONT }}
+          action={
+            canEdit ? (
+              <StandardButton variant="outline" size="small" onClick={() => setLibraryOpen(true)}>
+                {L.TYPES.ADD}
+              </StandardButton>
+            ) : undefined
+          }
+        >
           {L.TYPES.EMPTY}
-        </Typography>
+        </Alert>
       )}
 
       {types.map((type) => {
@@ -178,16 +193,38 @@ const DocumentTypesSection: React.FC<DocumentTypesSectionProps> = ({ canEdit, on
                     </span>
                   </Tooltip>
                 )}
+                {/* Permanent, and only possible while nothing is filed against the
+                    type — both facts are stated in the confirm dialog. */}
+                <StandardButton variant="text" size="small" onClick={() => setDeleting(type)}>
+                  {L.DELETE.ACTION}
+                </StandardButton>
               </>
             )}
           </Box>
         );
       })}
 
+      <DocumentTypeLibraryModal
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onCustom={() => {
+          setLibraryOpen(false);
+          openModal(null);
+        }}
+        onToast={onToast}
+      />
+
       <DocumentTypeModal
         open={modalOpen}
         type={editing}
         onClose={() => setModalOpen(false)}
+        onToast={onToast}
+      />
+
+      <DeleteDocumentTypeDialog
+        open={deleting !== null}
+        type={deleting}
+        onClose={() => setDeleting(null)}
         onToast={onToast}
       />
     </Box>

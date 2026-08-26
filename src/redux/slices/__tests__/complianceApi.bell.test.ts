@@ -70,7 +70,7 @@ it('a compliance write refetches the bell without a reload', async () => {
 const MUTATIONS: Array<[string, unknown]> = [
   ['createComplianceDocumentType', { key: 'ndps_extra', name: 'Extra' }],
   ['updateComplianceDocumentType', { id: 1, name: 'Extra' }],
-  ['archiveComplianceDocumentType', 1],
+  ['deleteComplianceDocumentType', 1],
   ['createComplianceDocument', { document_type_id: 1, title: 'NDPS Licence' }],
   ['updateComplianceDocument', { id: 1, title: 'NDPS Licence' }],
   [

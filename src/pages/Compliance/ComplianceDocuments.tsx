@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -9,6 +9,7 @@ import {
   MenuItem,
   Snackbar,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
@@ -38,7 +39,7 @@ import {
   type ComplianceVersion,
 } from '../../redux/slices/complianceApi';
 import { extractErrorMessage, logError } from '../../utils/errorUtils';
-import ComplianceNav from './components/ComplianceNav';
+import ComplianceNav, { complianceBasePath } from './components/ComplianceNav';
 import CreateDocumentModal from './components/CreateDocumentModal';
 import DocumentRowMenu from './components/DocumentRowMenu';
 import EditDocumentModal from './components/EditDocumentModal';
@@ -62,6 +63,14 @@ interface ToastState {
 
 const ComplianceDocuments: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  // Document types are set up on the Settings tab, which only the admin portal
+  // mounts (RoleGuard already keeps staff out of it), so the empty-catalogue
+  // shortcut is offered only where it can actually be followed.
+  const settingsPath =
+    complianceBasePath(location.pathname) === C.ADMIN_ROUTE_BASE
+      ? `${C.ADMIN_ROUTE_BASE}/${C.SETTINGS_PATH}`
+      : null;
   // Deep link from a compliance bell notification (see getNotificationRoute): a
   // document id expands that document's history; a bare TYPE id means nothing has
   // been filed for it at all, so the create flow opens pre-selected on that type.
@@ -259,9 +268,19 @@ const ComplianceDocuments: React.FC = () => {
             {L.FILTER.ALL}
           </MenuItem>
         </TextField>
-        <StandardButton variant="primary" onClick={() => openCreate(null)}>
-          {L.ACTIONS.ADD_DOCUMENT}
-        </StandardButton>
+        {/* Nothing can be filed against an empty catalogue — the create modal
+            would open on an empty type list, which is a dead end. */}
+        <Tooltip title={activeTypes.length === 0 ? L.EMPTY.NO_TYPES_TOOLTIP : ''}>
+          <span>
+            <StandardButton
+              variant="primary"
+              disabled={activeTypes.length === 0}
+              onClick={() => openCreate(null)}
+            >
+              {L.ACTIONS.ADD_DOCUMENT}
+            </StandardButton>
+          </span>
+        </Tooltip>
       </Box>
 
       {isLoading && (
@@ -275,7 +294,23 @@ const ComplianceDocuments: React.FC = () => {
       )}
 
       {!isLoading && !typesError && !documentsError && groups.length === 0 && (
-        <Alert severity="info">{L.EMPTY.NO_TYPES}</Alert>
+        <Alert
+          severity="info"
+          sx={{ fontFamily: C.FONT }}
+          action={
+            settingsPath ? (
+              <StandardButton
+                variant="outline"
+                size="small"
+                onClick={() => navigate(settingsPath)}
+              >
+                {L.EMPTY.SET_UP_TYPES}
+              </StandardButton>
+            ) : undefined
+          }
+        >
+          {L.EMPTY.NO_TYPES}
+        </Alert>
       )}
 
       {!isLoading &&

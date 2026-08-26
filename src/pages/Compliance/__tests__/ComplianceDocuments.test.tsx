@@ -127,3 +127,25 @@ it('opens the upload modal with valid_to marked optional', async () => {
   expect(await screen.findByText('Upload a new version')).toBeInTheDocument();
   expect(screen.getByText('Optional — leave blank if this document does not expire.')).toBeInTheDocument();
 });
+
+// A pharmacy's catalogue now starts EMPTY, a state this page had never rendered.
+it('points an empty catalogue at setup and cannot start a dead-end create', async () => {
+  global.fetch = jest.fn(async (input: any) => {
+    const url = typeof input === 'string' ? input : input.url;
+    const body = url.includes('document-types') ? []
+      : url.includes('notification-settings') ? { lead_days: [60, 30, 7], is_default: true, overrides: [] }
+      : { documents: [], total: 0, limit: 50, offset: 0, has_more: false };
+    return { ok: true, status: 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => body, text: async () => JSON.stringify(body), clone() { return this; } } as any;
+  }) as any;
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      'No document types are set up yet. Add the documents this pharmacy keeps, then file them here.',
+    ),
+  ).toBeInTheDocument();
+  // Nothing can be filed against an empty catalogue, so the create flow is closed.
+  expect(screen.getByText('Add document').closest('button')).toBeDisabled();
+  // No "0 of 0" paging line on an empty list.
+  expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
+});

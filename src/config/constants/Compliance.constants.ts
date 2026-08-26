@@ -89,3 +89,12 @@ export const COMPLIANCE_FIELD_SX = {
     marginLeft: 0,
   },
 } as const;
+
+// Destructive confirm button, matching the retire-document dialog's red so the app
+// has one "this cannot be undone" colour (see DeleteDialogue/DeleteDocumentDialog).
+export const COMPLIANCE_DANGER_BUTTON_SX = {
+  backgroundColor: '#DC2626',
+  color: '#FFFFFF',
+  '&:hover': { backgroundColor: '#B91C1C', boxShadow: 'none' },
+  '&.Mui-disabled': { backgroundColor: '#FCA5A5', color: '#FFFFFF' },
+} as const;

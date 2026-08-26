@@ -41,10 +41,19 @@ const noExpiry: ComplianceCalendarItem = {
   state: 'NO_EXPIRY',
 };
 
+// The page also reads the catalogue: with no document types there is nothing to
+// track, which must not read as "all clear".
+const DEFAULT_TYPE = { id: 1, key: 'pharmacy_licence', name: 'Pharmacy Licence', description: null, category: 'Licence', is_required: true, default_validity_months: null, status: 'ACTIVE', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' };
+let catalogue: unknown[] = [DEFAULT_TYPE];
+let calendarBody: Record<string, unknown> | null = null;
+
 beforeEach(() => {
   mockNavigate.mockClear();
-  global.fetch = jest.fn(async () => {
-    const body = {
+  catalogue = [DEFAULT_TYPE];
+  calendarBody = null;
+  global.fetch = jest.fn(async (input: any) => {
+    const url = typeof input === 'string' ? input : input.url;
+    const body = url.includes('document-types') ? catalogue : calendarBody ?? {
       from: dayjs().startOf('month').format('YYYY-MM-DD'),
       to: dayjs().endOf('month').format('YYYY-MM-DD'),
       items: [expired, base],
@@ -118,4 +127,20 @@ it('routes an overdue row to its document', async () => {
   expect(mockNavigate).toHaveBeenLastCalledWith('/compliance/documents', {
     state: { complianceDocumentId: 2 },
   });
+});
+
+// A pharmacy that has added no document types has nothing to track. The empty
+// calendar must say that, not congratulate the user for being all clear.
+it('tells a pharmacy with no document types to set them up', async () => {
+  catalogue = [];
+  calendarBody = {
+    from: dayjs().startOf('month').format('YYYY-MM-DD'),
+    to: dayjs().endOf('month').format('YYYY-MM-DD'),
+    items: [], missing: [], no_expiry: [],
+  };
+  renderPage();
+  expect(
+    await screen.findByText('No document types are set up yet, so there is nothing to track here.'),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('Nothing needs your attention right now.')).not.toBeInTheDocument();
 });

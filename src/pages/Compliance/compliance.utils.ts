@@ -7,6 +7,7 @@ import {
 import { COMPLIANCE_LABELS } from '../../config/label/Compliance.labels';
 import type {
   ComplianceCalendarItem,
+  ComplianceDeleteConflict,
   ComplianceVersion,
 } from '../../redux/slices/complianceApi';
 
@@ -184,3 +185,19 @@ export const groupByValidTo = (
 // error state.
 export const personLabel = (username: string | null, id: number | null): string =>
   username ?? (id != null ? L.HINTS.USER_REF(id) : L.DASH);
+
+// DELETE /compliance/document-types/:id refuses with 409 when documents are filed
+// against the type. Recognised by the STATUS CODE and the numeric `document_count`
+// — never by matching `error`, which is prose and may be reworded server-side.
+export const readDeleteConflict = (error: unknown): ComplianceDeleteConflict | null => {
+  const failure = error as { status?: number; data?: Partial<ComplianceDeleteConflict> };
+  if (failure?.status !== 409) return null;
+  const { data } = failure;
+  if (!data || typeof data.document_count !== 'number' || typeof data.id !== 'number') return null;
+  return {
+    error: data.error ?? '',
+    id: data.id,
+    status: data.status ?? 'ACTIVE',
+    document_count: data.document_count,
+  };
+};

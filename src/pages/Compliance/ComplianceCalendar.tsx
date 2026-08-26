@@ -18,6 +18,7 @@ import {
 import { COMPLIANCE_LABELS } from '../../config/label/Compliance.labels';
 import {
   useGetComplianceCalendarQuery,
+  useGetComplianceDocumentTypesQuery,
   type ComplianceCalendarItem,
 } from '../../redux/slices/complianceApi';
 import ComplianceNav, { complianceBasePath } from './components/ComplianceNav';
@@ -185,6 +186,9 @@ const ComplianceCalendar: React.FC = () => {
   const location = useLocation();
   const base = complianceBasePath(location.pathname);
 
+  const settingsPath =
+    base === C.ADMIN_ROUTE_BASE ? `${C.ADMIN_ROUTE_BASE}/${C.SETTINGS_PATH}` : null;
+
   const [month, setMonth] = useState<Dayjs>(dayjs().startOf('month'));
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
 
@@ -194,6 +198,12 @@ const ComplianceCalendar: React.FC = () => {
     from: month.startOf('month').format(C.API_DATE_FORMAT),
     to: month.endOf('month').format(C.API_DATE_FORMAT),
   });
+
+  // A pharmacy that has added no document types has nothing to track, which is a
+  // setup step rather than the "all clear" the empty calendar would otherwise show.
+  // Same cached query the Documents page uses.
+  const { data: types } = useGetComplianceDocumentTypesQuery({ status: 'ACTIVE' });
+  const hasNoTypes = Array.isArray(types) && types.length === 0;
 
   // Server order is meaningful (expired first, most overdue first, then valid_to)
   // — split by state without re-sorting.
@@ -259,7 +269,26 @@ const ComplianceCalendar: React.FC = () => {
       {isError && <Alert severity="error">{L.CALENDAR.LOAD_ERROR}</Alert>}
 
       {/* What needs doing next, before any scrolling or thinking. */}
-      {!isError && (
+      {!isError && hasNoTypes && (
+        <Alert
+          severity="info"
+          sx={{ fontFamily: C.FONT }}
+          action={
+            settingsPath ? (
+              <StandardButton
+                variant="outline"
+                size="small"
+                onClick={() => navigate(settingsPath)}
+              >
+                {L.EMPTY.SET_UP_TYPES}
+              </StandardButton>
+            ) : undefined
+          }
+        >
+          {L.CALENDAR.NO_TYPES}
+        </Alert>
+      )}
+      {!isError && !hasNoTypes && (
         <Alert severity={actionCount > 0 ? 'warning' : 'success'} sx={{ fontFamily: C.FONT }}>
           {actionCount === 0
             ? L.CALENDAR.ALL_CLEAR

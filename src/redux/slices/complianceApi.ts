@@ -34,6 +34,33 @@ export type ComplianceDocumentTypeRef = Pick<
   'id' | 'key' | 'name' | 'category' | 'is_required' | 'default_validity_months' | 'status'
 >;
 
+// GET /compliance/document-type-library — the SHIPPED catalogue of standard types
+// (a bare array, in library order). It is a PICK LIST, not the org's catalogue: a
+// new org starts with none of these and adds the ones it actually keeps.
+// `already_added` is true when this org already has a type with that `key`; `id`
+// and `status` then name that row. An ARCHIVED row counts as already added — it
+// must be RESTORED (PUT status ACTIVE), never re-created (the POST answers 409).
+export interface ComplianceDocumentTypeTemplate {
+  key: string;
+  name: string;
+  category: string | null;
+  is_required: boolean; // the DEFAULT on add — the org can change it
+  default_validity_months: number | null;
+  already_added: boolean;
+  id: number | null;
+  status: ComplianceStatus | null;
+}
+
+// 409 body of DELETE /compliance/document-types/:id when documents are filed
+// against the type. Branch on the STATUS CODE and `document_count` — never parse
+// `error`, which is prose and may be reworded.
+export interface ComplianceDeleteConflict {
+  error: string;
+  id: number;
+  status: ComplianceStatus;
+  document_count: number;
+}
+
 export interface ComplianceVersion {
   id: number;
   document_id: number;
@@ -309,6 +336,14 @@ export const complianceApi = createApi({
       }),
       providesTags: ['ComplianceType'],
     }),
+    // Any member may READ the library (only owner/admin can act on it), so the
+    // Settings page can render it read-only for staff. It carries the org's own
+    // `already_added`/`status`, so it is tagged 'ComplianceType' like the catalogue
+    // itself — every add, archive, restore and delete refreshes it.
+    getComplianceDocumentTypeLibrary: builder.query<ComplianceDocumentTypeTemplate[], void>({
+      query: () => 'compliance/document-type-library',
+      providesTags: ['ComplianceType'],
+    }),
     createComplianceDocumentType: builder.mutation<
       ComplianceDocumentType,
       CreateComplianceDocumentTypeRequest
@@ -331,8 +366,14 @@ export const complianceApi = createApi({
       onQueryStarted: refreshNotificationBell,
       invalidatesTags: ['ComplianceType', 'ComplianceDocument', 'ComplianceCalendar'],
     }),
-    // SOFT delete — the row survives as ARCHIVED and filed documents keep resolving.
-    archiveComplianceDocumentType: builder.mutation<ComplianceDocumentType, number>({
+    // HARD delete — the row is GONE and its key is free again, so the library flips
+    // back to `already_added: false` (both are the 'ComplianceType' tag).
+    // Refused with 409 ComplianceDeleteConflict when documents are filed against it;
+    // archiving (PUT status ARCHIVED) is the alternative there. Never retried.
+    deleteComplianceDocumentType: builder.mutation<
+      ComplianceDocumentType & { deleted: true },
+      number
+    >({
       query: (id) => ({ url: `compliance/document-types/${id}`, method: 'DELETE' }),
       onQueryStarted: refreshNotificationBell,
       invalidatesTags: ['ComplianceType', 'ComplianceDocument', 'ComplianceCalendar'],
@@ -514,9 +555,10 @@ export const complianceApi = createApi({
 
 export const {
   useGetComplianceDocumentTypesQuery,
+  useGetComplianceDocumentTypeLibraryQuery,
   useCreateComplianceDocumentTypeMutation,
   useUpdateComplianceDocumentTypeMutation,
-  useArchiveComplianceDocumentTypeMutation,
+  useDeleteComplianceDocumentTypeMutation,
   useGetComplianceDocumentsQuery,
   useCreateComplianceDocumentMutation,
   useGetComplianceDocumentQuery,
