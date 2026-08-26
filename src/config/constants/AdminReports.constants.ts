@@ -176,6 +176,7 @@ export const ADMIN_REPORTS_CONSTANTS = {
     PRODUCT_SALES: '/admin/reports/product-sales',
     SALES_TAX: '/admin/reports/sales-tax',
     SUPPLIER_TAX: '/admin/reports/supplier-tax',
+    SCHEDULED_DRUGS: '/admin/reports/scheduled-drugs',
   },
 } as const;
 

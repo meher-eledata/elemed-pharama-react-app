@@ -456,6 +456,87 @@ export type SupplierTaxReportResponse =
   | SupplierTaxReceiptResponse
   | SupplierTaxSupplierResponse;
 
+// ---- (F) Scheduled Drugs Compliance Report --------------------------------
+
+export type ScheduledDrugCode = "G" | "H" | "H1" | "X" | "C" | "C1" | "K";
+
+export interface ScheduledDrugsReportRequest {
+  start_date: string;
+  end_date: string;
+  schedule?: ScheduledDrugCode;
+  product_id?: number;
+}
+
+export interface ScheduledDrugsDispensingRow {
+  entry_type: "SALE" | "SALES_RETURN";
+  direction: "OUT" | "IN";
+  entry_date: string;
+  document_id: number;
+  document_number: string | null;
+  line_id: number;
+  party_name: string | null;
+  party_address: string | null;
+  doctor_name: string | null;
+  product_id: number;
+  product_name: string | null;
+  product_code: string | null;
+  schedule: string;
+  batch_number: string | null;
+  quantity: Num; // UNITS (incl. free goods), never packs
+  restock_action: "RESTOCK" | "SCRAP" | "QUARANTINE" | null;
+}
+
+export interface ScheduledDrugsReceiptRow {
+  entry_type: "RECEIPT" | "SUPPLIER_RETURN";
+  direction: "IN" | "OUT";
+  entry_date: string;
+  document_id: number;
+  document_number: string | null;
+  line_id: number;
+  supplier_id: number | null;
+  supplier_name: string | null;
+  product_id: number;
+  product_name: string | null;
+  product_code: string | null;
+  schedule: string;
+  batch_number: string | null;
+  quantity: Num; // UNITS = (received_qty + free_qty) x pack_qty
+}
+
+export interface ScheduledDrugsBalanceRow {
+  product_id: number;
+  product_name: string | null;
+  product_code: string | null;
+  schedule: string;
+  opening_qty: Num;
+  qty_in: Num;
+  qty_out: Num;
+  closing_qty: Num;
+}
+
+export interface ScheduledDrugsReportSummary {
+  start_date: string;
+  end_date: string;
+  schedule: string | null;
+  product_id: number | null;
+  dispensing_row_count: number;
+  receipt_row_count: number;
+  scheduled_product_count: number;
+  total_dispensed_qty: Num;
+  total_sales_returned_qty: Num;
+  total_received_qty: Num;
+  total_supplier_returned_qty: Num;
+  // NULL-schedule products with movement in the window; ignores filters by design.
+  unattributed_product_count: number;
+}
+
+export interface ScheduledDrugsReportResponse {
+  dispensing: ScheduledDrugsDispensingRow[];
+  receipts: ScheduledDrugsReceiptRow[];
+  balances: ScheduledDrugsBalanceRow[];
+  summary: ScheduledDrugsReportSummary;
+}
+
 export const reportsApi = createApi({
   reducerPath: "reportsApi",
   baseQuery: baseQueryWithReauth,
@@ -517,6 +598,14 @@ export const reportsApi = createApi({
       }),
       providesTags: ["Reports"],
     }),
+    getScheduledDrugsReport: builder.query<ScheduledDrugsReportResponse, ScheduledDrugsReportRequest>({
+      query: (body) => ({
+        url: "reports/scheduledDrugs/get-scheduled-drugs-report",
+        method: "POST",
+        body,
+      }),
+      providesTags: ["Reports"],
+    }),
   }),
 });
 
@@ -528,4 +617,5 @@ export const {
   useGetProductSalesReportQuery,
   useGetSalesTaxReportQuery,
   useGetSupplierTaxReportQuery,
+  useGetScheduledDrugsReportQuery,
 } = reportsApi;

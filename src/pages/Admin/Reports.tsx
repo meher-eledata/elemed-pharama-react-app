@@ -11,6 +11,7 @@ import { SUPPLIER_PAYMENT_REPORT_LABELS } from '../../config/label/SupplierPayme
 import { PRODUCT_SALES_REPORT_LABELS } from '../../config/label/ProductSalesReport.labels';
 import { SALES_TAX_REPORT_LABELS } from '../../config/label/SalesTaxReport.labels';
 import { SUPPLIER_TAX_REPORT_LABELS } from '../../config/label/SupplierTaxReport.labels';
+import { SCHEDULED_DRUGS_REPORT_LABELS } from '../../config/label/ScheduledDrugsReport.labels';
 import { StandardButton } from '../../components/Common';
 import {
   BackLink,
@@ -125,6 +126,12 @@ const DetailedReportsView: React.FC<{ onOpenDailySales: () => void }> = ({ onOpe
       title: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.TITLE,
       description: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
       route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_TAX,
+    },
+    {
+      id: 'scheduled-drugs',
+      title: SCHEDULED_DRUGS_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: SCHEDULED_DRUGS_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.SCHEDULED_DRUGS,
     },
   ];
 
