@@ -95,6 +95,24 @@ const FIXTURE: reportsApi.DailySalesTableItem[] = [
     patient_type: 'OUTPATIENT',
     customer_details: null,
   },
+  // A Deletion row whose invoice has no payment row at all: the backend emits
+  // 'UNKNOWN'. Bug 2026-09-07: this used to be rendered as "Cash".
+  {
+    transaction_date: '2026-07-16',
+    transaction_type: 'Deletion',
+    invoice_number: '40',
+    customer_name: 'Sam Patient',
+    doctor_name: 'Dr. Lee',
+    payment_type: 'UNKNOWN',
+    sales_amount: '-300.00',
+    discount_amount: '0.00',
+    cgst: '-13.50',
+    sgst: '-13.50',
+    igst: '0.00',
+    total_amount: '-327.00',
+    patient_type: 'OUTPATIENT',
+    customer_details: null,
+  },
 ];
 
 const createStore = () =>
@@ -141,6 +159,20 @@ describe('DetailedSalesTable page', () => {
     // The refund row has customer_details null and renders the dash placeholder.
     const refundRow = screen.getByText('Jane Patient').closest('tr')!;
     expect(refundRow).toHaveTextContent('-');
+  });
+
+  it('never invents "Cash" for a row with no payment method (renders Unknown)', () => {
+    renderPage();
+    const deletionRow = screen.getByText('Sam Patient').closest('tr')!;
+    expect(deletionRow).toHaveTextContent('Unknown');
+    expect(deletionRow).not.toHaveTextContent('Cash');
+    // Real methods still render in Title Case.
+    expect(screen.getByText('John Patient').closest('tr')!).toHaveTextContent('Cash');
+    expect(screen.getByText('Jane Patient').closest('tr')!).toHaveTextContent('Upi');
+    const csvRows = JSON.parse(
+      screen.getByTestId('csv-link').getAttribute('data-csv') || '[]'
+    );
+    expect(csvRows.find((r: any) => r['Invoice Number'] === '40')['Payment Type']).toBe('Unknown');
   });
 
   it('includes Customer Details in the CSV export mapping', () => {

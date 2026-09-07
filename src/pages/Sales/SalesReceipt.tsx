@@ -404,11 +404,19 @@ const SalesReceipt: React.FC = () => {
               // Backend currently returns voided payments alongside active ones; skip them so
               // the editor doesn't load stale rows (e.g., old UPI: 13 next to new UPI: 36).
               // Remove this filter once getInvoiceDetails returns only active payments.
-              const payments = (result.payments || []).filter((p: any) => {
-                const status = String(p?.status || '').toUpperCase();
-                const paymentStatus = String(p?.payment_status || '').toUpperCase();
-                return status !== 'VOID' && paymentStatus !== 'VOIDED';
-              });
+              // EXCEPT for a deleted invoice: deleteInvoice voids every linked payment, so
+              // filtering would leave nothing and the view would fall back to the default
+              // "Cash" — showing the wrong method. Keep the voided rows there (they are the
+              // original payments), matching the Sales History preview.
+              const isDeletedInvoice =
+                String(invoice?.record_status || '').toUpperCase() === 'DELETED' || !!invoice?.deleted_at;
+              const payments = isDeletedInvoice
+                ? (result.payments || [])
+                : (result.payments || []).filter((p: any) => {
+                  const status = String(p?.status || '').toUpperCase();
+                  const paymentStatus = String(p?.payment_status || '').toUpperCase();
+                  return status !== 'VOID' && paymentStatus !== 'VOIDED';
+                });
 
               // Map payments from API to splitPayments state.
               // For MULTIPLE-mode invoices load all available payment records (even just 1),
