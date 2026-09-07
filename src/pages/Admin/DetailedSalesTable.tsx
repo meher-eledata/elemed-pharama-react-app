@@ -99,7 +99,9 @@ const DetailedSalesTable: React.FC = () => {
         paymentType: (() => {
           const raw = (item.payment_type || '').trim().toUpperCase();
           if (!raw || raw === 'UNKNOWN' || raw === 'NULL') {
-            return 'Cash'; // Graceful fallback
+            // No payment row exists for this transaction. Never invent a method
+            // (the old 'Cash' fallback mislabelled UPI/card sales); say so instead.
+            return 'Unknown';
           }
           // Normalize to Title Case (e.g., "CREDIT CARD" -> "Credit Card")
           return raw.split(' ').map(word =>
