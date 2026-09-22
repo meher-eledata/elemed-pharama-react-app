@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import dayjs from "dayjs";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../redux/store";
 import { PharmaTableRow, SupplierTotals } from "../types";
@@ -14,8 +15,12 @@ interface LocationState {
   transactionNumber?: string;
   paymentVendor?: string;
   invoiceDate?: string;
+  receiptDate?: string;
   invoiceNumber?: string;
 }
+
+// The receive form displays/edits dates in DD/MM/YYYY (PharmaDatePicker convention).
+const TODAY_DDMMYYYY = () => dayjs().format("DD/MM/YYYY");
 
 export const useOrderDetailsForm = () => {
   const location = useLocation();
@@ -32,6 +37,7 @@ export const useOrderDetailsForm = () => {
   const navigationTransactionNumber = locationState.transactionNumber || "";
   const navigationPaymentVendor = locationState.paymentVendor || "";
   const navigationInvoiceDate = locationState.invoiceDate || "";
+  const navigationReceiptDate = locationState.receiptDate || "";
   const navigationInvoiceNumber = locationState.invoiceNumber || "";
   // Deep-link / browser-back safety net: the receipts list already disables the edit
   // icon on a retired receipt, but the page can still be reached with its router state
@@ -49,6 +55,11 @@ export const useOrderDetailsForm = () => {
     isEditMode && selectedOrder ? selectedOrder.poNo : selectedPO
   );
   const [invoiceDate, setInvoiceDate] = useState<string>("");
+  // Editable goods-received date. NEW-receipt default = today (editable, may be cleared);
+  // on edit it is prefilled from the record (navigation state) via the OrderDetails effect.
+  const [receiptDate, setReceiptDate] = useState<string>(
+    navigationReceiptDate || TODAY_DDMMYYYY()
+  );
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [invoiceNumberError, setInvoiceNumberError] = useState<string>("");
   const [transactionNumber, setTransactionNumber] = useState<string>("");
@@ -144,6 +155,7 @@ export const useOrderDetailsForm = () => {
     setSupplierName("");
     setPoNumber("");
     setInvoiceDate("");
+    setReceiptDate(TODAY_DDMMYYYY());
     setInvoiceNumber("");
     setInvoiceNumberError("");
     setTransactionNumber("");
@@ -167,6 +179,7 @@ export const useOrderDetailsForm = () => {
     navigationTransactionNumber,
     navigationPaymentVendor,
     navigationInvoiceDate,
+    navigationReceiptDate,
     navigationInvoiceNumber,
     user,
 
@@ -179,6 +192,8 @@ export const useOrderDetailsForm = () => {
     setPoNumber,
     invoiceDate,
     setInvoiceDate,
+    receiptDate,
+    setReceiptDate,
     invoiceNumber,
     setInvoiceNumber,
     invoiceNumberError,

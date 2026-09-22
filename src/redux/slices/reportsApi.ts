@@ -115,6 +115,9 @@ export interface SupplierReceiptReportRow {
   receipt_number: string;
   receipt_date: string;
   invoice_number: string | null;
+  // The SUPPLIER's real invoice date "YYYY-MM-DD" | null. DISTINCT from receipt_date
+  // (goods-received) and from invoice_number (the invoice STRING).
+  invoice_date: string | null;
   po_number: string | null;
   supplier_id: number;
   supplier_name: string;
@@ -142,6 +145,8 @@ export interface SupplierReceiptReportByReceiptRow {
   receipt_number: string;
   receipt_date: string;
   invoice_number: string | null;
+  // The SUPPLIER's real invoice date "YYYY-MM-DD" | null (see SupplierReceiptReportRow).
+  invoice_date: string | null;
   po_number: string | null;
   supplier_id: number | null;
   supplier_name: string | null;
@@ -185,6 +190,9 @@ export interface SupplierPaymentReportRow {
   receipt_id: number | null;
   // OUR generated goods-receipt number (opaque); null when the payment has no linked receipt.
   receipt_number: string | null;
+  // The pharmacy's editable goods-received date "YYYY-MM-DD" | null (null when no linked receipt).
+  receipt_date: string | null;
+  // The SUPPLIER's real invoice date "YYYY-MM-DD" | null.
   invoice_date: string | null;
   supplier_id: number | null;
   supplier_name: string | null;
@@ -410,6 +418,8 @@ export interface SupplierTaxReceiptRow {
   receipt_number: string;
   receipt_date: string;
   invoice_number: string | null;
+  // The SUPPLIER's real invoice date "YYYY-MM-DD" | null (level="receipt" only).
+  invoice_date: string | null;
   supplier_id: number;
   supplier_name: string | null;
   supplier_gst: string | null;

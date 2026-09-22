@@ -1,7 +1,7 @@
 global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -64,6 +64,7 @@ const FIXTURE: reportsApi.SupplierPaymentReportResponse = {
       payment_id: 9001,
       receipt_id: 501,
       receipt_number: 'GRN-000501',
+      receipt_date: '2026-06-11',
       invoice_date: '2026-06-10',
       supplier_id: 1,
       supplier_name: 'Acme Pharma',
@@ -163,6 +164,25 @@ describe('SupplierPaymentReport page', () => {
   it('exports the generated receipt number in the CSV, not the internal PK', () => {
     renderPage();
     expect(mockCsvRows[0]['Receipt #']).toBe('GRN-000501');
+  });
+
+  // feature/receipt-date: the payment report gained a Receipt Date (goods-in) column
+  // AND a real supplier Invoice Date column (the old alias mislabelled received_on as
+  // "invoice_date"). Both render on screen and export to CSV, distinct from each other
+  // and from the transaction date.
+  it('renders + exports BOTH the new Receipt Date and the Invoice Date columns', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Detailed Table'));
+    // Column headers.
+    expect(screen.getAllByText('Receipt Date').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Invoice Date').length).toBeGreaterThan(0);
+    const row = screen.getByText('GRN-000501').closest('tr')!;
+    // receipt_date 2026-06-11 -> 11/06/2026; invoice_date 2026-06-10 -> 10/06/2026;
+    // transaction_date 2026-06-12 -> 12/06/2026 (all distinct).
+    expect(within(row).getByText('11/06/2026')).toBeInTheDocument();
+    expect(within(row).getByText('10/06/2026')).toBeInTheDocument();
+    expect(mockCsvRows[0]['Receipt Date']).toBe('11/06/2026');
+    expect(mockCsvRows[0]['Invoice Date']).toBe('10/06/2026');
   });
 
   // A payment with no linked receipt comes back with receipt_number null.

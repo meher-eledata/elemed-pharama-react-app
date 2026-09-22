@@ -10,8 +10,15 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import { useOrderDetailsSubmit } from "../useOrderDetailsSubmit";
 import { PharmaTableRow } from "../../types";
+
+// The hook parses the form's DD/MM/YYYY dates with a strict format string; at runtime
+// the plugin is loaded globally by PharmaDatePicker. Isolated here, we load it
+// ourselves (mirrors the sibling useInvoiceExtraction tests) so the date-format branch
+// under test actually parses instead of silently returning undefined.
+dayjs.extend(customParseFormat);
 
 const mockSubmitReceipt = jest.fn();
 const mockEditReceipt = jest.fn();
@@ -363,5 +370,93 @@ describe("useOrderDetailsSubmit — extraction_id correction-signal", () => {
     expect(mockEditReceipt).toHaveBeenCalledTimes(1);
     expect(mockEditReceipt.mock.calls[0][0]).not.toHaveProperty("extraction_id");
     expect(clearExtractionId).not.toHaveBeenCalled();
+  });
+});
+
+// ===========================================================================
+// receipt_date / invoice_date payload (feature/receipt-date, 2026-09-22)
+//
+// The receive form holds dates as DD/MM/YYYY; the API wants "YYYY-MM-DD".
+// CREATE: a valid date is sent; a blank one OMITS the key (server defaults
+//   receipt_date to today, stores an absent invoice_date as null).
+// EDIT: a valid date is sent; a blank one is sent as '' (clear to null); an
+//   OMITTED (undefined) value would omit the key (leave unchanged).
+// ===========================================================================
+describe("useOrderDetailsSubmit — receipt_date / invoice_date payload", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("CREATE: sends receipt_date + invoice_date as 'YYYY-MM-DD'", async () => {
+    mockSubmitReceipt.mockReturnValue({
+      unwrap: () => Promise.resolve({ receipt_id: 42, receipt_number: "GRN-1" }),
+    });
+    // makeParams() supplies invoiceDate "15/02/2026"; add a receiptDate.
+    const params = { ...makeParams(), receiptDate: "20/02/2026" };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(mockSubmitReceipt).toHaveBeenCalledTimes(1);
+    const [body] = mockSubmitReceipt.mock.calls[0];
+    expect(body.invoice_date).toBe("2026-02-15");
+    expect(body.receipt_date).toBe("2026-02-20");
+  });
+
+  it("CREATE: OMITS both date keys when the form fields are blank (server defaults apply)", async () => {
+    mockSubmitReceipt.mockReturnValue({
+      unwrap: () => Promise.resolve({ receipt_id: 42, receipt_number: "GRN-1" }),
+    });
+    const params = { ...makeParams(), invoiceDate: "", receiptDate: "" };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    const [body] = mockSubmitReceipt.mock.calls[0];
+    expect(body).not.toHaveProperty("invoice_date");
+    expect(body).not.toHaveProperty("receipt_date");
+  });
+
+  it("EDIT: sends receipt_date + invoice_date as 'YYYY-MM-DD'", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const params = {
+      ...makeParams(),
+      isEditMode: true,
+      receiptId: 5,
+      receiptDate: "20/02/2026",
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(mockEditReceipt).toHaveBeenCalledTimes(1);
+    const [body] = mockEditReceipt.mock.calls[0];
+    expect(body.invoice_date).toBe("2026-02-15");
+    expect(body.receipt_date).toBe("2026-02-20");
+  });
+
+  it("EDIT: a blank field is sent as '' to CLEAR the stored value to null", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const params = {
+      ...makeParams(),
+      isEditMode: true,
+      receiptId: 5,
+      invoiceDate: "",
+      receiptDate: "",
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    const [body] = mockEditReceipt.mock.calls[0];
+    // Present-but-blank -> the key IS sent, as '' (the backend clears to NULL).
+    expect(body.invoice_date).toBe("");
+    expect(body.receipt_date).toBe("");
   });
 });

@@ -157,8 +157,9 @@ const SupplierTaxReport: React.FC = () => {
 
   const receiptColumns: TableColumn<ReceiptViewRow>[] = [
     { key: 'receipt_number', header: L.TABLE_RECEIPT.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
-    { key: 'receipt_date', header: L.TABLE_RECEIPT.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
+    { key: 'receipt_date', header: L.TABLE_RECEIPT.RECEIPT_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
     { key: 'invoice_number', header: L.TABLE_RECEIPT.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'invoice_date', header: L.TABLE_RECEIPT.INVOICE_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.invoice_date)}</CellText> },
     { key: 'supplier_name', header: L.TABLE_RECEIPT.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
     { key: 'supplier_gst', header: L.TABLE_RECEIPT.GST, sortable: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
     { key: 'taxableN', header: L.TABLE_RECEIPT.TAXABLE_VALUE, sortable: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
@@ -210,6 +211,7 @@ const SupplierTaxReport: React.FC = () => {
         [L.TABLE_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
         [L.TABLE_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
         [L.TABLE_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_RECEIPT.INVOICE_DATE]: formatReportDate(r.invoice_date),
         [L.TABLE_RECEIPT.SUPPLIER]: csvString(r.supplier_name),
         [L.TABLE_RECEIPT.GST]: csvString(r.supplier_gst),
         [`${L.TABLE_RECEIPT.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),

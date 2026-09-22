@@ -69,6 +69,7 @@ const FIXTURE: reportsApi.SupplierReceiptReportResponse = {
       receipt_number: 'GRN-000501',
       receipt_date: '2026-06-10',
       invoice_number: 'SUP-INV-1',
+      invoice_date: '2026-06-08',
       po_number: 'PO-9001',
       supplier_id: 1,
       supplier_name: 'Acme Pharma',
@@ -96,6 +97,7 @@ const FIXTURE: reportsApi.SupplierReceiptReportResponse = {
       receipt_number: 'GRN-000501',
       receipt_date: '2026-06-10',
       invoice_number: 'SUP-INV-1',
+      invoice_date: '2026-06-08',
       po_number: 'PO-9001',
       supplier_id: 1,
       supplier_name: 'Acme Pharma',
@@ -117,6 +119,7 @@ const FIXTURE: reportsApi.SupplierReceiptReportResponse = {
       receipt_number: 'GRN-000400',
       receipt_date: '2026-06-05',
       invoice_number: null,
+      invoice_date: null,
       po_number: null,
       supplier_id: null,
       supplier_name: null,
@@ -218,6 +221,20 @@ describe('SupplierReceiptReport page', () => {
     expect(mockCsvRows[0]['MRP (₹)']).toBe('120.00');
   });
 
+  // feature/receipt-date: the SUPPLIER's own Invoice Date is a distinct column from
+  // the pharmacy's Receipt Date, rendered on screen and included in the CSV export.
+  it('renders the Invoice Date column (distinct from Receipt Date) and exports it in the CSV — Detailed tab', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Detailed Table'));
+    expect(screen.getAllByText('Invoice Date').length).toBeGreaterThan(0); // column header
+    const row = screen.getByText('GRN-000501').closest('tr')!;
+    // invoice_date '2026-06-08' -> 08/06/2026; receipt_date '2026-06-10' -> 10/06/2026.
+    expect(within(row).getByText('08/06/2026')).toBeInTheDocument();
+    expect(within(row).getByText('10/06/2026')).toBeInTheDocument();
+    expect(mockCsvRows[0]['Invoice Date']).toBe('08/06/2026');
+    expect(mockCsvRows[0]['Receipt Date']).toBe('10/06/2026');
+  });
+
   // The "Receipt #" column used to render receipt_id (the internal PK). It must show the
   // server-generated GRN number, which is opaque and never rebuilt client-side.
   it('renders the generated receipt number in the Receipt # column, not the internal PK', () => {
@@ -316,8 +333,8 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     fireEvent.click(screen.getByText('By Receipt'));
 
     const row400 = screen.getByText('GRN-000400').closest('tr')!;
-    // invoice_number, po_number, supplier_name, supplier_gst — all null → '-'.
-    expect(within(row400).getAllByText('-')).toHaveLength(4);
+    // invoice_number, invoice_date, po_number, supplier_name, supplier_gst — all null → '-'.
+    expect(within(row400).getAllByText('-')).toHaveLength(5);
     // The nulls are confined to their row: the fully-populated receipt has none.
     const row501 = screen.getByText('GRN-000501').closest('tr')!;
     expect(within(row501).queryByText('-')).not.toBeInTheDocument();
@@ -345,6 +362,18 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     expect(mockCsvRows[0]['Products']).toBe('1');
     expect(mockCsvRows[0]['Discount (₹)']).toBe('250.00'); // RUPEE AMOUNT on the rollup export
     expect(mockCsvRows[1]['Receipt #']).toBe('GRN-000400');
+  });
+
+  // feature/receipt-date: the By Receipt tab also carries the supplier Invoice Date
+  // column + CSV field, nullable (legacy rows -> '-').
+  it('renders + exports the Invoice Date column — By Receipt tab (nullable)', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('By Receipt'));
+    const row501 = screen.getByText('GRN-000501').closest('tr')!;
+    expect(within(row501).getByText('08/06/2026')).toBeInTheDocument();
+    expect(mockCsvRows[0]['Invoice Date']).toBe('08/06/2026');
+    // GRN-000400 has a null invoice_date -> '-'.
+    expect(mockCsvRows[1]['Invoice Date']).toBe('-');
   });
 
   it('download control: absent on Overview, enabled on both table tabs', () => {

@@ -46,11 +46,32 @@ const resolveReceiptDeleteError = (error: any): string => {
   return extractErrorMessage(error, 'Failed to delete the receipt. Please try again.');
 };
 
+// The receive form holds dates as DD/MM/YYYY; the backend wants "YYYY-MM-DD".
+// CREATE: return the formatted date, or undefined to OMIT the key (the server then
+// defaults receipt_date to today and stores an absent invoice_date as null).
+const toCreateApiDate = (val?: string): string | undefined => {
+  if (!val || !val.trim()) return undefined;
+  const d = dayjs(val, "DD/MM/YYYY");
+  return d.isValid() ? d.format("YYYY-MM-DD") : undefined;
+};
+
+// EDIT: undefined = OMIT the key (leave unchanged); '' = send blank (clear to null);
+// a valid date = "YYYY-MM-DD"; an unparseable non-blank value = undefined (omit, never 400).
+const toEditApiDate = (val?: string): string | undefined => {
+  if (val === undefined) return undefined;
+  if (!val.trim()) return "";
+  const d = dayjs(val, "DD/MM/YYYY");
+  return d.isValid() ? d.format("YYYY-MM-DD") : undefined;
+};
+
 interface SubmitHookParams {
   supplierName: string;
   supplierOptions: SupplierOption[];
   poNumber: string;
   invoiceDate: string;
+  // Editable goods-received date (DD/MM/YYYY). Optional: '' means "no receipt date"
+  // on create (server defaults to today) or "clear to null" on edit.
+  receiptDate?: string;
   invoiceNumber: string;
   transactionNumber: string;
   paymentVendor: string;
@@ -99,6 +120,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     supplierOptions,
     poNumber,
     invoiceDate,
+    receiptDate,
     invoiceNumber,
     transactionNumber,
     paymentVendor,
@@ -200,11 +222,16 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
 
     const createdBy = user?.username || user?.first_name || "meher";
 
+    const apiInvoiceDate = toCreateApiDate(invoiceDate);
+    const apiReceiptDate = toCreateApiDate(receiptDate);
+
     const payload = {
       supplier_name: supplierName.trim(),
       supplier_id: selectedSupplierData.supplier_id,
       po_number: poNumber.trim() || null,
       invoice_number: invoiceNumber.trim(),
+      ...(apiInvoiceDate && { invoice_date: apiInvoiceDate }),
+      ...(apiReceiptDate && { receipt_date: apiReceiptDate }),
       notes: "",
       created_by: createdBy,
       lines: lines,
@@ -334,13 +361,9 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     const supplierId = selectedSupplierData ? selectedSupplierData.supplier_id : 0;
     const { deleted, added, edited } = detectChanges();
 
-    let formattedInvoiceDate: string | undefined;
-    if (invoiceDate && invoiceDate.trim()) {
-      const parsedDate = dayjs(invoiceDate, 'DD/MM/YYYY');
-      if (parsedDate.isValid()) {
-        formattedInvoiceDate = parsedDate.toISOString();
-      }
-    }
+    // omit=unchanged, ''=clear to null, valid date="YYYY-MM-DD" (see toEditApiDate).
+    const editInvoiceDate = toEditApiDate(invoiceDate);
+    const editReceiptDate = toEditApiDate(receiptDate);
 
     return {
       receipt_id: receiptId!,
@@ -352,7 +375,8 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       payment_vendor: paymentVendor,
       transaction_number: transactionNumber,
       invoice_number: invoiceNumber,
-      ...(formattedInvoiceDate && { invoice_date: formattedInvoiceDate }),
+      ...(editInvoiceDate !== undefined && { invoice_date: editInvoiceDate }),
+      ...(editReceiptDate !== undefined && { receipt_date: editReceiptDate }),
       notes: "",
       created_by: "meher",
       total_amount: pharmaTableData.reduce((sum, item) => {
@@ -536,6 +560,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
             supplierId,
             poNumber,
             invoiceDate,
+            receiptDate,
             invoiceNumber,
             pharmaTableData,
             isEditMode: false,

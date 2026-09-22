@@ -6,6 +6,7 @@ export const orderLabels = {
   supplierName: 'Supplier Name',
   poNumber: 'PO Number (Optional)',
   invoiceDate: 'Invoice Date',
+  receiptDate: 'Receipt Date',
   invoiceAttachment: 'Invoice Attachment',
   paymentMethod: 'Payment method',
   paymentVendor: 'Payment vendor',

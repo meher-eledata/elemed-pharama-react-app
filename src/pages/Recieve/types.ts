@@ -28,6 +28,8 @@ export interface OrderReceiveRow {
   transaction_number?: string;
   payment_vendor?: string;
   invoice_date?: string;
+  // Editable goods-received date "YYYY-MM-DD" (from get-receipts; null only on legacy rows).
+  receipt_date?: string | null;
   invoice_attachment?: string;
   receipt_file_name?: string; // File name from server upload
   receipt_file_url?: string; // File URL from server upload
