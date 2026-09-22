@@ -29,6 +29,8 @@ interface SupplierSectionProps {
   setPoNumber: (val: string) => void;
   invoiceDate: string;
   setInvoiceDate: (val: string) => void;
+  receiptDate: string;
+  setReceiptDate: (val: string) => void;
   invoiceNumber: string;
   setInvoiceNumber: (val: string) => void;
   invoiceNumberError?: string;
@@ -48,6 +50,8 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
   setPoNumber,
   invoiceDate,
   setInvoiceDate,
+  receiptDate,
+  setReceiptDate,
   invoiceNumber,
   setInvoiceNumber,
   invoiceNumberError,
@@ -254,6 +258,29 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
           onChange={(newValue: Dayjs | null) => {
             const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
             setInvoiceDate(formattedDate);
+          }}
+          width={274}
+        />
+      </Box>
+
+      {/* Receipt Date — when the pharmacy received goods into inventory. Defaults to
+          today on a new receipt, editable, and optional (may be cleared). */}
+      <Box sx={{ display: "flex", flexDirection: "column", width: "274px", gap: "4px" }}>
+        <Typography sx={orderDetailsStyles.labelText}>
+          {orderLabels.receiptDate}
+        </Typography>
+        <PharmaDatePicker
+          value={
+            receiptDate
+              ? (() => {
+                const parsed = dayjs(receiptDate, 'DD/MM/YYYY');
+                return parsed.isValid() ? parsed : null;
+              })()
+              : null
+          }
+          onChange={(newValue: Dayjs | null) => {
+            const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
+            setReceiptDate(formattedDate);
           }}
           width={274}
         />

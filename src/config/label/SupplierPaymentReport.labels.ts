@@ -39,6 +39,7 @@ export const SUPPLIER_PAYMENT_REPORT_LABELS = {
   },
   TABLE: {
     RECEIPT_NUMBER: 'Receipt #',
+    RECEIPT_DATE: 'Receipt Date',
     INVOICE_DATE: 'Invoice Date',
     SUPPLIER: 'Supplier',
     TOTAL_BILL: 'Total Bill Amount',

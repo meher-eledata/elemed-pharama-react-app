@@ -132,10 +132,13 @@ export const useOrderReceiveData = (activeTab: number) => {
           po_id: receipt.po_id,
           supplier: supplierName,
           supplierId: receipt.supplier_id || 0,
-          received: (receipt as any).invoice_date
-            ? dayjs((receipt as any).invoice_date).format('MMM DD, YYYY h:mm A')
+          // The "Received on" column shows the pharmacy's editable goods-received date
+          // (receipt_date, never null from get-receipts), falling back to the audit
+          // timestamp only for rows from a backend that predates the field.
+          received: receipt.receipt_date
+            ? dayjs(receipt.receipt_date).format('MMM DD, YYYY')
             : dayjs(receipt.received_on).format('MMM DD, YYYY h:mm A'),
-          receivedRaw: (receipt as any).invoice_date || receipt.received_on,
+          receivedRaw: receipt.receipt_date || receipt.received_on,
           status: receipt.receipt_status,
           reBy: receipt.received_by,
           amt: totalAmount,
@@ -143,6 +146,7 @@ export const useOrderReceiveData = (activeTab: number) => {
           transaction_number: transactionNumber,
           payment_vendor: paymentVendor,
           invoice_date: (receipt as any).invoice_date || null,
+          receipt_date: receipt.receipt_date || null,
           invoice_attachment: (receipt as any).invoice_attachment || undefined,
           receipt_file_name: receipt.receipt_file_name || undefined,
           receipt_file_url: receipt.receipt_file_url || undefined,
