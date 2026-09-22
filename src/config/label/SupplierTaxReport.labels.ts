@@ -36,6 +36,7 @@ export const SUPPLIER_TAX_REPORT_LABELS = {
     RECEIPT_NUMBER: 'Receipt #',
     RECEIPT_DATE: 'Receipt Date',
     INVOICE_NUMBER: 'Invoice #',
+    INVOICE_DATE: 'Invoice Date',
     SUPPLIER: 'Supplier',
     GST: 'GST',
     TAXABLE_VALUE: 'Taxable Value',

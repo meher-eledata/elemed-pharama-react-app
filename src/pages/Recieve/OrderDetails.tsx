@@ -153,6 +153,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
     supplierOptions: data.supplierOptions,
     poNumber: form.poNumber,
     invoiceDate: form.invoiceDate,
+    receiptDate: form.receiptDate,
     invoiceNumber: form.invoiceNumber,
     transactionNumber: form.transactionNumber,
     paymentVendor: form.paymentVendor,
@@ -262,6 +263,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
 
       if (form.navigationInvoiceDate) {
         form.setInvoiceDate(form.navigationInvoiceDate);
+      }
+
+      // Prefill the editable goods-received date from the record on edit. get-receipts
+      // always carries receipt_date (never null), so an edited receipt shows its real
+      // received date rather than today's default.
+      if (form.navigationReceiptDate) {
+        form.setReceiptDate(form.navigationReceiptDate);
       }
 
       // Transform receipt lines to table format
@@ -522,6 +530,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
         setPoNumber={form.setPoNumber}
         invoiceDate={form.invoiceDate}
         setInvoiceDate={form.setInvoiceDate}
+        receiptDate={form.receiptDate}
+        setReceiptDate={form.setReceiptDate}
         invoiceNumber={form.invoiceNumber}
         setInvoiceNumber={(val: string) => {
           form.setInvoiceNumber(val);

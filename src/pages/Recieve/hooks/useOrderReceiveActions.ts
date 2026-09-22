@@ -36,26 +36,25 @@ export const useOrderReceiveActions = (
   };
 
   const handleEditClick = (row: OrderReceiveRow) => {
+    // Prefill the Invoice Date ONLY from the record's real supplier invoice date. A
+    // null/absent invoice_date must leave this blank — editReceipt now PERSISTS the
+    // value, so falling back to the goods-received date here would save the goods-in
+    // date as the supplier invoice date and re-corrupt the two dates this feature splits.
     let invoiceDateValue = '';
     if (row.invoice_date) {
       try {
         const date = dayjs(row.invoice_date);
-        if (date.isValid()) {
-          invoiceDateValue = date.format('DD/MM/YYYY');
-        } else {
-          invoiceDateValue = row.invoice_date;
-        }
+        invoiceDateValue = date.isValid() ? date.format('DD/MM/YYYY') : row.invoice_date;
       } catch (e) {
         invoiceDateValue = row.invoice_date;
       }
-    } else if (row.received) {
-      try {
-        const receivedDate = dayjs(row.received, 'MMM DD, YYYY h:mm A');
-        if (receivedDate.isValid()) {
-          invoiceDateValue = receivedDate.format('DD/MM/YYYY');
-        }
-      } catch (e) {
-      }
+    }
+
+    // Prefill the editable goods-received date from the record (DD/MM/YYYY for the picker).
+    let receiptDateValue = '';
+    if (row.receipt_date) {
+      const rd = dayjs(row.receipt_date);
+      receiptDateValue = rd.isValid() ? rd.format('DD/MM/YYYY') : row.receipt_date;
     }
 
     navigate('/receive/order-details', {
@@ -67,7 +66,8 @@ export const useOrderReceiveActions = (
         receiptNumber: row.receipt_number || row.reNo,
         transactionNumber: row.transaction_number || '',
         paymentVendor: row.payment_vendor || '',
-        invoiceDate: invoiceDateValue
+        invoiceDate: invoiceDateValue,
+        receiptDate: receiptDateValue
       }
     });
   };

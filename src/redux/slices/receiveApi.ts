@@ -25,6 +25,10 @@ export interface Receipt {
   supplier_id: number;
   supplier_name: string | null;
   received_on: string;
+  // Editable goods-received date; get-receipts always returns it (never null —
+  // COALESCE(receipt_date, received_on::date)). DISTINCT from the immutable
+  // `received_on` audit timestamp and from the supplier's `invoice_date`.
+  receipt_date?: string; // "YYYY-MM-DD"
   received_by: string;
   receipt_status: string;
   receipt_file_url: string | null;
@@ -69,7 +73,10 @@ export interface EditReceiptRequest {
   payment_vendor: string;
   transaction_number: string;
   invoice_number?: string;
-  invoice_date?: string; // Invoice date in ISO format
+  // The SUPPLIER's invoice date "YYYY-MM-DD". OMIT the key = unchanged; blank = clear to null.
+  invoice_date?: string;
+  // The pharmacy's editable goods-received date "YYYY-MM-DD". OMIT = unchanged; blank = clear to null.
+  receipt_date?: string;
   invoice_attachment?: string; // Invoice attachment (base64 data URL)
   notes: string;
   created_by: string;
@@ -159,6 +166,10 @@ export interface ReceiptLine {
   mrp?: string; // MRP field from backend (DECIMAL returned as string)
   purchase_price?: string; // Purchase price field from backend (DECIMAL returned as string)
   expiry_date?: string | null; // Expiry date field from backend
+  // Header dates repeated on every line (see Receipt above): the editable goods-received
+  // date (never null — COALESCE) and the SUPPLIER's invoice date (nullable).
+  receipt_date?: string; // "YYYY-MM-DD"
+  invoice_date?: string | null; // "YYYY-MM-DD" | null
   batch_number?: string; // Batch number field from backend
   hsn_id?: string; // HSN ID field from backend
   hsn_code?: string; // HSN code field from backend (if exists)
@@ -477,6 +488,10 @@ export const receiveApi = createApi({
         supplier_id: number;
         po_number: string | null;
         invoice_number?: string;
+        // OPTIONAL "YYYY-MM-DD". The SUPPLIER's invoice date; absent/blank → stored NULL.
+        invoice_date?: string;
+        // OPTIONAL "YYYY-MM-DD". Editable goods-received date; absent/blank → server defaults to today.
+        receipt_date?: string;
         notes: string;
         created_by: string;
         total_amount?: number;

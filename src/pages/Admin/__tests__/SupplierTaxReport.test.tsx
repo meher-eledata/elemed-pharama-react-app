@@ -56,6 +56,7 @@ const RECEIPT_FIXTURE: reportsApi.SupplierTaxReceiptResponse = {
       receipt_number: 'GRN-000501',
       receipt_date: '2026-06-10',
       invoice_number: 'SUP-INV-1',
+      invoice_date: '2026-06-08',
       supplier_id: 1,
       supplier_name: 'Acme Pharma',
       supplier_gst: 'GST123',
@@ -153,6 +154,18 @@ describe('SupplierTaxReport page', () => {
   it('exports the generated receipt number in the CSV, not the internal PK', () => {
     renderPage();
     expect(mockCsvRows[0]['Receipt #']).toBe('GRN-000501');
+  });
+
+  // feature/receipt-date: the receipt-level tax report carries the supplier Invoice
+  // Date column (distinct from Receipt Date), rendered on screen and in the CSV.
+  it('renders + exports the Invoice Date column (distinct from Receipt Date)', () => {
+    renderPage();
+    expect(screen.getByText('Invoice Date')).toBeInTheDocument(); // column header
+    // receipt_date 2026-06-10 -> 10/06/2026; invoice_date 2026-06-08 -> 08/06/2026.
+    expect(screen.getByText('08/06/2026')).toBeInTheDocument();
+    expect(screen.getByText('10/06/2026')).toBeInTheDocument();
+    expect(mockCsvRows[0]['Invoice Date']).toBe('08/06/2026');
+    expect(mockCsvRows[0]['Receipt Date']).toBe('10/06/2026');
   });
 
   it('renders a custom-template receipt number verbatim', () => {

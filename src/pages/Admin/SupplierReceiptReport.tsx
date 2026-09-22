@@ -169,8 +169,9 @@ const SupplierReceiptReport: React.FC = () => {
 
   const columns: TableColumn<ReceiptRow>[] = [
     { key: 'receipt_number', header: L.TABLE.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
-    { key: 'receipt_date', header: L.TABLE.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
+    { key: 'receipt_date', header: L.TABLE.RECEIPT_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
     { key: 'invoice_number', header: L.TABLE.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'invoice_date', header: L.TABLE.INVOICE_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.invoice_date)}</CellText> },
     { key: 'po_number', header: L.TABLE.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
     { key: 'supplier_name', header: L.TABLE.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name}</CellText> },
     { key: 'supplier_gst', header: L.TABLE.GSTIN, sortable: true, nowrap: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
@@ -191,8 +192,9 @@ const SupplierReceiptReport: React.FC = () => {
 
   const byReceiptColumns: TableColumn<ByReceiptRow>[] = [
     { key: 'receipt_number', header: L.TABLE_BY_RECEIPT.RECEIPT_NUMBER, sortable: true, render: (r) => <CellText>{r.receipt_number}</CellText> },
-    { key: 'receipt_date', header: L.TABLE_BY_RECEIPT.RECEIPT_DATE, sortable: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
+    { key: 'receipt_date', header: L.TABLE_BY_RECEIPT.RECEIPT_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.receipt_date)}</CellText> },
     { key: 'invoice_number', header: L.TABLE_BY_RECEIPT.INVOICE_NUMBER, sortable: true, render: (r) => <CellText>{r.invoice_number || '-'}</CellText> },
+    { key: 'invoice_date', header: L.TABLE_BY_RECEIPT.INVOICE_DATE, sortable: true, nowrap: true, render: (r) => <CellText>{formatReportDate(r.invoice_date)}</CellText> },
     { key: 'po_number', header: L.TABLE_BY_RECEIPT.PO_NUMBER, sortable: true, render: (r) => <CellText>{r.po_number || '-'}</CellText> },
     { key: 'supplier_name', header: L.TABLE_BY_RECEIPT.SUPPLIER, sortable: true, render: (r) => <CellText>{r.supplier_name || '-'}</CellText> },
     { key: 'supplier_gst', header: L.TABLE_BY_RECEIPT.GSTIN, sortable: true, nowrap: true, render: (r) => <CellText>{r.supplier_gst || '-'}</CellText> },
@@ -232,6 +234,7 @@ const SupplierReceiptReport: React.FC = () => {
         [L.TABLE_BY_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
         [L.TABLE_BY_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
         [L.TABLE_BY_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_BY_RECEIPT.INVOICE_DATE]: formatReportDate(r.invoice_date),
         [L.TABLE_BY_RECEIPT.PO_NUMBER]: csvString(r.po_number),
         [L.TABLE_BY_RECEIPT.SUPPLIER]: csvString(r.supplier_name),
         [L.TABLE_BY_RECEIPT.GSTIN]: csvString(r.supplier_gst),
@@ -250,6 +253,7 @@ const SupplierReceiptReport: React.FC = () => {
       [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
       [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
       [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.INVOICE_DATE]: formatReportDate(r.invoice_date),
       [L.TABLE.PO_NUMBER]: csvString(r.po_number),
       [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
       [L.TABLE.GSTIN]: csvString(r.supplier_gst),
