@@ -60,8 +60,11 @@ interface ReportHeaderProps {
   downloadDisabled?: boolean;
   /** Optional extra controls rendered between the date filter and the CSV button. */
   children?: React.ReactNode;
-  dateRange: [Dayjs | null, Dayjs | null];
-  onDateRangeChange: (range: [Dayjs | null, Dayjs | null]) => void;
+  /** Range filter; rendered only when both dateRange and onDateRangeChange are given. */
+  dateRange?: [Dayjs | null, Dayjs | null];
+  onDateRangeChange?: (range: [Dayjs | null, Dayjs | null]) => void;
+  /** Custom date control (e.g. a single as-of date) rendered in the date filter's slot. */
+  dateControl?: React.ReactNode;
 }
 
 export const ReportHeader: React.FC<ReportHeaderProps> = ({
@@ -73,6 +76,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   children,
   dateRange,
   onDateRangeChange,
+  dateControl,
 }) => (
   <Box
     sx={{
@@ -106,7 +110,10 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
     </Box>
     <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
       {children}
-      <DateRangeFilter dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
+      {dateControl}
+      {dateRange && onDateRangeChange && (
+        <DateRangeFilter dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
+      )}
       {onDownloadCsv && (
         <StandardButton
           variant="primary"
@@ -293,6 +300,13 @@ interface FilterSelectProps {
   width?: number;
 }
 
+/** Small muted caption shown above a header filter control. */
+export const FilterLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Typography sx={{ fontFamily: FONT, fontWeight: 500, color: C.COLORS.TEXT_MUTED, fontSize: '12px' }}>
+    {children}
+  </Typography>
+);
+
 export const FilterSelect: React.FC<FilterSelectProps> = ({
   label,
   value,
@@ -301,9 +315,7 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
   width = 200,
 }) => (
   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-    <Typography sx={{ fontFamily: FONT, fontWeight: 500, color: C.COLORS.TEXT_MUTED, fontSize: '12px' }}>
-      {label}
-    </Typography>
+    <FilterLabel>{label}</FilterLabel>
     <FormControl size="small">
       <Select
         value={value}
@@ -318,8 +330,8 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
           backgroundColor: C.COLORS.WHITE,
           fontFamily: FONT,
           fontSize: '14px',
-          '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D7DFEA' },
-          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#728197' },
+          '& .MuiOutlinedInput-notchedOutline': { borderColor: C.COLORS.INPUT_BORDER },
+          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: C.COLORS.TEXT_MUTED },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: C.COLORS.PURPLE },
         }}
         MenuProps={{ PaperProps: { sx: { maxHeight: 320, fontFamily: FONT } } }}
