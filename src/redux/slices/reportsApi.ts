@@ -477,6 +477,55 @@ export type SupplierTaxReportResponse =
   | SupplierTaxReceiptResponse
   | SupplierTaxSupplierResponse;
 
+// ---- (F) Closing Stock Report ---------------------------------------------
+
+export interface ClosingStockReportRequest {
+  as_of_date: string; // "YYYY-MM-DD"
+  brand_id?: number;
+  search?: string;
+  include_zero_stock?: boolean;
+}
+
+export type ClosingStockCostBasis = "RECEIPT" | "ESTIMATED" | "MISSING";
+
+export interface ClosingStockReportRow {
+  product_id: number;
+  product_name: string;
+  product_code: string | null;
+  brand_id: number | null;
+  brand_name: string | null;
+  quantity: Num; // UNITS; may be negative
+  value_cost_ex_gst: Num | null;
+  value_cost_inc_gst: Num | null;
+  value_mrp: Num | null;
+  cost_basis: ClosingStockCostBasis;
+  uncosted_quantity: Num;
+  has_negative_batches: boolean;
+  has_unpriced_mrp: boolean; // true + non-null value_mrp => value_mrp is a partial sum
+}
+
+export interface ClosingStockReportSummary {
+  product_count: number;
+  total_quantity: Num;
+  total_value_cost_ex_gst: Num;
+  total_value_cost_inc_gst: Num;
+  total_value_mrp: Num;
+  uncosted_product_count: number;
+  uncosted_quantity: Num;
+  unpriced_mrp_product_count: number;
+  negative_batch_count: number;
+  ambiguous_movement_count: number;
+  unattributed_movement_count: number;
+  receipt_line_deletions_after_cutoff: number;
+  unknown_type_movement_count: number;
+}
+
+export interface ClosingStockReportResponse {
+  as_of_date: string;
+  rows: ClosingStockReportRow[];
+  summary: ClosingStockReportSummary;
+}
+
 export const reportsApi = createApi({
   reducerPath: "reportsApi",
   baseQuery: baseQueryWithReauth,
@@ -546,6 +595,14 @@ export const reportsApi = createApi({
       }),
       providesTags: ["Reports"],
     }),
+    getClosingStockReport: builder.query<ClosingStockReportResponse, ClosingStockReportRequest>({
+      query: (body) => ({
+        url: "reports/closingStock/get-closing-stock-report",
+        method: "POST",
+        body,
+      }),
+      providesTags: ["Reports"],
+    }),
   }),
 });
 
@@ -558,4 +615,5 @@ export const {
   useGetProductSalesReportQuery,
   useGetSalesTaxReportQuery,
   useGetSupplierTaxReportQuery,
+  useGetClosingStockReportQuery,
 } = reportsApi;

@@ -13,6 +13,7 @@ import { SUPPLIER_PAYMENT_REPORT_LABELS } from '../../config/label/SupplierPayme
 import { PRODUCT_SALES_REPORT_LABELS } from '../../config/label/ProductSalesReport.labels';
 import { SALES_TAX_REPORT_LABELS } from '../../config/label/SalesTaxReport.labels';
 import { SUPPLIER_TAX_REPORT_LABELS } from '../../config/label/SupplierTaxReport.labels';
+import { CLOSING_STOCK_REPORT_LABELS } from '../../config/label/ClosingStockReport.labels';
 import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
@@ -131,6 +132,12 @@ const DetailedReportsView: React.FC = () => {
       title: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.TITLE,
       description: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
       route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_TAX,
+    },
+    {
+      id: 'closing-stock',
+      title: CLOSING_STOCK_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: CLOSING_STOCK_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.CLOSING_STOCK,
     },
   ];
 

@@ -27,6 +27,7 @@ export const ADMIN_REPORTS_CONSTANTS = {
     PINK: '#EC4899',
     GRAY: '#6B7280',
     BORDER: '#E5E7EB',
+    INPUT_BORDER: '#D7DFEA',
     CARD_BG: '#F9FAFB',
     WHITE: '#FFFFFF',
   },
@@ -161,6 +162,38 @@ export const ADMIN_REPORTS_CONSTANTS = {
     VALUE_FONT_WEIGHT: 600,
   },
 
+  // Closing Stock Report (single as-of date, server-side filters).
+  CLOSING_STOCK: {
+    SEARCH_DEBOUNCE_MS: 300,
+    // The date field fires per keystroke; commit only once it settles.
+    DATE_DEBOUNCE_MS: 500,
+    MIN_DATE: '2000-01-01',
+    SEARCH_MAX_LENGTH: 100,
+    SEARCH_WIDTH: 220,
+    BRAND_FILTER_WIDTH: 200,
+    DATE_PICKER_WIDTH: 160,
+    CONTROL_HEIGHT: 40,
+    // Minimum widths for the free-text columns; they take any spare width and
+    // wrap (at spaces) only when the viewport is genuinely short.
+    BRAND_MIN_WIDTH: '140px',
+    PRODUCT_MIN_WIDTH: '220px',
+    // Date field typography matched to the neighbouring filter inputs.
+    DATE_FIELD: {
+      FONT_SIZE: '14px',
+      COLOR: '#1A212B',
+      BORDER_RADIUS: '8px',
+    },
+    SCROLL_FADE_WIDTH: 32,
+    NOTICE: {
+      BACKGROUND: '#FFFBEB',
+      BORDER: '1px solid #FDE68A',
+      ICON_COLOR: '#D97706',
+      TEXT_COLOR: '#92400E',
+      BORDER_RADIUS: '12px',
+      FONT_SIZE: '13px',
+    },
+  },
+
   CURRENCY: {
     LOCALE: 'en-IN',
     SYMBOL: '₹',
@@ -181,6 +214,7 @@ export const ADMIN_REPORTS_CONSTANTS = {
     PRODUCT_SALES: '/admin/reports/product-sales',
     SALES_TAX: '/admin/reports/sales-tax',
     SUPPLIER_TAX: '/admin/reports/supplier-tax',
+    CLOSING_STOCK: '/admin/reports/closing-stock',
   },
 } as const;
 
