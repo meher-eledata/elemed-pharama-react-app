@@ -1,8 +1,10 @@
 global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -14,6 +16,7 @@ import * as activityApi from '../../../redux/slices/activityApi';
 
 const theme = createTheme();
 let csvProps: any = null;
+let batchCsvProps: any = null;
 let pickerProps: any = null;
 
 jest.mock('react-router-dom', () => ({
@@ -27,7 +30,8 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
 jest.mock('react-csv', () => ({
   __esModule: true,
   CSVLink: (props: any) => {
-    csvProps = props;
+    if (props.filename.includes('_batchwise_')) batchCsvProps = props;
+    else csvProps = props;
     return <div data-testid="csv-link" />;
   },
 }));
@@ -70,6 +74,21 @@ const ZERO_COUNTERS = {
   unknown_type_movement_count: 0,
 };
 
+const BATCH: reportsApi.ClosingStockBatch = {
+  batch_number: 'AMX-B2',
+  expiry_date: '2027-03-31',
+  is_expired: false,
+  quantity: '100.00',
+  unit_cost_ex_gst: '8.00',
+  unit_cost_inc_gst: '8.96',
+  mrp_per_unit: '15.00',
+  value_cost_ex_gst: '800.00',
+  value_cost_inc_gst: '896.00',
+  value_mrp: '1500.00',
+  cost_basis: 'RECEIPT',
+  has_unpriced_mrp: false,
+};
+
 const FIXTURE: reportsApi.ClosingStockReportResponse = {
   as_of_date: '2026-10-15',
   rows: [
@@ -87,6 +106,23 @@ const FIXTURE: reportsApi.ClosingStockReportResponse = {
       uncosted_quantity: '0',
       has_negative_batches: false,
       has_unpriced_mrp: false,
+      batches: [
+        // Server order: expiry ASC — the expired batch first.
+        {
+          ...BATCH,
+          batch_number: 'AMX-B1',
+          expiry_date: '2026-09-30',
+          is_expired: true,
+          quantity: '10.00',
+          unit_cost_ex_gst: '10.00',
+          unit_cost_inc_gst: '11.20',
+          value_cost_ex_gst: '100.00',
+          value_cost_inc_gst: '112.00',
+          value_mrp: '150.00',
+          cost_basis: 'ESTIMATED',
+        },
+        BATCH,
+      ],
     },
     {
       product_id: 12,
@@ -102,11 +138,28 @@ const FIXTURE: reportsApi.ClosingStockReportResponse = {
       uncosted_quantity: '-4.00',
       has_negative_batches: true,
       has_unpriced_mrp: true,
+      batches: [
+        {
+          batch_number: 'BND-9',
+          expiry_date: null, // batch deleted from inventory
+          is_expired: false,
+          quantity: '-4.00',
+          unit_cost_ex_gst: null,
+          unit_cost_inc_gst: null,
+          mrp_per_unit: null,
+          value_cost_ex_gst: null,
+          value_cost_inc_gst: null,
+          value_mrp: null,
+          cost_basis: 'MISSING',
+          has_unpriced_mrp: true,
+        },
+      ],
     },
   ],
   summary: {
     ...ZERO_COUNTERS,
     product_count: 2,
+    batch_count: 3,
     total_quantity: '106.00',
     total_value_cost_ex_gst: '900.00',
     total_value_cost_inc_gst: '1008.00',
@@ -134,19 +187,35 @@ const requestedDates = () =>
 const downloadButton = () => screen.getByRole('button', { name: /Download CSV/ });
 const DATE_DEBOUNCE = 500;
 
+const USER_ID = 7;
+const VIEW_KEY = `closing_stock_view_${USER_ID}`;
+const createStore = () =>
+  configureStore({ reducer: { auth: () => ({ user: { id: USER_ID }, token: 't', isAuthenticated: true }) } });
+
 const renderPage = () =>
   render(
-    <ThemeProvider theme={theme}>
-      <MemoryRouter>
-        <ClosingStockReport />
-      </MemoryRouter>
-    </ThemeProvider>
+    <Provider store={createStore()}>
+      <ThemeProvider theme={theme}>
+        <MemoryRouter>
+          <ClosingStockReport />
+        </MemoryRouter>
+      </ThemeProvider>
+    </Provider>
   );
+
+const viewButton = (name: 'Product-wise' | 'Batch-wise') => screen.getByRole('button', { name });
+const openDownloadMenu = () => {
+  fireEvent.click(downloadButton());
+  return screen.getByRole('menu');
+};
+const menuItem = (name: RegExp) => within(screen.getByRole('menu')).getByRole('menuitem', { name });
 
 beforeEach(() => {
   jest.clearAllMocks();
   csvProps = null;
+  batchCsvProps = null;
   pickerProps = null;
+  localStorage.clear();
   mockedInventory.useGetAllBrandsQuery.mockReturnValue({ data: [{ id: 3, brand_name: 'Cipla' }] });
   mockedActivity.useLogDownloadMutation.mockReturnValue([
     jest.fn(() => ({ catch: jest.fn() })),
@@ -347,5 +416,215 @@ describe('ClosingStockReport page', () => {
     expect(screen.getByText('partial')).toBeInTheDocument();
     expect(screen.getAllByText('₹100.00').length).toBeGreaterThan(0);
     expect(csvProps.data[0]['Value @ MRP (₹)']).toBe('100.00');
+  });
+
+  describe('product-wise / batch-wise view', () => {
+    const switchToBatch = () => fireEvent.click(viewButton('Batch-wise'));
+
+    it('defaults to product-wise and switches to batch-wise without refetching', () => {
+      renderPage();
+      expect(viewButton('Product-wise')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.queryByText('AMX-B1')).not.toBeInTheDocument();
+      const argsBefore = lastArgs();
+
+      switchToBatch();
+      expect(viewButton('Batch-wise')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByText('AMX-B1')).toBeInTheDocument();
+      // Every request since mount used the same args: the switch is client-only.
+      expect(allArgs().every((a) => JSON.stringify(a) === JSON.stringify(argsBefore))).toBe(true);
+      expect(mockedReports.useGetClosingStockReportQuery.mock.calls.at(-1)[1]).toEqual({
+        refetchOnMountOrArgChange: true,
+      });
+
+      // Exclusive and never empty: clicking the active option keeps it selected.
+      switchToBatch();
+      expect(viewButton('Batch-wise')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('remembers the view per user', () => {
+      const { unmount } = renderPage();
+      switchToBatch();
+      expect(localStorage.getItem(VIEW_KEY)).toBe('batch');
+      unmount();
+
+      renderPage();
+      expect(viewButton('Batch-wise')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('still switches views when localStorage is unavailable', () => {
+      const blocked = () => {
+        throw new Error('blocked');
+      };
+      const get = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+      const set = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+      try {
+        renderPage();
+        expect(viewButton('Product-wise')).toHaveAttribute('aria-pressed', 'true');
+        switchToBatch();
+        expect(viewButton('Batch-wise')).toHaveAttribute('aria-pressed', 'true');
+      } finally {
+        get.mockRestore();
+        set.mockRestore();
+      }
+    });
+
+    it('renders one flat row per batch with batch columns, markers and the same totals', () => {
+      renderPage();
+      switchToBatch();
+      ['Batch', 'Expiry', /^Unit Cost/].forEach((h) => expect(screen.getAllByText(h).length).toBeGreaterThan(0));
+      // Brand + product repeated on each batch row.
+      expect(screen.getAllByText('Amoxicillin 500mg')).toHaveLength(2);
+      expect(screen.getAllByText('Cipla')).toHaveLength(2);
+      expect(screen.getByText('31/03/2027')).toBeInTheDocument();
+      expect(screen.getByText('₹896.00')).toBeInTheDocument();
+      // Estimated cost marked on the unit cost and both value cells of the estimated batch.
+      expect(screen.getAllByText('est.')).toHaveLength(3);
+      // Negative batch in red; its null expiry / costs / MRP render as em dashes.
+      expect(screen.getByText('-4.00')).toHaveStyle({ color: '#DC2626' });
+      expect(screen.getAllByText('—')).toHaveLength(5);
+      // Server totals in the footer and summary, count card shows batches.
+      expect(screen.getByText('Total')).toBeInTheDocument();
+      expect(screen.getAllByText('106.00').length).toBeGreaterThan(0);
+      expect(screen.getByText('Batches')).toBeInTheDocument();
+      expect(screen.queryByText('Products')).not.toBeInTheDocument();
+      expect(screen.queryByText(/NaN|Invalid/)).not.toBeInTheDocument();
+    });
+
+    it('marks an expired batch with red date text and an Expired chip', () => {
+      renderPage();
+      switchToBatch();
+      const date = screen.getByText('30/09/2026');
+      expect(date).toHaveStyle({ color: '#DC2626' });
+      expect(screen.getAllByText('Expired')).toHaveLength(1);
+      expect(date.parentElement).toHaveTextContent('30/09/2026Expired');
+      expect(screen.getByText('31/03/2027')).not.toHaveStyle({ color: '#DC2626' });
+    });
+
+    it('shows the unit cost of a zero-qty batch with 0.00 values (cost_basis null), not em dashes', () => {
+      mockQuery({
+        ...FIXTURE,
+        rows: [
+          {
+            ...FIXTURE.rows[0],
+            batches: [
+              {
+                ...BATCH,
+                quantity: '0.00',
+                value_cost_ex_gst: '0.00',
+                value_cost_inc_gst: '0.00',
+                value_mrp: '0.00',
+                cost_basis: null,
+              },
+            ],
+          },
+        ],
+        summary: { ...FIXTURE.summary, ...ZERO_COUNTERS, batch_count: 1 },
+      });
+      renderPage();
+      switchToBatch();
+      expect(screen.getByText('₹8.00')).toBeInTheDocument();
+      expect(screen.queryByText('—')).not.toBeInTheDocument();
+      expect(screen.queryByText('est.')).not.toBeInTheDocument();
+      expect(batchCsvProps.data[0]).toMatchObject({ 'Unit Cost excl. GST (₹)': '8.00', 'Cost Basis': '' });
+    });
+
+    it('shows a batch-specific empty state when the products have no batches', () => {
+      mockQuery({
+        ...FIXTURE,
+        rows: [{ ...FIXTURE.rows[0], quantity: '0.00', batches: [] }],
+        summary: { ...FIXTURE.summary, batch_count: 0 },
+      });
+      renderPage();
+      expect(screen.getByText('Amoxicillin 500mg')).toBeInTheDocument();
+      switchToBatch();
+      expect(
+        screen.getByText('The matching products have never been stocked, so there are no batches to show.')
+      ).toBeInTheDocument();
+      openDownloadMenu();
+      expect(menuItem(/Batch-wise CSV/)).toHaveAttribute('aria-disabled', 'true');
+      expect(menuItem(/Product-wise CSV/)).not.toHaveAttribute('aria-disabled');
+    });
+  });
+
+  describe('download menu', () => {
+    it('offers both CSVs; product-wise is unchanged and logged as before', () => {
+      renderPage();
+      expect(downloadButton()).toHaveAttribute('aria-haspopup', 'menu');
+      openDownloadMenu();
+      expect(menuItem(/Batch-wise CSV/)).toBeInTheDocument();
+      fireEvent.click(menuItem(/Product-wise CSV/));
+      const [logDownload] = mockedActivity.useLogDownloadMutation.mock.results[0].value;
+      expect(logDownload).toHaveBeenCalledWith({
+        category: 'report',
+        name: 'Closing Stock Report',
+        format: 'csv',
+        count: 2,
+      });
+      expect(csvProps.filename).toBe('closing_stock_report_2026-10-15.csv');
+    });
+
+    it('builds the batch-wise CSV: one row per batch, CSV-only columns and a totals row', () => {
+      renderPage();
+      expect(batchCsvProps.filename).toBe('closing_stock_report_batchwise_2026-10-15.csv');
+      expect(batchCsvProps.data).toHaveLength(4);
+      expect(Object.keys(batchCsvProps.data[0])).toEqual([
+        'Brand',
+        'Product',
+        'Product Code',
+        'Batch',
+        'Expiry',
+        'Expired',
+        'Qty (units)',
+        'Unit Cost excl. GST (₹)',
+        'Unit Cost incl. GST (₹)',
+        'MRP per Unit (₹)',
+        'Value @ Cost excl. GST (₹)',
+        'Value @ Cost incl. GST (₹)',
+        'Value @ MRP (₹)',
+        'Cost Basis',
+      ]);
+      expect(batchCsvProps.data[0]).toEqual({
+        Brand: 'Cipla',
+        Product: 'Amoxicillin 500mg',
+        'Product Code': 'AMX-500',
+        Batch: 'AMX-B1',
+        Expiry: '2026-09-30',
+        Expired: 'Yes',
+        'Qty (units)': '10.00',
+        'Unit Cost excl. GST (₹)': '10.00',
+        'Unit Cost incl. GST (₹)': '11.20',
+        'MRP per Unit (₹)': '15.00',
+        'Value @ Cost excl. GST (₹)': '100.00',
+        'Value @ Cost incl. GST (₹)': '112.00',
+        'Value @ MRP (₹)': '150.00',
+        'Cost Basis': 'ESTIMATED',
+      });
+      expect(batchCsvProps.data[1]).toMatchObject({ Batch: 'AMX-B2', Expired: 'No' });
+      expect(batchCsvProps.data[2]).toMatchObject({
+        Product: 'Bandage Roll',
+        Expiry: '',
+        'Qty (units)': '-4.00',
+        'Unit Cost excl. GST (₹)': '',
+        'Value @ MRP (₹)': '',
+        'Cost Basis': 'MISSING',
+      });
+      expect(batchCsvProps.data[3]).toMatchObject({
+        Brand: 'Total',
+        Batch: '',
+        'Qty (units)': '106.00',
+        'Value @ Cost excl. GST (₹)': '900.00',
+        'Value @ MRP (₹)': '1650.00',
+      });
+
+      openDownloadMenu();
+      fireEvent.click(menuItem(/Batch-wise CSV/));
+      const [logDownload] = mockedActivity.useLogDownloadMutation.mock.results[0].value;
+      expect(logDownload).toHaveBeenCalledWith({
+        category: 'report',
+        name: 'Closing Stock Report (Batch-wise)',
+        format: 'csv',
+        count: 3,
+      });
+    });
   });
 });

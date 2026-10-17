@@ -488,6 +488,21 @@ export interface ClosingStockReportRequest {
 
 export type ClosingStockCostBasis = "RECEIPT" | "ESTIMATED" | "MISSING";
 
+export interface ClosingStockBatch {
+  batch_number: string | null;
+  expiry_date: string | null; // "YYYY-MM-DD" calendar date
+  is_expired: boolean; // expired before as_of_date (expiry_date < as_of_date)
+  quantity: Num; // UNITS; may be negative
+  unit_cost_ex_gst: Num | null;
+  unit_cost_inc_gst: Num | null;
+  mrp_per_unit: Num | null;
+  value_cost_ex_gst: Num | null;
+  value_cost_inc_gst: Num | null;
+  value_mrp: Num | null;
+  cost_basis: ClosingStockCostBasis | null; // null only when quantity is 0
+  has_unpriced_mrp: boolean;
+}
+
 export interface ClosingStockReportRow {
   product_id: number;
   product_name: string;
@@ -502,10 +517,12 @@ export interface ClosingStockReportRow {
   uncosted_quantity: Num;
   has_negative_batches: boolean;
   has_unpriced_mrp: boolean; // true + non-null value_mrp => value_mrp is a partial sum
+  batches: ClosingStockBatch[];
 }
 
 export interface ClosingStockReportSummary {
   product_count: number;
+  batch_count: number;
   total_quantity: Num;
   total_value_cost_ex_gst: Num;
   total_value_cost_inc_gst: Num;

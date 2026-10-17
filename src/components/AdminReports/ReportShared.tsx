@@ -19,6 +19,7 @@ import {
   Grid,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import { Dayjs } from 'dayjs';
 import DateRangeFilter from '../mainDashboard/DateRangeFilter/DateRangeFilter';
@@ -55,9 +56,11 @@ interface ReportHeaderProps {
   title: string;
   subtitle: string;
   /** When omitted, the download button is not rendered (e.g. on overview tabs). */
-  onDownloadCsv?: () => void;
+  onDownloadCsv?: (event: React.MouseEvent<HTMLElement>) => void;
   downloadLabel: string;
   downloadDisabled?: boolean;
+  /** Set when the button opens a menu of download options (adds a caret + menu ARIA state). */
+  downloadMenuOpen?: boolean;
   /** Optional extra controls rendered between the date filter and the CSV button. */
   children?: React.ReactNode;
   /** Range filter; rendered only when both dateRange and onDateRangeChange are given. */
@@ -73,6 +76,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   onDownloadCsv,
   downloadLabel,
   downloadDisabled,
+  downloadMenuOpen,
   children,
   dateRange,
   onDateRangeChange,
@@ -119,6 +123,9 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
           variant="primary"
           size="medium"
           startIcon={<DownloadIcon />}
+          endIcon={downloadMenuOpen === undefined ? undefined : <KeyboardArrowDownIcon />}
+          aria-haspopup={downloadMenuOpen === undefined ? undefined : 'menu'}
+          aria-expanded={downloadMenuOpen}
           onClick={onDownloadCsv}
           disabled={downloadDisabled}
           sx={{ whiteSpace: 'nowrap', mb: '1px' }}

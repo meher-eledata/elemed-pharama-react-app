@@ -177,6 +177,27 @@ export const ADMIN_REPORTS_CONSTANTS = {
     // wrap (at spaces) only when the viewport is genuinely short.
     BRAND_MIN_WIDTH: '140px',
     PRODUCT_MIN_WIDTH: '220px',
+    // Batch-wise has three more columns; its text columns give up width first.
+    BATCH_VIEW_BRAND_MIN_WIDTH: '110px',
+    BATCH_VIEW_PRODUCT_MIN_WIDTH: '170px',
+    // Per-viewer remembered table view (suffixed with the user id).
+    VIEW_STORAGE_KEY: 'closing_stock_view',
+    VIEW_TOGGLE: {
+      BORDER: '#D7DFEA',
+      COLOR: '#374151',
+      SELECTED_BG: '#F3E8FF',
+      SELECTED_BG_HOVER: '#EBDDFE',
+      SELECTED_COLOR: '#5C17E5',
+      PADDING_X: '14px',
+    },
+    // Matches the Inventory "Expired" stock tag.
+    EXPIRED_CHIP: {
+      BACKGROUND: '#FEE2E2',
+      COLOR: '#B91C1C',
+      HEIGHT: '20px',
+      FONT_SIZE: '11px',
+      BORDER_RADIUS: '6px',
+    },
     // Date field typography matched to the neighbouring filter inputs.
     DATE_FIELD: {
       FONT_SIZE: '14px',
