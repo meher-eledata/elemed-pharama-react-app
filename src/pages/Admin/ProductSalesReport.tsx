@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, TableCell, TableRow } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import {
@@ -33,6 +32,7 @@ import {
   defaultDateRange,
   csvString,
 } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 
 const PATIENT_TYPE_DISPLAY: Record<string, string> = {
   INPATIENT: 'In Patient',
@@ -57,7 +57,6 @@ interface SalesRow extends ProductSalesReportRow {
 
 const ProductSalesReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [productId, setProductId] = useState<string>('');
@@ -280,7 +279,7 @@ const ProductSalesReport: React.FC = () => {
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Product Sales Report', format: 'csv', count: sortedRows.length }).catch(() => {});
   };
 
@@ -356,7 +355,6 @@ const ProductSalesReport: React.FC = () => {
         </>
       )}
 
-      <CSVLink data={csvData} filename={csvFilename} ref={csvLinkRef} style={{ display: 'none' }} />
     </Box>
   );
 };

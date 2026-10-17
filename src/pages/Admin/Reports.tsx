@@ -1,10 +1,9 @@
-import React, { useState, Suspense, lazy, useRef, useMemo } from 'react';
+import React, { useState, Suspense, lazy, useMemo } from 'react';
 import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip, Button } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DownloadIcon from '@mui/icons-material/Download';
-import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
 import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
 import { ADMIN_REPORTS_CONSTANTS } from '../../config/constants/AdminReports.constants';
@@ -19,7 +18,8 @@ import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
-import { formatWholeCurrency, csvString } from '../../utils/reportFormat';
+import { formatWholeCurrency } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
@@ -232,7 +232,6 @@ const DailySalesReport: React.FC = () => {
   const navigate = useNavigate();
   const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
   const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
 
   const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
@@ -399,7 +398,7 @@ const DailySalesReport: React.FC = () => {
       // Sales Breakdown Section
       ...reportData.paymentTypeData.map(item => ({
         Section: 'Sales Breakdown',
-        Metric: csvString(`${item.label} Sales (₹)`),
+        Metric: `${item.label} Sales (₹)`,
         Value: item.value.toFixed(2),
         Details: ''
       })),
@@ -408,7 +407,7 @@ const DailySalesReport: React.FC = () => {
       // Payment Type Breakdown
       ...reportData.paymentTypeData.map(item => ({
         Section: 'Payment Type Breakdown',
-        Metric: csvString(item.label),
+        Metric: item.label,
         Value: item.value.toFixed(2),
         Details: totalPaymentValue > 0 ? `${((item.value / totalPaymentValue) * 100).toFixed(2)}%` : '0%'
       })),
@@ -432,7 +431,7 @@ const DailySalesReport: React.FC = () => {
   }, [startDate, endDate]);
 
   const handleDownloadCSV = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
@@ -1356,14 +1355,6 @@ const DailySalesReport: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
-
-      {/* Hidden CSV Link */}
-      <CSVLink
-        data={csvData}
-        filename={csvFilename}
-        ref={csvLinkRef}
-        style={{ display: 'none' }}
-      />
     </Box>
   );
 };

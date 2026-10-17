@@ -18,7 +18,7 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => jest.fn(),
 }));
 
-// Stub heavy deps (x-charts bar chart, lazy recharts pie chart, date picker, react-csv).
+// Stub heavy deps (x-charts bar chart, lazy recharts pie chart, date picker, CSV download).
 jest.mock('../../../components/AdminReports/ReportBarChart', () => ({
   __esModule: true,
   default: () => <div data-testid="report-bar-chart" />,
@@ -32,17 +32,27 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   default: () => <div data-testid="date-range-filter" />,
 }));
 // The CSV export is a SEPARATE code path from the table columns, so the mock captures
-// the rows handed to CSVLink and the tests assert on them directly.
+// the rows handed to downloadCsv and the tests assert on them directly.
 const mockCsvRows: Record<string, string>[] = [];
-jest.mock('react-csv', () => ({
+jest.mock('../../../utils/csv', () => ({
   __esModule: true,
-  CSVLink: ({ data }: { data: Record<string, string>[] }) => {
+  ...jest.requireActual('../../../utils/csv'),
+  downloadCsv: (filename: string, data: Record<string, string>[]) => {
     mockCsvRows.length = 0;
     mockCsvRows.push(...data);
-    return <div data-testid="csv-link" />;
   },
 }));
+// The export is built on click: press Download CSV, then read what was handed to downloadCsv.
+const exportedRows = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+  return mockCsvRows;
+};
 
+jest.mock('../../../redux/slices/activityApi', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../redux/slices/activityApi'),
+  useLogDownloadMutation: () => [() => ({ catch: () => {} }), { isLoading: false }],
+}));
 jest.mock('../../../redux/slices/reportsApi', () => {
   const actual = jest.requireActual('../../../redux/slices/reportsApi');
   return { __esModule: true, ...actual, useGetSupplierPaymentReportQuery: jest.fn() };
@@ -163,7 +173,8 @@ describe('SupplierPaymentReport page', () => {
 
   it('exports the generated receipt number in the CSV, not the internal PK', () => {
     renderPage();
-    expect(mockCsvRows[0]['Receipt #']).toBe('GRN-000501');
+    fireEvent.click(screen.getByText('Detailed Table'));
+    expect(exportedRows()[0]['Receipt #']).toBe('GRN-000501');
   });
 
   // feature/receipt-date: the payment report gained a Receipt Date (goods-in) column
@@ -181,8 +192,8 @@ describe('SupplierPaymentReport page', () => {
     // transaction_date 2026-06-12 -> 12/06/2026 (all distinct).
     expect(within(row).getByText('11/06/2026')).toBeInTheDocument();
     expect(within(row).getByText('10/06/2026')).toBeInTheDocument();
-    expect(mockCsvRows[0]['Receipt Date']).toBe('11/06/2026');
-    expect(mockCsvRows[0]['Invoice Date']).toBe('10/06/2026');
+    expect(exportedRows()[0]['Receipt Date']).toBe('11/06/2026');
+    expect(exportedRows()[0]['Invoice Date']).toBe('10/06/2026');
   });
 
   // A payment with no linked receipt comes back with receipt_number null.
@@ -200,6 +211,6 @@ describe('SupplierPaymentReport page', () => {
     fireEvent.click(screen.getByText('Detailed Table'));
     expect(screen.queryByText('GRN-000501')).not.toBeInTheDocument();
     expect(screen.getAllByText('-').length).toBeGreaterThan(0);
-    expect(mockCsvRows[0]['Receipt #']).toBe('');
+    expect(exportedRows()[0]['Receipt #']).toBe('');
   });
 });

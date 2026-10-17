@@ -7,9 +7,12 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 
-// Stub react-csv so the hidden CSVLink render is a no-op (no real file logic).
-jest.mock('react-csv', () => ({
-  CSVLink: React.forwardRef(() => <a data-testid="csv-link" />),
+// Capture what is handed to the shared CSV download (no real file logic).
+const mockDownloadCsv = jest.fn();
+jest.mock('../../../utils/csv', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../utils/csv'),
+  downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
 }));
 
 // Mock the activity logDownload mutation — this is the assertion target.
@@ -32,7 +35,11 @@ jest.mock('../../../redux/slices/inventoryApi', () => ({
     { id: 'p2', name: 'Ibuprofen', currentQuantity: 2, minQuantity: 8 },
   ]),
   useGetExcessStockQuery: idleQuery([]),
-  useGetExpiredStockQuery: idleQuery([]),
+  useGetExpiredStockQuery: idleQuery([
+    // Stored at UTC midnight; the second row has no batch number or expiry.
+    { id: 'e1', name: 'Cough Syrup', brand: 'Acme', type: 'Syrup', batchNumber: 'CS-1', currentQuantity: 3, expiryDate: '2026-12-28T00:00:00.000Z', daysPastExpiry: 4 },
+    { id: 'e2', name: 'Eye Drops', brand: 'Acme', type: 'Drops', batchNumber: '', currentQuantity: 1, expiryDate: null, daysPastExpiry: 1 },
+  ]),
   useGetNearExpiryStockQuery: idleQuery([]),
   useGetInventorySummaryQuery: idleQuery(undefined),
   useGetTotalStockQuery: idleQuery({ products: [] }),
@@ -64,10 +71,10 @@ const createStore = () =>
     },
   });
 
-const renderPage = () =>
+const renderPage = (tab?: string) =>
   render(
     <Provider store={createStore()}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[{ pathname: '/inventory', state: tab ? { tab } : undefined }]}>
         <InventoryModule />
       </MemoryRouter>
     </Provider>,
@@ -96,5 +103,22 @@ describe('InventoryModule — CSV download is logged', () => {
       format: 'csv',
     });
     expect(typeof arg.count).toBe('number');
+  });
+
+  it('exports labelled columns through the shared CSV download', () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId('DownloadIcon').closest('button')!);
+    const [filename, rows, headers] = mockDownloadCsv.mock.calls[0];
+    expect(filename).toMatch(/^inventory_low_stock_\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(headers).toEqual(['Product Name', 'Brand', 'Type', 'Current Qty', 'Min Qty']);
+    expect(rows).toContainEqual({ 'Product Name': 'Paracetamol', Brand: '-', Type: '-', 'Current Qty': 5, 'Min Qty': 10 });
+  });
+
+  it('exports expiry as the UTC calendar date (YYYY-MM-DD) and keeps the "-" placeholders', () => {
+    renderPage('expired');
+    fireEvent.click(screen.getByTestId('DownloadIcon').closest('button')!);
+    const rows = mockDownloadCsv.mock.calls[0][1];
+    expect(rows.find((r: any) => r['Product Name'] === 'Cough Syrup')['Expiry Date']).toBe('2026-12-28');
+    expect(rows.find((r: any) => r['Product Name'] === 'Eye Drops')).toMatchObject({ 'Batch No': '-', 'Expiry Date': '-' });
   });
 });

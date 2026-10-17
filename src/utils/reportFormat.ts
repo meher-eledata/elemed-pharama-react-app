@@ -16,10 +16,13 @@ export const toNum = (val: string | number | null | undefined): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-/** Format a number as en-IN ₹ with 2 decimals (matches Reports.tsx). */
+/** Sign prefix for a money value: '-' before the ₹ (never "₹-"), none when it rounds to zero. */
+const moneySign = (amount: number, digits: number): string => (Number(amount.toFixed(digits)) < 0 ? '-' : '');
+
+/** Format a number as en-IN ₹ with 2 decimals (matches Reports.tsx); negatives as "-₹380.00". */
 export const formatCurrency = (amount: number): string => {
   const { SYMBOL, LOCALE, FRACTION_DIGITS } = ADMIN_REPORTS_CONSTANTS.CURRENCY;
-  return `${SYMBOL}${amount.toLocaleString(LOCALE, {
+  return `${moneySign(amount, FRACTION_DIGITS)}${SYMBOL}${Math.abs(amount).toLocaleString(LOCALE, {
     minimumFractionDigits: FRACTION_DIGITS,
     maximumFractionDigits: FRACTION_DIGITS,
   })}`;
@@ -33,7 +36,7 @@ export const formatCurrency = (amount: number): string => {
  */
 export const formatWholeCurrency = (amount: number): string => {
   const { SYMBOL, LOCALE } = ADMIN_REPORTS_CONSTANTS.CURRENCY;
-  return `${SYMBOL}${amount.toLocaleString(LOCALE, { maximumFractionDigits: 0 })}`;
+  return `${moneySign(amount, 0)}${SYMBOL}${Math.abs(amount).toLocaleString(LOCALE, { maximumFractionDigits: 0 })}`;
 };
 
 /**
@@ -80,17 +83,6 @@ export const defaultDateRange = (): [Dayjs, Dayjs] => {
   return [start, end];
 };
 
-// Spreadsheet apps run a cell starting with one of these as a formula (CSV injection).
-const CSV_FORMULA_START = /^[=+\-@\t\r]/;
-// ...but a plain number such as "-4.00" must stay a number.
-const CSV_PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
-
-/**
- * Stringify a value safely for CSV cells: null/undefined become '', and text that a
- * spreadsheet would evaluate as a formula gets a leading apostrophe (shown as text).
- */
-export const csvString = (val: string | number | null | undefined): string => {
-  if (val === null || val === undefined) return '';
-  const text = String(val);
-  return CSV_FORMULA_START.test(text) && !CSV_PLAIN_NUMBER.test(text) ? `'${text}` : text;
-};
+/** Stringify a value for a CSV cell (null/undefined -> ''); escaping + formula guard live in utils/csv. */
+export const csvString = (val: string | number | null | undefined): string =>
+  val === null || val === undefined ? '' : String(val);

@@ -27,12 +27,12 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   __esModule: true,
   default: () => <div data-testid="date-range-filter" />,
 }));
-jest.mock('react-csv', () => ({
+jest.mock('../../../utils/csv', () => ({
   __esModule: true,
-  CSVLink: (props: any) => {
-    if (props.filename.includes('_batchwise_')) batchCsvProps = props;
-    else csvProps = props;
-    return <div data-testid="csv-link" />;
+  ...jest.requireActual('../../../utils/csv'),
+  downloadCsv: (filename: string, data: Record<string, string>[]) => {
+    if (filename.includes('_batchwise_')) batchCsvProps = { filename, data };
+    else csvProps = { filename, data };
   },
 }));
 jest.mock('../../../components/Common', () => {
@@ -209,6 +209,12 @@ const openDownloadMenu = () => {
   return screen.getByRole('menu');
 };
 const menuItem = (name: RegExp) => within(screen.getByRole('menu')).getByRole('menuitem', { name });
+/** Download one of the two CSVs through the menu; returns what was handed to downloadCsv. */
+const exportCsv = (kind: 'product' | 'batch') => {
+  openDownloadMenu();
+  fireEvent.click(menuItem(kind === 'batch' ? /Batch-wise CSV/ : /Product-wise CSV/));
+  return kind === 'batch' ? batchCsvProps : csvProps;
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -249,8 +255,19 @@ describe('ClosingStockReport page', () => {
 
   it('shows NULL values as an em dash and negative quantity in red', () => {
     renderPage();
-    expect(screen.getAllByText('—')).toHaveLength(3);
+    // Bandage Roll: missing brand + product code, and its three null values.
+    expect(screen.getAllByText('—')).toHaveLength(5);
     expect(screen.getByText('-4.00')).toHaveStyle({ color: '#DC2626' });
+  });
+
+  it('renders negative money as "-₹" in red, like negative quantities', () => {
+    mockQuery({
+      ...FIXTURE,
+      rows: [{ ...FIXTURE.rows[0], quantity: '-38.00', value_cost_ex_gst: '-380.00', value_cost_inc_gst: '-425.60', value_mrp: '-570.00' }],
+    });
+    renderPage();
+    ['-₹380.00', '-₹425.60', '-₹570.00'].forEach((v) => expect(screen.getByText(v)).toHaveStyle({ color: '#DC2626' }));
+    expect(screen.queryByText(/₹-/)).not.toBeInTheDocument();
   });
 
   it('shows the data-quality strip only when a counter is > 0, and always the MRP note', () => {
@@ -268,6 +285,7 @@ describe('ClosingStockReport page', () => {
 
   it('builds CSV 1:1 with the table columns plus a totals row', () => {
     renderPage();
+    const csvProps = exportCsv('product');
     // Named after the date the server echoed for THIS data set.
     expect(csvProps.filename).toBe('closing_stock_report_2026-10-15.csv');
     expect(csvProps.data).toHaveLength(3);
@@ -351,7 +369,8 @@ describe('ClosingStockReport page', () => {
     expect(screen.queryByText('Amoxicillin 500mg')).not.toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
     expect(downloadButton()).toBeDisabled();
-    expect(csvProps.data).toEqual([]);
+    fireEvent.click(downloadButton());
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
   it('shows the generic error (never raw API text) and disables download on error', () => {
@@ -415,7 +434,7 @@ describe('ClosingStockReport page', () => {
     renderPage();
     expect(screen.getByText('partial')).toBeInTheDocument();
     expect(screen.getAllByText('₹100.00').length).toBeGreaterThan(0);
-    expect(csvProps.data[0]['Value @ MRP (₹)']).toBe('100.00');
+    expect(exportCsv('product').data[0]['Value @ MRP (₹)']).toBe('100.00');
   });
 
   describe('product-wise / batch-wise view', () => {
@@ -488,7 +507,8 @@ describe('ClosingStockReport page', () => {
       expect(screen.getAllByText('est.')).toHaveLength(3);
       // Negative batch in red; its null expiry / costs / MRP render as em dashes.
       expect(screen.getByText('-4.00')).toHaveStyle({ color: '#DC2626' });
-      expect(screen.getAllByText('—')).toHaveLength(5);
+      // Bandage batch: missing brand + product code, plus null expiry, unit cost, two costs and MRP.
+      expect(screen.getAllByText('—')).toHaveLength(7);
       // Server totals in the footer and summary, count card shows batches.
       expect(screen.getByText('Total')).toBeInTheDocument();
       expect(screen.getAllByText('106.00').length).toBeGreaterThan(0);
@@ -569,7 +589,7 @@ describe('ClosingStockReport page', () => {
       expect(screen.getByText('₹8.00')).toBeInTheDocument();
       expect(screen.queryByText('—')).not.toBeInTheDocument();
       expect(screen.queryByText('est.')).not.toBeInTheDocument();
-      expect(batchCsvProps.data[0]).toMatchObject({ 'Unit Cost excl. GST (₹)': '8.00', 'Cost Basis': '' });
+      expect(exportCsv('batch').data[0]).toMatchObject({ 'Unit Cost excl. GST (₹)': '8.00', 'Cost Basis': '' });
     });
 
     it('shows a batch-specific empty state when the products have no batches', () => {
@@ -616,6 +636,7 @@ describe('ClosingStockReport page', () => {
 
     it('builds the batch-wise CSV: one row per batch, CSV-only columns and a totals row', () => {
       renderPage();
+      const batchCsvProps = exportCsv('batch');
       expect(batchCsvProps.filename).toBe('closing_stock_report_batchwise_2026-10-15.csv');
       expect(batchCsvProps.data).toHaveLength(4);
       expect(Object.keys(batchCsvProps.data[0])).toEqual([
@@ -667,8 +688,6 @@ describe('ClosingStockReport page', () => {
         'Value @ MRP (₹)': '1650.00',
       });
 
-      openDownloadMenu();
-      fireEvent.click(menuItem(/Batch-wise CSV/));
       const [logDownload] = mockedActivity.useLogDownloadMutation.mock.results[0].value;
       expect(logDownload).toHaveBeenCalledWith({
         category: 'report',

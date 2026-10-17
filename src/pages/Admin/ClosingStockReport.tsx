@@ -22,7 +22,6 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { CSVLink } from 'react-csv';
 import dayjs, { Dayjs } from 'dayjs';
 import { skipToken } from '@reduxjs/toolkit/query/react';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
@@ -53,6 +52,7 @@ import type { RootState } from '../../redux/store';
 import { useGetAllBrandsQuery } from '../../redux/slices/inventoryApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { useDebounce } from '../../hooks/useDebounce';
+import { downloadCsv } from '../../utils/csv';
 import {
   toNum,
   formatCurrency,
@@ -156,10 +156,19 @@ const EmptyValue: React.FC<{ tip: string }> = ({ tip }) => (
   </Hint>
 );
 
+/** Text cell; a missing value shows the same muted em dash as other missing values. */
+const TextOrDash: React.FC<{ value: string | null }> = ({ value }) =>
+  value ? <CellText>{value}</CellText> : <CellText color={C.COLORS.TEXT_MUTED}>{L.TABLE.EMPTY_VALUE}</CellText>;
+
+/** A ₹ value; negative values are red like negative quantities. */
+const Money: React.FC<{ value: number }> = ({ value }) => (
+  <CellText color={value < 0 ? C.COLORS.NEGATIVE : undefined}>{formatCurrency(value)}</CellText>
+);
+
 /** A ₹ value followed by a small amber qualifier (e.g. "est.", "partial") explained by a tooltip. */
 const MarkedValue: React.FC<{ value: number; marker: string; tip: string }> = ({ value, marker, tip }) => (
   <Hint tip={tip}>
-    <CellText>{formatCurrency(value)}</CellText>
+    <Money value={value} />
     <Typography component="span" sx={{ fontFamily: FONT, fontSize: '11px', color: C.COLORS.AMBER }}>
       {marker}
     </Typography>
@@ -171,7 +180,7 @@ const costCell = (value: number | null, basis: ClosingStockCostBasis | null) => 
   if (basis === 'ESTIMATED') {
     return <MarkedValue value={value} marker={L.TABLE.ESTIMATED_MARKER} tip={L.TOOLTIP.COST_ESTIMATED} />;
   }
-  return <CellText>{formatCurrency(value)}</CellText>;
+  return <Money value={value} />;
 };
 
 const mrpCell = (r: BaseRow) => {
@@ -179,7 +188,7 @@ const mrpCell = (r: BaseRow) => {
   if (r.has_unpriced_mrp) {
     return <MarkedValue value={r.mrpN} marker={L.TABLE.PARTIAL_MARKER} tip={L.TOOLTIP.MRP_PARTIAL} />;
   }
-  return <CellText>{formatCurrency(r.mrpN)}</CellText>;
+  return <Money value={r.mrpN} />;
 };
 
 const twoLineHeader = (first: string, second: string) => () => (
@@ -214,25 +223,28 @@ const expiryCell = (r: BatchRow) => {
   // formatReportDate parses 'YYYY-MM-DD' as a LOCAL calendar date (no UTC day shift).
   const text = formatReportDate(r.expiry_date);
   if (!r.is_expired) return <CellText>{text}</CellText>;
+  // Chip under the date (not beside it) keeps the Expiry column narrow enough for all
+  // batch columns to fit at 1440px.
   return (
-    <Hint tip={L.TOOLTIP.EXPIRED}>
-      <CellText color={C.COLORS.NEGATIVE}>{text}</CellText>
-      <Chip
-        label={L.TABLE.EXPIRED}
-        size="small"
-        sx={{
-          alignSelf: 'center',
-          height: CS.EXPIRED_CHIP.HEIGHT,
-          fontFamily: FONT,
-          fontSize: CS.EXPIRED_CHIP.FONT_SIZE,
-          fontWeight: 600,
-          borderRadius: CS.EXPIRED_CHIP.BORDER_RADIUS,
-          backgroundColor: CS.EXPIRED_CHIP.BACKGROUND,
-          color: CS.EXPIRED_CHIP.COLOR,
-          '& .MuiChip-label': { px: 1 },
-        }}
-      />
-    </Hint>
+    <Tooltip title={L.TOOLTIP.EXPIRED} arrow>
+      <Box sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, cursor: 'help' }}>
+        <CellText color={C.COLORS.NEGATIVE}>{text}</CellText>
+        <Chip
+          label={L.TABLE.EXPIRED}
+          size="small"
+          sx={{
+            height: CS.EXPIRED_CHIP.HEIGHT,
+            fontFamily: FONT,
+            fontSize: CS.EXPIRED_CHIP.FONT_SIZE,
+            fontWeight: 600,
+            borderRadius: CS.EXPIRED_CHIP.BORDER_RADIUS,
+            backgroundColor: CS.EXPIRED_CHIP.BACKGROUND,
+            color: CS.EXPIRED_CHIP.COLOR,
+            '& .MuiChip-label': { px: 1 },
+          }}
+        />
+      </Box>
+    </Tooltip>
   );
 };
 
@@ -251,7 +263,7 @@ const textColumn = <T extends BaseRow>(
   sortable: true,
   render: (r) => (
     <Box sx={{ minWidth }}>
-      <CellText>{r[key] || '-'}</CellText>
+      <TextOrDash value={r[key]} />
     </Box>
   ),
   csv: (r) => csvString(r[key]),
@@ -267,17 +279,20 @@ const brandProductColumns = <T extends BaseRow>(view: View): StockColumn<T>[] =>
   {
     key: 'product_code',
     header: L.TABLE.PRODUCT_CODE,
+    // Batch view is width-constrained: let this header wrap instead of setting the column width.
+    headerRender: view === 'batch' ? twoLineHeader(L.TABLE.PRODUCT_CODE_LINE1, L.TABLE.PRODUCT_CODE_LINE2) : undefined,
     csvHeader: L.TABLE.PRODUCT_CODE,
     sortable: true,
     nowrap: true,
-    render: (r) => <CellText>{r.product_code || '-'}</CellText>,
+    render: (r) => <TextOrDash value={r.product_code} />,
     csv: (r) => csvString(r.product_code),
   },
 ];
 
-const qtyColumn = <T extends BaseRow>(totals: Totals): StockColumn<T> => ({
+const qtyColumn = <T extends BaseRow>(totals: Totals, view: View): StockColumn<T> => ({
   key: 'qtyN',
   header: L.TABLE.QTY,
+  headerRender: view === 'batch' ? twoLineHeader(L.TABLE.QTY_LINE1, L.TABLE.QTY_LINE2) : undefined,
   csvHeader: L.TABLE.QTY,
   sortable: true,
   nowrap: true,
@@ -336,7 +351,7 @@ const csvOnly = <T,>(key: string, csvHeader: string, csv: (r: T) => string): Sto
 
 const productColumns = (totals: Totals): StockColumn<StockRow>[] => [
   ...brandProductColumns<StockRow>('product'),
-  qtyColumn<StockRow>(totals),
+  qtyColumn<StockRow>(totals, 'product'),
   ...valueColumns<StockRow>(totals),
 ];
 
@@ -348,7 +363,7 @@ const batchColumns = (totals: Totals): StockColumn<BatchRow>[] => [
     csvHeader: L.TABLE.BATCH,
     sortable: true,
     nowrap: true,
-    render: (r) => <CellText>{r.batch_number || '-'}</CellText>,
+    render: (r) => <TextOrDash value={r.batch_number} />,
     csv: (r) => csvString(r.batch_number),
   },
   {
@@ -361,7 +376,7 @@ const batchColumns = (totals: Totals): StockColumn<BatchRow>[] => [
     csv: (r) => r.expiry_date ?? '',
   },
   csvOnly<BatchRow>('is_expired', L.TABLE.EXPIRED, (r) => (r.is_expired ? L.TABLE.YES : L.TABLE.NO)),
-  qtyColumn<BatchRow>(totals),
+  qtyColumn<BatchRow>(totals, 'batch'),
   {
     key: 'unitCostExN',
     header: L.TABLE.UNIT_COST_EX_GST,
@@ -398,7 +413,7 @@ const sortRows = <T,>(rows: T[], { key, direction }: SortConfig): T[] => {
 };
 
 /** CSV records for every column (incl. CSV-only ones), plus a totals row when there is data. */
-const buildCsv = <T,>(columns: StockColumn<T>[], rows: T[]) => {
+const csvRecords = <T,>(columns: StockColumn<T>[], rows: T[]) => {
   const record = (cell: (c: StockColumn<T>) => string) =>
     Object.fromEntries(columns.map((c) => [c.csvHeader, cell(c)]));
   const out = rows.map((r) => record((c) => c.csv(r)));
@@ -408,8 +423,6 @@ const buildCsv = <T,>(columns: StockColumn<T>[], rows: T[]) => {
 
 const ClosingStockReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
-  const batchCsvLinkRef = useRef<any>(null);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const viewStorageKey = `${CS.VIEW_STORAGE_KEY}_${userId ?? 'anon'}`;
   const [view, setView] = useState<View>(() => readStoredView(viewStorageKey));
@@ -552,13 +565,16 @@ const ClosingStockReport: React.FC = () => {
       ].filter((w): w is string => Boolean(w))
     : [];
 
-  const csvData = useMemo(() => buildCsv(productCols, sortedRows), [productCols, sortedRows]);
-  const batchCsvData = useMemo(() => buildCsv(batchCols, sortedBatchRows), [batchCols, sortedBatchRows]);
+  const csvData = useMemo(() => csvRecords(productCols, sortedRows), [productCols, sortedRows]);
+  const batchCsvData = useMemo(() => csvRecords(batchCols, sortedBatchRows), [batchCols, sortedBatchRows]);
 
   const handleDownload = (kind: View) => {
     setDownloadAnchor(null);
     const batch = kind === 'batch';
-    (batch ? batchCsvLinkRef : csvLinkRef).current?.link?.click();
+    downloadCsv(
+      `${batch ? L.PAGE.CSV_FILENAME_BATCH_PREFIX : L.PAGE.CSV_FILENAME_PREFIX}_${data?.as_of_date ?? ''}.csv`,
+      batch ? batchCsvData : csvData
+    );
     logDownload({
       category: 'report',
       name: batch ? L.LOG_NAME.BATCH : L.LOG_NAME.PRODUCT,
@@ -825,7 +841,18 @@ const ClosingStockReport: React.FC = () => {
               </Box>
             )}
           </Box>
-          <Box ref={tableWrapRef} sx={{ position: 'relative' }}>
+          <Box
+            ref={tableWrapRef}
+            sx={{
+              position: 'relative',
+              // Batch view has ten columns: tighter cell padding so they all fit at 1440px.
+              ...(isBatchView && {
+                '& .MuiTableBody-root .MuiTableCell-root, & .MuiTableFooter-root .MuiTableCell-root': {
+                  px: CS.BATCH_VIEW_CELL_PX,
+                },
+              }),
+            }}
+          >
             <TableShell>
               {isBatchView
                 ? renderTable(batchCols, sortedBatchRows, rows.length > 0 ? L.EMPTY_BATCHES : L.EMPTY_TABLE)
@@ -873,18 +900,6 @@ const ClosingStockReport: React.FC = () => {
           </MenuItem>
         ))}
       </Menu>
-      <CSVLink
-        data={csvData}
-        filename={`${L.PAGE.CSV_FILENAME_PREFIX}_${data?.as_of_date ?? ''}.csv`}
-        ref={csvLinkRef}
-        style={{ display: 'none' }}
-      />
-      <CSVLink
-        data={batchCsvData}
-        filename={`${L.PAGE.CSV_FILENAME_BATCH_PREFIX}_${data?.as_of_date ?? ''}.csv`}
-        ref={batchCsvLinkRef}
-        style={{ display: 'none' }}
-      />
     </Box>
   );
 };

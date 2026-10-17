@@ -177,9 +177,11 @@ export const ADMIN_REPORTS_CONSTANTS = {
     // wrap (at spaces) only when the viewport is genuinely short.
     BRAND_MIN_WIDTH: '140px',
     PRODUCT_MIN_WIDTH: '220px',
-    // Batch-wise has three more columns; its text columns give up width first.
-    BATCH_VIEW_BRAND_MIN_WIDTH: '110px',
-    BATCH_VIEW_PRODUCT_MIN_WIDTH: '170px',
+    // Batch-wise has three more columns; its text columns give up width first and its
+    // body cells use tighter horizontal padding, so all ten columns fit at 1440px.
+    BATCH_VIEW_BRAND_MIN_WIDTH: '96px',
+    BATCH_VIEW_PRODUCT_MIN_WIDTH: '150px',
+    BATCH_VIEW_CELL_PX: '12px',
     // Per-viewer remembered table view (suffixed with the user id).
     VIEW_STORAGE_KEY: 'closing_stock_view',
     DOWNLOAD_MENU_ID: 'closing-stock-download-menu',

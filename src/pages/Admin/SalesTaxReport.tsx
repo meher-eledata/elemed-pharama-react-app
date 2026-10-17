@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, TableRow, TableCell } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import {
@@ -40,6 +39,7 @@ import {
   defaultDateRange,
   csvString,
 } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 
 interface TaxRow extends SalesTaxReportRow {
   _id: number;
@@ -89,7 +89,6 @@ interface InvoiceRow extends SalesTaxInvoiceRow {
 
 const SalesTaxReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
   const [level, setLevel] = useState<SalesTaxLevel>('product');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
@@ -440,7 +439,7 @@ const SalesTaxReport: React.FC = () => {
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Sales Tax Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
@@ -603,7 +602,6 @@ const SalesTaxReport: React.FC = () => {
         </>
       )}
 
-      <CSVLink data={csvData} filename={csvFilename} ref={csvLinkRef} style={{ display: 'none' }} />
     </Box>
   );
 };

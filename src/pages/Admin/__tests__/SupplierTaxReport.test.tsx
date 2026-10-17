@@ -1,7 +1,7 @@
 global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -23,17 +23,27 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   default: () => <div data-testid="date-range-filter" />,
 }));
 // The CSV export is a SEPARATE code path from the table columns, so the mock captures
-// the rows handed to CSVLink and the tests assert on them directly.
+// the rows handed to downloadCsv and the tests assert on them directly.
 const mockCsvRows: Record<string, string>[] = [];
-jest.mock('react-csv', () => ({
+jest.mock('../../../utils/csv', () => ({
   __esModule: true,
-  CSVLink: ({ data }: { data: Record<string, string>[] }) => {
+  ...jest.requireActual('../../../utils/csv'),
+  downloadCsv: (filename: string, data: Record<string, string>[]) => {
     mockCsvRows.length = 0;
     mockCsvRows.push(...data);
-    return <div data-testid="csv-link" />;
   },
 }));
+// The export is built on click: press Download CSV, then read what was handed to downloadCsv.
+const exportedRows = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+  return mockCsvRows;
+};
 
+jest.mock('../../../redux/slices/activityApi', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../redux/slices/activityApi'),
+  useLogDownloadMutation: () => [() => ({ catch: () => {} }), { isLoading: false }],
+}));
 jest.mock('../../../redux/slices/reportsApi', () => {
   const actual = jest.requireActual('../../../redux/slices/reportsApi');
   return { __esModule: true, ...actual, useGetSupplierTaxReportQuery: jest.fn() };
@@ -153,7 +163,7 @@ describe('SupplierTaxReport page', () => {
 
   it('exports the generated receipt number in the CSV, not the internal PK', () => {
     renderPage();
-    expect(mockCsvRows[0]['Receipt #']).toBe('GRN-000501');
+    expect(exportedRows()[0]['Receipt #']).toBe('GRN-000501');
   });
 
   // feature/receipt-date: the receipt-level tax report carries the supplier Invoice
@@ -164,8 +174,8 @@ describe('SupplierTaxReport page', () => {
     // receipt_date 2026-06-10 -> 10/06/2026; invoice_date 2026-06-08 -> 08/06/2026.
     expect(screen.getByText('08/06/2026')).toBeInTheDocument();
     expect(screen.getByText('10/06/2026')).toBeInTheDocument();
-    expect(mockCsvRows[0]['Invoice Date']).toBe('08/06/2026');
-    expect(mockCsvRows[0]['Receipt Date']).toBe('10/06/2026');
+    expect(exportedRows()[0]['Invoice Date']).toBe('08/06/2026');
+    expect(exportedRows()[0]['Receipt Date']).toBe('10/06/2026');
   });
 
   it('renders a custom-template receipt number verbatim', () => {
@@ -180,6 +190,6 @@ describe('SupplierTaxReport page', () => {
     });
     renderPage();
     expect(screen.getByText('GRN/26-27/000042')).toBeInTheDocument();
-    expect(mockCsvRows[0]['Receipt #']).toBe('GRN/26-27/000042');
+    expect(exportedRows()[0]['Receipt #']).toBe('GRN/26-27/000042');
   });
 });

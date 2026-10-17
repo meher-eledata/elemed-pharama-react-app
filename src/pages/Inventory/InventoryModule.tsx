@@ -24,8 +24,7 @@ import AddIcon from "@mui/icons-material/Add";
 import WarningIcon from '@mui/icons-material/Warning';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
-import { CSVLink } from 'react-csv';
-import { csvString } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
@@ -560,23 +559,28 @@ const InventoryModule: React.FC = () => {
         break;
     }
 
-    const data = filteredData.map(item => {
-      const row: any = {};
-      headers.forEach(header => {
-        const value = (item as any)[header.key];
-        row[header.key] = value ? csvString(value) : '-';
-      });
-      return row;
-    });
+    const data = filteredData.map(item =>
+      Object.fromEntries(
+        headers.map(({ label, key }) => {
+          const value = (item as any)[key];
+          if (!value) return [label, '-'];
+          // Expiry is stored at UTC midnight: export its UTC calendar date, never a local shift.
+          if (key === 'expiryDate') {
+            const date = new Date(value);
+            return [label, Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 10)];
+          }
+          return [label, value];
+        })
+      )
+    );
 
-    return { headers, data };
+    return { headers: headers.map(({ label }) => label), data };
   }, [selectedStockType, filteredData]);
 
-  const csvFilename = `inventory_${selectedStockType}_stock_${new Date().toISOString().split('T')[0]}.csv`;
-  const csvLinkRef = React.useRef<any>(null);
+  const csvFilename = `inventory_${selectedStockType}_stock_${dayjs().format('YYYY-MM-DD')}.csv`;
 
   const handleDownloadCSV = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvContent.data, csvContent.headers);
     logDownload({
       category: 'inventory',
       name: getCategoryLabel(selectedStockType),
@@ -1406,14 +1410,6 @@ const InventoryModule: React.FC = () => {
                   </Button>
                 </Box>
               )}
-              <CSVLink
-                data={csvContent.data}
-                headers={csvContent.headers}
-                filename={csvFilename}
-                className="hidden"
-                ref={csvLinkRef}
-                style={{ display: 'none' }}
-              />
               <Tooltip title="Download" arrow>
                 <IconButton
                   onClick={handleDownloadCSV}

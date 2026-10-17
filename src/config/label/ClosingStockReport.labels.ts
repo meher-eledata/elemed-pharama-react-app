@@ -3,8 +3,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export const CLOSING_STOCK_REPORT_LABELS = {
   PAGE: {
     TITLE: 'Closing Stock Report',
-    SUBTITLE:
-      'Stock on hand at the end of the selected date, by product or by batch, valued at purchase cost and MRP.',
+    SUBTITLE: 'Stock on hand at the end of the selected date, valued at cost and MRP.',
     DOWNLOAD_CSV: 'Download CSV',
     CSV_FILENAME_PREFIX: 'closing_stock_report',
     CSV_FILENAME_BATCH_PREFIX: 'closing_stock_report_batchwise',
@@ -53,10 +52,14 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     BRAND: 'Brand',
     PRODUCT: 'Product',
     PRODUCT_CODE: 'Product Code',
+    PRODUCT_CODE_LINE1: 'Product',
+    PRODUCT_CODE_LINE2: 'Code',
     BATCH: 'Batch',
     EXPIRY: 'Expiry',
     EXPIRED: 'Expired',
     QTY: 'Qty (units)',
+    QTY_LINE1: 'Qty',
+    QTY_LINE2: '(units)',
     UNIT_COST_EX_GST: 'Unit Cost excl. GST',
     UNIT_COST_INC_GST: 'Unit Cost incl. GST',
     UNIT_COST_HEADER: 'Unit Cost',

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, ChangeEvent } from 'react';
+import React, { useState, useMemo, ChangeEvent } from 'react';
 import { Box, Typography, TextField, InputAdornment, IconButton, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -6,7 +6,6 @@ import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
-import { CSVLink } from 'react-csv';
 import dayjs, { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { DETAILED_SALES_TABLE_CONSTANTS } from '../../config/constants/DetailedSalesTable.constants';
@@ -15,7 +14,8 @@ import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
-import { formatWholeCurrency, csvString } from '../../utils/reportFormat';
+import { formatWholeCurrency } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 
 interface SalesData {
@@ -38,7 +38,6 @@ interface SalesData {
 
 const DetailedSalesTable: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
   const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
   const [logDownload] = useLogDownloadMutation();
@@ -444,7 +443,7 @@ const DetailedSalesTable: React.FC = () => {
   };
 
   const handleDownloadCSV = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Detailed Sales Table', format: 'csv', count: sortedData.length }).catch(() => {});
   };
 
@@ -452,19 +451,19 @@ const DetailedSalesTable: React.FC = () => {
   const csvData = useMemo(() => {
     return sortedData.map(item => ({
       'Transaction Date': formatDate(item.transactionDate),
-      'Transaction Type': csvString(item.transactionType),
-      'Invoice Number': csvString(item.invoiceNumber),
-      'Customer Name': csvString(item.customerName),
-      'Customer Details': csvString(item.customerDetails),
-      'Doctor Name': csvString(item.doctorName),
-      'Payment Type': csvString(item.paymentType),
+      'Transaction Type': item.transactionType,
+      'Invoice Number': item.invoiceNumber,
+      'Customer Name': item.customerName,
+      'Customer Details': item.customerDetails,
+      'Doctor Name': item.doctorName,
+      'Payment Type': item.paymentType,
       'Sale Amount (₹)': item.saleAmount.toFixed(2),
       'Discount (₹)': item.discount.toFixed(2),
       'CGST (₹)': item.cgst.toFixed(2),
       'SGST (₹)': item.sgst.toFixed(2),
       'IGST (₹)': item.igst.toFixed(2),
       'Total Amount (₹)': item.totalAmount.toFixed(0),
-      'Patient Type': csvString(item.patientType),
+      'Patient Type': item.patientType,
     }));
   }, [sortedData]);
 
@@ -795,14 +794,6 @@ const DetailedSalesTable: React.FC = () => {
           </Box>
         </Box>
       )}
-
-      {/* Hidden CSV Link */}
-      <CSVLink
-        data={csvData}
-        filename={csvFilename}
-        ref={csvLinkRef}
-        style={{ display: 'none' }}
-      />
     </Box>
   );
 };
