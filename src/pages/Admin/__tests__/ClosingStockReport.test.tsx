@@ -189,12 +189,12 @@ const DATE_DEBOUNCE = 500;
 
 const USER_ID = 7;
 const VIEW_KEY = `closing_stock_view_${USER_ID}`;
-const createStore = () =>
-  configureStore({ reducer: { auth: () => ({ user: { id: USER_ID }, token: 't', isAuthenticated: true }) } });
+const createStore = (userId: number) =>
+  configureStore({ reducer: { auth: () => ({ user: { id: userId }, token: 't', isAuthenticated: true }) } });
 
-const renderPage = () =>
+const renderPage = (userId = USER_ID) =>
   render(
-    <Provider store={createStore()}>
+    <Provider store={createStore(userId)}>
       <ThemeProvider theme={theme}>
         <MemoryRouter>
           <ClosingStockReport />
@@ -451,6 +451,13 @@ describe('ClosingStockReport page', () => {
       expect(viewButton('Batch-wise')).toHaveAttribute('aria-pressed', 'true');
     });
 
+    it("does not give one user another user's saved view", () => {
+      localStorage.setItem(VIEW_KEY, 'batch');
+      renderPage(8);
+      expect(viewButton('Product-wise')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.queryByText('AMX-B1')).not.toBeInTheDocument();
+    });
+
     it('still switches views when localStorage is unavailable', () => {
       const blocked = () => {
         throw new Error('blocked');
@@ -488,6 +495,43 @@ describe('ClosingStockReport page', () => {
       expect(screen.getByText('Batches')).toBeInTheDocument();
       expect(screen.queryByText('Products')).not.toBeInTheDocument();
       expect(screen.queryByText(/NaN|Invalid/)).not.toBeInTheDocument();
+    });
+
+    const batchOrder = () => screen.getAllByText(/^(AMX-B\d|BND-9)$/).map((el) => el.textContent);
+    const productOrder = () =>
+      screen.getAllByText(/^(Amoxicillin 500mg|Bandage Roll)$/).map((el) => el.textContent);
+    const clickHeader = (name: string) =>
+      fireEvent.click(within(screen.getAllByRole('rowgroup')[0]).getByText(name));
+
+    it('sorts batch rows by Expiry ascending and descending, missing expiry always last', () => {
+      renderPage();
+      switchToBatch();
+      clickHeader('Expiry');
+      expect(batchOrder()).toEqual(['AMX-B1', 'AMX-B2', 'BND-9']);
+      clickHeader('Expiry');
+      expect(batchOrder()).toEqual(['AMX-B2', 'AMX-B1', 'BND-9']);
+    });
+
+    it('falls back to the default sort in product view and restores the Expiry sort in batch view', () => {
+      renderPage();
+      switchToBatch();
+      clickHeader('Expiry');
+      clickHeader('Expiry'); // descending
+      fireEvent.click(viewButton('Product-wise'));
+      expect(productOrder()).toEqual(['Amoxicillin 500mg', 'Bandage Roll']);
+      // The default (Product ascending) is the active sort, so one click flips it to descending.
+      clickHeader('Product');
+      expect(productOrder()).toEqual(['Bandage Roll', 'Amoxicillin 500mg']);
+
+      clickHeader('Product'); // back to ascending
+      fireEvent.click(viewButton('Batch-wise'));
+      expect(batchOrder()).toEqual(['AMX-B1', 'AMX-B2', 'BND-9']); // product sort carries over
+
+      clickHeader('Expiry');
+      clickHeader('Expiry');
+      fireEvent.click(viewButton('Product-wise'));
+      fireEvent.click(viewButton('Batch-wise'));
+      expect(batchOrder()).toEqual(['AMX-B2', 'AMX-B1', 'BND-9']);
     });
 
     it('marks an expired batch with red date text and an Expired chip', () => {
@@ -549,8 +593,15 @@ describe('ClosingStockReport page', () => {
   describe('download menu', () => {
     it('offers both CSVs; product-wise is unchanged and logged as before', () => {
       renderPage();
-      expect(downloadButton()).toHaveAttribute('aria-haspopup', 'menu');
-      openDownloadMenu();
+      const button = downloadButton();
+      expect(button).toHaveAttribute('aria-haspopup', 'menu');
+      expect(button).not.toHaveAttribute('aria-controls');
+      const menu = openDownloadMenu();
+      // The open menu is labelled by the button and the button points at the menu.
+      expect(button).toHaveAttribute('aria-expanded', 'true');
+      expect(document.getElementById(button.getAttribute('aria-controls')!)).toContainElement(menu);
+      expect(menu).toHaveAttribute('aria-labelledby', button.id);
+      expect(menu).toHaveAccessibleName('Download CSV');
       expect(menuItem(/Batch-wise CSV/)).toBeInTheDocument();
       fireEvent.click(menuItem(/Product-wise CSV/));
       const [logDownload] = mockedActivity.useLogDownloadMutation.mock.results[0].value;

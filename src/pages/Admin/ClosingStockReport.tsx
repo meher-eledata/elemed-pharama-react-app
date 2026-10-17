@@ -654,6 +654,7 @@ const ClosingStockReport: React.FC = () => {
         onDownloadCsv={(e) => setDownloadAnchor(e.currentTarget)}
         downloadDisabled={downloadDisabled}
         downloadMenuOpen={Boolean(downloadAnchor)}
+        downloadMenuId={CS.DOWNLOAD_MENU_ID}
         dateControl={
           <Box sx={dateFieldSx}>
             <FilterLabel>{L.FILTER.AS_OF_DATE_LABEL}</FilterLabel>
@@ -849,6 +850,8 @@ const ClosingStockReport: React.FC = () => {
       )}
 
       <Menu
+        id={CS.DOWNLOAD_MENU_ID}
+        MenuListProps={{ 'aria-labelledby': `${CS.DOWNLOAD_MENU_ID}-button` }}
         anchorEl={downloadAnchor}
         open={Boolean(downloadAnchor)}
         onClose={() => setDownloadAnchor(null)}

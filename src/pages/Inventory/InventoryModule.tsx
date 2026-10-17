@@ -25,6 +25,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import { CSVLink } from 'react-csv';
+import { csvString } from '../../utils/reportFormat';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
@@ -562,7 +563,8 @@ const InventoryModule: React.FC = () => {
     const data = filteredData.map(item => {
       const row: any = {};
       headers.forEach(header => {
-        row[header.key] = (item as any)[header.key] || '-';
+        const value = (item as any)[header.key];
+        row[header.key] = value ? csvString(value) : '-';
       });
       return row;
     });

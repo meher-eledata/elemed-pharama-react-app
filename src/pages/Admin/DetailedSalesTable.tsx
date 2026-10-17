@@ -15,7 +15,7 @@ import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatWholeCurrency, csvString } from '../../utils/reportFormat';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 
 interface SalesData {
@@ -452,19 +452,19 @@ const DetailedSalesTable: React.FC = () => {
   const csvData = useMemo(() => {
     return sortedData.map(item => ({
       'Transaction Date': formatDate(item.transactionDate),
-      'Transaction Type': item.transactionType,
-      'Invoice Number': item.invoiceNumber,
-      'Customer Name': item.customerName,
-      'Customer Details': item.customerDetails,
-      'Doctor Name': item.doctorName,
-      'Payment Type': item.paymentType,
+      'Transaction Type': csvString(item.transactionType),
+      'Invoice Number': csvString(item.invoiceNumber),
+      'Customer Name': csvString(item.customerName),
+      'Customer Details': csvString(item.customerDetails),
+      'Doctor Name': csvString(item.doctorName),
+      'Payment Type': csvString(item.paymentType),
       'Sale Amount (₹)': item.saleAmount.toFixed(2),
       'Discount (₹)': item.discount.toFixed(2),
       'CGST (₹)': item.cgst.toFixed(2),
       'SGST (₹)': item.sgst.toFixed(2),
       'IGST (₹)': item.igst.toFixed(2),
       'Total Amount (₹)': item.totalAmount.toFixed(0),
-      'Patient Type': item.patientType,
+      'Patient Type': csvString(item.patientType),
     }));
   }, [sortedData]);
 

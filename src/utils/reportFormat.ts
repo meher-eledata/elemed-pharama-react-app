@@ -80,6 +80,17 @@ export const defaultDateRange = (): [Dayjs, Dayjs] => {
   return [start, end];
 };
 
-/** Stringify a value safely for CSV cells. */
-export const csvString = (val: string | number | null | undefined): string =>
-  val === null || val === undefined ? '' : String(val);
+// Spreadsheet apps run a cell starting with one of these as a formula (CSV injection).
+const CSV_FORMULA_START = /^[=+\-@\t\r]/;
+// ...but a plain number such as "-4.00" must stay a number.
+const CSV_PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
+
+/**
+ * Stringify a value safely for CSV cells: null/undefined become '', and text that a
+ * spreadsheet would evaluate as a formula gets a leading apostrophe (shown as text).
+ */
+export const csvString = (val: string | number | null | undefined): string => {
+  if (val === null || val === undefined) return '';
+  const text = String(val);
+  return CSV_FORMULA_START.test(text) && !CSV_PLAIN_NUMBER.test(text) ? `'${text}` : text;
+};

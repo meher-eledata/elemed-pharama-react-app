@@ -101,6 +101,32 @@ describe('ReportHeader download button', () => {
     renderHeader({ onDownloadCsv, downloadDisabled: true });
     expect(screen.getByRole('button', { name: /download csv/i })).toBeDisabled();
   });
+
+  it('is a plain button (no menu ARIA, no caret, no id) unless a download menu is configured', () => {
+    renderHeader({ onDownloadCsv: jest.fn() });
+    const button = screen.getByRole('button', { name: /download csv/i });
+    ['id', 'aria-haspopup', 'aria-expanded', 'aria-controls'].forEach((attr) =>
+      expect(button).not.toHaveAttribute(attr)
+    );
+    expect(screen.queryByTestId('KeyboardArrowDownIcon')).not.toBeInTheDocument();
+  });
+
+  it('wires the menu ARIA state when downloadMenuOpen / downloadMenuId are given', () => {
+    const { unmount } = renderHeader({ onDownloadCsv: jest.fn(), downloadMenuOpen: false, downloadMenuId: 'dl-menu' });
+    const button = screen.getByRole('button', { name: /download csv/i });
+    expect(button).toHaveAttribute('id', 'dl-menu-button');
+    expect(button).toHaveAttribute('aria-haspopup', 'menu');
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).not.toHaveAttribute('aria-controls');
+    expect(screen.getByTestId('KeyboardArrowDownIcon')).toBeInTheDocument();
+
+    unmount();
+
+    renderHeader({ onDownloadCsv: jest.fn(), downloadMenuOpen: true, downloadMenuId: 'dl-menu' });
+    const openButton = screen.getByRole('button', { name: /download csv/i });
+    expect(openButton).toHaveAttribute('aria-expanded', 'true');
+    expect(openButton).toHaveAttribute('aria-controls', 'dl-menu');
+  });
 });
 
 describe('FilterLabel', () => {

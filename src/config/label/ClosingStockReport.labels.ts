@@ -83,7 +83,7 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     MRP_PARTIAL: 'Partial: some batches of this product have no MRP',
     NEGATIVE_QTY: 'Negative stock: more units went out than were recorded coming in by this date',
     NEGATIVE_BATCHES: 'One or more batches of this product are negative as of this date',
-    EXPIRY_MISSING: 'No expiry on record (this batch is no longer in inventory)',
+    EXPIRY_MISSING: 'No expiry on record',
     EXPIRED: 'Expired before the selected date',
   },
   WARNINGS: {

@@ -182,6 +182,7 @@ export const ADMIN_REPORTS_CONSTANTS = {
     BATCH_VIEW_PRODUCT_MIN_WIDTH: '170px',
     // Per-viewer remembered table view (suffixed with the user id).
     VIEW_STORAGE_KEY: 'closing_stock_view',
+    DOWNLOAD_MENU_ID: 'closing-stock-download-menu',
     VIEW_TOGGLE: {
       BORDER: '#D7DFEA',
       COLOR: '#374151',

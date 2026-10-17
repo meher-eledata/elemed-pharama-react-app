@@ -61,6 +61,8 @@ interface ReportHeaderProps {
   downloadDisabled?: boolean;
   /** Set when the button opens a menu of download options (adds a caret + menu ARIA state). */
   downloadMenuOpen?: boolean;
+  /** id of that menu; the button gets `${downloadMenuId}-button` for aria-labelledby. */
+  downloadMenuId?: string;
   /** Optional extra controls rendered between the date filter and the CSV button. */
   children?: React.ReactNode;
   /** Range filter; rendered only when both dateRange and onDateRangeChange are given. */
@@ -77,6 +79,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   downloadLabel,
   downloadDisabled,
   downloadMenuOpen,
+  downloadMenuId,
   children,
   dateRange,
   onDateRangeChange,
@@ -126,6 +129,8 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
           endIcon={downloadMenuOpen === undefined ? undefined : <KeyboardArrowDownIcon />}
           aria-haspopup={downloadMenuOpen === undefined ? undefined : 'menu'}
           aria-expanded={downloadMenuOpen}
+          id={downloadMenuId && `${downloadMenuId}-button`}
+          aria-controls={downloadMenuOpen ? downloadMenuId : undefined}
           onClick={onDownloadCsv}
           disabled={downloadDisabled}
           sx={{ whiteSpace: 'nowrap', mb: '1px' }}

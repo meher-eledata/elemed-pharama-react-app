@@ -19,7 +19,7 @@ import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatWholeCurrency, csvString } from '../../utils/reportFormat';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
@@ -399,7 +399,7 @@ const DailySalesReport: React.FC = () => {
       // Sales Breakdown Section
       ...reportData.paymentTypeData.map(item => ({
         Section: 'Sales Breakdown',
-        Metric: `${item.label} Sales (₹)`,
+        Metric: csvString(`${item.label} Sales (₹)`),
         Value: item.value.toFixed(2),
         Details: ''
       })),
@@ -408,7 +408,7 @@ const DailySalesReport: React.FC = () => {
       // Payment Type Breakdown
       ...reportData.paymentTypeData.map(item => ({
         Section: 'Payment Type Breakdown',
-        Metric: item.label,
+        Metric: csvString(item.label),
         Value: item.value.toFixed(2),
         Details: totalPaymentValue > 0 ? `${((item.value / totalPaymentValue) * 100).toFixed(2)}%` : '0%'
       })),
