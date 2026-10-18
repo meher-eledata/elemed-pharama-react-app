@@ -33,7 +33,6 @@ import {
   formatCount,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
 import { downloadCsv } from '../../utils/csv';
 
@@ -230,13 +229,13 @@ const SupplierReceiptReport: React.FC = () => {
   const csvData = useMemo(() => {
     if (tab === 'byReceipt') {
       return sortedByReceiptRows.map((r) => ({
-        [L.TABLE_BY_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
+        [L.TABLE_BY_RECEIPT.RECEIPT_NUMBER]: r.receipt_number,
         [L.TABLE_BY_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
-        [L.TABLE_BY_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_BY_RECEIPT.INVOICE_NUMBER]: r.invoice_number,
         [L.TABLE_BY_RECEIPT.INVOICE_DATE]: formatReportDate(r.invoice_date),
-        [L.TABLE_BY_RECEIPT.PO_NUMBER]: csvString(r.po_number),
-        [L.TABLE_BY_RECEIPT.SUPPLIER]: csvString(r.supplier_name),
-        [L.TABLE_BY_RECEIPT.GSTIN]: csvString(r.supplier_gst),
+        [L.TABLE_BY_RECEIPT.PO_NUMBER]: r.po_number,
+        [L.TABLE_BY_RECEIPT.SUPPLIER]: r.supplier_name,
+        [L.TABLE_BY_RECEIPT.GSTIN]: r.supplier_gst,
         [L.TABLE_BY_RECEIPT.LINES]: String(r.lineCountN),
         [L.TABLE_BY_RECEIPT.PRODUCTS]: String(r.productCountN),
         [L.TABLE_BY_RECEIPT.QTY]: r.qtyN.toFixed(2),
@@ -249,16 +248,16 @@ const SupplierReceiptReport: React.FC = () => {
       }));
     }
     return sortedRows.map((r) => ({
-      [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
+      [L.TABLE.RECEIPT_NUMBER]: r.receipt_number,
       [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
-      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.INVOICE_NUMBER]: r.invoice_number,
       [L.TABLE.INVOICE_DATE]: formatReportDate(r.invoice_date),
-      [L.TABLE.PO_NUMBER]: csvString(r.po_number),
-      [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
-      [L.TABLE.GSTIN]: csvString(r.supplier_gst),
-      [L.TABLE.PRODUCT]: csvString(r.product_name),
-      [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
-      [L.TABLE.HSN]: csvString(r.hsn_code),
+      [L.TABLE.PO_NUMBER]: r.po_number,
+      [L.TABLE.SUPPLIER]: r.supplier_name,
+      [L.TABLE.GSTIN]: r.supplier_gst,
+      [L.TABLE.PRODUCT]: r.product_name,
+      [L.TABLE.PRODUCT_CODE]: r.product_code,
+      [L.TABLE.HSN]: r.hsn_code,
       [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
       [`${L.TABLE.PURCHASE_PRICE} (₹)`]: r.purchasePriceN.toFixed(2),
       [L.TABLE.RECEIVED_QTY]: r.qtyN.toFixed(2),

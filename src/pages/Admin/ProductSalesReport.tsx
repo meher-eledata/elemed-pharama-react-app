@@ -30,7 +30,6 @@ import {
   formatPercent,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
 import { downloadCsv } from '../../utils/csv';
 
@@ -229,15 +228,15 @@ const ProductSalesReport: React.FC = () => {
 
   const csvData = useMemo(() => {
     const dataRows = sortedRows.map((r) => ({
-      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.INVOICE_NUMBER]: r.invoice_number,
       [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
-      [L.TABLE.PRODUCT]: csvString(r.product_name),
-      [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
-      [L.TABLE.HSN]: csvString(r.hsn_code),
-      [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
+      [L.TABLE.PRODUCT]: r.product_name,
+      [L.TABLE.PRODUCT_CODE]: r.product_code,
+      [L.TABLE.HSN]: r.hsn_code,
+      [L.TABLE.BATCH_NUMBER]: r.batch_number,
       [L.TABLE.PATIENT_TYPE]: r.patientDisplay,
-      [L.TABLE.CUSTOMER]: csvString(r.customer_name),
-      [L.TABLE.CUSTOMER_DETAILS]: csvString(r.customer_details),
+      [L.TABLE.CUSTOMER]: r.customer_name,
+      [L.TABLE.CUSTOMER_DETAILS]: r.customer_details,
       [L.TABLE.QTY]: r.qtyN.toFixed(2),
       [`${L.TABLE.MRP} (₹)`]: r.unitMrpN.toFixed(2),
       [`${L.TABLE.SP} (₹)`]: r.spAfterDiscN.toFixed(2),

@@ -25,6 +25,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import NewProductModal from "../../components/Modal/NewProduct/NewProductModal";
 import { downloadCsv } from '../../utils/csv';
+import { formatReportDate, utcCalendarDate } from '../../utils/reportFormat';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
@@ -563,13 +564,9 @@ const InventoryModule: React.FC = () => {
       Object.fromEntries(
         headers.map(({ label, key }) => {
           const value = (item as any)[key];
-          if (!value) return [label, '-'];
-          // Expiry is stored at UTC midnight: export its UTC calendar date, never a local shift.
-          if (key === 'expiryDate') {
-            const date = new Date(value);
-            return [label, Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 10)];
-          }
-          return [label, value];
+          // Only a missing value is '-'; a quantity or day count of 0 is a real 0.
+          if (value === null || value === undefined || value === '') return [label, '-'];
+          return [label, key === 'expiryDate' ? utcCalendarDate(value) ?? String(value) : value];
         })
       )
     );
@@ -832,7 +829,7 @@ const InventoryModule: React.FC = () => {
           { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
-          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate ? dayjs((item as InventoryItem).expiryDate).format('DD/MM/YYYY') : '-' },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => formatReportDate(utcCalendarDate((item as InventoryItem).expiryDate)) },
           { key: 'daysPastExpiry', header: INVENTORY_LABELS.daysPastExpiryHeader, render: (item) => (item as InventoryItem).daysPastExpiry },
         ];
         break;
@@ -844,7 +841,7 @@ const InventoryModule: React.FC = () => {
           { key: 'type', header: INVENTORY_LABELS.typeHeader, render: (item) => (item as InventoryItem).type || '-' },
           { key: 'batchNumber', header: INVENTORY_LABELS.batchNoHeader, render: (item) => (item as InventoryItem).batchNumber },
           { key: 'currentQuantity', header: INVENTORY_LABELS.currentQuantityHeader, render: (item) => (item as InventoryItem).currentQuantity },
-          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => (item as InventoryItem).expiryDate ? dayjs((item as InventoryItem).expiryDate).format('DD/MM/YYYY') : '-' },
+          { key: 'expiryDate', header: INVENTORY_LABELS.expiryDateHeader, render: (item) => formatReportDate(utcCalendarDate((item as InventoryItem).expiryDate)) },
           { key: 'daysToExpiry', header: INVENTORY_LABELS.daysToExpiryHeader, render: (item) => (item as InventoryItem).daysToExpiry },
         ];
         break;

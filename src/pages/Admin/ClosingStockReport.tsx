@@ -52,14 +52,13 @@ import type { RootState } from '../../redux/store';
 import { useGetAllBrandsQuery } from '../../redux/slices/inventoryApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { useDebounce } from '../../hooks/useDebounce';
-import { downloadCsv } from '../../utils/csv';
+import { downloadCsv, CsvCell } from '../../utils/csv';
 import {
   toNum,
   formatCurrency,
   formatNumber,
   formatCount,
   formatReportDate,
-  csvString,
 } from '../../utils/reportFormat';
 
 const CS = C.CLOSING_STOCK;
@@ -118,7 +117,7 @@ type BatchRow = ClosingStockBatch &
  */
 interface StockColumn<T> extends TableColumn<T> {
   csvHeader: string;
-  csv: (r: T) => string;
+  csv: (r: T) => CsvCell;
   total?: React.ReactNode;
   totalCsv?: string;
 }
@@ -144,9 +143,19 @@ const readStoredView = (key: string): View => {
 const nullableNum = (v: Num | null): number | null => (v === null ? null : toNum(v));
 const csvMoney = (v: number | null): string => (v === null ? '' : v.toFixed(2));
 
-const Hint: React.FC<{ tip: string; children: React.ReactNode }> = ({ tip, children }) => (
+/** Tooltip-explained cell content; `stacked` lays the children out in a column. */
+const Hint: React.FC<{ tip: string; stacked?: boolean; children: React.ReactNode }> = ({ tip, stacked, children }) => (
   <Tooltip title={tip} arrow>
-    <Box sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 0.5, cursor: 'help' }}>{children}</Box>
+    <Box
+      sx={{
+        display: 'inline-flex',
+        gap: 0.5,
+        cursor: 'help',
+        ...(stacked ? { flexDirection: 'column', alignItems: 'flex-start' } : { alignItems: 'baseline' }),
+      }}
+    >
+      {children}
+    </Box>
   </Tooltip>
 );
 
@@ -226,25 +235,23 @@ const expiryCell = (r: BatchRow) => {
   // Chip under the date (not beside it) keeps the Expiry column narrow enough for all
   // batch columns to fit at 1440px.
   return (
-    <Tooltip title={L.TOOLTIP.EXPIRED} arrow>
-      <Box sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, cursor: 'help' }}>
-        <CellText color={C.COLORS.NEGATIVE}>{text}</CellText>
-        <Chip
-          label={L.TABLE.EXPIRED}
-          size="small"
-          sx={{
-            height: CS.EXPIRED_CHIP.HEIGHT,
-            fontFamily: FONT,
-            fontSize: CS.EXPIRED_CHIP.FONT_SIZE,
-            fontWeight: 600,
-            borderRadius: CS.EXPIRED_CHIP.BORDER_RADIUS,
-            backgroundColor: CS.EXPIRED_CHIP.BACKGROUND,
-            color: CS.EXPIRED_CHIP.COLOR,
-            '& .MuiChip-label': { px: 1 },
-          }}
-        />
-      </Box>
-    </Tooltip>
+    <Hint tip={L.TOOLTIP.EXPIRED} stacked>
+      <CellText color={C.COLORS.NEGATIVE}>{text}</CellText>
+      <Chip
+        label={L.TABLE.EXPIRED}
+        size="small"
+        sx={{
+          height: CS.EXPIRED_CHIP.HEIGHT,
+          fontFamily: FONT,
+          fontSize: CS.EXPIRED_CHIP.FONT_SIZE,
+          fontWeight: 600,
+          borderRadius: CS.EXPIRED_CHIP.BORDER_RADIUS,
+          backgroundColor: CS.EXPIRED_CHIP.BACKGROUND,
+          color: CS.EXPIRED_CHIP.COLOR,
+          '& .MuiChip-label': { px: 1 },
+        }}
+      />
+    </Hint>
   );
 };
 
@@ -252,13 +259,19 @@ const Total: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <CellText weight={700}>{children}</CellText>
 );
 
+/**
+ * Wrapping text column with a fixed share of the table width (`share`), so its width doesn't
+ * follow the names on the current page (columns used to shift when paging); `minWidth` keeps
+ * names readable when the viewport is short.
+ */
 const textColumn = <T extends BaseRow>(
   key: 'brand_name' | 'product_name',
   header: string,
-  minWidth: string
+  { minWidth, share }: { minWidth: string; share: string }
 ): StockColumn<T> => ({
   key,
   header,
+  columnWidth: share,
   csvHeader: header,
   sortable: true,
   render: (r) => (
@@ -266,26 +279,28 @@ const textColumn = <T extends BaseRow>(
       <TextOrDash value={r[key]} />
     </Box>
   ),
-  csv: (r) => csvString(r[key]),
+  csv: (r) => r[key],
 });
 
 const brandProductColumns = <T extends BaseRow>(view: View): StockColumn<T>[] => [
   {
-    ...textColumn<T>('brand_name', L.TABLE.BRAND, view === 'batch' ? CS.BATCH_VIEW_BRAND_MIN_WIDTH : CS.BRAND_MIN_WIDTH),
+    ...textColumn<T>('brand_name', L.TABLE.BRAND, CS.TEXT_COLUMNS[view].BRAND),
     total: <Total>{L.TABLE.TOTAL}</Total>,
     totalCsv: L.TABLE.TOTAL,
   },
-  textColumn<T>('product_name', L.TABLE.PRODUCT, view === 'batch' ? CS.BATCH_VIEW_PRODUCT_MIN_WIDTH : CS.PRODUCT_MIN_WIDTH),
+  textColumn<T>('product_name', L.TABLE.PRODUCT, CS.TEXT_COLUMNS[view].PRODUCT),
   {
     key: 'product_code',
     header: L.TABLE.PRODUCT_CODE,
     // Batch view is width-constrained: let this header wrap instead of setting the column width.
     headerRender: view === 'batch' ? twoLineHeader(L.TABLE.PRODUCT_CODE_LINE1, L.TABLE.PRODUCT_CODE_LINE2) : undefined,
+    // A fixed share (not the codes on the current page) sets the width; an unusually long
+    // code wraps rather than being clipped.
+    columnWidth: CS.TEXT_COLUMNS[view].CODE_SHARE,
     csvHeader: L.TABLE.PRODUCT_CODE,
     sortable: true,
-    nowrap: true,
     render: (r) => <TextOrDash value={r.product_code} />,
-    csv: (r) => csvString(r.product_code),
+    csv: (r) => r.product_code,
   },
 ];
 
@@ -341,7 +356,7 @@ const valueColumns = <T extends BaseRow>(totals: Totals): StockColumn<T>[] => [
 ];
 
 /** CSV-only column (not rendered on screen). */
-const csvOnly = <T,>(key: string, csvHeader: string, csv: (r: T) => string): StockColumn<T> => ({
+const csvOnly = <T,>(key: string, csvHeader: string, csv: (r: T) => CsvCell): StockColumn<T> => ({
   key,
   header: csvHeader,
   csvHeader,
@@ -360,11 +375,16 @@ const batchColumns = (totals: Totals): StockColumn<BatchRow>[] => [
   {
     key: 'batch_number',
     header: L.TABLE.BATCH,
+    columnWidth: CS.TEXT_COLUMNS.batch.BATCH_SHARE,
     csvHeader: L.TABLE.BATCH,
     sortable: true,
-    nowrap: true,
-    render: (r) => <TextOrDash value={r.batch_number} />,
-    csv: (r) => csvString(r.batch_number),
+    render: (r) => (
+      // Typical batch numbers stay on one line even when the table scrolls (1280px).
+      <Box sx={{ minWidth: CS.TEXT_COLUMNS.batch.BATCH_MIN_WIDTH }}>
+        <TextOrDash value={r.batch_number} />
+      </Box>
+    ),
+    csv: (r) => r.batch_number,
   },
   {
     key: 'expiry_date',
@@ -373,7 +393,7 @@ const batchColumns = (totals: Totals): StockColumn<BatchRow>[] => [
     sortable: true,
     nowrap: true,
     render: expiryCell,
-    csv: (r) => r.expiry_date ?? '',
+    csv: (r) => r.expiry_date,
   },
   csvOnly<BatchRow>('is_expired', L.TABLE.EXPIRED, (r) => (r.is_expired ? L.TABLE.YES : L.TABLE.NO)),
   qtyColumn<BatchRow>(totals, 'batch'),
@@ -394,7 +414,7 @@ const batchColumns = (totals: Totals): StockColumn<BatchRow>[] => [
     csvMoney(nullableNum(r.mrp_per_unit))
   ),
   ...valueColumns<BatchRow>(totals),
-  csvOnly<BatchRow>('cost_basis', L.TABLE.COST_BASIS, (r) => r.cost_basis ?? ''),
+  csvOnly<BatchRow>('cost_basis', L.TABLE.COST_BASIS, (r) => r.cost_basis),
 ];
 
 const sortRows = <T,>(rows: T[], { key, direction }: SortConfig): T[] => {
@@ -414,7 +434,7 @@ const sortRows = <T,>(rows: T[], { key, direction }: SortConfig): T[] => {
 
 /** CSV records for every column (incl. CSV-only ones), plus a totals row when there is data. */
 const csvRecords = <T,>(columns: StockColumn<T>[], rows: T[]) => {
-  const record = (cell: (c: StockColumn<T>) => string) =>
+  const record = (cell: (c: StockColumn<T>) => CsvCell) =>
     Object.fromEntries(columns.map((c) => [c.csvHeader, cell(c)]));
   const out = rows.map((r) => record((c) => c.csv(r)));
   if (out.length > 0) out.push(record((c) => c.totalCsv ?? ''));
@@ -845,12 +865,11 @@ const ClosingStockReport: React.FC = () => {
             ref={tableWrapRef}
             sx={{
               position: 'relative',
-              // Batch view has ten columns: tighter cell padding so they all fit at 1440px.
-              ...(isBatchView && {
-                '& .MuiTableBody-root .MuiTableCell-root, & .MuiTableFooter-root .MuiTableCell-root': {
-                  px: CS.BATCH_VIEW_CELL_PX,
-                },
-              }),
+              // Body/footer cells use the header's 12px side padding so header and body text
+              // line up, and so all ten batch columns fit at 1440px.
+              '& .MuiTableBody-root .MuiTableCell-root, & .MuiTableFooter-root .MuiTableCell-root': {
+                px: CS.CELL_PX,
+              },
             }}
           >
             <TableShell>

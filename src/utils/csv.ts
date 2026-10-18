@@ -37,6 +37,8 @@ export const toCsv = (
     .map((row) => row.map(escapeCell).join(','))
     .join('\r\n');
 
+const REVOKE_DELAY_MS = 60_000;
+
 /** Build the CSV and save it as `filename` (UTF-8 with BOM so Excel keeps ₹ and non-ASCII names). */
 export const downloadCsv = (filename: string, records: CsvRecord[], headers?: string[]): void => {
   const blob = new Blob(['\uFEFF', toCsv(records, headers)], { type: 'text/csv;charset=utf-8' });
@@ -47,6 +49,7 @@ export const downloadCsv = (filename: string, records: CsvRecord[], headers?: st
   document.body.appendChild(link);
   link.click();
   link.remove();
-  // Revoke on the next tick: some browsers start the download asynchronously.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  // Revoke late: Safari reads the blob asynchronously after click() and an early revoke can
+  // fail or empty the download. 60 s matches FileSaver.js / SheetJS.
+  setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
 };

@@ -14,7 +14,7 @@ import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatCurrency, formatWholeCurrency } from '../../utils/reportFormat';
 import { downloadCsv } from '../../utils/csv';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 
@@ -136,10 +136,6 @@ const DetailedSalesTable: React.FC = () => {
     key: DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY,
     direction: DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION
   });
-
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   const formatNumber = (amount: number) => {
     return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

@@ -589,7 +589,7 @@ describe('ClosingStockReport page', () => {
       expect(screen.getByText('₹8.00')).toBeInTheDocument();
       expect(screen.queryByText('—')).not.toBeInTheDocument();
       expect(screen.queryByText('est.')).not.toBeInTheDocument();
-      expect(exportCsv('batch').data[0]).toMatchObject({ 'Unit Cost excl. GST (₹)': '8.00', 'Cost Basis': '' });
+      expect(exportCsv('batch').data[0]).toMatchObject({ 'Unit Cost excl. GST (₹)': '8.00', 'Cost Basis': null });
     });
 
     it('shows a batch-specific empty state when the products have no batches', () => {
@@ -674,7 +674,7 @@ describe('ClosingStockReport page', () => {
       expect(batchCsvProps.data[1]).toMatchObject({ Batch: 'AMX-B2', Expired: 'No' });
       expect(batchCsvProps.data[2]).toMatchObject({
         Product: 'Bandage Roll',
-        Expiry: '',
+        Expiry: null, // raw null: the CSV builder writes an empty cell
         'Qty (units)': '-4.00',
         'Unit Cost excl. GST (₹)': '',
         'Value @ MRP (₹)': '',

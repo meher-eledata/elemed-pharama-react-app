@@ -36,7 +36,7 @@ jest.mock('../../../utils/csv', () => ({
 // The export is built on click: press Download CSV, then read what was handed to downloadCsv.
 const exportedRows = () => {
   fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
-  return mockCsvRows;
+  return [...mockCsvRows];
 };
 
 jest.mock('../../../redux/slices/activityApi', () => ({
@@ -174,8 +174,9 @@ describe('SupplierTaxReport page', () => {
     // receipt_date 2026-06-10 -> 10/06/2026; invoice_date 2026-06-08 -> 08/06/2026.
     expect(screen.getByText('08/06/2026')).toBeInTheDocument();
     expect(screen.getByText('10/06/2026')).toBeInTheDocument();
-    expect(exportedRows()[0]['Invoice Date']).toBe('08/06/2026');
-    expect(exportedRows()[0]['Receipt Date']).toBe('10/06/2026');
+    const [csvRow] = exportedRows();
+    expect(csvRow['Invoice Date']).toBe('08/06/2026');
+    expect(csvRow['Receipt Date']).toBe('10/06/2026');
   });
 
   it('renders a custom-template receipt number verbatim', () => {

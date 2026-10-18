@@ -33,7 +33,6 @@ import {
   formatCount,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
 import { downloadCsv } from '../../utils/csv';
 
@@ -207,12 +206,12 @@ const SupplierTaxReport: React.FC = () => {
   const csvData = useMemo(() => {
     if (level === 'receipt') {
       return sortedReceiptRows.map((r) => ({
-        [L.TABLE_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
+        [L.TABLE_RECEIPT.RECEIPT_NUMBER]: r.receipt_number,
         [L.TABLE_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
-        [L.TABLE_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_RECEIPT.INVOICE_NUMBER]: r.invoice_number,
         [L.TABLE_RECEIPT.INVOICE_DATE]: formatReportDate(r.invoice_date),
-        [L.TABLE_RECEIPT.SUPPLIER]: csvString(r.supplier_name),
-        [L.TABLE_RECEIPT.GST]: csvString(r.supplier_gst),
+        [L.TABLE_RECEIPT.SUPPLIER]: r.supplier_name,
+        [L.TABLE_RECEIPT.GST]: r.supplier_gst,
         [`${L.TABLE_RECEIPT.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
         [`${L.TABLE_RECEIPT.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
         ['CGST (₹)']: r.cgstN.toFixed(2),
@@ -224,9 +223,9 @@ const SupplierTaxReport: React.FC = () => {
       }));
     }
     return sortedSupplierRows.map((r) => ({
-      [L.TABLE_SUPPLIER.SUPPLIER]: csvString(r.supplier_name),
-      [L.TABLE_SUPPLIER.GST]: csvString(r.supplier_gst),
-      [L.TABLE_SUPPLIER.RECEIPTS]: csvString(r.receipt_count),
+      [L.TABLE_SUPPLIER.SUPPLIER]: r.supplier_name,
+      [L.TABLE_SUPPLIER.GST]: r.supplier_gst,
+      [L.TABLE_SUPPLIER.RECEIPTS]: r.receipt_count,
       [`${L.TABLE_SUPPLIER.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
       [`${L.TABLE_SUPPLIER.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
       ['CGST (₹)']: r.cgstN.toFixed(2),

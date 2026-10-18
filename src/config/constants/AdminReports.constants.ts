@@ -173,15 +173,25 @@ export const ADMIN_REPORTS_CONSTANTS = {
     BRAND_FILTER_WIDTH: 200,
     DATE_PICKER_WIDTH: 160,
     CONTROL_HEIGHT: 40,
-    // Minimum widths for the free-text columns; they take any spare width and
-    // wrap (at spaces) only when the viewport is genuinely short.
-    BRAND_MIN_WIDTH: '140px',
-    PRODUCT_MIN_WIDTH: '220px',
-    // Batch-wise has three more columns; its text columns give up width first and its
-    // body cells use tighter horizontal padding, so all ten columns fit at 1440px.
-    BATCH_VIEW_BRAND_MIN_WIDTH: '96px',
-    BATCH_VIEW_PRODUCT_MIN_WIDTH: '150px',
-    BATCH_VIEW_CELL_PX: '12px',
+    // Free-text columns per view: a fixed share of the table width (stable while paging) and
+    // a minimum so names stay readable on short viewports. Batch-wise has three more columns,
+    // so its text columns give up width first.
+    TEXT_COLUMNS: {
+      product: {
+        BRAND: { minWidth: '140px', share: '18%' },
+        PRODUCT: { minWidth: '220px', share: '26%' },
+        CODE_SHARE: '12%',
+      },
+      batch: {
+        BRAND: { minWidth: '96px', share: '11%' },
+        PRODUCT: { minWidth: '150px', share: '15%' },
+        CODE_SHARE: '8%',
+        BATCH_SHARE: '8%',
+        BATCH_MIN_WIDTH: '80px',
+      },
+    },
+    // Body/footer side padding = the shared table header's (4px 12px), so text aligns.
+    CELL_PX: '12px',
     // Per-viewer remembered table view (suffixed with the user id).
     VIEW_STORAGE_KEY: 'closing_stock_view',
     DOWNLOAD_MENU_ID: 'closing-stock-download-menu',

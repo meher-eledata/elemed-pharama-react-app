@@ -144,6 +144,23 @@ describe('SimpleAreaCharts Component', () => {
     });
   });
 
+  it('shows a negative net revenue as "-₹3.00", never "₹-3.00"', async () => {
+    (useGetInvoiceKpisQuery as jest.Mock).mockReturnValue({
+      data: { ...mockEmptyData, totalRevenue: -3 },
+      isLoading: false,
+      error: null,
+    });
+    render(
+      <TestWrapper>
+        <SimpleAreaCharts dateRange={{ startDate: '2025-09-01', endDate: '2025-09-30' }} />
+      </TestWrapper>
+    );
+    await waitFor(() => {
+      const revenueCall = (ChartsCard as jest.Mock).mock.calls.find((call) => call[0].title === 'Revenue');
+      expect(revenueCall[0].metric).toBe('-₹3.00');
+    });
+  });
+
   // Test handling of empty data
   it('handles empty data and passes correct default values to ChartsCard', async () => {
     (useGetInvoiceKpisQuery as jest.Mock).mockReturnValue({

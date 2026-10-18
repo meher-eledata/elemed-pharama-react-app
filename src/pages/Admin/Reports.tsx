@@ -18,7 +18,7 @@ import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatCurrency, formatWholeCurrency } from '../../utils/reportFormat';
 import { downloadCsv } from '../../utils/csv';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
@@ -361,10 +361,6 @@ const DailySalesReport: React.FC = () => {
       },
     };
   }, [apiData, weeklyApiData]);
-
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   // Calculate total for percentage calculation
   const totalPaymentValue = useMemo(() =>

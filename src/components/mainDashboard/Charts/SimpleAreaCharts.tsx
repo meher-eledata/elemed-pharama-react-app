@@ -5,6 +5,7 @@ import ChartCard from './ChartsCard';
 import { useGetInvoiceKpisQuery } from '../../../redux/slices/dashboardApi';
 import { DASHBOARD_LABELS } from '../../../config/label/SimpleAreaChart.label';
 import { DASHBOARD_CONSTANTS } from '../../../config/constants/SimpleAreaChart.constants';
+import { formatCurrency } from '../../../utils/reportFormat';
 
 interface DailyData {
   date: string;
@@ -138,14 +139,12 @@ const ThreeChartsComponent: React.FC<ThreeChartsComponentProps> = ({ dateRange }
     const inc = safeMax / (ticks - 1);
     const tickInterval = Array.from({ length: ticks }, (_, i) => +(i * inc).toFixed(2));
 
-    const isRevenue = totalPrefix === '₹';
-    const formattedValue = isRevenue
-      ? totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : totalValue.toLocaleString('en-IN');
+    // Revenue uses the shared ₹ formatter so a negative total reads "-₹3.00", not "₹-3.00".
+    const metric = totalPrefix === '₹' ? formatCurrency(totalValue) : `${totalPrefix}${totalValue.toLocaleString('en-IN')}`;
 
     return {
       title,
-      metric: `${totalPrefix}${formattedValue}`,
+      metric,
       chartData: {
         xAxis: xAxisDates,
         series1: seriesData,

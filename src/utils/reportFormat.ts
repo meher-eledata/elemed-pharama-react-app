@@ -76,13 +76,23 @@ export const formatReportDate = (dateString: string | null | undefined): string 
   return d.isValid() ? d.format('DD/MM/YYYY') : '-';
 };
 
+/**
+ * Calendar date ('YYYY-MM-DD') of a timestamp stored at UTC midnight, or null when empty/invalid.
+ *
+ * Batch expiry dates are written by the backend as `new Date('YYYY-MM-DD')` (UTC midnight)
+ * into the timestamptz `inventory_batch.expiry_date` (receiveController / inventoryController),
+ * so the API returns e.g. '2026-12-28T00:00:00.000Z'. The date the user entered is the UTC date
+ * part. Do NOT format such values with local-time dayjs: west of UTC that shows the day before.
+ */
+export const utcCalendarDate = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+};
+
 /** Default report date range = last N days inclusive of today. */
 export const defaultDateRange = (): [Dayjs, Dayjs] => {
   const end = dayjs();
   const start = end.subtract(ADMIN_REPORTS_CONSTANTS.DEFAULTS.RANGE_DAYS - 1, 'day');
   return [start, end];
 };
-
-/** Stringify a value for a CSV cell (null/undefined -> ''); escaping + formula guard live in utils/csv. */
-export const csvString = (val: string | number | null | undefined): string =>
-  val === null || val === undefined ? '' : String(val);

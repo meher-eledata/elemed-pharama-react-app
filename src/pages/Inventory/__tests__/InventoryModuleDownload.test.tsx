@@ -38,7 +38,7 @@ jest.mock('../../../redux/slices/inventoryApi', () => ({
   useGetExpiredStockQuery: idleQuery([
     // Stored at UTC midnight; the second row has no batch number or expiry.
     { id: 'e1', name: 'Cough Syrup', brand: 'Acme', type: 'Syrup', batchNumber: 'CS-1', currentQuantity: 3, expiryDate: '2026-12-28T00:00:00.000Z', daysPastExpiry: 4 },
-    { id: 'e2', name: 'Eye Drops', brand: 'Acme', type: 'Drops', batchNumber: '', currentQuantity: 1, expiryDate: null, daysPastExpiry: 1 },
+    { id: 'e2', name: 'Eye Drops', brand: 'Acme', type: 'Drops', batchNumber: '', currentQuantity: 0, expiryDate: null, daysPastExpiry: 0 },
   ]),
   useGetNearExpiryStockQuery: idleQuery([]),
   useGetInventorySummaryQuery: idleQuery(undefined),
@@ -114,11 +114,17 @@ describe('InventoryModule — CSV download is logged', () => {
     expect(rows).toContainEqual({ 'Product Name': 'Paracetamol', Brand: '-', Type: '-', 'Current Qty': 5, 'Min Qty': 10 });
   });
 
-  it('exports expiry as the UTC calendar date (YYYY-MM-DD) and keeps the "-" placeholders', () => {
+  it('exports expiry as the UTC calendar date (YYYY-MM-DD), "-" only for missing values', () => {
     renderPage('expired');
     fireEvent.click(screen.getByTestId('DownloadIcon').closest('button')!);
     const rows = mockDownloadCsv.mock.calls[0][1];
     expect(rows.find((r: any) => r['Product Name'] === 'Cough Syrup')['Expiry Date']).toBe('2026-12-28');
-    expect(rows.find((r: any) => r['Product Name'] === 'Eye Drops')).toMatchObject({ 'Batch No': '-', 'Expiry Date': '-' });
+    // Missing values are '-', but a real 0 (quantity, days past expiry) stays 0.
+    expect(rows.find((r: any) => r['Product Name'] === 'Eye Drops')).toMatchObject({
+      'Batch No': '-',
+      'Expiry Date': '-',
+      'Current Qty': 0,
+      'No Days Past': 0,
+    });
   });
 });

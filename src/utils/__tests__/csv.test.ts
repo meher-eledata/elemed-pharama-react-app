@@ -38,6 +38,12 @@ describe('toCsv', () => {
     expect(guardCsvText(val)).toBe(val);
   });
 
+  it('guards only a LEADING formula character: " =x" (leading space) is left as-is by design', () => {
+    // Spreadsheets treat a cell starting with a space as text, so the guard's scope is the
+    // first character only (OWASP CSV injection guidance).
+    expect(guardCsvText(' =x')).toBe(' =x');
+  });
+
   it('writes numbers (incl. negatives) as-is and null/undefined as empty cells', () => {
     expect(toCsv([{ a: -4, b: 0, c: null, d: undefined }])).toBe('"a","b","c","d"\r\n"-4","0","",""');
   });
@@ -92,7 +98,9 @@ describe('downloadCsv', () => {
     expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
     expect(new TextDecoder().decode(bytes.slice(3))).toBe('"Name","Qty"\r\n"Crème ₹","1.00"');
     expect(document.querySelector('a[download]')).toBeNull();
-    jest.runAllTimers();
+    jest.advanceTimersByTime(59_999);
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled(); // Safari still needs the URL
+    jest.advanceTimersByTime(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:csv');
     click.mockRestore();
   });

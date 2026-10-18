@@ -46,7 +46,7 @@ jest.mock('../../../utils/csv', () => ({
 // The export is built on click: press Download CSV, then read what was handed to downloadCsv.
 const exportedRows = () => {
   fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
-  return mockCsvRows;
+  return [...mockCsvRows];
 };
 
 // Mock the RTK Query slices wholesale, keeping real exports (types, the api object)
@@ -241,8 +241,9 @@ describe('SupplierReceiptReport page', () => {
     // invoice_date '2026-06-08' -> 08/06/2026; receipt_date '2026-06-10' -> 10/06/2026.
     expect(within(row).getByText('08/06/2026')).toBeInTheDocument();
     expect(within(row).getByText('10/06/2026')).toBeInTheDocument();
-    expect(exportedRows()[0]['Invoice Date']).toBe('08/06/2026');
-    expect(exportedRows()[0]['Receipt Date']).toBe('10/06/2026');
+    const [csvRow] = exportedRows();
+    expect(csvRow['Invoice Date']).toBe('08/06/2026');
+    expect(csvRow['Receipt Date']).toBe('10/06/2026');
   });
 
   // The "Receipt #" column used to render receipt_id (the internal PK). It must show the
@@ -355,24 +356,26 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     renderPage();
 
     fireEvent.click(screen.getByText('Detailed Table'));
-    expect((exportedRows(), mockCsvMeta.filename)).toMatch(
+    const detailed = exportedRows();
+    expect(mockCsvMeta.filename).toMatch(
       /^supplier_receipt_report_detailed_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/
     );
-    expect(exportedRows()).toHaveLength(1);
-    expect(exportedRows()[0]['Product']).toBe('Amoxicillin 500mg');
-    expect(exportedRows()[0]['Discount (%)']).toBe('5.00'); // PERCENT on the detail export
+    expect(detailed).toHaveLength(1);
+    expect(detailed[0]['Product']).toBe('Amoxicillin 500mg');
+    expect(detailed[0]['Discount (%)']).toBe('5.00'); // PERCENT on the detail export
 
     fireEvent.click(screen.getByText('By Receipt'));
-    expect((exportedRows(), mockCsvMeta.filename)).toMatch(
+    const byReceipt = exportedRows();
+    expect(mockCsvMeta.filename).toMatch(
       /^supplier_receipt_report_by_receipt_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/
     );
-    expect(exportedRows()).toHaveLength(2);
+    expect(byReceipt).toHaveLength(2);
     // Sorted date-desc, so the newest receipt exports first.
-    expect(exportedRows()[0]['Receipt #']).toBe('GRN-000501');
-    expect(exportedRows()[0]['Lines']).toBe('1');
-    expect(exportedRows()[0]['Products']).toBe('1');
-    expect(exportedRows()[0]['Discount (₹)']).toBe('250.00'); // RUPEE AMOUNT on the rollup export
-    expect(exportedRows()[1]['Receipt #']).toBe('GRN-000400');
+    expect(byReceipt[0]['Receipt #']).toBe('GRN-000501');
+    expect(byReceipt[0]['Lines']).toBe('1');
+    expect(byReceipt[0]['Products']).toBe('1');
+    expect(byReceipt[0]['Discount (₹)']).toBe('250.00'); // RUPEE AMOUNT on the rollup export
+    expect(byReceipt[1]['Receipt #']).toBe('GRN-000400');
   });
 
   // feature/receipt-date: the By Receipt tab also carries the supplier Invoice Date
@@ -382,9 +385,10 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     fireEvent.click(screen.getByText('By Receipt'));
     const row501 = screen.getByText('GRN-000501').closest('tr')!;
     expect(within(row501).getByText('08/06/2026')).toBeInTheDocument();
-    expect(exportedRows()[0]['Invoice Date']).toBe('08/06/2026');
+    const rows = exportedRows();
+    expect(rows[0]['Invoice Date']).toBe('08/06/2026');
     // GRN-000400 has a null invoice_date -> '-'.
-    expect(exportedRows()[1]['Invoice Date']).toBe('-');
+    expect(rows[1]['Invoice Date']).toBe('-');
   });
 
   it('download control: absent on Overview, enabled on both table tabs', () => {

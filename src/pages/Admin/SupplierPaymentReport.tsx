@@ -33,7 +33,6 @@ import {
   formatCount,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
 import { downloadCsv } from '../../utils/csv';
 
@@ -168,10 +167,10 @@ const SupplierPaymentReport: React.FC = () => {
   const csvData = useMemo(
     () =>
       sortedRows.map((r) => ({
-        [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
+        [L.TABLE.RECEIPT_NUMBER]: r.receipt_number,
         [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
         [L.TABLE.INVOICE_DATE]: formatReportDate(r.invoice_date),
-        [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
+        [L.TABLE.SUPPLIER]: r.supplier_name,
         [`${L.TABLE.TOTAL_BILL} (₹)`]: r.billN.toFixed(2),
         [L.TABLE.CGST]: r.cgstN.toFixed(2),
         [L.TABLE.SGST]: r.sgstN.toFixed(2),
@@ -180,8 +179,8 @@ const SupplierPaymentReport: React.FC = () => {
         [`${L.TABLE.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
         [`${L.TABLE.PAYMENT_DONE} (₹)`]: r.paidN.toFixed(2),
         [L.TABLE.TRANSACTION_DATE]: formatReportDate(r.transaction_date),
-        [L.TABLE.PAYMENT_METHOD]: csvString(r.payment_method),
-        [L.TABLE.DETAILS]: csvString(r.details),
+        [L.TABLE.PAYMENT_METHOD]: r.payment_method,
+        [L.TABLE.DETAILS]: r.details,
         [`${L.TABLE.PENDING_DUE} (₹)`]: r.pendingN.toFixed(2),
       })),
     [sortedRows]
