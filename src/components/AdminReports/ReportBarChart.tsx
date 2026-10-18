@@ -7,6 +7,7 @@ import { Card, Box } from '@mui/material';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { ADMIN_REPORTS_CONSTANTS as C } from '../../config/constants/AdminReports.constants';
 import { ReportEmpty } from './ReportShared';
+import { formatWholeCurrency } from '../../utils/reportFormat';
 
 interface ReportBarChartProps {
   categories: string[];
@@ -39,18 +40,17 @@ const ReportBarChart: React.FC<ReportBarChartProps> = ({
   const niceMax = maxVal > 0 ? Math.ceil(maxVal * 1.1) : 10;
 
   const formatValue = (v: number): string =>
-    currency
-      ? `₹${v.toLocaleString(C.CURRENCY.LOCALE, { maximumFractionDigits: 0 })}`
-      : v.toLocaleString(C.CURRENCY.LOCALE, { maximumFractionDigits: 0 });
+    currency ? formatWholeCurrency(v) : v.toLocaleString(C.CURRENCY.LOCALE, { maximumFractionDigits: 0 });
 
   // Compact y-axis ticks (₹60K / 6L) — full values would ellipsize inside the
   // fixed tick area at realistic spend ranges. Tooltips keep the full value.
   const formatAxisValue = (v: number): string => {
-    const compact = v.toLocaleString(C.CURRENCY.LOCALE, {
+    const compact = Math.abs(v).toLocaleString(C.CURRENCY.LOCALE, {
       notation: 'compact',
       maximumFractionDigits: 1,
     });
-    return currency ? `₹${compact}` : compact;
+    // Sign before the ₹ ("-₹6L"), matching formatCurrency.
+    return `${v < 0 ? '-' : ''}${currency ? C.CURRENCY.SYMBOL : ''}${compact}`;
   };
 
   // Angle date/category ticks once they get dense so labels stay readable.

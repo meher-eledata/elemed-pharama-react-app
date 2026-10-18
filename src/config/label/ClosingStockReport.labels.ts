@@ -3,17 +3,32 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export const CLOSING_STOCK_REPORT_LABELS = {
   PAGE: {
     TITLE: 'Closing Stock Report',
-    SUBTITLE:
-      'Product-wise stock on hand at the end of the selected date, valued at purchase cost and MRP.',
+    SUBTITLE: 'Stock on hand at the end of the selected date, valued at cost and MRP.',
     DOWNLOAD_CSV: 'Download CSV',
     CSV_FILENAME_PREFIX: 'closing_stock_report',
+    CSV_FILENAME_BATCH_PREFIX: 'closing_stock_report_batchwise',
     MRP_NOTE: "MRP values use each batch's current MRP; past MRP changes are not reflected.",
   },
   DISCOVERY_CARD: {
     TITLE: 'Closing Stock Report',
     DESCRIPTION:
-      'Product-wise closing stock as of any date, valued at cost (excl. and incl. GST) and MRP.',
+      'Closing stock by product or batch as of any date, valued at cost (excl. and incl. GST) and MRP.',
     ACTION: 'View Report',
+  },
+  VIEW: {
+    ARIA: 'Table view',
+    PRODUCT: 'Product-wise',
+    BATCH: 'Batch-wise',
+  },
+  DOWNLOAD_MENU: {
+    PRODUCT: 'Product-wise CSV',
+    PRODUCT_HINT: 'One row per product',
+    BATCH: 'Batch-wise CSV',
+    BATCH_HINT: 'One row per batch',
+  },
+  LOG_NAME: {
+    PRODUCT: 'Closing Stock Report',
+    BATCH: 'Closing Stock Report (Batch-wise)',
   },
   FILTER: {
     AS_OF_DATE_LABEL: 'As of Date',
@@ -27,6 +42,7 @@ export const CLOSING_STOCK_REPORT_LABELS = {
   },
   SUMMARY: {
     PRODUCTS: 'Products',
+    BATCHES: 'Batches',
     TOTAL_QTY: 'Total Qty (units)',
     VALUE_COST_EX_GST: 'Value @ Cost excl. GST',
     VALUE_COST_INC_GST: 'Value @ Cost incl. GST',
@@ -36,7 +52,21 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     BRAND: 'Brand',
     PRODUCT: 'Product',
     PRODUCT_CODE: 'Product Code',
+    PRODUCT_CODE_LINE1: 'Product',
+    PRODUCT_CODE_LINE2: 'Code',
+    BATCH: 'Batch',
+    EXPIRY: 'Expiry',
+    EXPIRED: 'Expired',
     QTY: 'Qty (units)',
+    QTY_LINE1: 'Qty',
+    QTY_LINE2: '(units)',
+    UNIT_COST_EX_GST: 'Unit Cost excl. GST',
+    UNIT_COST_INC_GST: 'Unit Cost incl. GST',
+    UNIT_COST_HEADER: 'Unit Cost',
+    MRP_PER_UNIT: 'MRP per Unit',
+    COST_BASIS: 'Cost Basis',
+    YES: 'Yes',
+    NO: 'No',
     VALUE_COST_EX_GST: 'Value @ Cost excl. GST',
     VALUE_COST_INC_GST: 'Value @ Cost incl. GST',
     VALUE_MRP: 'Value @ MRP',
@@ -56,6 +86,8 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     MRP_PARTIAL: 'Partial: some batches of this product have no MRP',
     NEGATIVE_QTY: 'Negative stock: more units went out than were recorded coming in by this date',
     NEGATIVE_BATCHES: 'One or more batches of this product are negative as of this date',
+    EXPIRY_MISSING: 'No expiry on record',
+    EXPIRED: 'Expired before the selected date',
   },
   WARNINGS: {
     TITLE: 'Data quality notes for this date',
@@ -80,6 +112,7 @@ export const CLOSING_STOCK_REPORT_LABELS = {
   },
   SCROLL_HINT: 'Scroll sideways to see all columns',
   EMPTY_TABLE: 'No stock found for the selected date and filters.',
+  EMPTY_BATCHES: 'The matching products have never been stocked, so there are no batches to show.',
 } as const;
 
 export type ClosingStockReportLabels = typeof CLOSING_STOCK_REPORT_LABELS;

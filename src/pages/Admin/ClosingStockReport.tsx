@@ -1,12 +1,18 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Box,
+  Chip,
   FormControlLabel,
   InputAdornment,
+  ListItemText,
+  Menu,
+  MenuItem,
   Switch,
   TableCell,
   TableRow,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -15,7 +21,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useNavigate } from 'react-router-dom';
-import { CSVLink } from 'react-csv';
+import { useSelector } from 'react-redux';
 import dayjs, { Dayjs } from 'dayjs';
 import { skipToken } from '@reduxjs/toolkit/query/react';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
@@ -38,12 +44,22 @@ import { CLOSING_STOCK_REPORT_LABELS as L } from '../../config/label/ClosingStoc
 import {
   useGetClosingStockReportQuery,
   ClosingStockReportRow,
+  ClosingStockBatch,
+  ClosingStockCostBasis,
   Num,
 } from '../../redux/slices/reportsApi';
+import type { RootState } from '../../redux/store';
 import { useGetAllBrandsQuery } from '../../redux/slices/inventoryApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { useDebounce } from '../../hooks/useDebounce';
-import { toNum, formatCurrency, formatNumber, formatCount, csvString } from '../../utils/reportFormat';
+import { downloadCsv, CsvCell } from '../../utils/csv';
+import {
+  toNum,
+  formatCurrency,
+  formatNumber,
+  formatCount,
+  formatReportDate,
+} from '../../utils/reportFormat';
 
 const CS = C.CLOSING_STOCK;
 const FONT = C.FONT_FAMILY;
@@ -71,28 +87,75 @@ const dateFieldSx = {
   '& .MuiPickersTextField-root fieldset': { borderRadius: `${CS.DATE_FIELD.BORDER_RADIUS} !important` },
 } as const;
 
-interface StockRow extends ClosingStockReportRow {
+type View = 'product' | 'batch';
+
+/** Fields both views share; the shared column builders below work on either row type. */
+interface BaseRow {
   _id: number;
+  brand_name: string | null;
+  product_name: string;
+  product_code: string | null;
   qtyN: number;
   costExN: number | null;
   costIncN: number | null;
   mrpN: number | null;
+  cost_basis: ClosingStockCostBasis | null;
+  has_unpriced_mrp: boolean;
+  has_negative_batches?: boolean;
 }
 
-/** One definition per column drives the table cell, the CSV cell and the totals row. */
-interface StockColumn extends TableColumn<StockRow> {
+type StockRow = ClosingStockReportRow & BaseRow;
+
+type BatchRow = ClosingStockBatch &
+  BaseRow & {
+    unitCostExN: number | null;
+  };
+
+/**
+ * One definition per column drives the table cell, the CSV cell and the totals row.
+ * `hide: true` marks a CSV-only column (kept here so the export can't drift from the table).
+ */
+interface StockColumn<T> extends TableColumn<T> {
   csvHeader: string;
-  csv: (r: StockRow) => string;
+  csv: (r: T) => CsvCell;
   total?: React.ReactNode;
   totalCsv?: string;
 }
 
+interface Totals {
+  qty: number;
+  costEx: number;
+  costInc: number;
+  mrp: number;
+}
+
+type SortConfig = { key: string; direction: 'asc' | 'desc' };
+const DEFAULT_SORT: SortConfig = { key: 'product_name', direction: 'asc' };
+
+const readStoredView = (key: string): View => {
+  try {
+    return localStorage.getItem(key) === 'batch' ? 'batch' : 'product';
+  } catch {
+    return 'product';
+  }
+};
+
 const nullableNum = (v: Num | null): number | null => (v === null ? null : toNum(v));
 const csvMoney = (v: number | null): string => (v === null ? '' : v.toFixed(2));
 
-const Hint: React.FC<{ tip: string; children: React.ReactNode }> = ({ tip, children }) => (
+/** Tooltip-explained cell content; `stacked` lays the children out in a column. */
+const Hint: React.FC<{ tip: string; stacked?: boolean; children: React.ReactNode }> = ({ tip, stacked, children }) => (
   <Tooltip title={tip} arrow>
-    <Box sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 0.5, cursor: 'help' }}>{children}</Box>
+    <Box
+      sx={{
+        display: 'inline-flex',
+        gap: 0.5,
+        cursor: 'help',
+        ...(stacked ? { flexDirection: 'column', alignItems: 'flex-start' } : { alignItems: 'baseline' }),
+      }}
+    >
+      {children}
+    </Box>
   </Tooltip>
 );
 
@@ -102,30 +165,39 @@ const EmptyValue: React.FC<{ tip: string }> = ({ tip }) => (
   </Hint>
 );
 
+/** Text cell; a missing value shows the same muted em dash as other missing values. */
+const TextOrDash: React.FC<{ value: string | null }> = ({ value }) =>
+  value ? <CellText>{value}</CellText> : <CellText color={C.COLORS.TEXT_MUTED}>{L.TABLE.EMPTY_VALUE}</CellText>;
+
+/** A ₹ value; negative values are red like negative quantities. */
+const Money: React.FC<{ value: number }> = ({ value }) => (
+  <CellText color={value < 0 ? C.COLORS.NEGATIVE : undefined}>{formatCurrency(value)}</CellText>
+);
+
 /** A ₹ value followed by a small amber qualifier (e.g. "est.", "partial") explained by a tooltip. */
 const MarkedValue: React.FC<{ value: number; marker: string; tip: string }> = ({ value, marker, tip }) => (
   <Hint tip={tip}>
-    <CellText>{formatCurrency(value)}</CellText>
+    <Money value={value} />
     <Typography component="span" sx={{ fontFamily: FONT, fontSize: '11px', color: C.COLORS.AMBER }}>
       {marker}
     </Typography>
   </Hint>
 );
 
-const costCell = (value: number | null, basis: StockRow['cost_basis']) => {
+const costCell = (value: number | null, basis: ClosingStockCostBasis | null) => {
   if (value === null) return <EmptyValue tip={L.TOOLTIP.COST_MISSING} />;
   if (basis === 'ESTIMATED') {
     return <MarkedValue value={value} marker={L.TABLE.ESTIMATED_MARKER} tip={L.TOOLTIP.COST_ESTIMATED} />;
   }
-  return <CellText>{formatCurrency(value)}</CellText>;
+  return <Money value={value} />;
 };
 
-const mrpCell = (r: StockRow) => {
+const mrpCell = (r: BaseRow) => {
   if (r.mrpN === null) return <EmptyValue tip={L.TOOLTIP.MRP_MISSING} />;
   if (r.has_unpriced_mrp) {
     return <MarkedValue value={r.mrpN} marker={L.TABLE.PARTIAL_MARKER} tip={L.TOOLTIP.MRP_PARTIAL} />;
   }
-  return <CellText>{formatCurrency(r.mrpN)}</CellText>;
+  return <Money value={r.mrpN} />;
 };
 
 const twoLineHeader = (first: string, second: string) => () => (
@@ -136,7 +208,7 @@ const twoLineHeader = (first: string, second: string) => () => (
   </Box>
 );
 
-const qtyCell = (r: StockRow) => {
+const qtyCell = (r: BaseRow) => {
   const text = formatNumber(r.qtyN);
   if (r.qtyN < 0) {
     return (
@@ -155,13 +227,226 @@ const qtyCell = (r: StockRow) => {
   return <CellText>{text}</CellText>;
 };
 
+const expiryCell = (r: BatchRow) => {
+  if (!r.expiry_date) return <EmptyValue tip={L.TOOLTIP.EXPIRY_MISSING} />;
+  // formatReportDate parses 'YYYY-MM-DD' as a LOCAL calendar date (no UTC day shift).
+  const text = formatReportDate(r.expiry_date);
+  if (!r.is_expired) return <CellText>{text}</CellText>;
+  // Chip under the date (not beside it) keeps the Expiry column narrow enough for all
+  // batch columns to fit at 1440px.
+  return (
+    <Hint tip={L.TOOLTIP.EXPIRED} stacked>
+      <CellText color={C.COLORS.NEGATIVE}>{text}</CellText>
+      <Chip
+        label={L.TABLE.EXPIRED}
+        size="small"
+        sx={{
+          height: CS.EXPIRED_CHIP.HEIGHT,
+          fontFamily: FONT,
+          fontSize: CS.EXPIRED_CHIP.FONT_SIZE,
+          fontWeight: 600,
+          borderRadius: CS.EXPIRED_CHIP.BORDER_RADIUS,
+          backgroundColor: CS.EXPIRED_CHIP.BACKGROUND,
+          color: CS.EXPIRED_CHIP.COLOR,
+          '& .MuiChip-label': { px: 1 },
+        }}
+      />
+    </Hint>
+  );
+};
+
 const Total: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <CellText weight={700}>{children}</CellText>
 );
 
+/**
+ * Wrapping text column with a fixed share of the table width (`share`), so its width doesn't
+ * follow the names on the current page (columns used to shift when paging); `minWidth` keeps
+ * names readable when the viewport is short.
+ */
+const textColumn = <T extends BaseRow>(
+  key: 'brand_name' | 'product_name',
+  header: string,
+  { minWidth, share }: { minWidth: string; share: string }
+): StockColumn<T> => ({
+  key,
+  header,
+  columnWidth: share,
+  csvHeader: header,
+  sortable: true,
+  render: (r) => (
+    <Box sx={{ minWidth }}>
+      <TextOrDash value={r[key]} />
+    </Box>
+  ),
+  csv: (r) => r[key],
+});
+
+const brandProductColumns = <T extends BaseRow>(view: View): StockColumn<T>[] => [
+  {
+    ...textColumn<T>('brand_name', L.TABLE.BRAND, CS.TEXT_COLUMNS[view].BRAND),
+    total: <Total>{L.TABLE.TOTAL}</Total>,
+    totalCsv: L.TABLE.TOTAL,
+  },
+  textColumn<T>('product_name', L.TABLE.PRODUCT, CS.TEXT_COLUMNS[view].PRODUCT),
+  {
+    key: 'product_code',
+    header: L.TABLE.PRODUCT_CODE,
+    // Batch view is width-constrained: let this header wrap instead of setting the column width.
+    headerRender: view === 'batch' ? twoLineHeader(L.TABLE.PRODUCT_CODE_LINE1, L.TABLE.PRODUCT_CODE_LINE2) : undefined,
+    // A fixed share (not the codes on the current page) sets the width; an unusually long
+    // code wraps rather than being clipped.
+    columnWidth: CS.TEXT_COLUMNS[view].CODE_SHARE,
+    csvHeader: L.TABLE.PRODUCT_CODE,
+    sortable: true,
+    render: (r) => <TextOrDash value={r.product_code} />,
+    csv: (r) => r.product_code,
+  },
+];
+
+const qtyColumn = <T extends BaseRow>(totals: Totals, view: View): StockColumn<T> => ({
+  key: 'qtyN',
+  header: L.TABLE.QTY,
+  headerRender: view === 'batch' ? twoLineHeader(L.TABLE.QTY_LINE1, L.TABLE.QTY_LINE2) : undefined,
+  csvHeader: L.TABLE.QTY,
+  sortable: true,
+  nowrap: true,
+  render: qtyCell,
+  csv: (r) => r.qtyN.toFixed(2),
+  total: <Total>{formatNumber(totals.qty)}</Total>,
+  totalCsv: totals.qty.toFixed(2),
+});
+
+const valueColumns = <T extends BaseRow>(totals: Totals): StockColumn<T>[] => [
+  {
+    key: 'costExN',
+    header: L.TABLE.VALUE_COST_EX_GST,
+    headerRender: twoLineHeader(L.TABLE.VALUE_COST_HEADER, L.TABLE.EX_GST_HEADER),
+    csvHeader: L.TABLE.VALUE_COST_EX_GST + L.TABLE.CSV_CURRENCY_SUFFIX,
+    sortable: true,
+    nowrap: true,
+    render: (r) => costCell(r.costExN, r.cost_basis),
+    csv: (r) => csvMoney(r.costExN),
+    total: <Total>{formatCurrency(totals.costEx)}</Total>,
+    totalCsv: totals.costEx.toFixed(2),
+  },
+  {
+    key: 'costIncN',
+    header: L.TABLE.VALUE_COST_INC_GST,
+    headerRender: twoLineHeader(L.TABLE.VALUE_COST_HEADER, L.TABLE.INC_GST_HEADER),
+    csvHeader: L.TABLE.VALUE_COST_INC_GST + L.TABLE.CSV_CURRENCY_SUFFIX,
+    sortable: true,
+    nowrap: true,
+    render: (r) => costCell(r.costIncN, r.cost_basis),
+    csv: (r) => csvMoney(r.costIncN),
+    total: <Total>{formatCurrency(totals.costInc)}</Total>,
+    totalCsv: totals.costInc.toFixed(2),
+  },
+  {
+    key: 'mrpN',
+    header: L.TABLE.VALUE_MRP,
+    csvHeader: L.TABLE.VALUE_MRP + L.TABLE.CSV_CURRENCY_SUFFIX,
+    sortable: true,
+    nowrap: true,
+    render: mrpCell,
+    csv: (r) => csvMoney(r.mrpN),
+    total: <Total>{formatCurrency(totals.mrp)}</Total>,
+    totalCsv: totals.mrp.toFixed(2),
+  },
+];
+
+/** CSV-only column (not rendered on screen). */
+const csvOnly = <T,>(key: string, csvHeader: string, csv: (r: T) => CsvCell): StockColumn<T> => ({
+  key,
+  header: csvHeader,
+  csvHeader,
+  hide: true,
+  csv,
+});
+
+const productColumns = (totals: Totals): StockColumn<StockRow>[] => [
+  ...brandProductColumns<StockRow>('product'),
+  qtyColumn<StockRow>(totals, 'product'),
+  ...valueColumns<StockRow>(totals),
+];
+
+const batchColumns = (totals: Totals): StockColumn<BatchRow>[] => [
+  ...brandProductColumns<BatchRow>('batch'),
+  {
+    key: 'batch_number',
+    header: L.TABLE.BATCH,
+    columnWidth: CS.TEXT_COLUMNS.batch.BATCH_SHARE,
+    csvHeader: L.TABLE.BATCH,
+    sortable: true,
+    render: (r) => (
+      // Typical batch numbers stay on one line even when the table scrolls (1280px).
+      <Box sx={{ minWidth: CS.TEXT_COLUMNS.batch.BATCH_MIN_WIDTH }}>
+        <TextOrDash value={r.batch_number} />
+      </Box>
+    ),
+    csv: (r) => r.batch_number,
+  },
+  {
+    key: 'expiry_date',
+    header: L.TABLE.EXPIRY,
+    csvHeader: L.TABLE.EXPIRY,
+    sortable: true,
+    nowrap: true,
+    render: expiryCell,
+    csv: (r) => r.expiry_date,
+  },
+  csvOnly<BatchRow>('is_expired', L.TABLE.EXPIRED, (r) => (r.is_expired ? L.TABLE.YES : L.TABLE.NO)),
+  qtyColumn<BatchRow>(totals, 'batch'),
+  {
+    key: 'unitCostExN',
+    header: L.TABLE.UNIT_COST_EX_GST,
+    headerRender: twoLineHeader(L.TABLE.UNIT_COST_HEADER, L.TABLE.EX_GST_HEADER),
+    csvHeader: L.TABLE.UNIT_COST_EX_GST + L.TABLE.CSV_CURRENCY_SUFFIX,
+    sortable: true,
+    nowrap: true,
+    render: (r) => costCell(r.unitCostExN, r.cost_basis),
+    csv: (r) => csvMoney(r.unitCostExN),
+  },
+  csvOnly<BatchRow>('unit_cost_inc_gst', L.TABLE.UNIT_COST_INC_GST + L.TABLE.CSV_CURRENCY_SUFFIX, (r) =>
+    csvMoney(nullableNum(r.unit_cost_inc_gst))
+  ),
+  csvOnly<BatchRow>('mrp_per_unit', L.TABLE.MRP_PER_UNIT + L.TABLE.CSV_CURRENCY_SUFFIX, (r) =>
+    csvMoney(nullableNum(r.mrp_per_unit))
+  ),
+  ...valueColumns<BatchRow>(totals),
+  csvOnly<BatchRow>('cost_basis', L.TABLE.COST_BASIS, (r) => r.cost_basis),
+];
+
+const sortRows = <T,>(rows: T[], { key, direction }: SortConfig): T[] => {
+  const sign = direction === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = (a as any)[key];
+    const bv = (b as any)[key];
+    // Missing values always sort last, whichever the direction.
+    if (av === null || bv === null) return av === bv ? 0 : av === null ? 1 : -1;
+    if (typeof av === 'number' && typeof bv === 'number') return sign * (av - bv);
+    return (
+      sign *
+      String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true, sensitivity: 'base' })
+    );
+  });
+};
+
+/** CSV records for every column (incl. CSV-only ones), plus a totals row when there is data. */
+const csvRecords = <T,>(columns: StockColumn<T>[], rows: T[]) => {
+  const record = (cell: (c: StockColumn<T>) => CsvCell) =>
+    Object.fromEntries(columns.map((c) => [c.csvHeader, cell(c)]));
+  const out = rows.map((r) => record((c) => c.csv(r)));
+  if (out.length > 0) out.push(record((c) => c.totalCsv ?? ''));
+  return out;
+};
+
 const ClosingStockReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const viewStorageKey = `${CS.VIEW_STORAGE_KEY}_${userId ?? 'anon'}`;
+  const [view, setView] = useState<View>(() => readStoredView(viewStorageKey));
+  const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(null);
   const [logDownload] = useLogDownloadMutation();
   const today = useMemo(() => dayjs(), []);
   // dateInput follows the field (every keystroke); asOf is the settled date that drives the query.
@@ -172,10 +457,7 @@ const ClosingStockReport: React.FC = () => {
   const [includeZero, setIncludeZero] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
-    key: 'product_name',
-    direction: 'asc',
-  });
+  const [sortConfig, setSortConfig] = useState<SortConfig>(DEFAULT_SORT);
 
   const search = useDebounce(searchInput.trim(), CS.SEARCH_DEBOUNCE_MS);
   const settledDateInput = useDebounce(dateInput, CS.DATE_DEBOUNCE_MS);
@@ -222,137 +504,71 @@ const ClosingStockReport: React.FC = () => {
     [data]
   );
 
-  const sortedRows = useMemo(() => {
-    const { key, direction } = sortConfig;
-    const sign = direction === 'asc' ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const av = (a as any)[key];
-      const bv = (b as any)[key];
-      // Missing values always sort last, whichever the direction.
-      if (av === null || bv === null) return av === bv ? 0 : av === null ? 1 : -1;
-      if (typeof av === 'number' && typeof bv === 'number') return sign * (av - bv);
-      return (
-        sign *
-        String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true, sensitivity: 'base' })
-      );
-    });
-  }, [rows, sortConfig]);
-
-  const handleSortRequest = (key: string) =>
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
-    }));
-
-  const summary = data?.summary;
-  const totalQty = toNum(summary?.total_quantity);
-  const totalCostEx = toNum(summary?.total_value_cost_ex_gst);
-  const totalCostInc = toNum(summary?.total_value_cost_inc_gst);
-  const totalMrp = toNum(summary?.total_value_mrp);
-
-  const columns: StockColumn[] = useMemo(() => [
-    {
-      key: 'brand_name',
-      header: L.TABLE.BRAND,
-      csvHeader: L.TABLE.BRAND,
-      sortable: true,
-      render: (r) => (
-        <Box sx={{ minWidth: CS.BRAND_MIN_WIDTH }}>
-          <CellText>{r.brand_name || '-'}</CellText>
-        </Box>
-      ),
-      csv: (r) => csvString(r.brand_name),
-      total: <Total>{L.TABLE.TOTAL}</Total>,
-      totalCsv: L.TABLE.TOTAL,
-    },
-    {
-      key: 'product_name',
-      header: L.TABLE.PRODUCT,
-      csvHeader: L.TABLE.PRODUCT,
-      sortable: true,
-      render: (r) => (
-        <Box sx={{ minWidth: CS.PRODUCT_MIN_WIDTH }}>
-          <CellText>{r.product_name}</CellText>
-        </Box>
-      ),
-      csv: (r) => csvString(r.product_name),
-    },
-    {
-      key: 'product_code',
-      header: L.TABLE.PRODUCT_CODE,
-      csvHeader: L.TABLE.PRODUCT_CODE,
-      sortable: true,
-      nowrap: true,
-      render: (r) => <CellText>{r.product_code || '-'}</CellText>,
-      csv: (r) => csvString(r.product_code),
-    },
-    {
-      key: 'qtyN',
-      header: L.TABLE.QTY,
-      csvHeader: L.TABLE.QTY,
-      sortable: true,
-      nowrap: true,
-      render: qtyCell,
-      csv: (r) => r.qtyN.toFixed(2),
-      total: <Total>{formatNumber(totalQty)}</Total>,
-      totalCsv: totalQty.toFixed(2),
-    },
-    {
-      key: 'costExN',
-      header: L.TABLE.VALUE_COST_EX_GST,
-      headerRender: twoLineHeader(L.TABLE.VALUE_COST_HEADER, L.TABLE.EX_GST_HEADER),
-      csvHeader: L.TABLE.VALUE_COST_EX_GST + L.TABLE.CSV_CURRENCY_SUFFIX,
-      sortable: true,
-      nowrap: true,
-      render: (r) => costCell(r.costExN, r.cost_basis),
-      csv: (r) => csvMoney(r.costExN),
-      total: <Total>{formatCurrency(totalCostEx)}</Total>,
-      totalCsv: totalCostEx.toFixed(2),
-    },
-    {
-      key: 'costIncN',
-      header: L.TABLE.VALUE_COST_INC_GST,
-      headerRender: twoLineHeader(L.TABLE.VALUE_COST_HEADER, L.TABLE.INC_GST_HEADER),
-      csvHeader: L.TABLE.VALUE_COST_INC_GST + L.TABLE.CSV_CURRENCY_SUFFIX,
-      sortable: true,
-      nowrap: true,
-      render: (r) => costCell(r.costIncN, r.cost_basis),
-      csv: (r) => csvMoney(r.costIncN),
-      total: <Total>{formatCurrency(totalCostInc)}</Total>,
-      totalCsv: totalCostInc.toFixed(2),
-    },
-    {
-      key: 'mrpN',
-      header: L.TABLE.VALUE_MRP,
-      csvHeader: L.TABLE.VALUE_MRP + L.TABLE.CSV_CURRENCY_SUFFIX,
-      sortable: true,
-      nowrap: true,
-      render: mrpCell,
-      csv: (r) => csvMoney(r.mrpN),
-      total: <Total>{formatCurrency(totalMrp)}</Total>,
-      totalCsv: totalMrp.toFixed(2),
-    },
-  ], [totalQty, totalCostEx, totalCostInc, totalMrp]);
-
-  const totalsFooter = (
-    <TableRow sx={{ bgcolor: C.COLORS.CARD_BG }}>
-      {columns.map((c) => (
-        <TableCell
-          key={c.key as string}
-          sx={{ padding: '12px 16px', whiteSpace: 'nowrap', borderTop: `2px solid ${C.COLORS.BORDER}` }}
-        >
-          {c.total ?? null}
-        </TableCell>
-      ))}
-    </TableRow>
+  // Batch-wise is derived from the same response: switching views never refetches.
+  const batchRows: BatchRow[] = useMemo(
+    () =>
+      (data?.rows || [])
+        .flatMap((r) =>
+          (r.batches ?? []).map((b) => ({
+            ...b,
+            brand_name: r.brand_name,
+            product_name: r.product_name,
+            product_code: r.product_code,
+          }))
+        )
+        .map((b, i) => ({
+          ...b,
+          _id: i,
+          qtyN: toNum(b.quantity),
+          unitCostExN: nullableNum(b.unit_cost_ex_gst),
+          costExN: nullableNum(b.value_cost_ex_gst),
+          costIncN: nullableNum(b.value_cost_inc_gst),
+          mrpN: nullableNum(b.value_mrp),
+        })),
+    [data]
   );
 
+  const summary = data?.summary;
+  const totals: Totals = useMemo(
+    () => ({
+      qty: toNum(summary?.total_quantity),
+      costEx: toNum(summary?.total_value_cost_ex_gst),
+      costInc: toNum(summary?.total_value_cost_inc_gst),
+      mrp: toNum(summary?.total_value_mrp),
+    }),
+    [summary]
+  );
+
+  const productCols = useMemo(() => productColumns(totals), [totals]);
+  const batchCols = useMemo(() => batchColumns(totals), [totals]);
+
+  // A batch-only sort key (e.g. Expiry) falls back to the default in product view and
+  // comes back when the viewer returns to batch view.
+  const isBatchView = view === 'batch';
+  const activeSort =
+    (isBatchView ? batchCols : productCols).some((c) => c.sortable && c.key === sortConfig.key)
+      ? sortConfig
+      : DEFAULT_SORT;
+
+  const sortedRows = useMemo(() => sortRows(rows, activeSort), [rows, activeSort]);
+  const sortedBatchRows = useMemo(() => sortRows(batchRows, activeSort), [batchRows, activeSort]);
+
+  const handleSortRequest = (key: string) =>
+    setSortConfig({
+      key,
+      direction: activeSort.key === key && activeSort.direction === 'asc' ? 'desc' : 'asc',
+    });
+
+  const viewRowCount = isBatchView ? sortedBatchRows.length : sortedRows.length;
+
   const summaryStats = [
-    { label: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
-    { label: L.SUMMARY.TOTAL_QTY, value: formatNumber(totalQty) },
-    { label: L.SUMMARY.VALUE_COST_EX_GST, value: formatCurrency(totalCostEx) },
-    { label: L.SUMMARY.VALUE_COST_INC_GST, value: formatCurrency(totalCostInc) },
-    { label: L.SUMMARY.VALUE_MRP, value: formatCurrency(totalMrp) },
+    isBatchView
+      ? { label: L.SUMMARY.BATCHES, value: formatCount(summary?.batch_count ?? 0) }
+      : { label: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
+    { label: L.SUMMARY.TOTAL_QTY, value: formatNumber(totals.qty) },
+    { label: L.SUMMARY.VALUE_COST_EX_GST, value: formatCurrency(totals.costEx) },
+    { label: L.SUMMARY.VALUE_COST_INC_GST, value: formatCurrency(totals.costInc) },
+    { label: L.SUMMARY.VALUE_MRP, value: formatCurrency(totals.mrp) },
   ];
 
   const warnings: string[] = summary
@@ -369,19 +585,33 @@ const ClosingStockReport: React.FC = () => {
       ].filter((w): w is string => Boolean(w))
     : [];
 
-  const csvData = useMemo(() => {
-    const record = (cell: (c: StockColumn) => string) =>
-      Object.fromEntries(columns.map((c) => [c.csvHeader, cell(c)]));
-    const out = sortedRows.map((r) => record((c) => c.csv(r)));
-    if (out.length > 0) out.push(record((c) => c.totalCsv ?? ''));
-    return out;
-  }, [sortedRows, columns]);
+  const csvData = useMemo(() => csvRecords(productCols, sortedRows), [productCols, sortedRows]);
+  const batchCsvData = useMemo(() => csvRecords(batchCols, sortedBatchRows), [batchCols, sortedBatchRows]);
 
-  const handleDownloadCsv = () => {
-    csvLinkRef.current?.link?.click();
-    logDownload({ category: 'report', name: 'Closing Stock Report', format: 'csv', count: sortedRows.length }).catch(
-      () => {}
+  const handleDownload = (kind: View) => {
+    setDownloadAnchor(null);
+    const batch = kind === 'batch';
+    downloadCsv(
+      `${batch ? L.PAGE.CSV_FILENAME_BATCH_PREFIX : L.PAGE.CSV_FILENAME_PREFIX}_${data?.as_of_date ?? ''}.csv`,
+      batch ? batchCsvData : csvData
     );
+    logDownload({
+      category: 'report',
+      name: batch ? L.LOG_NAME.BATCH : L.LOG_NAME.PRODUCT,
+      format: 'csv',
+      count: batch ? sortedBatchRows.length : sortedRows.length,
+    }).catch(() => {});
+  };
+
+  const handleViewChange = (_e: React.MouseEvent<HTMLElement>, next: View | null) => {
+    if (!next) return; // exclusive and never empty: re-clicking the active view is a no-op
+    setView(next);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem(viewStorageKey, next);
+    } catch {
+      // Storage unavailable (private mode / quota): the choice just isn't remembered.
+    }
   };
 
   const resetPage = () => setCurrentPage(1);
@@ -392,7 +622,10 @@ const ClosingStockReport: React.FC = () => {
   const [fadeHeight, setFadeHeight] = useState(0);
   useEffect(() => {
     const el = tableWrapRef.current?.querySelector<HTMLElement>('.MuiTableContainer-root');
-    if (!el) return undefined;
+    if (!el) {
+      setFadeHeight(0);
+      return undefined;
+    }
     const update = () => setFadeHeight(el.scrollWidth - el.clientWidth - el.scrollLeft > 1 ? el.clientHeight : 0);
     update();
     el.addEventListener('scroll', update);
@@ -401,9 +634,50 @@ const ClosingStockReport: React.FC = () => {
       el.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [sortedRows, currentPage]);
+  }, [view, sortedRows, sortedBatchRows, currentPage]);
 
   const downloadDisabled = !rows.length || isFetching || isError || Boolean(dateError);
+
+  const renderTable = <T extends BaseRow>(columns: StockColumn<T>[], tableRows: T[], emptyMessage: string) => (
+    <ReusableTable<T>
+      key={view}
+      columns={columns}
+      data={tableRows}
+      selectedRows={selectedRows}
+      setSelectedRows={setSelectedRows}
+      emptyMessage={emptyMessage}
+      searchAndFilterConfig={{ filterOptions: [] }}
+      currentSearchTerm=""
+      onSearchChange={() => {}}
+      showFilters={false}
+      onShowFiltersToggle={() => {}}
+      currentFilterKey=""
+      onFilterSelect={() => {}}
+      totalRows={tableRows.length}
+      rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
+      currentPage={currentPage}
+      onPageChange={setCurrentPage}
+      onSortRequest={handleSortRequest}
+      sortConfig={activeSort}
+      footerContent={
+        tableRows.length > 0 ? (
+          <TableRow sx={{ bgcolor: C.COLORS.CARD_BG }}>
+            {columns
+              .filter((c) => !c.hide)
+              .map((c) => (
+                <TableCell
+                  key={c.key as string}
+                  sx={{ padding: '12px 16px', whiteSpace: 'nowrap', borderTop: `2px solid ${C.COLORS.BORDER}` }}
+                >
+                  {c.total ?? null}
+                </TableCell>
+              ))}
+          </TableRow>
+        ) : undefined
+      }
+      disableFooterWrapper
+    />
+  );
 
   return (
     <Box sx={{ padding: C.PAGE.PADDING, pb: C.PAGE.PADDING_BOTTOM }}>
@@ -413,8 +687,10 @@ const ClosingStockReport: React.FC = () => {
         title={L.PAGE.TITLE}
         subtitle={L.PAGE.SUBTITLE}
         downloadLabel={L.PAGE.DOWNLOAD_CSV}
-        onDownloadCsv={handleDownloadCsv}
+        onDownloadCsv={(e) => setDownloadAnchor(e.currentTarget)}
         downloadDisabled={downloadDisabled}
+        downloadMenuOpen={Boolean(downloadAnchor)}
+        downloadMenuId={CS.DOWNLOAD_MENU_ID}
         dateControl={
           <Box sx={dateFieldSx}>
             <FilterLabel>{L.FILTER.AS_OF_DATE_LABEL}</FilterLabel>
@@ -502,6 +778,40 @@ const ClosingStockReport: React.FC = () => {
         </Box>
       </ReportHeader>
 
+      {/* The view switch is a mode for everything below (summary, table), so it sits on its
+          own row under the filters: the filter row already fills 1280px. */}
+      <ToggleButtonGroup
+        exclusive
+        value={view}
+        onChange={handleViewChange}
+        aria-label={L.VIEW.ARIA}
+        sx={{
+          mb: 3,
+          height: CS.CONTROL_HEIGHT,
+          backgroundColor: C.COLORS.WHITE,
+          '& .MuiToggleButton-root': {
+            px: CS.VIEW_TOGGLE.PADDING_X,
+            fontFamily: FONT,
+            fontSize: '14px',
+            fontWeight: 500,
+            textTransform: 'none',
+            whiteSpace: 'nowrap',
+            color: CS.VIEW_TOGGLE.COLOR,
+            borderColor: CS.VIEW_TOGGLE.BORDER,
+          },
+          '& .MuiToggleButtonGroup-firstButton': { borderRadius: '8px 0 0 8px' },
+          '& .MuiToggleButtonGroup-lastButton': { borderRadius: '0 8px 8px 0' },
+          '& .MuiToggleButton-root.Mui-selected': {
+            color: CS.VIEW_TOGGLE.SELECTED_COLOR,
+            backgroundColor: CS.VIEW_TOGGLE.SELECTED_BG,
+            '&:hover': { backgroundColor: CS.VIEW_TOGGLE.SELECTED_BG_HOVER },
+          },
+        }}
+      >
+        <ToggleButton value="product">{L.VIEW.PRODUCT}</ToggleButton>
+        <ToggleButton value="batch">{L.VIEW.BATCH}</ToggleButton>
+      </ToggleButtonGroup>
+
       {dateError ? (
         <ReportEmpty message={dateError} />
       ) : isError ? (
@@ -536,7 +846,7 @@ const ClosingStockReport: React.FC = () => {
               </Box>
             </Box>
           )}
-          {rows.length > 0 && <SummaryBar stats={summaryStats} />}
+          {viewRowCount > 0 && <SummaryBar stats={summaryStats} />}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <InfoOutlinedIcon sx={{ color: C.COLORS.TEXT_MUTED, fontSize: 16 }} />
@@ -551,30 +861,21 @@ const ClosingStockReport: React.FC = () => {
               </Box>
             )}
           </Box>
-          <Box ref={tableWrapRef} sx={{ position: 'relative' }}>
+          <Box
+            ref={tableWrapRef}
+            sx={{
+              position: 'relative',
+              // Body/footer cells use the header's 12px side padding so header and body text
+              // line up, and so all ten batch columns fit at 1440px.
+              '& .MuiTableBody-root .MuiTableCell-root, & .MuiTableFooter-root .MuiTableCell-root': {
+                px: CS.CELL_PX,
+              },
+            }}
+          >
             <TableShell>
-              <ReusableTable
-                columns={columns}
-                data={sortedRows}
-                selectedRows={selectedRows}
-                setSelectedRows={setSelectedRows}
-                emptyMessage={L.EMPTY_TABLE}
-                searchAndFilterConfig={{ filterOptions: [] }}
-                currentSearchTerm=""
-                onSearchChange={() => {}}
-                showFilters={false}
-                onShowFiltersToggle={() => {}}
-                currentFilterKey=""
-                onFilterSelect={() => {}}
-                totalRows={sortedRows.length}
-                rowsPerPage={C.DEFAULTS.ROWS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                onSortRequest={handleSortRequest}
-                sortConfig={sortConfig}
-                footerContent={sortedRows.length > 0 ? totalsFooter : undefined}
-                disableFooterWrapper
-              />
+              {isBatchView
+                ? renderTable(batchCols, sortedBatchRows, rows.length > 0 ? L.EMPTY_BATCHES : L.EMPTY_TABLE)
+                : renderTable(productCols, sortedRows, L.EMPTY_TABLE)}
             </TableShell>
             {fadeHeight > 0 && (
               <Box
@@ -594,12 +895,30 @@ const ClosingStockReport: React.FC = () => {
         </>
       )}
 
-      <CSVLink
-        data={csvData}
-        filename={`${L.PAGE.CSV_FILENAME_PREFIX}_${data?.as_of_date ?? ''}.csv`}
-        ref={csvLinkRef}
-        style={{ display: 'none' }}
-      />
+      <Menu
+        id={CS.DOWNLOAD_MENU_ID}
+        MenuListProps={{ 'aria-labelledby': `${CS.DOWNLOAD_MENU_ID}-button` }}
+        anchorEl={downloadAnchor}
+        open={Boolean(downloadAnchor)}
+        onClose={() => setDownloadAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{ paper: { sx: { mt: 0.5, borderRadius: '12px', minWidth: 220 } } }}
+      >
+        {[
+          { kind: 'product' as const, label: L.DOWNLOAD_MENU.PRODUCT, hint: L.DOWNLOAD_MENU.PRODUCT_HINT, empty: false },
+          { kind: 'batch' as const, label: L.DOWNLOAD_MENU.BATCH, hint: L.DOWNLOAD_MENU.BATCH_HINT, empty: !batchRows.length },
+        ].map((o) => (
+          <MenuItem key={o.kind} disabled={downloadDisabled || o.empty} onClick={() => handleDownload(o.kind)}>
+            <ListItemText
+              primary={o.label}
+              secondary={o.hint}
+              primaryTypographyProps={{ fontFamily: FONT, fontSize: '14px', fontWeight: 500 }}
+              secondaryTypographyProps={{ fontFamily: FONT, fontSize: '12px' }}
+            />
+          </MenuItem>
+        ))}
+      </Menu>
     </Box>
   );
 };

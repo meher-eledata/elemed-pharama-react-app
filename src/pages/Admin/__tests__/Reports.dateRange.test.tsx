@@ -35,15 +35,6 @@ jest.mock('../../DashboardMain/DashboardMain', () => ({
   __esModule: true,
   default: () => <div data-testid="dashboard-main" />,
 }));
-jest.mock('react-csv', () => {
-  const ReactLib = require('react');
-  return {
-    __esModule: true,
-    CSVLink: ReactLib.forwardRef((props: any, _ref: any) =>
-      ReactLib.createElement('div', { 'data-testid': 'csv-link' }, props.children)
-    ),
-  };
-});
 
 // Render each date picker as its formatted value so we can assert the default.
 jest.mock('../../../components/Common', () => {

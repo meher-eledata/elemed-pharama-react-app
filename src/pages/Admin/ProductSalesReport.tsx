@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, TableCell, TableRow } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import {
@@ -31,8 +30,8 @@ import {
   formatPercent,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 
 const PATIENT_TYPE_DISPLAY: Record<string, string> = {
   INPATIENT: 'In Patient',
@@ -57,7 +56,6 @@ interface SalesRow extends ProductSalesReportRow {
 
 const ProductSalesReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
   const [productId, setProductId] = useState<string>('');
@@ -230,15 +228,15 @@ const ProductSalesReport: React.FC = () => {
 
   const csvData = useMemo(() => {
     const dataRows = sortedRows.map((r) => ({
-      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.INVOICE_NUMBER]: r.invoice_number,
       [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
-      [L.TABLE.PRODUCT]: csvString(r.product_name),
-      [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
-      [L.TABLE.HSN]: csvString(r.hsn_code),
-      [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
+      [L.TABLE.PRODUCT]: r.product_name,
+      [L.TABLE.PRODUCT_CODE]: r.product_code,
+      [L.TABLE.HSN]: r.hsn_code,
+      [L.TABLE.BATCH_NUMBER]: r.batch_number,
       [L.TABLE.PATIENT_TYPE]: r.patientDisplay,
-      [L.TABLE.CUSTOMER]: csvString(r.customer_name),
-      [L.TABLE.CUSTOMER_DETAILS]: csvString(r.customer_details),
+      [L.TABLE.CUSTOMER]: r.customer_name,
+      [L.TABLE.CUSTOMER_DETAILS]: r.customer_details,
       [L.TABLE.QTY]: r.qtyN.toFixed(2),
       [`${L.TABLE.MRP} (₹)`]: r.unitMrpN.toFixed(2),
       [`${L.TABLE.SP} (₹)`]: r.spAfterDiscN.toFixed(2),
@@ -280,7 +278,7 @@ const ProductSalesReport: React.FC = () => {
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Product Sales Report', format: 'csv', count: sortedRows.length }).catch(() => {});
   };
 
@@ -356,7 +354,6 @@ const ProductSalesReport: React.FC = () => {
         </>
       )}
 
-      <CSVLink data={csvData} filename={csvFilename} ref={csvLinkRef} style={{ display: 'none' }} />
     </Box>
   );
 };

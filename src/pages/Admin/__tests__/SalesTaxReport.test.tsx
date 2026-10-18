@@ -22,11 +22,12 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   __esModule: true,
   default: () => <div data-testid="date-range-filter" />,
 }));
-jest.mock('react-csv', () => ({
-  __esModule: true,
-  CSVLink: () => <div data-testid="csv-link" />,
-}));
 
+jest.mock('../../../redux/slices/activityApi', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../redux/slices/activityApi'),
+  useLogDownloadMutation: () => [() => ({ catch: () => {} }), { isLoading: false }],
+}));
 jest.mock('../../../redux/slices/reportsApi', () => {
   const actual = jest.requireActual('../../../redux/slices/reportsApi');
   return { __esModule: true, ...actual, useGetSalesTaxReportQuery: jest.fn() };

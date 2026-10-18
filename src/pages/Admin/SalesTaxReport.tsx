@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, TableRow, TableCell } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import {
@@ -38,8 +37,8 @@ import {
   formatPercent,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 
 interface TaxRow extends SalesTaxReportRow {
   _id: number;
@@ -89,7 +88,6 @@ interface InvoiceRow extends SalesTaxInvoiceRow {
 
 const SalesTaxReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
   const [level, setLevel] = useState<SalesTaxLevel>('product');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
@@ -377,10 +375,10 @@ const SalesTaxReport: React.FC = () => {
   const csvData = useMemo(() => {
     if (level === 'invoice') {
       return sortedInvoiceRows.map((r) => ({
-        [L.TABLE_INVOICE.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_INVOICE.INVOICE_NUMBER]: r.invoice_number,
         [L.TABLE_INVOICE.SALE_DATE]: formatReportDate(r.sale_date),
-        [L.TABLE_INVOICE.CUSTOMER]: csvString(r.customer_details),
-        [L.TABLE_INVOICE.LINES]: csvString(r.line_count),
+        [L.TABLE_INVOICE.CUSTOMER]: r.customer_details,
+        [L.TABLE_INVOICE.LINES]: r.line_count,
         [L.TABLE_INVOICE.QTY]: r.quantityN.toFixed(2),
         [`${L.TABLE_INVOICE.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
         [`${L.TABLE_INVOICE.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
@@ -396,9 +394,9 @@ const SalesTaxReport: React.FC = () => {
     }
     if (level === 'hsn') {
       return sortedHsnRows.map((r) => ({
-        [L.TABLE_HSN.HSN]: csvString(r.hsn_code),
-        [L.TABLE_HSN.LINES]: csvString(r.line_count),
-        [L.TABLE_HSN.PRODUCTS]: csvString(r.product_count),
+        [L.TABLE_HSN.HSN]: r.hsn_code,
+        [L.TABLE_HSN.LINES]: r.line_count,
+        [L.TABLE_HSN.PRODUCTS]: r.product_count,
         [L.TABLE_HSN.QTY]: r.quantityN.toFixed(2),
         [`${L.TABLE_HSN.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
         [`${L.TABLE_HSN.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
@@ -413,13 +411,13 @@ const SalesTaxReport: React.FC = () => {
       }));
     }
     return sortedRows.map((r) => ({
-      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.INVOICE_NUMBER]: r.invoice_number,
       [L.TABLE.SALE_DATE]: formatReportDate(r.sale_date),
-      [L.TABLE.PRODUCT]: csvString(r.product_name),
-      [L.TABLE.CODE]: csvString(r.product_code),
-      [L.TABLE.HSN]: csvString(r.hsn_code),
-      [L.TABLE.BATCH_NUMBER]: csvString(r.batch_number),
-      [L.TABLE.CUSTOMER_DETAILS]: csvString(r.customer_details),
+      [L.TABLE.PRODUCT]: r.product_name,
+      [L.TABLE.CODE]: r.product_code,
+      [L.TABLE.HSN]: r.hsn_code,
+      [L.TABLE.BATCH_NUMBER]: r.batch_number,
+      [L.TABLE.CUSTOMER_DETAILS]: r.customer_details,
       [L.TABLE.QTY]: r.qtyN.toFixed(2),
       [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
       [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),
@@ -440,7 +438,7 @@ const SalesTaxReport: React.FC = () => {
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Sales Tax Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
@@ -603,7 +601,6 @@ const SalesTaxReport: React.FC = () => {
         </>
       )}
 
-      <CSVLink data={csvData} filename={csvFilename} ref={csvLinkRef} style={{ display: 'none' }} />
     </Box>
   );
 };

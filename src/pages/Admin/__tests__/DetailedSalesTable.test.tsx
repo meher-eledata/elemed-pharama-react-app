@@ -1,7 +1,7 @@
 global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -17,19 +17,17 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => jest.fn(),
 }));
 
-// Capture the CSV rows handed to CSVLink so the export mapping can be asserted.
-jest.mock('react-csv', () => {
-  const ReactLib = require('react');
-  return {
-    __esModule: true,
-    CSVLink: ReactLib.forwardRef((props: any, _ref: any) =>
-      ReactLib.createElement('div', {
-        'data-testid': 'csv-link',
-        'data-csv': JSON.stringify(props.data),
-      })
-    ),
-  };
-});
+// Capture the CSV rows handed to downloadCsv so the export mapping can be asserted.
+const mockDownloadCsv = jest.fn();
+jest.mock('../../../utils/csv', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../utils/csv'),
+  downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
+}));
+const exportedRows = (): any[] => {
+  fireEvent.click(screen.getByRole('button', { name: /Download CSV/ }));
+  return mockDownloadCsv.mock.calls.at(-1)[1];
+};
 
 // The MUI date picker needs a LocalizationProvider; stub it like sibling report
 // tests stub DateRangeFilter.
@@ -169,17 +167,13 @@ describe('DetailedSalesTable page', () => {
     // Real methods still render in Title Case.
     expect(screen.getByText('John Patient').closest('tr')!).toHaveTextContent('Cash');
     expect(screen.getByText('Jane Patient').closest('tr')!).toHaveTextContent('Upi');
-    const csvRows = JSON.parse(
-      screen.getByTestId('csv-link').getAttribute('data-csv') || '[]'
-    );
+    const csvRows = exportedRows();
     expect(csvRows.find((r: any) => r['Invoice Number'] === '40')['Payment Type']).toBe('Unknown');
   });
 
   it('includes Customer Details in the CSV export mapping', () => {
     renderPage();
-    const csvRows = JSON.parse(
-      screen.getByTestId('csv-link').getAttribute('data-csv') || '[]'
-    );
+    const csvRows = exportedRows();
     const saleRow = csvRows.find((r: any) => r['Invoice Number'] === '42');
     const refundRow = csvRows.find((r: any) => r['Invoice Number'] === '41');
     expect(saleRow['Customer Details']).toBe('Ward 4 follow-up');

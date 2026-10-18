@@ -173,10 +173,44 @@ export const ADMIN_REPORTS_CONSTANTS = {
     BRAND_FILTER_WIDTH: 200,
     DATE_PICKER_WIDTH: 160,
     CONTROL_HEIGHT: 40,
-    // Minimum widths for the free-text columns; they take any spare width and
-    // wrap (at spaces) only when the viewport is genuinely short.
-    BRAND_MIN_WIDTH: '140px',
-    PRODUCT_MIN_WIDTH: '220px',
+    // Free-text columns per view: a fixed share of the table width (stable while paging) and
+    // a minimum so names stay readable on short viewports. Batch-wise has three more columns,
+    // so its text columns give up width first.
+    TEXT_COLUMNS: {
+      product: {
+        BRAND: { minWidth: '140px', share: '18%' },
+        PRODUCT: { minWidth: '220px', share: '26%' },
+        CODE_SHARE: '12%',
+      },
+      batch: {
+        BRAND: { minWidth: '96px', share: '11%' },
+        PRODUCT: { minWidth: '150px', share: '15%' },
+        CODE_SHARE: '8%',
+        BATCH_SHARE: '8%',
+        BATCH_MIN_WIDTH: '80px',
+      },
+    },
+    // Body/footer side padding = the shared table header's (4px 12px), so text aligns.
+    CELL_PX: '12px',
+    // Per-viewer remembered table view (suffixed with the user id).
+    VIEW_STORAGE_KEY: 'closing_stock_view',
+    DOWNLOAD_MENU_ID: 'closing-stock-download-menu',
+    VIEW_TOGGLE: {
+      BORDER: '#D7DFEA',
+      COLOR: '#374151',
+      SELECTED_BG: '#F3E8FF',
+      SELECTED_BG_HOVER: '#EBDDFE',
+      SELECTED_COLOR: '#5C17E5',
+      PADDING_X: '14px',
+    },
+    // Matches the Inventory "Expired" stock tag.
+    EXPIRED_CHIP: {
+      BACKGROUND: '#FEE2E2',
+      COLOR: '#B91C1C',
+      HEIGHT: '20px',
+      FONT_SIZE: '11px',
+      BORDER_RADIUS: '6px',
+    },
     // Date field typography matched to the neighbouring filter inputs.
     DATE_FIELD: {
       FONT_SIZE: '14px',
