@@ -526,7 +526,7 @@ const SalesReceipt: React.FC = () => {
                   type: line.product_type || line.type || 'N/A',
                   quantity: netQty.toString(),
                   unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(8) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price with high precision
-                  mrp: line.mrp ? Number(parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toFixed(2).replace(/\.00$/, '') : '0', // Calculate aggregate MRP for historic invoices
+                  mrp: line.mrp ? Number(parseFloat(line.mrp)).toFixed(2).replace(/\.00$/, '') : '0',
                   discount: line.discount?.toString() || '0',
                   discountPercent: discountPercentValue,
                   cgst: line.cgst?.toString() || '0',
@@ -550,8 +550,10 @@ const SalesReceipt: React.FC = () => {
                 // Per the API contract the free-text detail lives on invoice.customer_details (string | null)
                 customerDetails: result.invoice?.customer_details || '',
                 doctorName: result.doctor_name || result.invoice?.doctor_name || editModeData.doctorName || '',
-                doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || editModeData.doctorMobile || '',
-                doctorEmail: result.doctor_email || result.invoice?.doctor_email || editModeData.doctorEmail || '',
+                // The invoice stores only doctor_id; the contact comes from the doctor master
+                // (result.doctor) — the same values the doctor auto-fill writes after load.
+                doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || result.doctor?.phone || editModeData.doctorMobile || '',
+                doctorEmail: result.doctor_email || result.invoice?.doctor_email || result.doctor?.email || editModeData.doctorEmail || '',
                 // Invoice table has no payment_mode column — derive it from the payments array.
                 // 1 payment → that payment's method (mapped to dropdown casing).
                 // 2+ payments → 'Multiple' (multi-payment UI handles the breakdown separately).
@@ -715,6 +717,10 @@ const SalesReceipt: React.FC = () => {
               const originalItems = invoiceData.salesItems && Array.isArray(invoiceData.salesItems) && invoiceData.salesItems.length > 0
                 ? invoiceData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item))
                 : [];
+              // Snapshot the summary the same way the form state derives it (from the items), not
+              // from the raw invoice strings ("0.0000", no tax field) — otherwise hasChanges() is
+              // true on an untouched invoice and Save is enabled before any edit.
+              const originalSummary = originalItems.length > 0 ? calculateFinancialSummary(originalItems) : null;
 
               setOriginalInvoiceData({
                 customerName: invoiceData.customerName || '',
@@ -730,10 +736,10 @@ const SalesReceipt: React.FC = () => {
                 invoiceNumber: invoiceData.invoiceNumber || '',
                 invoiceDate: invoiceData.invoiceDate || '',
                 salesItems: originalItems,
-                totalValue: invoiceData.totalValue || '0',
-                totalDiscount: invoiceData.totalDiscount || '0',
-                taxAmount: invoiceData.taxAmount || '0',
-                totalPayableAmount: invoiceData.totalPayableAmount || '0',
+                totalValue: originalSummary?.totalValue ?? (invoiceData.totalValue || '0'),
+                totalDiscount: originalSummary?.totalDiscount ?? (invoiceData.totalDiscount || '0'),
+                taxAmount: originalSummary?.taxAmount ?? (invoiceData.taxAmount || '0'),
+                totalPayableAmount: originalSummary?.totalPayableAmount ?? (invoiceData.totalPayableAmount || '0'),
               });
 
               return; // Exit early if API call succeeded

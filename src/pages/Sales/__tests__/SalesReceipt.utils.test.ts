@@ -1,4 +1,4 @@
-import { generatePrintHTML } from '../SalesReceipt.utils';
+import { formatReceiptMrp, generatePrintHTML } from '../SalesReceipt.utils';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 
 // Minimal valid input for the print-HTML builder. invoiceNumber is now admin-influenced
@@ -39,5 +39,27 @@ describe('generatePrintHTML — invoice_number XSS escaping', () => {
   it('renders a normal schemed invoice number verbatim (no false escaping)', () => {
     const html = generatePrintHTML(baseData);
     expect(html).toContain('SI-EL-26-002296');
+  });
+});
+
+describe('formatReceiptMrp', () => {
+  it('shows a stored 4-decimal MRP with 2 decimals (no wrapping "300.0000")', () => {
+    expect(formatReceiptMrp('300.0000')).toBe('300.00');
+    expect(formatReceiptMrp('12.5')).toBe('12.50');
+    expect(formatReceiptMrp(100)).toBe('100.00');
+  });
+
+  it('falls back to N/A when there is no MRP', () => {
+    expect(formatReceiptMrp(undefined)).toBe('N/A');
+    expect(formatReceiptMrp('')).toBe('N/A');
+  });
+
+  it('formats the MRP cell of the printed receipt', () => {
+    const html = generatePrintHTML({
+      ...baseData,
+      salesItems: [{ id: '1', productName: 'Strip10', batch: 'B1', quantity: '3', unitPrice: '10', mrp: '100.0000', amount: '30.00' } as any],
+    });
+    expect(html).toContain('"mrp":"100.00"');
+    expect(html).not.toContain('100.0000');
   });
 });

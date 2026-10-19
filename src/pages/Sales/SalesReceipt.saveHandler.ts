@@ -326,33 +326,42 @@ export const executeSave = async ({
       }
 
       // 2. Identify Added and Edited lines
-      salesItems.forEach(curr => {
-        const lineItem = {
-          product_id: curr.product_id || 0,
-          quantity: parseFloat(curr.quantity || '0'),
-          batch_number: curr.batch,
-          mrp: parseFloat(curr.mrp || '0'),
-          sp: parseFloat(curr.unitPrice || '0'),
-          discount: parseFloat(curr.discountPercent || '0'),
-          cgst: parseFloat(parseFloat(curr.cgstPercent || '0').toFixed(2)),
-          sgst: parseFloat(parseFloat(curr.sgstPercent || '0').toFixed(2)),
-          igst: parseFloat(parseFloat(curr.igstPercent || '0').toFixed(2)),
-          pack_qty: parseFloat(curr.pack_qty?.toString() || '1'),
-          discount_authority: curr.discountAuthorizedBy,
-        };
+      const toEditLine = (item: SalesReceiptItem) => ({
+        product_id: item.product_id || 0,
+        quantity: parseFloat(item.quantity || '0'),
+        batch_number: item.batch,
+        mrp: parseFloat(item.mrp || '0'),
+        sp: parseFloat(item.unitPrice || '0'),
+        discount: parseFloat(item.discountPercent || '0'),
+        cgst: parseFloat(parseFloat(item.cgstPercent || '0').toFixed(2)),
+        sgst: parseFloat(parseFloat(item.sgstPercent || '0').toFixed(2)),
+        igst: parseFloat(parseFloat(item.igstPercent || '0').toFixed(2)),
+        pack_qty: parseFloat(item.pack_qty?.toString() || '1'),
+        discount_authority: item.discountAuthorizedBy,
+      });
+      const unchangedLines: any[] = [];
 
+      salesItems.forEach(curr => {
+        const lineItem = toEditLine(curr);
         const original = originalSalesItems?.find(orig => orig.id === curr.id);
         if (!original || isNaN(parseInt(curr.id))) {
           // No original item with this ID found OR ID is synthetic -> New item added during edit
           addedLines.push(lineItem);
         } else {
-          // Original item found with valid numeric ID -> Send as edited
-          editedLines.push({
-            ...lineItem,
-            invoice_line_id: parseInt(curr.id)
-          });
+          const editedLine = { ...lineItem, invoice_line_id: parseInt(curr.id) };
+          // Only a line whose editable fields changed is sent as Edited, so an untouched
+          // line is never rewritten.
+          const changed = JSON.stringify(lineItem) !== JSON.stringify(toEditLine(original));
+          (changed ? editedLines : unchangedLines).push(editedLine);
         }
       });
+
+      // edit-sale rejects a payload with no Added/Edited/Deleted lines (400 "No editable
+      // content"), so a header-only edit (customer, doctor, date, payment) resends the
+      // unchanged lines as same-value Edited lines.
+      if (deletedLines.length === 0 && addedLines.length === 0 && editedLines.length === 0) {
+        editedLines.push(...unchangedLines);
+      }
 
       const editSalePayload = {
         invoice_id: Number(invoiceId),

@@ -82,6 +82,12 @@ export const getTodayDate = (): string => {
 // Display-edge formatter: turn the ISO invoiceDate state into the app's
 // human-readable "DD MMM YYYY" convention. Tolerant of any dayjs-parseable
 // legacy value so stale strings never render as raw ISO.
+/** Receipt MRP cell: always 2 decimals (stored lines arrive as "100.0000"), like the Amount column. */
+export const formatReceiptMrp = (mrp?: string | number | null): string => {
+  const value = parseFloat(String(mrp ?? ''));
+  return Number.isFinite(value) ? value.toFixed(2) : 'N/A';
+};
+
 export const formatInvoiceDateForDisplay = (isoDate: string): string => {
   const raw = (isoDate || '').trim();
   if (!raw) return '';
@@ -341,7 +347,7 @@ export const generatePrintHTML = (data: {
       pack,
       exp,
       qty: item.quantity,
-      mrp: item.mrp || 'N/A',
+      mrp: formatReceiptMrp(item.mrp),
       gst,
       amount: item.amount,
     };
