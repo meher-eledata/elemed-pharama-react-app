@@ -281,7 +281,7 @@ describe('ClosingStockReport page', () => {
   it('labels cost values "Purchase Value" in the subtitle, headers and summary cards', () => {
     renderPage();
     expect(
-      screen.getByText('Stock on hand at the end of the selected date, valued at purchase cost, MRP and last selling price.')
+      screen.getByText('Stock on hand at the end of the selected date, with purchase, MRP and selling values.')
     ).toBeInTheDocument();
     const headers = within(screen.getAllByRole('rowgroup')[0]);
     // Two-line headers: "Purchase Value" over the GST basis.
