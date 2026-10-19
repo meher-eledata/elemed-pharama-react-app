@@ -61,6 +61,22 @@ export const formatCount = (amount: number): string =>
     maximumFractionDigits: 0,
   });
 
+/**
+ * Unit quantities are whole numbers in practice but arrive as numeric(14,2) strings: show no
+ * decimals for integers, yet keep a genuine fraction visible (never round it away).
+ * Rounding first also turns -0 / -0.001 into a plain "0".
+ */
+const QTY_FRACTION = { minimumFractionDigits: 0, maximumFractionDigits: 2 } as const;
+const roundQty = (qty: number): number => Number(qty.toFixed(2)) + 0;
+
+/** Format a unit quantity with en-IN grouping, e.g. 16543 => "16,543", 2.5 => "2.5", -4 => "-4". */
+export const formatQuantity = (qty: number): string =>
+  roundQty(qty).toLocaleString(ADMIN_REPORTS_CONSTANTS.CURRENCY.LOCALE, QTY_FRACTION);
+
+/** CSV form of `formatQuantity`: no grouping, e.g. 16543 => "16543", 2.5 => "2.5". */
+export const csvQuantity = (qty: number): string =>
+  roundQty(qty).toLocaleString(ADMIN_REPORTS_CONSTANTS.CURRENCY.LOCALE, { ...QTY_FRACTION, useGrouping: false });
+
 /** Format a percentage value (already a percent number, e.g. 12.5 => "12.50%"). */
 export const formatPercent = (pct: number): string => `${pct.toFixed(2)}%`;
 

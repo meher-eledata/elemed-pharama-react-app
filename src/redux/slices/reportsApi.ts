@@ -488,6 +488,7 @@ export interface ClosingStockReportRequest {
 }
 
 export type ClosingStockCostBasis = "RECEIPT" | "ESTIMATED" | "MISSING";
+export type ClosingStockSellingBasis = "LAST_SALE" | "MRP";
 
 export interface ClosingStockBatch {
   batch_number: string | null;
@@ -502,6 +503,10 @@ export interface ClosingStockBatch {
   value_mrp: Num | null;
   cost_basis: ClosingStockCostBasis | null; // null only when quantity is 0
   has_unpriced_mrp: boolean;
+  // Last sale before the cutoff (per unit, after discount); never sold -> current MRP per unit.
+  selling_price_per_unit: Num | null;
+  selling_price_basis: ClosingStockSellingBasis | null; // null = no sale and no MRP
+  value_selling: Num | null; // "0.00" at quantity 0; null when unpriced
 }
 
 export interface ClosingStockReportRow {
@@ -518,6 +523,10 @@ export interface ClosingStockReportRow {
   uncosted_quantity: Num;
   has_negative_batches: boolean;
   has_unpriced_mrp: boolean; // true + non-null value_mrp => value_mrp is a partial sum
+  // Null only when no stocked batch has a selling price; partial when a stocked batch has
+  // selling_price_basis null (no sale and no MRP) — not the same set as has_unpriced_mrp.
+  value_selling: Num | null;
+  has_selling_at_mrp: boolean; // a stocked batch was never sold by the cutoff (priced at MRP)
   batches: ClosingStockBatch[];
 }
 
@@ -528,6 +537,7 @@ export interface ClosingStockReportSummary {
   total_value_cost_ex_gst: Num;
   total_value_cost_inc_gst: Num;
   total_value_mrp: Num;
+  total_value_selling: Num;
   uncosted_product_count: number;
   uncosted_quantity: Num;
   unpriced_mrp_product_count: number;
@@ -536,6 +546,7 @@ export interface ClosingStockReportSummary {
   unattributed_movement_count: number;
   receipt_line_deletions_after_cutoff: number;
   unknown_type_movement_count: number;
+  selling_at_mrp_batch_count: number;
 }
 
 export interface ClosingStockReportResponse {

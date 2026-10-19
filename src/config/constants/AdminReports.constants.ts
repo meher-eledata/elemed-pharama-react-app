@@ -178,8 +178,8 @@ export const ADMIN_REPORTS_CONSTANTS = {
     // so its text columns give up width first.
     TEXT_COLUMNS: {
       product: {
-        BRAND: { minWidth: '140px', share: '18%' },
-        PRODUCT: { minWidth: '220px', share: '26%' },
+        BRAND: { minWidth: '130px', share: '18%' },
+        PRODUCT: { minWidth: '210px', share: '26%' },
         CODE_SHARE: '12%',
       },
       batch: {
