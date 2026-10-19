@@ -46,6 +46,7 @@ import {
   ClosingStockReportRow,
   ClosingStockBatch,
   ClosingStockCostBasis,
+  ClosingStockSellingBasis,
   Num,
 } from '../../redux/slices/reportsApi';
 import type { RootState } from '../../redux/store';
@@ -100,6 +101,11 @@ interface BaseRow {
   costExN: number | null;
   costIncN: number | null;
   mrpN: number | null;
+  sellN: number | null;
+  /** Some stocked batch has no selling price, so sellN is a partial sum. */
+  sellPartial: boolean;
+  /** Tooltip for the "MRP" marker when the selling value is (partly) priced at current MRP. */
+  sellAtMrpTip: string | null;
   cost_basis: ClosingStockCostBasis | null;
   has_unpriced_mrp: boolean;
   has_negative_batches?: boolean;
@@ -110,6 +116,7 @@ type StockRow = ClosingStockReportRow & BaseRow;
 type BatchRow = ClosingStockBatch &
   BaseRow & {
     unitCostExN: number | null;
+    sellUnitN: number | null;
   };
 
 /**
@@ -128,6 +135,7 @@ interface Totals {
   costEx: number;
   costInc: number;
   mrp: number;
+  selling: number;
 }
 
 type SortConfig = { key: string; direction: 'asc' | 'desc' };
@@ -199,6 +207,30 @@ const mrpCell = (r: BaseRow) => {
     return <MarkedValue value={r.mrpN} marker={L.TABLE.PARTIAL_MARKER} tip={L.TOOLTIP.MRP_PARTIAL} />;
   }
   return <Money value={r.mrpN} />;
+};
+
+const sellCell = (r: BaseRow) => {
+  if (r.sellN === null) return <EmptyValue tip={L.TOOLTIP.SELLING_MISSING} />;
+  if (r.sellPartial) {
+    return <MarkedValue value={r.sellN} marker={L.TABLE.PARTIAL_MARKER} tip={L.TOOLTIP.SELLING_PARTIAL} />;
+  }
+  if (r.sellAtMrpTip) {
+    return <MarkedValue value={r.sellN} marker={L.TABLE.AT_MRP_MARKER} tip={r.sellAtMrpTip} />;
+  }
+  return <Money value={r.sellN} />;
+};
+
+const sellUnitCell = (r: BatchRow) => {
+  if (r.sellUnitN === null) return <EmptyValue tip={L.TOOLTIP.SELLING_MISSING} />;
+  if (r.selling_price_basis === 'MRP') {
+    return <MarkedValue value={r.sellUnitN} marker={L.TABLE.AT_MRP_MARKER} tip={L.TOOLTIP.SELLING_AT_MRP} />;
+  }
+  return <Money value={r.sellUnitN} />;
+};
+
+const SELLING_BASIS_CSV: Record<ClosingStockSellingBasis, string> = {
+  LAST_SALE: L.TABLE.BASIS_LAST_SALE,
+  MRP: L.TABLE.BASIS_MRP,
 };
 
 const twoLineHeader = (first: string, second: string) => () => (
@@ -346,6 +378,7 @@ const valueColumns = <T extends BaseRow>(totals: Totals): StockColumn<T>[] => [
   {
     key: 'mrpN',
     header: L.TABLE.VALUE_MRP,
+    headerRender: twoLineHeader(L.TABLE.VALUE_AT_HEADER, L.TABLE.MRP_HEADER),
     csvHeader: L.TABLE.VALUE_MRP + L.TABLE.CSV_CURRENCY_SUFFIX,
     sortable: true,
     nowrap: true,
@@ -353,6 +386,18 @@ const valueColumns = <T extends BaseRow>(totals: Totals): StockColumn<T>[] => [
     csv: (r) => csvMoney(r.mrpN),
     total: <Total>{formatCurrency(totals.mrp)}</Total>,
     totalCsv: totals.mrp.toFixed(2),
+  },
+  {
+    key: 'sellN',
+    header: L.TABLE.VALUE_SELLING,
+    headerRender: twoLineHeader(L.TABLE.VALUE_AT_HEADER, L.TABLE.SELLING_PRICE_HEADER),
+    csvHeader: L.TABLE.VALUE_SELLING + L.TABLE.CSV_CURRENCY_SUFFIX,
+    sortable: true,
+    nowrap: true,
+    render: sellCell,
+    csv: (r) => csvMoney(r.sellN),
+    total: <Total>{formatCurrency(totals.selling)}</Total>,
+    totalCsv: totals.selling.toFixed(2),
   },
 ];
 
@@ -413,6 +458,19 @@ const batchColumns = (totals: Totals): StockColumn<BatchRow>[] => [
   ),
   csvOnly<BatchRow>('mrp_per_unit', L.TABLE.MRP_PER_UNIT + L.TABLE.CSV_CURRENCY_SUFFIX, (r) =>
     csvMoney(nullableNum(r.mrp_per_unit))
+  ),
+  {
+    key: 'sellUnitN',
+    header: L.TABLE.SELLING_PRICE_PER_UNIT,
+    headerRender: twoLineHeader(L.TABLE.SELLING_PRICE_HEADER, L.TABLE.PER_UNIT_HEADER),
+    csvHeader: L.TABLE.SELLING_PRICE_PER_UNIT + L.TABLE.CSV_CURRENCY_SUFFIX,
+    sortable: true,
+    nowrap: true,
+    render: sellUnitCell,
+    csv: (r) => csvMoney(r.sellUnitN),
+  },
+  csvOnly<BatchRow>('selling_price_basis', L.TABLE.SELLING_PRICE_BASIS, (r) =>
+    r.selling_price_basis ? SELLING_BASIS_CSV[r.selling_price_basis] : ''
   ),
   ...valueColumns<BatchRow>(totals),
   csvOnly<BatchRow>('cost_basis', L.TABLE.COST_BASIS, (r) => r.cost_basis),
@@ -501,6 +559,13 @@ const ClosingStockReport: React.FC = () => {
         costExN: nullableNum(r.value_cost_ex_gst),
         costIncN: nullableNum(r.value_cost_inc_gst),
         mrpN: nullableNum(r.value_mrp),
+        sellN: nullableNum(r.value_selling),
+        // Derived from the batches: a stocked batch with no sale and no MRP is left out of
+        // value_selling (a batch with a sale but no MRP is still priced, unlike value_mrp).
+        sellPartial:
+          r.value_selling !== null &&
+          (r.batches ?? []).some((b) => toNum(b.quantity) !== 0 && b.selling_price_basis === null),
+        sellAtMrpTip: r.has_selling_at_mrp ? L.TOOLTIP.SELLING_AT_MRP_PRODUCT : null,
       })),
     [data]
   );
@@ -525,6 +590,11 @@ const ClosingStockReport: React.FC = () => {
           costExN: nullableNum(b.value_cost_ex_gst),
           costIncN: nullableNum(b.value_cost_inc_gst),
           mrpN: nullableNum(b.value_mrp),
+          sellUnitN: nullableNum(b.selling_price_per_unit),
+          sellN: nullableNum(b.value_selling),
+          sellPartial: false,
+          // Marked like "est.": on the per-unit price and the value (a zero value needs none).
+          sellAtMrpTip: b.selling_price_basis === 'MRP' && toNum(b.quantity) !== 0 ? L.TOOLTIP.SELLING_AT_MRP : null,
         })),
     [data]
   );
@@ -536,6 +606,7 @@ const ClosingStockReport: React.FC = () => {
       costEx: toNum(summary?.total_value_cost_ex_gst),
       costInc: toNum(summary?.total_value_cost_inc_gst),
       mrp: toNum(summary?.total_value_mrp),
+      selling: toNum(summary?.total_value_selling),
     }),
     [summary]
   );
@@ -570,6 +641,7 @@ const ClosingStockReport: React.FC = () => {
     { label: L.SUMMARY.VALUE_COST_EX_GST, value: formatCurrency(totals.costEx) },
     { label: L.SUMMARY.VALUE_COST_INC_GST, value: formatCurrency(totals.costInc) },
     { label: L.SUMMARY.VALUE_MRP, value: formatCurrency(totals.mrp) },
+    { label: L.SUMMARY.VALUE_SELLING, value: formatCurrency(totals.selling) },
   ];
 
   const warnings: string[] = summary
@@ -578,6 +650,7 @@ const ClosingStockReport: React.FC = () => {
           L.WARNINGS.UNCOSTED(summary.uncosted_product_count, formatQuantity(toNum(summary.uncosted_quantity))),
         summary.unpriced_mrp_product_count > 0 && L.WARNINGS.UNPRICED_MRP(summary.unpriced_mrp_product_count),
         summary.negative_batch_count > 0 && L.WARNINGS.NEGATIVE_BATCHES(summary.negative_batch_count),
+        summary.selling_at_mrp_batch_count > 0 && L.WARNINGS.SELLING_AT_MRP(summary.selling_at_mrp_batch_count),
         summary.ambiguous_movement_count > 0 && L.WARNINGS.AMBIGUOUS(summary.ambiguous_movement_count),
         summary.unattributed_movement_count > 0 && L.WARNINGS.UNATTRIBUTED(summary.unattributed_movement_count),
         summary.receipt_line_deletions_after_cutoff > 0 &&
@@ -631,9 +704,16 @@ const ClosingStockReport: React.FC = () => {
     update();
     el.addEventListener('scroll', update);
     window.addEventListener('resize', update);
+    // The table can change size without a data/scroll/resize event (e.g. the web font loading
+    // after first paint widens the columns), so re-check whenever the scroller or table resizes.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(el);
+    const table = el.querySelector('table');
+    if (table) observer?.observe(table);
     return () => {
       el.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
+      observer?.disconnect();
     };
   }, [view, sortedRows, sortedBatchRows, currentPage]);
 

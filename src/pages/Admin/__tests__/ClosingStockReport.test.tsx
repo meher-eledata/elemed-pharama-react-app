@@ -72,6 +72,7 @@ const ZERO_COUNTERS = {
   unattributed_movement_count: 0,
   receipt_line_deletions_after_cutoff: 0,
   unknown_type_movement_count: 0,
+  selling_at_mrp_batch_count: 0,
 };
 
 const BATCH: reportsApi.ClosingStockBatch = {
@@ -87,6 +88,10 @@ const BATCH: reportsApi.ClosingStockBatch = {
   value_mrp: '1500.00',
   cost_basis: 'RECEIPT',
   has_unpriced_mrp: false,
+  // Last sold at a discount: ₹12 a unit against a ₹15 MRP.
+  selling_price_per_unit: '12.00',
+  selling_price_basis: 'LAST_SALE',
+  value_selling: '1200.00',
 };
 
 const FIXTURE: reportsApi.ClosingStockReportResponse = {
@@ -106,6 +111,8 @@ const FIXTURE: reportsApi.ClosingStockReportResponse = {
       uncosted_quantity: '0',
       has_negative_batches: false,
       has_unpriced_mrp: false,
+      value_selling: '1350.00',
+      has_selling_at_mrp: true,
       batches: [
         // Server order: expiry ASC — the expired batch first.
         {
@@ -120,6 +127,10 @@ const FIXTURE: reportsApi.ClosingStockReportResponse = {
           value_cost_inc_gst: '112.00',
           value_mrp: '150.00',
           cost_basis: 'ESTIMATED',
+          // Never sold by the date: priced at its current MRP per unit.
+          selling_price_per_unit: '15.00',
+          selling_price_basis: 'MRP',
+          value_selling: '150.00',
         },
         BATCH,
       ],
@@ -138,6 +149,8 @@ const FIXTURE: reportsApi.ClosingStockReportResponse = {
       uncosted_quantity: '-4.00',
       has_negative_batches: true,
       has_unpriced_mrp: true,
+      value_selling: null,
+      has_selling_at_mrp: false,
       batches: [
         {
           batch_number: 'BND-9',
@@ -152,6 +165,9 @@ const FIXTURE: reportsApi.ClosingStockReportResponse = {
           value_mrp: null,
           cost_basis: 'MISSING',
           has_unpriced_mrp: true,
+          selling_price_per_unit: null,
+          selling_price_basis: null,
+          value_selling: null,
         },
       ],
     },
@@ -164,6 +180,7 @@ const FIXTURE: reportsApi.ClosingStockReportResponse = {
     total_value_cost_ex_gst: '900.00',
     total_value_cost_inc_gst: '1008.00',
     total_value_mrp: '1650.00',
+    total_value_selling: '1350.00',
     uncosted_product_count: 1,
     uncosted_quantity: '-4.00',
     unpriced_mrp_product_count: 1,
@@ -256,15 +273,15 @@ describe('ClosingStockReport page', () => {
 
   it('shows NULL values as an em dash and negative quantity in red', () => {
     renderPage();
-    // Bandage Roll: missing brand + product code, and its three null values.
-    expect(screen.getAllByText('—')).toHaveLength(5);
+    // Bandage Roll: missing brand + product code, and its four null values.
+    expect(screen.getAllByText('—')).toHaveLength(6);
     expect(screen.getByText('-4')).toHaveStyle({ color: '#DC2626' });
   });
 
   it('labels cost values "Purchase Value" in the subtitle, headers and summary cards', () => {
     renderPage();
     expect(
-      screen.getByText('Stock on hand at the end of the selected date, valued at purchase cost and MRP.')
+      screen.getByText('Stock on hand at the end of the selected date, valued at purchase cost, MRP and last selling price.')
     ).toBeInTheDocument();
     const headers = within(screen.getAllByRole('rowgroup')[0]);
     // Two-line headers: "Purchase Value" over the GST basis.
@@ -334,8 +351,11 @@ describe('ClosingStockReport page', () => {
       'Purchase Value excl. GST (₹)',
       'Purchase Value incl. GST (₹)',
       'Value @ MRP (₹)',
+      'Value @ Selling Price (₹)',
     ]);
     expect(csvProps.data[0]['Qty (units)']).toBe('110');
+    expect(csvProps.data[0]['Value @ Selling Price (₹)']).toBe('1350.00');
+    expect(csvProps.data[1]['Value @ Selling Price (₹)']).toBe('');
     expect(csvProps.data[1]).toMatchObject({ 'Qty (units)': '-4', 'Purchase Value excl. GST (₹)': '' });
     expect(csvProps.data[2]).toEqual({
       Brand: 'Total',
@@ -345,6 +365,7 @@ describe('ClosingStockReport page', () => {
       'Purchase Value excl. GST (₹)': '900.00',
       'Purchase Value incl. GST (₹)': '1008.00',
       'Value @ MRP (₹)': '1650.00',
+      'Value @ Selling Price (₹)': '1350.00',
     });
   });
 
@@ -376,14 +397,16 @@ describe('ClosingStockReport page', () => {
           value_cost_ex_gst: '0.00',
           value_cost_inc_gst: '0.00',
           value_mrp: '0.00',
+          value_selling: '0.00',
+          has_selling_at_mrp: false,
         },
       ],
-      summary: { ...FIXTURE.summary, ...ZERO_COUNTERS, total_quantity: '0.00', total_value_cost_ex_gst: '0.00', total_value_cost_inc_gst: '0.00', total_value_mrp: '0.00' },
+      summary: { ...FIXTURE.summary, ...ZERO_COUNTERS, total_quantity: '0.00', total_value_cost_ex_gst: '0.00', total_value_cost_inc_gst: '0.00', total_value_mrp: '0.00', total_value_selling: '0.00' },
     });
     renderPage();
     expect(screen.queryByText('—')).not.toBeInTheDocument();
-    // 3 value cells + 3 footer totals + 3 summary-bar stats
-    expect(screen.getAllByText('₹0.00')).toHaveLength(9);
+    // 4 value cells + 4 footer totals + 4 summary-bar stats
+    expect(screen.getAllByText('₹0.00')).toHaveLength(12);
     // Qty cell + footer total + summary-bar stat
     expect(screen.getAllByText('0')).toHaveLength(3);
   });
@@ -477,6 +500,94 @@ describe('ClosingStockReport page', () => {
     expect(exportCsv('product').data[0]['Value @ MRP (₹)']).toBe('100.00');
   });
 
+  describe('selling price', () => {
+    const AT_MRP_TIP = 'Not sold by this date — priced at current MRP';
+    const AT_MRP_PRODUCT_TIP = 'Some batches were not sold by this date — priced at current MRP';
+
+    it('adds a Value @ Selling Price column, footer total and summary card', () => {
+      renderPage();
+      const headers = within(screen.getAllByRole('rowgroup')[0]);
+      expect(headers.getByText((_, el) => el?.textContent === 'Value @Selling Price' && el.tagName === 'SPAN')).toBeInTheDocument();
+      expect(screen.getByText('Value @ Selling Price')).toBeInTheDocument(); // summary card
+      // Row value + footer total + summary card.
+      expect(screen.getAllByText('₹1,350.00')).toHaveLength(3);
+    });
+
+    it('marks a product with batches priced at MRP, explained by a tooltip', () => {
+      renderPage();
+      const marked = screen.getByLabelText(AT_MRP_PRODUCT_TIP);
+      expect(marked).toHaveTextContent('₹1,350.00MRP');
+      expect(within(marked).getByText('MRP')).toHaveStyle({ color: '#F59E0B' }); // same amber as est./partial
+    });
+
+    it('shows a partial selling value when a stocked batch has no sale and no MRP', () => {
+      mockQuery({
+        ...FIXTURE,
+        rows: [
+          {
+            ...FIXTURE.rows[0],
+            value_selling: '1200.00',
+            batches: [
+              { ...FIXTURE.rows[0].batches[0], selling_price_per_unit: null, selling_price_basis: null, value_selling: null },
+              BATCH,
+            ],
+          },
+        ],
+      });
+      renderPage();
+      expect(screen.getByLabelText('Partial: some batches of this product have no selling price')).toHaveTextContent(
+        '₹1,200.00partial'
+      );
+      expect(exportCsv('product').data[0]['Value @ Selling Price (₹)']).toBe('1200.00');
+    });
+
+    it('does not call a product partial for a sold batch that has no MRP', () => {
+      mockQuery({
+        ...FIXTURE,
+        rows: [
+          {
+            ...FIXTURE.rows[0],
+            value_mrp: '1500.00',
+            has_unpriced_mrp: true,
+            has_selling_at_mrp: false,
+            batches: [{ ...FIXTURE.rows[0].batches[0], mrp_per_unit: null, value_mrp: null, selling_price_basis: 'LAST_SALE' }, BATCH],
+          },
+        ],
+      });
+      renderPage();
+      // MRP is partial, the selling value is complete.
+      expect(screen.getAllByText('partial')).toHaveLength(1);
+      expect(screen.getByLabelText('Partial: some batches of this product have no MRP')).toBeInTheDocument();
+    });
+
+    it('batch-wise: shows the per-unit selling price and marks both cells of an MRP-priced batch', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Batch-wise' }));
+      const headers = within(screen.getAllByRole('rowgroup')[0]);
+      expect(headers.getByText((_, el) => el?.textContent === 'Selling Priceper unit' && el.tagName === 'SPAN')).toBeInTheDocument();
+      expect(headers.getByText((_, el) => el?.textContent === 'Value @Selling Price' && el.tagName === 'SPAN')).toBeInTheDocument();
+      expect(screen.getByText('₹12.00')).toBeInTheDocument(); // last sale, no marker
+      // Like "est.": the per-unit price and the value of the MRP-priced batch are both marked.
+      expect(screen.getAllByLabelText(AT_MRP_TIP).map((el) => el.textContent)).toEqual(['₹15.00MRP', '₹150.00MRP']);
+      expect(screen.getAllByText('MRP')).toHaveLength(2);
+      expect(screen.getByText('₹1,200.00')).toBeInTheDocument();
+    });
+
+    it('notes batches priced at MRP in the data-quality strip, singular and plural', () => {
+      mockQuery({ ...FIXTURE, summary: { ...FIXTURE.summary, ...ZERO_COUNTERS, selling_at_mrp_batch_count: 1 } });
+      const { unmount } = renderPage();
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '1 batch was not sold by this date; its selling price is the current MRP.'
+      );
+      unmount();
+      mockQuery({ ...FIXTURE, summary: { ...FIXTURE.summary, ...ZERO_COUNTERS, selling_at_mrp_batch_count: 3 } });
+      renderPage();
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '3 batches were not sold by this date; their selling price is the current MRP.'
+      );
+    });
+  });
+
   describe('product-wise / batch-wise view', () => {
     const switchToBatch = () => fireEvent.click(viewButton('Batch-wise'));
 
@@ -549,8 +660,9 @@ describe('ClosingStockReport page', () => {
       expect(screen.getByText('-4')).toHaveStyle({ color: '#DC2626' });
       expect(screen.getByText('10')).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument();
-      // Bandage batch: missing brand + product code, plus null expiry, unit cost, two costs and MRP.
-      expect(screen.getAllByText('—')).toHaveLength(7);
+      // Bandage batch: missing brand + product code, plus null expiry, unit cost, two costs, MRP,
+      // selling price and selling value.
+      expect(screen.getAllByText('—')).toHaveLength(9);
       // Server totals in the footer and summary, count card shows batches.
       expect(screen.getByText('Total')).toBeInTheDocument();
       expect(screen.getAllByText('106')).toHaveLength(2);
@@ -693,9 +805,12 @@ describe('ClosingStockReport page', () => {
         'Unit Cost excl. GST (₹)',
         'Unit Cost incl. GST (₹)',
         'MRP per Unit (₹)',
+        'Selling Price per Unit (₹)',
+        'Selling Price Basis',
         'Purchase Value excl. GST (₹)',
         'Purchase Value incl. GST (₹)',
         'Value @ MRP (₹)',
+        'Value @ Selling Price (₹)',
         'Cost Basis',
       ]);
       expect(batchCsvProps.data[0]).toEqual({
@@ -709,18 +824,31 @@ describe('ClosingStockReport page', () => {
         'Unit Cost excl. GST (₹)': '10.00',
         'Unit Cost incl. GST (₹)': '11.20',
         'MRP per Unit (₹)': '15.00',
+        'Selling Price per Unit (₹)': '15.00',
+        'Selling Price Basis': 'MRP',
         'Purchase Value excl. GST (₹)': '100.00',
         'Purchase Value incl. GST (₹)': '112.00',
         'Value @ MRP (₹)': '150.00',
+        'Value @ Selling Price (₹)': '150.00',
         'Cost Basis': 'ESTIMATED',
       });
-      expect(batchCsvProps.data[1]).toMatchObject({ Batch: 'AMX-B2', Expired: 'No', 'Qty (units)': '100' });
+      expect(batchCsvProps.data[1]).toMatchObject({
+        Batch: 'AMX-B2',
+        Expired: 'No',
+        'Qty (units)': '100',
+        'Selling Price per Unit (₹)': '12.00',
+        'Selling Price Basis': 'Last sale',
+        'Value @ Selling Price (₹)': '1200.00',
+      });
       expect(batchCsvProps.data[2]).toMatchObject({
         Product: 'Bandage Roll',
         Expiry: null, // raw null: the CSV builder writes an empty cell
         'Qty (units)': '-4',
         'Unit Cost excl. GST (₹)': '',
         'Value @ MRP (₹)': '',
+        'Selling Price per Unit (₹)': '',
+        'Selling Price Basis': '',
+        'Value @ Selling Price (₹)': '',
         'Cost Basis': 'MISSING',
       });
       expect(batchCsvProps.data[3]).toMatchObject({
@@ -729,6 +857,8 @@ describe('ClosingStockReport page', () => {
         'Qty (units)': '106',
         'Purchase Value excl. GST (₹)': '900.00',
         'Value @ MRP (₹)': '1650.00',
+        'Value @ Selling Price (₹)': '1350.00',
+        'Selling Price Basis': '',
       });
 
       const [logDownload] = mockedActivity.useLogDownloadMutation.mock.results[0].value;

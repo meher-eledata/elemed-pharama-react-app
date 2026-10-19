@@ -3,7 +3,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export const CLOSING_STOCK_REPORT_LABELS = {
   PAGE: {
     TITLE: 'Closing Stock Report',
-    SUBTITLE: 'Stock on hand at the end of the selected date, valued at purchase cost and MRP.',
+    SUBTITLE: 'Stock on hand at the end of the selected date, valued at purchase cost, MRP and last selling price.',
     DOWNLOAD_CSV: 'Download CSV',
     CSV_FILENAME_PREFIX: 'closing_stock_report',
     CSV_FILENAME_BATCH_PREFIX: 'closing_stock_report_batchwise',
@@ -12,7 +12,7 @@ export const CLOSING_STOCK_REPORT_LABELS = {
   DISCOVERY_CARD: {
     TITLE: 'Closing Stock Report',
     DESCRIPTION:
-      'Closing stock by product or batch as of any date, valued at purchase cost (excl. and incl. GST) and MRP.',
+      'Closing stock by product or batch as of any date, valued at purchase cost (excl. and incl. GST), MRP and last selling price.',
     ACTION: 'View Report',
   },
   VIEW: {
@@ -47,6 +47,7 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     VALUE_COST_EX_GST: 'Purchase Value excl. GST',
     VALUE_COST_INC_GST: 'Purchase Value incl. GST',
     VALUE_MRP: 'Value @ MRP',
+    VALUE_SELLING: 'Value @ Selling Price',
   },
   TABLE: {
     BRAND: 'Brand',
@@ -70,11 +71,21 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     VALUE_COST_EX_GST: 'Purchase Value excl. GST',
     VALUE_COST_INC_GST: 'Purchase Value incl. GST',
     VALUE_MRP: 'Value @ MRP',
+    VALUE_SELLING: 'Value @ Selling Price',
+    VALUE_AT_HEADER: 'Value @',
+    MRP_HEADER: 'MRP',
+    SELLING_PRICE_HEADER: 'Selling Price',
+    PER_UNIT_HEADER: 'per unit',
+    SELLING_PRICE_PER_UNIT: 'Selling Price per Unit',
+    SELLING_PRICE_BASIS: 'Selling Price Basis',
+    BASIS_LAST_SALE: 'Last sale',
+    BASIS_MRP: 'MRP',
     CSV_CURRENCY_SUFFIX: ' (₹)',
     TOTAL: 'Total',
     EMPTY_VALUE: '—',
     ESTIMATED_MARKER: 'est.',
     PARTIAL_MARKER: 'partial',
+    AT_MRP_MARKER: 'MRP',
     VALUE_COST_HEADER: 'Purchase Value',
     EX_GST_HEADER: 'excl. GST',
     INC_GST_HEADER: 'incl. GST',
@@ -84,6 +95,10 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     COST_ESTIMATED: "Estimated from this product's average purchase cost",
     MRP_MISSING: 'No MRP on record',
     MRP_PARTIAL: 'Partial: some batches of this product have no MRP',
+    SELLING_MISSING: 'Never sold by this date and no MRP on record',
+    SELLING_PARTIAL: 'Partial: some batches of this product have no selling price',
+    SELLING_AT_MRP: 'Not sold by this date — priced at current MRP',
+    SELLING_AT_MRP_PRODUCT: 'Some batches were not sold by this date — priced at current MRP',
     NEGATIVE_QTY: 'Negative stock: more units went out than were recorded coming in by this date',
     NEGATIVE_BATCHES: 'One or more batches of this product are negative as of this date',
     EXPIRY_MISSING: 'No expiry on record',
@@ -97,6 +112,8 @@ export const CLOSING_STOCK_REPORT_LABELS = {
       `${plural(n, 'product has', 'products have')} no MRP on record; excluded from the MRP total.`,
     NEGATIVE_BATCHES: (n: number) =>
       `${plural(n, 'batch has', 'batches have')} negative stock as of this date.`,
+    SELLING_AT_MRP: (n: number) =>
+      `${plural(n, 'batch was', 'batches were')} not sold by this date; ${n === 1 ? 'its' : 'their'} selling price is the current MRP.`,
     AMBIGUOUS: (n: number) =>
       `${plural(n, 'later stock movement was', 'later stock movements were')} matched to a product by a batch number shared by several products.`,
     UNATTRIBUTED: (n: number) =>
