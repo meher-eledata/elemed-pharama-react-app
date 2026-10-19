@@ -3,7 +3,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export const CLOSING_STOCK_REPORT_LABELS = {
   PAGE: {
     TITLE: 'Closing Stock Report',
-    SUBTITLE: 'Stock on hand at the end of the selected date, valued at cost and MRP.',
+    SUBTITLE: 'Stock on hand at the end of the selected date, valued at purchase cost and MRP.',
     DOWNLOAD_CSV: 'Download CSV',
     CSV_FILENAME_PREFIX: 'closing_stock_report',
     CSV_FILENAME_BATCH_PREFIX: 'closing_stock_report_batchwise',
@@ -12,7 +12,7 @@ export const CLOSING_STOCK_REPORT_LABELS = {
   DISCOVERY_CARD: {
     TITLE: 'Closing Stock Report',
     DESCRIPTION:
-      'Closing stock by product or batch as of any date, valued at cost (excl. and incl. GST) and MRP.',
+      'Closing stock by product or batch as of any date, valued at purchase cost (excl. and incl. GST) and MRP.',
     ACTION: 'View Report',
   },
   VIEW: {
@@ -44,8 +44,8 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     PRODUCTS: 'Products',
     BATCHES: 'Batches',
     TOTAL_QTY: 'Total Qty (units)',
-    VALUE_COST_EX_GST: 'Value @ Cost excl. GST',
-    VALUE_COST_INC_GST: 'Value @ Cost incl. GST',
+    VALUE_COST_EX_GST: 'Purchase Value excl. GST',
+    VALUE_COST_INC_GST: 'Purchase Value incl. GST',
     VALUE_MRP: 'Value @ MRP',
   },
   TABLE: {
@@ -67,15 +67,15 @@ export const CLOSING_STOCK_REPORT_LABELS = {
     COST_BASIS: 'Cost Basis',
     YES: 'Yes',
     NO: 'No',
-    VALUE_COST_EX_GST: 'Value @ Cost excl. GST',
-    VALUE_COST_INC_GST: 'Value @ Cost incl. GST',
+    VALUE_COST_EX_GST: 'Purchase Value excl. GST',
+    VALUE_COST_INC_GST: 'Purchase Value incl. GST',
     VALUE_MRP: 'Value @ MRP',
     CSV_CURRENCY_SUFFIX: ' (₹)',
     TOTAL: 'Total',
     EMPTY_VALUE: '—',
     ESTIMATED_MARKER: 'est.',
     PARTIAL_MARKER: 'partial',
-    VALUE_COST_HEADER: 'Value @ Cost',
+    VALUE_COST_HEADER: 'Purchase Value',
     EX_GST_HEADER: 'excl. GST',
     INC_GST_HEADER: 'incl. GST',
   },
@@ -92,7 +92,7 @@ export const CLOSING_STOCK_REPORT_LABELS = {
   WARNINGS: {
     TITLE: 'Data quality notes for this date',
     UNCOSTED: (n: number, qty: string) =>
-      `${plural(n, 'product has', 'products have')} no purchase cost on record (${qty} units); excluded from cost totals.`,
+      `${plural(n, 'product has', 'products have')} no purchase cost on record (${qty} units); excluded from purchase value totals.`,
     UNPRICED_MRP: (n: number) =>
       `${plural(n, 'product has', 'products have')} no MRP on record; excluded from the MRP total.`,
     NEGATIVE_BATCHES: (n: number) =>

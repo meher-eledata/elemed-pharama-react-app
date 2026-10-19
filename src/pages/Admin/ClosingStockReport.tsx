@@ -56,8 +56,9 @@ import { downloadCsv, CsvCell } from '../../utils/csv';
 import {
   toNum,
   formatCurrency,
-  formatNumber,
   formatCount,
+  formatQuantity,
+  csvQuantity,
   formatReportDate,
 } from '../../utils/reportFormat';
 
@@ -209,7 +210,7 @@ const twoLineHeader = (first: string, second: string) => () => (
 );
 
 const qtyCell = (r: BaseRow) => {
-  const text = formatNumber(r.qtyN);
+  const text = formatQuantity(r.qtyN);
   if (r.qtyN < 0) {
     return (
       <Hint tip={L.TOOLTIP.NEGATIVE_QTY}>
@@ -312,9 +313,9 @@ const qtyColumn = <T extends BaseRow>(totals: Totals, view: View): StockColumn<T
   sortable: true,
   nowrap: true,
   render: qtyCell,
-  csv: (r) => r.qtyN.toFixed(2),
-  total: <Total>{formatNumber(totals.qty)}</Total>,
-  totalCsv: totals.qty.toFixed(2),
+  csv: (r) => csvQuantity(r.qtyN),
+  total: <Total>{formatQuantity(totals.qty)}</Total>,
+  totalCsv: csvQuantity(totals.qty),
 });
 
 const valueColumns = <T extends BaseRow>(totals: Totals): StockColumn<T>[] => [
@@ -565,7 +566,7 @@ const ClosingStockReport: React.FC = () => {
     isBatchView
       ? { label: L.SUMMARY.BATCHES, value: formatCount(summary?.batch_count ?? 0) }
       : { label: L.SUMMARY.PRODUCTS, value: formatCount(summary?.product_count ?? 0) },
-    { label: L.SUMMARY.TOTAL_QTY, value: formatNumber(totals.qty) },
+    { label: L.SUMMARY.TOTAL_QTY, value: formatQuantity(totals.qty) },
     { label: L.SUMMARY.VALUE_COST_EX_GST, value: formatCurrency(totals.costEx) },
     { label: L.SUMMARY.VALUE_COST_INC_GST, value: formatCurrency(totals.costInc) },
     { label: L.SUMMARY.VALUE_MRP, value: formatCurrency(totals.mrp) },
@@ -574,7 +575,7 @@ const ClosingStockReport: React.FC = () => {
   const warnings: string[] = summary
     ? [
         summary.uncosted_product_count > 0 &&
-          L.WARNINGS.UNCOSTED(summary.uncosted_product_count, formatNumber(toNum(summary.uncosted_quantity))),
+          L.WARNINGS.UNCOSTED(summary.uncosted_product_count, formatQuantity(toNum(summary.uncosted_quantity))),
         summary.unpriced_mrp_product_count > 0 && L.WARNINGS.UNPRICED_MRP(summary.unpriced_mrp_product_count),
         summary.negative_batch_count > 0 && L.WARNINGS.NEGATIVE_BATCHES(summary.negative_batch_count),
         summary.ambiguous_movement_count > 0 && L.WARNINGS.AMBIGUOUS(summary.ambiguous_movement_count),

@@ -245,11 +245,12 @@ describe('ClosingStockReport page', () => {
     ['Brand', 'Product', 'Product Code', 'Qty (units)'].forEach((h) =>
       expect(screen.getAllByText(h).length).toBeGreaterThan(0)
     );
-    expect(screen.getAllByText('Value @ Cost excl. GST').length).toBeGreaterThan(0);
     expect(screen.getByText('Amoxicillin 500mg')).toBeInTheDocument();
     expect(screen.getAllByText('₹1,008.00').length).toBeGreaterThan(0);
     expect(screen.getByText('Total')).toBeInTheDocument();
-    expect(screen.getAllByText('106.00').length).toBeGreaterThan(0);
+    // Quantities carry no decimals: footer total + summary card.
+    expect(screen.getAllByText('106')).toHaveLength(2);
+    expect(screen.getByText('110')).toBeInTheDocument();
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 
@@ -257,7 +258,41 @@ describe('ClosingStockReport page', () => {
     renderPage();
     // Bandage Roll: missing brand + product code, and its three null values.
     expect(screen.getAllByText('—')).toHaveLength(5);
-    expect(screen.getByText('-4.00')).toHaveStyle({ color: '#DC2626' });
+    expect(screen.getByText('-4')).toHaveStyle({ color: '#DC2626' });
+  });
+
+  it('labels cost values "Purchase Value" in the subtitle, headers and summary cards', () => {
+    renderPage();
+    expect(
+      screen.getByText('Stock on hand at the end of the selected date, valued at purchase cost and MRP.')
+    ).toBeInTheDocument();
+    const headers = within(screen.getAllByRole('rowgroup')[0]);
+    // Two-line headers: "Purchase Value" over the GST basis.
+    ['excl. GST', 'incl. GST'].forEach((basis) =>
+      expect(headers.getByText((_, el) => el?.textContent === `Purchase Value${basis}` && el.tagName === 'SPAN'))
+        .toBeInTheDocument()
+    );
+    expect(screen.getByText('Purchase Value excl. GST')).toBeInTheDocument();
+    expect(screen.getByText('Purchase Value incl. GST')).toBeInTheDocument();
+    expect(screen.getAllByText('Value @ MRP').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Value @ Cost/)).not.toBeInTheDocument();
+  });
+
+  it('shows quantities without decimals, Indian-grouped, but never rounds a fraction away', () => {
+    mockQuery({
+      ...FIXTURE,
+      rows: [
+        { ...FIXTURE.rows[0], quantity: '16543.00' },
+        { ...FIXTURE.rows[1], quantity: '2.50' },
+      ],
+      summary: { ...FIXTURE.summary, total_quantity: '16545.50' },
+    });
+    renderPage();
+    expect(screen.getByText('16,543')).toBeInTheDocument();
+    expect(screen.getByText('2.5')).toBeInTheDocument();
+    expect(screen.getAllByText('16,545.5')).toHaveLength(2); // footer + summary card
+    const csv = exportCsv('product').data;
+    expect(csv.map((r: Record<string, string>) => r['Qty (units)'])).toEqual(['16543', '2.5', '16545.5']);
   });
 
   it('renders negative money as "-₹" in red, like negative quantities', () => {
@@ -272,7 +307,9 @@ describe('ClosingStockReport page', () => {
 
   it('shows the data-quality strip only when a counter is > 0, and always the MRP note', () => {
     const { unmount } = renderPage();
-    expect(screen.getByRole('status')).toHaveTextContent('1 product has no purchase cost on record');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '1 product has no purchase cost on record (-4 units); excluded from purchase value totals.'
+    );
     expect(screen.getByRole('status')).toHaveTextContent('1 batch has negative stock');
     expect(screen.getByText(/current MRP/)).toBeInTheDocument();
     unmount();
@@ -294,18 +331,19 @@ describe('ClosingStockReport page', () => {
       'Product',
       'Product Code',
       'Qty (units)',
-      'Value @ Cost excl. GST (₹)',
-      'Value @ Cost incl. GST (₹)',
+      'Purchase Value excl. GST (₹)',
+      'Purchase Value incl. GST (₹)',
       'Value @ MRP (₹)',
     ]);
-    expect(csvProps.data[1]['Value @ Cost excl. GST (₹)']).toBe('');
+    expect(csvProps.data[0]['Qty (units)']).toBe('110');
+    expect(csvProps.data[1]).toMatchObject({ 'Qty (units)': '-4', 'Purchase Value excl. GST (₹)': '' });
     expect(csvProps.data[2]).toEqual({
       Brand: 'Total',
       Product: '',
       'Product Code': '',
-      'Qty (units)': '106.00',
-      'Value @ Cost excl. GST (₹)': '900.00',
-      'Value @ Cost incl. GST (₹)': '1008.00',
+      'Qty (units)': '106',
+      'Purchase Value excl. GST (₹)': '900.00',
+      'Purchase Value incl. GST (₹)': '1008.00',
       'Value @ MRP (₹)': '1650.00',
     });
   });
@@ -346,6 +384,8 @@ describe('ClosingStockReport page', () => {
     expect(screen.queryByText('—')).not.toBeInTheDocument();
     // 3 value cells + 3 footer totals + 3 summary-bar stats
     expect(screen.getAllByText('₹0.00')).toHaveLength(9);
+    // Qty cell + footer total + summary-bar stat
+    expect(screen.getAllByText('0')).toHaveLength(3);
   });
 
   it('explains receipt-line deletions after the date as approximate, with singular/plural', () => {
@@ -506,12 +546,15 @@ describe('ClosingStockReport page', () => {
       // Estimated cost marked on the unit cost and both value cells of the estimated batch.
       expect(screen.getAllByText('est.')).toHaveLength(3);
       // Negative batch in red; its null expiry / costs / MRP render as em dashes.
-      expect(screen.getByText('-4.00')).toHaveStyle({ color: '#DC2626' });
+      expect(screen.getByText('-4')).toHaveStyle({ color: '#DC2626' });
+      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getByText('100')).toBeInTheDocument();
       // Bandage batch: missing brand + product code, plus null expiry, unit cost, two costs and MRP.
       expect(screen.getAllByText('—')).toHaveLength(7);
       // Server totals in the footer and summary, count card shows batches.
       expect(screen.getByText('Total')).toBeInTheDocument();
-      expect(screen.getAllByText('106.00').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('106')).toHaveLength(2);
+      expect(screen.queryByText(/Value @ Cost/)).not.toBeInTheDocument();
       expect(screen.getByText('Batches')).toBeInTheDocument();
       expect(screen.queryByText('Products')).not.toBeInTheDocument();
       expect(screen.queryByText(/NaN|Invalid/)).not.toBeInTheDocument();
@@ -650,8 +693,8 @@ describe('ClosingStockReport page', () => {
         'Unit Cost excl. GST (₹)',
         'Unit Cost incl. GST (₹)',
         'MRP per Unit (₹)',
-        'Value @ Cost excl. GST (₹)',
-        'Value @ Cost incl. GST (₹)',
+        'Purchase Value excl. GST (₹)',
+        'Purchase Value incl. GST (₹)',
         'Value @ MRP (₹)',
         'Cost Basis',
       ]);
@@ -662,20 +705,20 @@ describe('ClosingStockReport page', () => {
         Batch: 'AMX-B1',
         Expiry: '2026-09-30',
         Expired: 'Yes',
-        'Qty (units)': '10.00',
+        'Qty (units)': '10',
         'Unit Cost excl. GST (₹)': '10.00',
         'Unit Cost incl. GST (₹)': '11.20',
         'MRP per Unit (₹)': '15.00',
-        'Value @ Cost excl. GST (₹)': '100.00',
-        'Value @ Cost incl. GST (₹)': '112.00',
+        'Purchase Value excl. GST (₹)': '100.00',
+        'Purchase Value incl. GST (₹)': '112.00',
         'Value @ MRP (₹)': '150.00',
         'Cost Basis': 'ESTIMATED',
       });
-      expect(batchCsvProps.data[1]).toMatchObject({ Batch: 'AMX-B2', Expired: 'No' });
+      expect(batchCsvProps.data[1]).toMatchObject({ Batch: 'AMX-B2', Expired: 'No', 'Qty (units)': '100' });
       expect(batchCsvProps.data[2]).toMatchObject({
         Product: 'Bandage Roll',
         Expiry: null, // raw null: the CSV builder writes an empty cell
-        'Qty (units)': '-4.00',
+        'Qty (units)': '-4',
         'Unit Cost excl. GST (₹)': '',
         'Value @ MRP (₹)': '',
         'Cost Basis': 'MISSING',
@@ -683,8 +726,8 @@ describe('ClosingStockReport page', () => {
       expect(batchCsvProps.data[3]).toMatchObject({
         Brand: 'Total',
         Batch: '',
-        'Qty (units)': '106.00',
-        'Value @ Cost excl. GST (₹)': '900.00',
+        'Qty (units)': '106',
+        'Purchase Value excl. GST (₹)': '900.00',
         'Value @ MRP (₹)': '1650.00',
       });
 
