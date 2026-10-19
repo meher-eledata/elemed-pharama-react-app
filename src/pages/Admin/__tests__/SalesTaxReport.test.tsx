@@ -28,6 +28,15 @@ jest.mock('../../../redux/slices/activityApi', () => ({
   ...jest.requireActual('../../../redux/slices/activityApi'),
   useLogDownloadMutation: () => [() => ({ catch: () => {} }), { isLoading: false }],
 }));
+let csvProps: { filename: string; data: Record<string, unknown>[] } | null = null;
+jest.mock('../../../utils/csv', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../utils/csv'),
+  downloadCsv: (filename: string, data: Record<string, unknown>[]) => {
+    csvProps = { filename, data };
+  },
+}));
+
 jest.mock('../../../redux/slices/reportsApi', () => {
   const actual = jest.requireActual('../../../redux/slices/reportsApi');
   return { __esModule: true, ...actual, useGetSalesTaxReportQuery: jest.fn() };
@@ -55,7 +64,9 @@ const FIXTURE: reportsApi.SalesTaxReportResponse = {
       hsn_code: '3004',
       batch_number: 'B-001',
       quantity: '10.00',
+      // Pack MRP 120 for a strip of 10 -> per-unit MRP 12.00 (what the column shows).
       mrp: '120.00',
+      unit_mrp: '12.00',
       selling_price: '100.00',
       taxable_value: '847.46',
       discount_amount: '15.00',
@@ -165,6 +176,7 @@ const renderPage = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  csvProps = null;
   mockedMaster.useGetProductsQuery.mockReturnValue({ data: [], isLoading: false, error: undefined });
   // The page issues two queries: the main one (current level) and a level:"hsn"
   // lookup for the HSN dropdown — resolve each by the requested level.
@@ -255,6 +267,20 @@ describe('SalesTaxReport page', () => {
     // invoice_total "457.00" (whole-rupee value, 2dp pg cast) -> ₹457.
     expect(screen.getByText('₹457')).toBeInTheDocument();
     expect(screen.queryByText('₹457.00')).not.toBeInTheDocument();
+  });
+
+  it('shows the per-unit MRP (unit_mrp) under a "Unit MRP" header, not the pack MRP', () => {
+    renderPage();
+    expect(screen.getByText('Unit MRP')).toBeInTheDocument();
+    expect(screen.getByText('12.00')).toBeInTheDocument();
+    expect(screen.queryByText('120.00')).not.toBeInTheDocument();
+  });
+
+  it('exports the per-unit MRP in the product-wise CSV as "Unit MRP (₹)"', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Download CSV/ }));
+    expect(csvProps?.data[0]).toMatchObject({ 'Unit MRP (₹)': '12.00' });
+    expect(csvProps?.data[0]).not.toHaveProperty('MRP (₹)');
   });
 
   it('formats the line total as ₹ and never renders NaN', () => {

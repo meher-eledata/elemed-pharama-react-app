@@ -43,7 +43,7 @@ import { downloadCsv } from '../../utils/csv';
 interface TaxRow extends SalesTaxReportRow {
   _id: number;
   qtyN: number;
-  mrpN: number;
+  unitMrpN: number;
   spN: number;
   taxableN: number;
   discountN: number;
@@ -158,7 +158,7 @@ const SalesTaxReport: React.FC = () => {
       ...r,
       _id: i,
       qtyN: toNum(r.quantity),
-      mrpN: toNum(r.mrp),
+      unitMrpN: toNum(r.unit_mrp),
       spN: toNum(r.selling_price),
       taxableN: toNum(r.taxable_value),
       discountN: toNum(r.discount_amount),
@@ -252,7 +252,7 @@ const SalesTaxReport: React.FC = () => {
     { key: 'batch_number', header: L.TABLE.BATCH_NUMBER, sortable: true, render: (r) => <CellText>{r.batch_number || '-'}</CellText> },
     { key: 'customer_details', header: L.TABLE.CUSTOMER_DETAILS, sortable: true, render: (r) => <CellText>{r.customer_details || '-'}</CellText> },
     { key: 'qtyN', header: L.TABLE.QTY, sortable: true, render: (r) => <CellText>{formatNumber(r.qtyN)}</CellText> },
-    { key: 'mrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.mrpN)}</CellText> },
+    { key: 'unitMrpN', header: L.TABLE.MRP, sortable: true, render: (r) => <CellText>{formatNumber(r.unitMrpN)}</CellText> },
     { key: 'spN', header: L.TABLE.SP, sortable: true, render: (r) => <CellText>{formatNumber(r.spN)}</CellText> },
     { key: 'taxableN', header: L.TABLE.TAXABLE_VALUE, sortable: true, render: (r) => <CellText>{formatNumber(r.taxableN)}</CellText> },
     { key: 'discountN', header: L.TABLE.DISCOUNT, sortable: true, render: (r) => <CellText>{formatNumber(r.discountN)}</CellText> },
@@ -419,7 +419,7 @@ const SalesTaxReport: React.FC = () => {
       [L.TABLE.BATCH_NUMBER]: r.batch_number,
       [L.TABLE.CUSTOMER_DETAILS]: r.customer_details,
       [L.TABLE.QTY]: r.qtyN.toFixed(2),
-      [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
+      [`${L.TABLE.MRP} (₹)`]: r.unitMrpN.toFixed(2),
       [`${L.TABLE.SP} (₹)`]: r.spN.toFixed(2),
       [`${L.TABLE.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
       [`${L.TABLE.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
