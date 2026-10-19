@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -175,7 +175,7 @@ describe('SalesReceipt edit mode — stored MRP and change detection', () => {
     await waitFor(() => expect(saveButton()).toBeEnabled());
   });
 
-  it('a header-only save resends every line with its stored per-strip mrp (never mrp x qty)', async () => {
+  it('a header-only save sends one id-only line, so no stored line field is rewritten', async () => {
     renderEditScreen();
     await waitFor(() => expect(screen.getAllByText('Strip10').length).toBeGreaterThan(0));
 
@@ -189,10 +189,91 @@ describe('SalesReceipt edit mode — stored MRP and change detection', () => {
     const payload = (editTrigger.mock.calls[0] as any[])[0];
     expect(payload.Added).toEqual([]);
     expect(payload.Deleted).toEqual([]);
-    expect(payload.Edited.map((l: any) => [l.invoice_line_id, l.quantity, l.mrp])).toEqual([
-      [23, 3, 100],
-      [24, 2, 30],
-    ]);
+    // edit-sale 400s on a payload with no lines and keeps every omitted field as stored.
+    expect(payload.Edited).toEqual([{ invoice_line_id: 23 }]);
+    expect(payload.customer_details).toBe('Ward 4');
+  });
+
+  it('enables Save when only the discount authority changes', async () => {
+    // Round trip through the cart ("Add product to cart"): same lines, new authority.
+    const cartItem = (overrides: Record<string, any>) => ({
+      product_id: 1, name: 'Strip10', batch: 'MRPR-A10', mrp: 100, sp: 30, unit_selling_price: 10, quantity: 3,
+      discount: 0, type: 'Tablet', cgstPercent: '2.5', sgstPercent: '2.5', igstPercent: '0', pack_qty: 10, expiry: '',
+      ...overrides,
+    });
+    const details = {
+      ...invoiceDetails,
+      lines: [{ ...invoiceDetails.lines[0], rate: '10', discount_authority: 'Arvind Rao' }],
+    };
+    (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation(details);
+
+    mockLocationState = { ...mockLocationState, cartItems: [cartItem({ id: 'c1', discountAuthorizedBy: 'Arvind Rao' })] };
+    const { unmount } = renderEditScreen();
+    await waitFor(() => expect(screen.getAllByText('Strip10').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByDisplayValue('+919900112233')).toBeInTheDocument());
+    expect(saveButton()).toBeDisabled();
+    unmount();
+
+    mockLocationState = { ...mockLocationState, cartItems: [cartItem({ id: 'c1', discountAuthorizedBy: 'Dr. Mehta' })] };
+    renderEditScreen();
+    await waitFor(() => expect(screen.getAllByText('Strip10').length).toBeGreaterThan(0));
+    await waitFor(() => expect(saveButton()).toBeEnabled());
+  });
+
+  describe('stored GST percents', () => {
+    const taxLine = (id: number, name: string, rate: string, cgst: string, sgst: string, igst: string) =>
+      line({ invoice_line_id: id, product_id: id, batch_number: `B${id}`, name, quantity: '1.00', rate, selling_price: rate, mrp: rate, cgst, sgst, igst, pack_qty: 1 });
+    const taxDetails = {
+      ...invoiceDetails,
+      invoice: { ...invoiceDetails.invoice, total_amount: '547.00' },
+      lines: [
+        { ...taxLine(31, 'ZeroGst', '50.0000', '0.0000', '0.0000', '0.0000'), quantity: '2.00' },
+        taxLine(32, 'IgstOnly', '112.0000', '0.0000', '0.0000', '12.0000'),
+        taxLine(33, 'Gst5', '105.0000', '2.5000', '2.5000', '0.0000'),
+        taxLine(34, 'Gst12', '112.0000', '6.0000', '6.0000', '0.0000'),
+        taxLine(35, 'Gst18', '118.0000', '9.0000', '9.0000', '0.0000'),
+      ],
+    };
+
+    const taxCells = (product: string) => {
+      const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim() ?? '');
+      const cells = screen.getByText(product).closest('tr')!.querySelectorAll('td');
+      return ['CGST (%)', 'SGST (%)', 'IGST (%)'].map((h) => cells[headers.findIndex((t) => t.startsWith(h))].textContent);
+    };
+
+    beforeEach(() => {
+      (salesApi.useGetInvoiceDetailsMutation as jest.Mock) = makeMutation(taxDetails);
+    });
+
+    it('shows each line with its stored rates (0% and IGST-only stay as stored, not 9 + 9)', async () => {
+      renderEditScreen();
+      await waitFor(() => expect(screen.getByText('ZeroGst')).toBeInTheDocument());
+      expect(taxCells('ZeroGst')).toEqual(['0', '0', '0']);
+      expect(taxCells('IgstOnly')).toEqual(['0', '0', '12']);
+      expect(taxCells('Gst5')).toEqual(['2.5', '2.5', '0']);
+      expect(taxCells('Gst12')).toEqual(['6', '6', '0']);
+      expect(taxCells('Gst18')).toEqual(['9', '9', '0']);
+      // Tax-inclusive: 0 + 12 + 5 + 12 + 18.
+      expect(screen.getByDisplayValue('47.00')).toBeInTheDocument();
+    });
+
+    it('editing the quantity of a 0% line sends 0% tax, and only that line', async () => {
+      renderEditScreen();
+      await waitFor(() => expect(screen.getByText('ZeroGst')).toBeInTheDocument());
+      const row = () => screen.getByText('ZeroGst').closest('tr')!;
+      fireEvent.click(within(row()).getByTestId('EditIcon'));
+      fireEvent.change(within(row()).getByDisplayValue('2'), { target: { value: '3' } });
+      fireEvent.click(within(row()).getByTestId('CheckIcon'));
+
+      await waitFor(() => expect(saveButton()).toBeEnabled());
+      fireEvent.click(saveButton());
+      fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+
+      await waitFor(() => expect(editTrigger).toHaveBeenCalled());
+      const payload = (editTrigger.mock.calls[0] as any[])[0];
+      expect(payload.Edited).toHaveLength(1);
+      expect(payload.Edited[0]).toMatchObject({ invoice_line_id: 31, quantity: 3, cgst: 0, sgst: 0, igst: 0 });
+    });
   });
 });
 

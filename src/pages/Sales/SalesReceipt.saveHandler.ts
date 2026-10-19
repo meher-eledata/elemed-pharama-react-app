@@ -357,10 +357,11 @@ export const executeSave = async ({
       });
 
       // edit-sale rejects a payload with no Added/Edited/Deleted lines (400 "No editable
-      // content"), so a header-only edit (customer, doctor, date, payment) resends the
-      // unchanged lines as same-value Edited lines.
-      if (deletedLines.length === 0 && addedLines.length === 0 && editedLines.length === 0) {
-        editedLines.push(...unchangedLines);
+      // content"), so a header-only edit (customer, doctor, date, payment) sends one line
+      // carrying only its id: edit-sale keeps the stored value of every omitted field, so
+      // nothing on the line is rewritten from client-side values.
+      if (deletedLines.length === 0 && addedLines.length === 0 && editedLines.length === 0 && unchangedLines.length > 0) {
+        editedLines.push({ invoice_line_id: unchangedLines[0].invoice_line_id });
       }
 
       const editSalePayload = {

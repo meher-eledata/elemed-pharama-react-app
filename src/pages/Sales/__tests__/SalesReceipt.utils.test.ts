@@ -51,6 +51,8 @@ describe('formatReceiptMrp', () => {
 
   it('falls back to N/A when there is no MRP', () => {
     expect(formatReceiptMrp(undefined)).toBe('N/A');
+    expect(formatReceiptMrp(null)).toBe('N/A');
+    expect(formatReceiptMrp('N/A')).toBe('N/A');
     expect(formatReceiptMrp('')).toBe('N/A');
   });
 
