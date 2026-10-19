@@ -303,7 +303,8 @@ export interface SalesTaxReportRow {
   hsn_code: string | null;
   batch_number: string | null;
   quantity: Num;
-  mrp: Num | null;
+  mrp: Num | null; // pack MRP
+  unit_mrp: Num; // pack MRP / units per pack, 2dp, never null
   selling_price: Num;
   taxable_value: Num;
   discount_amount: Num;
