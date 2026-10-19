@@ -573,6 +573,14 @@ describe('ClosingStockReport page', () => {
       expect(screen.getByText('₹1,200.00')).toBeInTheDocument();
     });
 
+    it('shows an em dash, not ₹0.00, when an older backend sends no selling fields', () => {
+      const { value_selling: _v, has_selling_at_mrp: _h, ...legacyRow } = FIXTURE.rows[0];
+      mockQuery({ ...FIXTURE, rows: [legacyRow as reportsApi.ClosingStockReportRow] });
+      renderPage();
+      expect(screen.getByLabelText('Never sold by this date and no MRP on record')).toHaveTextContent('—');
+      expect(exportCsv('product').data[0]['Value @ Selling Price (₹)']).toBe('');
+    });
+
     it('notes batches priced at MRP in the data-quality strip, singular and plural', () => {
       mockQuery({ ...FIXTURE, summary: { ...FIXTURE.summary, ...ZERO_COUNTERS, selling_at_mrp_batch_count: 1 } });
       const { unmount } = renderPage();

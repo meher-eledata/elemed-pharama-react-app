@@ -149,7 +149,8 @@ const readStoredView = (key: string): View => {
   }
 };
 
-const nullableNum = (v: Num | null): number | null => (v === null ? null : toNum(v));
+// `== null` also catches a field an older backend does not send yet (shown as "—", not ₹0.00).
+const nullableNum = (v: Num | null | undefined): number | null => (v == null ? null : toNum(v));
 const csvMoney = (v: number | null): string => (v === null ? '' : v.toFixed(2));
 
 /** Tooltip-explained cell content; `stacked` lays the children out in a column. */
@@ -563,7 +564,7 @@ const ClosingStockReport: React.FC = () => {
         // Derived from the batches: a stocked batch with no sale and no MRP is left out of
         // value_selling (a batch with a sale but no MRP is still priced, unlike value_mrp).
         sellPartial:
-          r.value_selling !== null &&
+          r.value_selling != null &&
           (r.batches ?? []).some((b) => toNum(b.quantity) !== 0 && b.selling_price_basis === null),
         sellAtMrpTip: r.has_selling_at_mrp ? L.TOOLTIP.SELLING_AT_MRP_PRODUCT : null,
       })),
