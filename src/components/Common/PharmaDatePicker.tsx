@@ -155,6 +155,10 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           border-color: #EF4444 !important;
           border-width: 2px !important;
         }
+        /* An invalid text field keeps MUI's error red while focused (the rule above greys every focused field) */
+        [class*="MuiFormControl-root"][class*="MuiTextField-root"] .MuiOutlinedInput-root.Mui-error.Mui-focused fieldset {
+          border-color: #d32f2f !important;
+        }
         /* Height for MuiFormControl-root-MuiPickersTextField-root .MuiPickersInputBase-root */
         .MuiFormControl-root.MuiPickersTextField-root .MuiPickersInputBase-root,
         [class*="MuiFormControl-root"][class*="MuiPickersTextField-root"] .MuiPickersInputBase-root {

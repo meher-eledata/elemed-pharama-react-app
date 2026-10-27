@@ -116,3 +116,59 @@ describe("useOrderDetailsTable saveEditedRow — product_id resolution", () => {
     expect(savedRow(hook).product_id).toBeUndefined();
   });
 });
+
+describe("useOrderDetailsTable — selling price follows MRP until the user sets it", () => {
+  const setupBlankSp = () => {
+    const showError = jest.fn();
+    const hook = renderHook(() =>
+      useOrderDetailsTable(products, substringResolver, exactResolver, showError)
+    );
+    const fresh = { ...baseRow, sp: 0, mrp: 0 };
+    act(() => {
+      hook.result.current.setPharmaTableData([fresh]);
+      hook.result.current.startEditing(fresh);
+    });
+    return { hook, showError };
+  };
+
+  it("fills a blank SP with the MRP as it is typed", () => {
+    const { hook } = setupBlankSp();
+    act(() => hook.result.current.updateEditingData("mrp", 120));
+    expect(hook.result.current.editingData.sp).toBe(120);
+  });
+
+  it("keeps following while SP still equals the previous MRP", () => {
+    const { hook } = setupBlankSp();
+    act(() => hook.result.current.updateEditingData("mrp", 120));
+    act(() => hook.result.current.updateEditingData("mrp", 150));
+    expect(hook.result.current.editingData.sp).toBe(150);
+  });
+
+  it("stops following once the user types their own SP", () => {
+    const { hook } = setupBlankSp();
+    act(() => hook.result.current.updateEditingData("mrp", 120));
+    act(() => hook.result.current.updateEditingData("sp", 100));
+    act(() => hook.result.current.updateEditingData("mrp", 200));
+    expect(hook.result.current.editingData.sp).toBe(100);
+    expect(hook.result.current.editingData.mrp).toBe(200);
+  });
+
+  it("refuses to save a row whose SP is above its MRP", () => {
+    const { hook, showError } = setup(); // baseRow: mrp 20, sp 10
+    act(() => hook.result.current.updateEditingData("sp", 25));
+    act(() => hook.result.current.saveEditedRow());
+
+    expect(showError).toHaveBeenCalledWith('Selling Price cannot be more than MRP for "NAZOMAC-M"');
+    expect(hook.result.current.editingRowId).toBe("r1");
+    expect(savedRow(hook).sp).toBe(10);
+  });
+
+  it("saves a row whose SP is blank or at most the MRP", () => {
+    const { hook, showError } = setup();
+    act(() => hook.result.current.updateEditingData("sp", 20));
+    act(() => hook.result.current.saveEditedRow());
+
+    expect(showError).not.toHaveBeenCalled();
+    expect(savedRow(hook).sp).toBe(20);
+  });
+});

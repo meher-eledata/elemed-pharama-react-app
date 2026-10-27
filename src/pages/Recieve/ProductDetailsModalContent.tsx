@@ -77,25 +77,27 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
       key: 'productName',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.PRODUCT_NAME,
       sortable: true,
-      columnWidth: '25%',
+      columnWidth: '20%',
     },
     {
       key: 'type',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.TYPE,
       sortable: true,
-      columnWidth: '12%',
+      columnWidth: '10%',
     },
     {
       key: 'quantity',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.QUANTITY,
       sortable: true,
-      columnWidth: '20%',
+      columnWidth: '7%',
+      nowrap: true,
     },
     {
       key: 'hsnCode',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.HSN_CODE,
       sortable: true,
-      columnWidth: '15%',
+      columnWidth: '11%',
+      nowrap: true,
       render: (item) => (
         <Tooltip title="Harmonized System of Nomenclature (HSN) Code" arrow placement="top">
           <span style={{ cursor: 'help' }}>{item.hsnCode || '-'}</span>
@@ -106,21 +108,35 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
       key: 'batchNumber',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.BATCH_NUMBER,
       sortable: true,
-      columnWidth: '13%',
+      columnWidth: '14%',
+      nowrap: true,
       render: (item) => item.batchNumber || '-',
     },
     {
       key: 'mrp',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.MRP,
       sortable: true,
-      columnWidth: '15%',
+      columnWidth: '12%',
+      nowrap: true,
       render: (item) => `₹${item.mrp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    },
+    {
+      key: 'sellingPrice',
+      header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.SELLING_PRICE,
+      sortable: true,
+      columnWidth: '13%',
+      nowrap: true,
+      // null = not recorded (every receipt saved before selling price was captured).
+      render: (item) => item.sellingPrice
+        ? `₹${item.sellingPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : '-',
     },
     {
       key: 'purchasePrice',
       header: PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.PURCHASE_PRICE,
       sortable: true,
-      columnWidth: '15%',
+      columnWidth: '13%',
+      nowrap: true,
       render: (item) => `₹${item.purchasePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     },
   ];

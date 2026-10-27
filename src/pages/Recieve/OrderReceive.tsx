@@ -633,7 +633,8 @@ const OrderReceive: React.FC = () => {
         open={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         title={ORDER_RECEIVE_MODAL.DETAILS_TITLE}
-        maxWidth="56.25rem"
+        // Eight line columns (incl. Selling Price) need ~60rem with nowrap headers.
+        maxWidth="64rem"
         content={
           <ProductDetailsModalContent
             productData={
@@ -655,6 +656,7 @@ const OrderReceive: React.FC = () => {
                       hsnCode: line.hsn_id || line.hsn_code || 'N/A',
                       batchNumber: line.batch_number ?? '',
                       mrp: Number(line.mrp) || 0,
+                      sellingPrice: Number(line.selling_price) || null,
                       purchasePrice: Number(line.purchase_price) || 0,
                       transaction_number: line.transaction_number || '',
                       payment_vendor: line.payment_vendor || '',

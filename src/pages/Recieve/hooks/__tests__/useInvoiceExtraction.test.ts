@@ -114,10 +114,18 @@ describe("buildRowsFromDraft", () => {
     expect(r0.qtyFree).toBe(0);
   });
 
-  it("defaults sp to the extracted purchase price (pp)", () => {
+  it("seeds sp from the extracted MRP — never from the purchase price", () => {
     const rows = buildRowsFromDraft(makeDraft(), THRESHOLD);
     expect(rows[0].pp).toBe(28);
-    expect(rows[0].sp).toBe(28);
+    expect(rows[0].mrp).toBe(35);
+    expect(rows[0].sp).toBe(35);
+  });
+
+  it("leaves sp blank (0) when the extracted MRP is below threshold", () => {
+    const rows = buildRowsFromDraft(makeDraft(), THRESHOLD);
+    // Line 1's MRP (0.4) is blanked, so there is nothing to seed SP from.
+    expect(rows[1].mrp).toBe(0);
+    expect(rows[1].sp).toBe(0);
   });
 
   it("parses the expiry date in local time (DD/MM/YYYY) with NO day-shift", () => {

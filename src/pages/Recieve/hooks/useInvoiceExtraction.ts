@@ -59,7 +59,7 @@ export const buildRowsFromDraft = (
   return draft.lines.map((line, i) => {
     const productResolved =
       line.product.id != null && line.product.confidence >= threshold;
-    const pp = fieldNum(line.purchase_price, threshold);
+    const mrp = fieldNum(line.mrp, threshold);
     return {
       id: String(base + i),
       productId: productResolved ? line.product.name ?? "" : "",
@@ -69,10 +69,12 @@ export const buildRowsFromDraft = (
       qtyFree: fieldNum(line.free_qty, threshold),
       batch: null,
       expiryDate: fieldDate(line.expiry_date, threshold),
-      pp,
-      sp: pp, // default selling price to purchase price (mirrors edit-mode load)
+      pp: fieldNum(line.purchase_price, threshold),
+      // Selling price starts at the extracted MRP (blank when MRP is) — never the
+      // purchase price; the user can lower it before saving.
+      sp: mrp,
       pack: "",
-      mrp: fieldNum(line.mrp, threshold),
+      mrp,
       cgst: fieldNum(line.cgst, threshold),
       sgst: fieldNum(line.sgst, threshold),
       igst: fieldNum(line.igst, threshold),

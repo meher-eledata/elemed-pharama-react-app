@@ -131,7 +131,32 @@ describe('ProductDetailsModalContent', () => {
       expect(screen.queryByText(/Unit Price/i)).not.toBeInTheDocument();
       expect(screen.getByText(/Batch Number/i)).toBeInTheDocument();
       expect(screen.getByText(/MRP/i)).toBeInTheDocument();
+      expect(screen.getByText(PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.SELLING_PRICE)).toBeInTheDocument();
       expect(screen.getByText(/Purchase Price/i)).toBeInTheDocument();
+    });
+
+    it('shows the recorded selling price as currency and "-" when it was not recorded', () => {
+      const data: OrderReceiveRow = {
+        ...mockProductData,
+        products: [
+          { ...mockProductData.products[0], sellingPrice: 1234.5 },
+          { ...mockProductData.products[1], sellingPrice: null },
+        ],
+      };
+      renderWithProviders(
+        <ProductDetailsModalContent
+          productData={data}
+          onUpdateProduct={mockOnUpdateProduct}
+          onDeleteProduct={mockOnDeleteProduct}
+        />
+      );
+
+      const recordedRow = screen.getByText('Product 1').closest('tr')!;
+      expect(recordedRow).toHaveTextContent('₹1,234.50');
+      // A NULL selling price (every pre-existing receipt) is never shown as a price.
+      const unrecordedRow = screen.getByText('Product 2').closest('tr')!;
+      const cells = Array.from(unrecordedRow.querySelectorAll('td')).map((td) => td.textContent);
+      expect(cells).toEqual(['Product 2', 'Medicine', '20', 'HSN002', 'BATCH002', '₹2,000.00', '-', '₹1,600.00']);
     });
 
     it('should render product data in table', () => {

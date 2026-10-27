@@ -296,7 +296,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           batch: null,
           expiryDate: expiryDateValue,
           pp: parseFloat(line.purchase_price) || parseFloat(line.unit_price) || 0,
-          sp: parseFloat(line.selling_price) || parseFloat(line.purchase_price) || parseFloat(line.unit_price) || 0,
+          // NULL (not recorded, incl. every pre-existing receipt) stays blank — no fallback.
+          sp: parseFloat(line.selling_price) || 0,
           pack: line.pack_qty || line.packing_info || '',
           mrp: parseFloat(line.mrp) || parseFloat(line.purchase_price) || parseFloat(line.unit_price) || 0,
           cgst: parseFloat(line.cgst) || 0,
@@ -615,17 +616,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           disableFooterWrapper={true}
           footerContent={table.sortedData.length > 0 && table.currentPage === 1 ? (
             <TableRow sx={{ backgroundColor: '#F9FAFB' }}>
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
-              <TableCell sx={{ padding: '12px 16px' }} />
+              {/* Blank cells up to "Total:" (under Discount), so the value sits under Amount. */}
+              {productColumns.slice(0, -3).map((column) => (
+                <TableCell key={column.key} sx={{ padding: '12px 16px' }} />
+              ))}
               <TableCell sx={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'Lexend', sans-serif", fontWeight: 600, fontSize: '14px', color: '#374151' }}>
                 Total:
               </TableCell>

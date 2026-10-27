@@ -692,11 +692,39 @@ describe('OrderDetails', () => {
       });
       
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
+
       await waitFor(() => {
         // Receipt lines should be loaded
         expect(global.fetch).toHaveBeenCalled();
       });
+    });
+
+    it('loads a NULL selling price as blank — never falls back to purchase price or MRP', async () => {
+      mockLocation.state = { isEditMode: true, receiptId: 1, receiptNumber: 'RA1' };
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('receipt-lines')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [
+              // Every receipt saved before selling price was captured has NULL here.
+              { receipt_line_id: 1, product_name: 'Product 1', received_qty: 10, free_qty: 0,
+                expiry_date: '2027-12-31', purchase_price: '100', unit_price: '100', mrp: '150',
+                selling_price: null },
+              { receipt_line_id: 2, product_name: 'Product 2', received_qty: 5, free_qty: 0,
+                expiry_date: '2027-12-31', purchase_price: '80', unit_price: '80', mrp: '120',
+                selling_price: '110.00' },
+            ],
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => [] });
+      });
+
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+
+      expect(await screen.findByTestId('cell-sp-1')).toHaveTextContent('110');
+      expect(screen.getByTestId('cell-sp-0').textContent).toBe('-');
+      expect(screen.getByTestId('cell-pp-0')).toHaveTextContent('100');
+      expect(screen.getByTestId('cell-mrp-0')).toHaveTextContent('150');
     });
   });
 

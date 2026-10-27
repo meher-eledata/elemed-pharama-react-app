@@ -1,6 +1,7 @@
 import { useState, useMemo, ChangeEvent } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import { PharmaTableRow, ProductOption } from "../types";
+import { orderLabels } from "../../../config/label/OrderDetail.labels";
 
 export const useOrderDetailsTable = (
   productOptionsWithIds: ProductOption[],
@@ -84,10 +85,16 @@ export const useOrderDetailsTable = (
   };
 
   const updateEditingData = (field: keyof PharmaTableRow, value: any) => {
-    setEditingData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setEditingData((prev) => {
+      const next = { ...prev, [field]: value };
+      // Selling price follows MRP while it is blank or still equal to the old MRP;
+      // once the user types their own SP, MRP changes leave it alone.
+      if (field === "mrp") {
+        const prevSp = Number(prev.sp) || 0;
+        if (prevSp === 0 || prevSp === (Number(prev.mrp) || 0)) next.sp = value;
+      }
+      return next;
+    });
   };
 
   const startEditing = (row: PharmaTableRow) => {
@@ -108,6 +115,11 @@ export const useOrderDetailsTable = (
 
     if (qR <= 0 || mRP <= 0 || pPrice <= 0 || isMissingBatchContext || !expiry || packAmt === "") {
       showError("Please fill all mandatory fields (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP) before saving the item.");
+      return;
+    }
+
+    if ((Number(editingData.sp) || 0) > mRP) {
+      showError(orderLabels.sellingPriceAboveMrp(editingData.productId || ""));
       return;
     }
 

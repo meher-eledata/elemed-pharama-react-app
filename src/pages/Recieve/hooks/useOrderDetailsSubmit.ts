@@ -9,6 +9,7 @@ import {
 import { useIdempotencyKey } from "../../../hooks/useIdempotencyKey";
 import { duplicateDocumentNumberMessage, extractErrorMessage } from "../../../utils/errorUtils";
 import { PharmaTableRow, SupplierOption, ProductOption } from "../types";
+import { orderLabels } from "../../../config/label/OrderDetail.labels";
 
 // Every submit/edit failure surfaces through setSaveError. The 409 DUPLICATE_RECEIPT_NUMBER
 // is a retryable counter anomaly rather than bad input, so it is named ahead of the generic
@@ -62,6 +63,13 @@ const toEditApiDate = (val?: string): string | undefined => {
   if (!val.trim()) return "";
   const d = dayjs(val, "DD/MM/YYYY");
   return d.isValid() ? d.format("YYYY-MM-DD") : undefined;
+};
+
+// Selling price is optional: a blank (0) cell is sent as null ("not recorded"),
+// never as a price.
+const toApiSellingPrice = (sp: unknown): number | null => {
+  const n = Number(sp);
+  return n > 0 ? n : null;
 };
 
 interface SubmitHookParams {
@@ -211,7 +219,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         igst: Number(row.igst) || 0,
         discount: Number(row.disc) || 0,
         mrp: Number(row.mrp) || 0,
-        selling_price: Number(row.sp) || 0,
+        selling_price: toApiSellingPrice(row.sp),
         pack_qty: row.pack || ""
       };
     });
@@ -295,7 +303,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           igst: Number(row.igst) || 0,
           discount: Number(row.disc) || 0,
           mrp: row.mrp,
-          selling_price: row.sp,
+          selling_price: toApiSellingPrice(row.sp),
           pack_qty: row.pack
         };
       });
@@ -348,7 +356,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           igst: (Number(row.igst) || 0).toString(),
           discount: (Number(row.disc) || 0).toString(),
           mrp: row.mrp.toString(),
-          selling_price: row.sp.toString(),
+          selling_price: toApiSellingPrice(row.sp),
           pack_qty: (row.pack || '').toString()
         };
       });
@@ -408,6 +416,13 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     if (incompleteProducts.length > 0) {
       return 'Please complete all mandatory fields for all products (Batch, Expiry, Pack Info, Qty, Purchase Price, MRP)';
     }
+
+    const spAboveMrp = pharmaTableData.find(row => {
+      const sp = Number(row.sp) || 0;
+      const mrp = Number(row.mrp) || 0;
+      return sp > 0 && mrp > 0 && sp > mrp;
+    });
+    if (spAboveMrp) return orderLabels.sellingPriceAboveMrp(spAboveMrp.productId);
     return null;
   };
 

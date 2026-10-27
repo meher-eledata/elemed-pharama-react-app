@@ -96,7 +96,8 @@ export interface EditReceiptRequest {
     igst: number;
     discount: number;
     mrp: number;
-    selling_price: number;
+    // Per PACK, GST-inclusive (same basis as mrp/purchase_price); null = not recorded.
+    selling_price: number | null;
     pack_qty?: string;
   }>;
   Edited: Array<{
@@ -115,7 +116,8 @@ export interface EditReceiptRequest {
     igst: string;
     discount: string;
     mrp: string;
-    selling_price: string;
+    // Per PACK, GST-inclusive; null/0 clears the stored value, omitting the key keeps it.
+    selling_price: number | null;
     pack_qty?: string;
   }>;
   // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the
@@ -165,6 +167,9 @@ export interface ReceiptLine {
   unit_price: string;
   mrp?: string; // MRP field from backend (DECIMAL returned as string)
   purchase_price?: string; // Purchase price field from backend (DECIMAL returned as string)
+  // purchase_order_lines.selling_price: per PACK, GST-inclusive, same basis as mrp /
+  // purchase_price — NOT the per-UNIT invoice_lines.selling_price. null = not recorded.
+  selling_price?: string | number | null;
   expiry_date?: string | null; // Expiry date field from backend
   // Header dates repeated on every line (see Receipt above): the editable goods-received
   // date (never null — COALESCE) and the SUPPLIER's invoice date (nullable).
@@ -508,7 +513,8 @@ export const receiveApi = createApi({
           igst: number;
           discount: number;
           mrp?: number;
-          selling_price?: number;
+          // Per PACK, GST-inclusive (same basis as mrp/purchase_price); null = not recorded.
+          selling_price?: number | null;
           pack_qty?: string;
         }>;
         // OPTIONAL (≤64 chars): duplicate submit with the same key returns 200 with the

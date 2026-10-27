@@ -5,6 +5,7 @@ export interface ProductItem {
   hsnCode: string;
   batchNumber: string;
   mrp: number;
+  sellingPrice?: number | null; // null = not recorded on the receipt line
   purchasePrice: number;
   lineId?: number;
   transaction_number?: string;

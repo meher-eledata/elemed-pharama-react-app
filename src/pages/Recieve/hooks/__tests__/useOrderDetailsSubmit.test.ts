@@ -460,3 +460,87 @@ describe("useOrderDetailsSubmit — receipt_date / invoice_date payload", () => 
     expect(body.receipt_date).toBe("");
   });
 });
+
+// ===========================================================================
+// selling_price (per pack, GST-inclusive; optional — null = not recorded)
+//
+// A blank SP cell (0) must go out as null on every path, never as a price, and a
+// row whose SP is above its MRP must never reach the API.
+// ===========================================================================
+describe("useOrderDetailsSubmit — selling_price", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const blankSpRow: PharmaTableRow = { ...row, id: "r2", productId: "NAZOMAC-M", product_id: 20, sp: 0 };
+
+  it("CREATE: sends the typed SP and null for a blank SP on all three save paths", async () => {
+    mockSubmitReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 42 }) });
+    const params = { ...makeParams(), pharmaTableData: [row, blankSpRow] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+      await result.current.handleProceedToPayment();
+      await result.current.handleSaveAndPayLater();
+    });
+
+    expect(mockSubmitReceipt).toHaveBeenCalledTimes(3);
+    for (const [body] of mockSubmitReceipt.mock.calls) {
+      expect(body.lines.map((l: any) => l.selling_price)).toEqual([12, null]);
+    }
+  });
+
+  it("EDIT: Added and Edited lines send null for a blank SP; an SP-only change is detected", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const clearedOriginal = { ...row, id: "11", sp: 12 };
+    const historicalOriginal = { ...row, id: "12", sp: 0 }; // pre-existing receipt: NULL SP
+    const untouched = { ...row, id: "13", sp: 0 };
+    const params = {
+      ...makeParams(),
+      isEditMode: true,
+      receiptId: 5,
+      originalReceiptLines: [clearedOriginal, historicalOriginal, untouched],
+      pharmaTableData: [
+        { ...clearedOriginal, sp: 0 }, // user blanked the SP
+        { ...historicalOriginal, sp: 15 }, // user recorded an SP for the first time
+        untouched,
+        { ...blankSpRow, id: "1700000000000" }, // newly added row, SP left blank
+      ],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    const [body] = mockEditReceipt.mock.calls[0];
+    expect(body.Edited.map((l: any) => [l.receipt_line_id, l.selling_price])).toEqual([
+      [11, null],
+      [12, 15],
+    ]);
+    expect(body.Added).toHaveLength(1);
+    expect(body.Added[0].selling_price).toBeNull();
+  });
+
+  it.each([
+    ["create", {}, mockSubmitReceipt],
+    ["edit", { isEditMode: true, receiptId: 5 }, mockEditReceipt],
+  ])("%s: blocks the save when a row's SP is above its MRP", async (_mode, override, mutation) => {
+    const params = { ...makeParams(), ...override, pharmaTableData: [{ ...row, sp: 25 }] }; // mrp 20
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith(
+      'Selling Price cannot be more than MRP for "Paracetamol 500"'
+    );
+    expect(mutation).not.toHaveBeenCalled();
+  });
+
+  it("validateForm allows an SP equal to the MRP or left blank", () => {
+    const params = { ...makeParams(), pharmaTableData: [{ ...row, sp: 20 }, blankSpRow] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+    expect(result.current.validateForm()).toBeNull();
+  });
+});

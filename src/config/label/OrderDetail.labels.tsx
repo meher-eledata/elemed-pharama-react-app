@@ -60,4 +60,6 @@ export const orderLabels = {
   receiptSubmitted: 'Receipt submitted successfully!',
   receiptSubmittedWithNumber: (receiptNumber: string) =>
     `Receipt ${receiptNumber} submitted successfully!`,
+  sellingPriceAboveMrp: (productName: string) =>
+    `Selling Price cannot be more than MRP for "${productName}"`,
 };

@@ -303,6 +303,30 @@ export const getProductTableColumns = ({
       ),
     },
     {
+      // Optional; per pack, GST-inclusive like MRP. Blank (0) = not recorded.
+      key: "sp",
+      header: orderLabels.sellingPrice,
+      columnWidth: "100px",
+      sortable: false,
+      render: (row) => {
+        if (editingRowId !== row.id) return <span>{row.sp || '-'}</span>;
+        const sp = Number(editingData.sp) || 0;
+        const mrp = Number(editingData.mrp) || 0;
+        return (
+          <TextField
+            size="small"
+            type="number"
+            value={editingData.sp || ""}
+            onChange={(e) => updateEditingData("sp", Number(e.target.value))}
+            error={sp > 0 && mrp > 0 && sp > mrp}
+            variant="outlined"
+            fullWidth
+            sx={numberInputStyles}
+          />
+        );
+      },
+    },
+    {
       key: "pp",
       header: orderLabels.purchasePrice,
       columnWidth: "100px",
