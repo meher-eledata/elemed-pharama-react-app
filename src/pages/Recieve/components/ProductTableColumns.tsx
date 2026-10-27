@@ -318,7 +318,8 @@ export const getProductTableColumns = ({
             type="number"
             value={editingData.sp || ""}
             onChange={(e) => updateEditingData("sp", Number(e.target.value))}
-            error={sp > 0 && mrp > 0 && sp > mrp}
+            inputProps={{ min: 0 }}
+            error={sp < 0 || (mrp > 0 && sp > mrp)}
             variant="outlined"
             fullWidth
             sx={numberInputStyles}

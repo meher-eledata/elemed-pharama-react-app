@@ -169,7 +169,7 @@ export interface ReceiptLine {
   purchase_price?: string; // Purchase price field from backend (DECIMAL returned as string)
   // purchase_order_lines.selling_price: per PACK, GST-inclusive, same basis as mrp /
   // purchase_price — NOT the per-UNIT invoice_lines.selling_price. null = not recorded.
-  selling_price?: string | number | null;
+  selling_price: string | null; // NUMERIC as a string, e.g. '110.0000'
   expiry_date?: string | null; // Expiry date field from backend
   // Header dates repeated on every line (see Receipt above): the editable goods-received
   // date (never null — COALESCE) and the SUPPLIER's invoice date (nullable).

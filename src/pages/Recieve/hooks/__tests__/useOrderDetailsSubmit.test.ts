@@ -580,3 +580,97 @@ describe("useOrderDetailsSubmit — mandatory-field message", () => {
     );
   });
 });
+
+// ===========================================================================
+// EDIT-mode validation covers only the lines the save sends (Added + Edited).
+// ===========================================================================
+describe("useOrderDetailsSubmit — edit validation scope and negative SP", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // A historical line whose batch has no MRP (loaded as 0) and no recorded SP.
+  const oldLine: PharmaTableRow = { ...row, id: "21", productId: "Old Syrup", mrp: 0, sp: 0 };
+  const requireMrp = (r: PharmaTableRow) => !!r.productId.trim() && r.mrp > 0;
+  const editParams = (current: PharmaTableRow[]) => ({
+    ...makeParams(),
+    isEditMode: true,
+    receiptId: 5,
+    isProductRowComplete: requireMrp,
+    originalReceiptLines: [oldLine],
+    pharmaTableData: current,
+  });
+
+  it("an untouched incomplete line does not block a header-only edit save", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const params = { ...editParams([oldLine]), invoiceNumber: "INV-CORRECTED" };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).not.toHaveBeenCalledWith(expect.any(String));
+    expect(mockEditReceipt).toHaveBeenCalledTimes(1);
+    const [body] = mockEditReceipt.mock.calls[0];
+    expect(body.invoice_number).toBe("INV-CORRECTED");
+    expect(body.Edited).toEqual([]);
+    expect(body.Added).toEqual([]);
+  });
+
+  it("the same line is checked once it is edited", async () => {
+    const params = editParams([{ ...oldLine, qtyReceived: 6 }]);
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith(
+      'Please complete all mandatory fields for "Old Syrup" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
+    );
+    expect(mockEditReceipt).not.toHaveBeenCalled();
+  });
+
+  it("CREATE still checks every row", () => {
+    const params = { ...makeParams(), isProductRowComplete: requireMrp, pharmaTableData: [row, oldLine] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+    expect(result.current.validateForm()).toBe(
+      'Please complete all mandatory fields for "Old Syrup" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
+    );
+  });
+
+  it("a historical NULL-SP line edited for quantity only sends selling_price: null", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const historical = { ...row, id: "22", sp: 0 }; // complete line, SP never recorded
+    const params = {
+      ...makeParams(),
+      isEditMode: true,
+      receiptId: 5,
+      originalReceiptLines: [historical],
+      pharmaTableData: [{ ...historical, qtyReceived: 9 }],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    const [body] = mockEditReceipt.mock.calls[0];
+    expect(body.Edited).toHaveLength(1);
+    expect(body.Edited[0]).toMatchObject({ receipt_line_id: 22, received_qty: 9, selling_price: null });
+  });
+
+  it.each([
+    ["create", {}, mockSubmitReceipt],
+    ["edit", { isEditMode: true, receiptId: 5 }, mockEditReceipt],
+  ])("%s: a typed negative SP blocks the save instead of going out as null", async (_mode, override, mutation) => {
+    const params = { ...makeParams(), ...override, pharmaTableData: [{ ...row, sp: -3 }] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith('Selling Price cannot be negative for "Paracetamol 500"');
+    expect(mutation).not.toHaveBeenCalled();
+  });
+});

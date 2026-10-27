@@ -1,3 +1,7 @@
+// Mandatory receive-line fields, named after the line-items table's column headers.
+const MANDATORY_LINE_FIELDS = 'Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP';
+const forProduct = (productName: string) => (productName ? ` for "${productName}"` : '');
+
 export const orderLabels = {
   // Main title
   orderDetails: 'Order Details',
@@ -60,6 +64,13 @@ export const orderLabels = {
   receiptSubmitted: 'Receipt submitted successfully!',
   receiptSubmittedWithNumber: (receiptNumber: string) =>
     `Receipt ${receiptNumber} submitted successfully!`,
+
+  // Line validation (row save and receipt save).
+  mandatoryFieldsForItem: `Please fill all mandatory fields (${MANDATORY_LINE_FIELDS}) before saving the item.`,
+  mandatoryFieldsForReceipt: (productName: string) =>
+    `Please complete all mandatory fields${forProduct(productName) || ' for all products'} (${MANDATORY_LINE_FIELDS})`,
   sellingPriceAboveMrp: (productName: string) =>
-    `Selling Price cannot be more than MRP for "${productName}"`,
+    `Selling Price cannot be more than MRP${forProduct(productName)}`,
+  sellingPriceNegative: (productName: string) =>
+    `Selling Price cannot be negative${forProduct(productName)}`,
 };

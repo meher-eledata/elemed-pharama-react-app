@@ -727,10 +727,9 @@ describe('OrderDetails', () => {
       expect(screen.getByTestId('cell-mrp-0')).toHaveTextContent('150');
     });
 
-    it('loads a line without a stored MRP as blank and makes the user enter it before saving', async () => {
-      const user = userEvent.setup();
-      const mockEdit = jest.fn().mockResolvedValue({ message: 'Success', receiptId: 1 });
-      mockUseEditReceiptMutation.mockReturnValue(createMockMutation(mockEdit));
+    // A historical line whose batch has no MRP: shown blank (never the purchase price),
+    // and — per the edit-validation rule — it only has to be fixed once it is edited.
+    const loadLineWithoutMrp = () => {
       mockLocation.state = {
         isEditMode: true,
         receiptId: 1,
@@ -745,7 +744,6 @@ describe('OrderDetails', () => {
           return Promise.resolve({
             ok: true,
             json: async () => [
-              // Every mandatory field present except MRP.
               { receipt_line_id: 1, product_name: 'Product 1', invoice_number: 'INV-1', batch_number: 'B1',
                 pack_qty: '10x10', received_qty: 10, free_qty: 0, expiry_date: '2027-12-31',
                 purchase_price: '100', unit_price: '100', mrp: null, selling_price: null },
@@ -757,21 +755,35 @@ describe('OrderDetails', () => {
         }
         return Promise.resolve({ ok: true, json: async () => [] });
       });
-
       renderWithProviders(<OrderDetails labels={orderLabels} />);
+    };
 
-      // Shown blank — never the purchase price passed off as the batch MRP.
+    it('shows a line without a stored MRP as blank, and an untouched one does not block a header-only save', async () => {
+      const user = userEvent.setup();
+      const mockEdit = jest.fn((_body: any) => ({ unwrap: () => Promise.resolve({ receipt_id: 1 }) }));
+      mockUseEditReceiptMutation.mockReturnValue(createMockMutation(mockEdit as any));
+      loadLineWithoutMrp();
+
       expect(await screen.findByTestId('cell-mrp-0')).toHaveTextContent('-');
       const saveButton = screen.getByText('Save').closest('button')!;
       await waitFor(() => expect(saveButton).not.toBeDisabled());
       await user.click(saveButton);
 
-      expect(
-        await screen.findByText(
-          'Please complete all mandatory fields for "Product 1" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
-        )
-      ).toBeInTheDocument();
-      expect(mockEdit).not.toHaveBeenCalled();
+      await waitFor(() => expect(mockEdit).toHaveBeenCalledTimes(1));
+      expect(mockEdit.mock.calls[0][0]).toMatchObject({ Edited: [], Added: [] });
+    }, 20000);
+
+    it('once that line is edited, saving the row requires an MRP', async () => {
+      const user = userEvent.setup();
+      loadLineWithoutMrp();
+
+      const actions = await screen.findByTestId('cell-actions-0');
+      await user.click(within(actions).getAllByRole('button')[0]); // edit
+      const qty = within(screen.getByTestId('cell-qtyReceived-0')).getByRole('spinbutton');
+      fireEvent.change(qty, { target: { value: '12' } });
+      await user.click(within(screen.getByTestId('cell-actions-0')).getAllByRole('button')[0]); // tick
+
+      expect(await screen.findByText(orderLabels.mandatoryFieldsForItem)).toBeInTheDocument();
     }, 20000);
   });
 

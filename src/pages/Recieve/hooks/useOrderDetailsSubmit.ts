@@ -262,14 +262,44 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     return payload;
   };
 
-  const detectChanges = () => {
-    const originalIds = new Set(originalReceiptLines.map(row => row.id));
-    const currentIds = new Set(pharmaTableData.map(row => row.id));
+  // Edit saves send only Added and Edited lines; these decide which lines those are.
+  const isDatabaseId = (id: string | undefined) => {
+    if (!id) return false;
+    return /^\d+$/.test(id) && parseInt(id) < 1000000000000;
+  };
 
-    const isDatabaseId = (id: string | undefined) => {
-      if (!id) return false;
-      return /^\d+$/.test(id) && parseInt(id) < 1000000000000;
-    };
+  const isAddedLine = (row: PharmaTableRow) =>
+    !originalReceiptLines.some(orig => orig.id === row.id) || (!!row.id && !isDatabaseId(row.id));
+
+  const isEditedLine = (currentRow: PharmaTableRow) => {
+    if (!isDatabaseId(currentRow.id)) return false;
+    const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
+    if (!originalRow) return false;
+
+    const expiryDateChanged =
+      (originalRow.expiryDate === null && currentRow.expiryDate !== null) ||
+      (originalRow.expiryDate !== null && currentRow.expiryDate === null) ||
+      (originalRow.expiryDate && currentRow.expiryDate &&
+        !originalRow.expiryDate.isSame(currentRow.expiryDate, 'day'));
+
+    return (
+      originalRow.productId !== currentRow.productId ||
+      originalRow.qtyReceived !== currentRow.qtyReceived ||
+      originalRow.qtyFree !== currentRow.qtyFree ||
+      originalRow.pp !== currentRow.pp ||
+      originalRow.cgst !== currentRow.cgst ||
+      originalRow.sgst !== currentRow.sgst ||
+      originalRow.igst !== currentRow.igst ||
+      originalRow.disc !== currentRow.disc ||
+      originalRow.mrp !== currentRow.mrp ||
+      originalRow.sp !== currentRow.sp ||
+      (originalRow.pack || '') !== (currentRow.pack || '') ||
+      !!expiryDateChanged
+    );
+  };
+
+  const detectChanges = () => {
+    const currentIds = new Set(pharmaTableData.map(row => row.id));
 
     const formatExpiryDate = (row: PharmaTableRow): string => {
       if (row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()) {
@@ -283,11 +313,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       .map(row => ({ receipt_line_id: parseInt(row.id || '0') }));
 
     const added = pharmaTableData
-      .filter(currentRow => {
-        if (!originalIds.has(currentRow.id)) return true;
-        if (currentRow.id && !isDatabaseId(currentRow.id)) return true;
-        return false;
-      })
+      .filter(isAddedLine)
       .map(row => {
         const productId = row.product_id || getProductIdFromName(row.productId);
         return {
@@ -309,32 +335,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       });
 
     const edited = pharmaTableData
-      .filter(currentRow => {
-        if (!isDatabaseId(currentRow.id)) return false;
-        const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
-        if (!originalRow) return false;
-
-        const expiryDateChanged =
-          (originalRow.expiryDate === null && currentRow.expiryDate !== null) ||
-          (originalRow.expiryDate !== null && currentRow.expiryDate === null) ||
-          (originalRow.expiryDate && currentRow.expiryDate &&
-            !originalRow.expiryDate.isSame(currentRow.expiryDate, 'day'));
-
-        return (
-          originalRow.productId !== currentRow.productId ||
-          originalRow.qtyReceived !== currentRow.qtyReceived ||
-          originalRow.qtyFree !== currentRow.qtyFree ||
-          originalRow.pp !== currentRow.pp ||
-          originalRow.cgst !== currentRow.cgst ||
-          originalRow.sgst !== currentRow.sgst ||
-          originalRow.igst !== currentRow.igst ||
-          originalRow.disc !== currentRow.disc ||
-          originalRow.mrp !== currentRow.mrp ||
-          originalRow.sp !== currentRow.sp ||
-          (originalRow.pack || '') !== (currentRow.pack || '') ||
-          expiryDateChanged
-        );
-      })
+      .filter(isEditedLine)
       .map(row => {
         const originalRow = originalReceiptLines.find(orig => orig.id === row.id);
         const productId = row.product_id || originalRow?.product_id || getProductIdFromName(row.productId);
@@ -412,19 +413,25 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     if (!supplierName.trim()) return 'Please fill in the Supplier Name';
     if (pharmaTableData.length === 0) return 'Please add at least one product to the table';
 
-    // Name the first incomplete line (rows are paginated, 5 per page).
-    const incomplete = pharmaTableData.find(row => !isProductRowComplete(row));
-    if (incomplete) {
-      const name = incomplete.productId.trim();
-      return `Please complete all mandatory fields for ${name ? `"${name}"` : 'all products'} (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)`;
-    }
+    // An edit save sends only Added and Edited lines, so untouched history (e.g. an old
+    // line whose batch has no MRP) never blocks a header-only save. Create checks all.
+    const linesToCheck = isEditMode && receiptId
+      ? pharmaTableData.filter(row => isAddedLine(row) || isEditedLine(row))
+      : pharmaTableData;
 
-    const spAboveMrp = pharmaTableData.find(row => {
+    // Name the first offending line (rows are paginated, 5 per page).
+    const incomplete = linesToCheck.find(row => !isProductRowComplete(row));
+    if (incomplete) return orderLabels.mandatoryFieldsForReceipt(incomplete.productId.trim());
+
+    const negativeSp = linesToCheck.find(row => (Number(row.sp) || 0) < 0);
+    if (negativeSp) return orderLabels.sellingPriceNegative(negativeSp.productId.trim());
+
+    const spAboveMrp = linesToCheck.find(row => {
       const sp = Number(row.sp) || 0;
       const mrp = Number(row.mrp) || 0;
-      return sp > 0 && mrp > 0 && sp > mrp;
+      return mrp > 0 && sp > mrp;
     });
-    if (spAboveMrp) return orderLabels.sellingPriceAboveMrp(spAboveMrp.productId);
+    if (spAboveMrp) return orderLabels.sellingPriceAboveMrp(spAboveMrp.productId.trim());
     return null;
   };
 

@@ -65,6 +65,7 @@ export const useOrderDetailsTable = (
       expiryDate: null,
       pp: 0,
       sp: 0,
+      spFollowsMrp: true,
       mrp: 0,
       cgst: 2.5,
       sgst: 2.5,
@@ -87,12 +88,9 @@ export const useOrderDetailsTable = (
   const updateEditingData = (field: keyof PharmaTableRow, value: any) => {
     setEditingData((prev) => {
       const next = { ...prev, [field]: value };
-      // Selling price follows MRP while it is blank or still equal to the old MRP;
-      // once the user types their own SP, MRP changes leave it alone.
-      if (field === "mrp") {
-        const prevSp = Number(prev.sp) || 0;
-        if (prevSp === 0 || prevSp === (Number(prev.mrp) || 0)) next.sp = value;
-      }
+      // Any edit to SP (including clearing it) stops it following MRP for this row.
+      if (field === "sp") next.spFollowsMrp = false;
+      else if (field === "mrp" && prev.spFollowsMrp) next.sp = value;
       return next;
     });
   };
@@ -114,11 +112,16 @@ export const useOrderDetailsTable = (
     const expiry = editingData.expiryDate;
 
     if (qR <= 0 || mRP <= 0 || pPrice <= 0 || isMissingBatchContext || !expiry || packAmt === "") {
-      showError("Please fill all mandatory fields (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP) before saving the item.");
+      showError(orderLabels.mandatoryFieldsForItem);
       return;
     }
 
-    if ((Number(editingData.sp) || 0) > mRP) {
+    const sPrice = Number(editingData.sp) || 0;
+    if (sPrice < 0) {
+      showError(orderLabels.sellingPriceNegative(editingData.productId || ""));
+      return;
+    }
+    if (sPrice > mRP) {
       showError(orderLabels.sellingPriceAboveMrp(editingData.productId || ""));
       return;
     }

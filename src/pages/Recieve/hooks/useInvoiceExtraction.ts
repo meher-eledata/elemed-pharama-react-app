@@ -73,6 +73,7 @@ export const buildRowsFromDraft = (
       // Selling price starts at the extracted MRP (blank when MRP is) — never the
       // purchase price; the user can lower it before saving.
       sp: mrp,
+      spFollowsMrp: true,
       pack: "",
       mrp,
       cgst: fieldNum(line.cgst, threshold),

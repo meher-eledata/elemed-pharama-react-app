@@ -656,7 +656,7 @@ const OrderReceive: React.FC = () => {
                       hsnCode: line.hsn_id || line.hsn_code || 'N/A',
                       batchNumber: line.batch_number ?? '',
                       mrp: Number(line.mrp) || 0,
-                      sellingPrice: Number(line.selling_price) || null,
+                      sellingPrice: line.selling_price === null ? null : parseFloat(line.selling_price) || null,
                       purchasePrice: Number(line.purchase_price) || 0,
                       transaction_number: line.transaction_number || '',
                       payment_vendor: line.payment_vendor || '',

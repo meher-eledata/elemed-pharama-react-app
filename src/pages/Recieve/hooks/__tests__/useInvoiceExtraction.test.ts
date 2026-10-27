@@ -119,6 +119,8 @@ describe("buildRowsFromDraft", () => {
     expect(rows[0].pp).toBe(28);
     expect(rows[0].mrp).toBe(35);
     expect(rows[0].sp).toBe(35);
+    // Extracted rows keep SP following MRP until the user edits SP.
+    expect(rows.every((r) => r.spFollowsMrp === true)).toBe(true);
   });
 
   it("leaves sp blank (0) when the extracted MRP is below threshold", () => {

@@ -76,6 +76,9 @@ export interface PharmaTableRow {
   expiryDate: Dayjs | null;
   pp: number;
   sp: number;
+  // SP copies MRP while true. Set only on brand-new and invoice-extracted rows; cleared
+  // the moment the user edits SP (even to clear it); never set on loaded receipt lines.
+  spFollowsMrp?: boolean;
   pack?: string;
   mrp: number;
   cgst: number;

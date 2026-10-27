@@ -82,4 +82,11 @@ describe('ProductTableColumns — Selling Price column', () => {
     render(<>{spColumn({ ...row, sp: 25 }).render!(row)}</>);
     expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-invalid', 'true');
   });
+
+  it('does not offer negative values and flags a typed one invalid', () => {
+    render(<>{spColumn({ ...row, sp: -2 }).render!(row)}</>);
+    const input = screen.getByRole('spinbutton');
+    expect(input).toHaveAttribute('min', '0');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
 });

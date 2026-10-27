@@ -43,6 +43,12 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
       const aValue = a[activeSortKey as keyof ProductItem];
       const bValue = b[activeSortKey as keyof ProductItem];
 
+      // A missing value (an unrecorded selling price) sorts last in either direction.
+      if (aValue == null || bValue == null) {
+        if (aValue == null && bValue == null) return 0;
+        return aValue == null ? 1 : -1;
+      }
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return activeSortDirection === 'asc'
           ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
@@ -184,7 +190,9 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
         </Box>
       )}
 
-      
+      {/* Below 1088px (the modal's 64rem cap + 2 x 32px dialog margin) the modal narrows
+          with the window: let headers wrap there instead of scrolling sideways. */}
+      <Box sx={(theme) => ({ [theme.breakpoints.down(1088)]: { '& .MuiTableCell-head': { whiteSpace: 'normal' } } })}>
       <ReusableTable<ProductItem>
         columns={columns}
         data={sortedProducts}
@@ -205,6 +213,7 @@ const ProductDetailsModalContent: React.FC<ProductDetailsModalContentProps> = ({
         onSortRequest={handleSortRequest}
         sortConfig={sortConfig}
       />
+      </Box>
 
       <Snackbar
         open={snackbarOpen}
