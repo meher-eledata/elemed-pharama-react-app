@@ -544,3 +544,39 @@ describe("useOrderDetailsSubmit — selling_price", () => {
     expect(result.current.validateForm()).toBeNull();
   });
 });
+
+describe("useOrderDetailsSubmit — mandatory-field message", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const requireMrp = (r: PharmaTableRow) => !!r.productId.trim() && r.mrp > 0;
+
+  it("names the first incomplete line so it can be found across pages", async () => {
+    const params = {
+      ...makeParams(),
+      isProductRowComplete: requireMrp,
+      pharmaTableData: [row, { ...row, id: "r2", productId: "NAZOMAC-M", mrp: 0 }],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith(
+      'Please complete all mandatory fields for "NAZOMAC-M" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
+    );
+    expect(mockSubmitReceipt).not.toHaveBeenCalled();
+  });
+
+  it("falls back to 'all products' for a line with no product name yet", () => {
+    const params = {
+      ...makeParams(),
+      isProductRowComplete: requireMrp,
+      pharmaTableData: [{ ...row, productId: "" }],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+    expect(result.current.validateForm()).toBe(
+      "Please complete all mandatory fields for all products (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)"
+    );
+  });
+});

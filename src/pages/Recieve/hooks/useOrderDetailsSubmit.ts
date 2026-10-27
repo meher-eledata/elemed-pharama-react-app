@@ -412,9 +412,11 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     if (!supplierName.trim()) return 'Please fill in the Supplier Name';
     if (pharmaTableData.length === 0) return 'Please add at least one product to the table';
 
-    const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
-    if (incompleteProducts.length > 0) {
-      return 'Please complete all mandatory fields for all products (Batch, Expiry, Pack Info, Qty, Purchase Price, MRP)';
+    // Name the first incomplete line (rows are paginated, 5 per page).
+    const incomplete = pharmaTableData.find(row => !isProductRowComplete(row));
+    if (incomplete) {
+      const name = incomplete.productId.trim();
+      return `Please complete all mandatory fields for ${name ? `"${name}"` : 'all products'} (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)`;
     }
 
     const spAboveMrp = pharmaTableData.find(row => {

@@ -299,7 +299,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ labels }) => {
           // NULL (not recorded, incl. every pre-existing receipt) stays blank — no fallback.
           sp: parseFloat(line.selling_price) || 0,
           pack: line.pack_qty || line.packing_info || '',
-          mrp: parseFloat(line.mrp) || parseFloat(line.purchase_price) || parseFloat(line.unit_price) || 0,
+          // No stored MRP stays blank (never purchase price) — MRP is mandatory, so the
+          // user has to enter it before the receipt can be saved.
+          mrp: parseFloat(line.mrp) || 0,
           cgst: parseFloat(line.cgst) || 0,
           sgst: parseFloat(line.sgst) || 0,
           igst: parseFloat(line.igst) || 0,

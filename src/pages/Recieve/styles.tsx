@@ -112,8 +112,20 @@ export const orderDetailsStyles = {
       margin: 0
     }
   },
+  // One column of the supplier / PO / dates / invoice row. Each starts at the width its
+  // content needs (flex-basis: 248px fits the supplier name and the PO placeholder; the
+  // invoice number and date columns override it), grows evenly up to the 274px design
+  // width, and wraps instead of running off-screen on narrow windows.
+  formFieldColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    flex: '1 1 248px',
+    minWidth: 0, // the date picker's min-content would otherwise override its basis
+    maxWidth: '274px',
+  },
   formField: {
-    width: '274px',
+    width: '100%',
     '& .MuiOutlinedInput-root': {
       borderRadius: '18px',
       height: '44px',
@@ -139,7 +151,7 @@ export const orderDetailsStyles = {
     },
   },
   autocompleteField: {
-    width: '274px',
+    width: '100%',
     '& .MuiOutlinedInput-root': {
       height: '44px',
       borderRadius: '30px',

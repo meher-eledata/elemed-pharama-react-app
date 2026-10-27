@@ -726,6 +726,53 @@ describe('OrderDetails', () => {
       expect(screen.getByTestId('cell-pp-0')).toHaveTextContent('100');
       expect(screen.getByTestId('cell-mrp-0')).toHaveTextContent('150');
     });
+
+    it('loads a line without a stored MRP as blank and makes the user enter it before saving', async () => {
+      const user = userEvent.setup();
+      const mockEdit = jest.fn().mockResolvedValue({ message: 'Success', receiptId: 1 });
+      mockUseEditReceiptMutation.mockReturnValue(createMockMutation(mockEdit));
+      mockLocation.state = {
+        isEditMode: true,
+        receiptId: 1,
+        receiptNumber: 'RA1',
+        selectedOrder: {
+          receiptId: 1, reNo: 'RA1', poNo: 'PO001', supplier: 'Supplier A', received: 'Jan 15, 2024',
+          status: 'received', reBy: 'John Doe', amt: 5000, products: [],
+        },
+      };
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('receipt-lines')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [
+              // Every mandatory field present except MRP.
+              { receipt_line_id: 1, product_name: 'Product 1', invoice_number: 'INV-1', batch_number: 'B1',
+                pack_qty: '10x10', received_qty: 10, free_qty: 0, expiry_date: '2027-12-31',
+                purchase_price: '100', unit_price: '100', mrp: null, selling_price: null },
+            ],
+          });
+        }
+        if (url.includes('unique-supplier-names')) {
+          return Promise.resolve({ ok: true, json: async () => [{ supplier_name: 'Supplier A', supplier_id: 1 }] });
+        }
+        return Promise.resolve({ ok: true, json: async () => [] });
+      });
+
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+
+      // Shown blank — never the purchase price passed off as the batch MRP.
+      expect(await screen.findByTestId('cell-mrp-0')).toHaveTextContent('-');
+      const saveButton = screen.getByText('Save').closest('button')!;
+      await waitFor(() => expect(saveButton).not.toBeDisabled());
+      await user.click(saveButton);
+
+      expect(
+        await screen.findByText(
+          'Please complete all mandatory fields for "Product 1" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
+        )
+      ).toBeInTheDocument();
+      expect(mockEdit).not.toHaveBeenCalled();
+    }, 20000);
   });
 
   describe('Delete Functionality', () => {

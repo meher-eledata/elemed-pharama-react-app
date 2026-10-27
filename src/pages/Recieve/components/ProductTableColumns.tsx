@@ -298,7 +298,7 @@ export const getProductTableColumns = ({
             sx={numberInputStyles}
           />
         ) : (
-          <span>{row.mrp || 0}</span>
+          <span>{row.mrp || '-'}</span>
         )
       ),
     },
