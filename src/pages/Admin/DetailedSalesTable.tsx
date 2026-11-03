@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, ChangeEvent } from 'react';
+import React, { useState, useMemo, ChangeEvent } from 'react';
 import { Box, Typography, TextField, InputAdornment, IconButton, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -6,7 +6,6 @@ import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
-import { CSVLink } from 'react-csv';
 import dayjs, { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import { DETAILED_SALES_TABLE_CONSTANTS } from '../../config/constants/DetailedSalesTable.constants';
@@ -15,7 +14,8 @@ import { StandardButton, PharmaDatePicker } from '../../components/Common';
 import { useGetDailySalesTableQuery } from '../../redux/slices/reportsApi';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 import { getSalesHistoryFromStorage } from '../../utils/cartStorage';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatCurrency, formatWholeCurrency } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 import { selectOrganization } from '../../redux/slices/orgSlice';
 
 interface SalesData {
@@ -38,7 +38,6 @@ interface SalesData {
 
 const DetailedSalesTable: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
   const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
   const [logDownload] = useLogDownloadMutation();
@@ -137,10 +136,6 @@ const DetailedSalesTable: React.FC = () => {
     key: DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_KEY,
     direction: DETAILED_SALES_TABLE_CONSTANTS.PAGINATION.DEFAULT_SORT_DIRECTION
   });
-
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   const formatNumber = (amount: number) => {
     return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -444,7 +439,7 @@ const DetailedSalesTable: React.FC = () => {
   };
 
   const handleDownloadCSV = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Detailed Sales Table', format: 'csv', count: sortedData.length }).catch(() => {});
   };
 
@@ -795,14 +790,6 @@ const DetailedSalesTable: React.FC = () => {
           </Box>
         </Box>
       )}
-
-      {/* Hidden CSV Link */}
-      <CSVLink
-        data={csvData}
-        filename={csvFilename}
-        ref={csvLinkRef}
-        style={{ display: 'none' }}
-      />
     </Box>
   );
 };

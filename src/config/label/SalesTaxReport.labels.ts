@@ -51,7 +51,7 @@ export const SALES_TAX_REPORT_LABELS = {
     BATCH_NUMBER: 'Batch #',
     CUSTOMER_DETAILS: 'Customer Details',
     QTY: 'Qty',
-    MRP: 'MRP',
+    MRP: 'Unit MRP',
     SP: 'SP',
     TAXABLE_VALUE: 'Taxable Value',
     DISCOUNT: 'Discount',

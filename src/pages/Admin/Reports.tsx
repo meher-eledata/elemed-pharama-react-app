@@ -1,10 +1,9 @@
-import React, { useState, Suspense, lazy, useRef, useMemo } from 'react';
+import React, { useState, Suspense, lazy, useMemo } from 'react';
 import { Box, Typography, Card, Grid, Stack, CircularProgress, Tooltip, Button } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DownloadIcon from '@mui/icons-material/Download';
-import { CSVLink } from 'react-csv';
 import { REPORTS_LABELS } from '../../config/label/Reports.labels';
 import { REPORTS_CONSTANTS } from '../../config/constants/Reports.constants';
 import { ADMIN_REPORTS_CONSTANTS } from '../../config/constants/AdminReports.constants';
@@ -13,12 +12,14 @@ import { SUPPLIER_PAYMENT_REPORT_LABELS } from '../../config/label/SupplierPayme
 import { PRODUCT_SALES_REPORT_LABELS } from '../../config/label/ProductSalesReport.labels';
 import { SALES_TAX_REPORT_LABELS } from '../../config/label/SalesTaxReport.labels';
 import { SUPPLIER_TAX_REPORT_LABELS } from '../../config/label/SupplierTaxReport.labels';
+import { CLOSING_STOCK_REPORT_LABELS } from '../../config/label/ClosingStockReport.labels';
 import { PharmaDatePicker } from '../../components/Common';
 import { StandardButton } from '../../components/Common';
 import RightArrow from '../../assets/Right.svg';
 import DashboardMain from '../DashboardMain/DashboardMain';
 import { useGetDailySalesReportQuery, useGetWeeklyBillCountsQuery } from '../../redux/slices/reportsApi';
-import { formatWholeCurrency } from '../../utils/reportFormat';
+import { formatCurrency, formatWholeCurrency } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 import { useLogDownloadMutation } from '../../redux/slices/activityApi';
 
 // Lazy-loaded Pie Chart Component
@@ -132,6 +133,12 @@ const DetailedReportsView: React.FC = () => {
       description: SUPPLIER_TAX_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
       route: ADMIN_REPORTS_CONSTANTS.ROUTES.SUPPLIER_TAX,
     },
+    {
+      id: 'closing-stock',
+      title: CLOSING_STOCK_REPORT_LABELS.DISCOVERY_CARD.TITLE,
+      description: CLOSING_STOCK_REPORT_LABELS.DISCOVERY_CARD.DESCRIPTION,
+      route: ADMIN_REPORTS_CONSTANTS.ROUTES.CLOSING_STOCK,
+    },
   ];
 
   const handleCardClick = (report: { id: string; route?: string }) => {
@@ -225,7 +232,6 @@ const DailySalesReport: React.FC = () => {
   const navigate = useNavigate();
   const [startDate, setStartDate] = useState<Dayjs | null>(dayjs());
   const [endDate, setEndDate] = useState<Dayjs | null>(dayjs());
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
 
   const { data: apiData, isLoading, isError } = useGetDailySalesReportQuery(
@@ -356,10 +362,6 @@ const DailySalesReport: React.FC = () => {
     };
   }, [apiData, weeklyApiData]);
 
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
   // Calculate total for percentage calculation
   const totalPaymentValue = useMemo(() =>
     reportData?.paymentTypeData.reduce((sum, item) => sum + item.value, 0) || 0
@@ -425,7 +427,7 @@ const DailySalesReport: React.FC = () => {
   }, [startDate, endDate]);
 
   const handleDownloadCSV = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Sales Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
@@ -1349,14 +1351,6 @@ const DailySalesReport: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
-
-      {/* Hidden CSV Link */}
-      <CSVLink
-        data={csvData}
-        filename={csvFilename}
-        ref={csvLinkRef}
-        style={{ display: 'none' }}
-      />
     </Box>
   );
 };

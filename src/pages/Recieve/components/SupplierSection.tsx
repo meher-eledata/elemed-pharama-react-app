@@ -69,9 +69,9 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
       : baseSupplierOptions;
 
   return (
-    <Box sx={{ display: "flex", gap: "32px", marginTop: "10px" }}>
+    <Box sx={{ display: "flex", flexWrap: "wrap", columnGap: "24px", rowGap: "16px", marginTop: "10px" }}>
       {/* Supplier Name */}
-      <Box sx={{ display: "flex", flexDirection: "column", width: "274px", gap: "4px" }}>
+      <Box sx={orderDetailsStyles.formFieldColumn}>
         <Typography sx={orderDetailsStyles.labelText}>
           {orderLabels.supplierName}
         </Typography>
@@ -227,7 +227,7 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
       </Box>
 
       {/* PO Number */}
-      <Box sx={{ display: "flex", flexDirection: "column", width: "274px", gap: "4px" }}>
+      <Box sx={orderDetailsStyles.formFieldColumn}>
         <Typography sx={orderDetailsStyles.labelText}>
           {orderLabels.poNumber}
         </Typography>
@@ -242,7 +242,7 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
       </Box>
 
       {/* Invoice Date */}
-      <Box sx={{ display: "flex", flexDirection: "column", width: "274px", gap: "4px" }}>
+      <Box sx={{ ...orderDetailsStyles.formFieldColumn, flexBasis: "160px" }}>
         <Typography sx={orderDetailsStyles.labelText}>
           {orderLabels.invoiceDate}
         </Typography>
@@ -259,13 +259,13 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
             const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
             setInvoiceDate(formattedDate);
           }}
-          width={274}
+          width="100%"
         />
       </Box>
 
       {/* Receipt Date — when the pharmacy received goods into inventory. Defaults to
           today on a new receipt, editable, and optional (may be cleared). */}
-      <Box sx={{ display: "flex", flexDirection: "column", width: "274px", gap: "4px" }}>
+      <Box sx={{ ...orderDetailsStyles.formFieldColumn, flexBasis: "160px" }}>
         <Typography sx={orderDetailsStyles.labelText}>
           {orderLabels.receiptDate}
         </Typography>
@@ -282,12 +282,12 @@ const SupplierSection: React.FC<SupplierSectionProps> = ({
             const formattedDate = newValue ? newValue.format('DD/MM/YYYY') : '';
             setReceiptDate(formattedDate);
           }}
-          width={274}
+          width="100%"
         />
       </Box>
 
       {/* Invoice Number */}
-      <Box sx={{ display: "flex", flexDirection: "column", width: "274px", gap: "4px" }}>
+      <Box sx={{ ...orderDetailsStyles.formFieldColumn, flexBasis: "210px" }}>
         <Typography sx={orderDetailsStyles.labelText}>
           Invoice Number
         </Typography>

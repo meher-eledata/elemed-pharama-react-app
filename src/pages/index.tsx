@@ -30,6 +30,7 @@ import SupplierPaymentReport from "./Admin/SupplierPaymentReport";
 import ProductSalesReport from "./Admin/ProductSalesReport";
 import SalesTaxReport from "./Admin/SalesTaxReport";
 import SupplierTaxReport from "./Admin/SupplierTaxReport";
+import ClosingStockReport from "./Admin/ClosingStockReport";
 import HistoricalData from "./Admin/HistoricalData";
 import SupplierCredit from "./Admin/SupplierCredit";
 import UserProfile from "./Profile/UserProfile";
@@ -103,6 +104,7 @@ export const Pages = () => {
             <Route path="reports/product-sales" element={<ProductSalesReport />} />
             <Route path="reports/sales-tax" element={<SalesTaxReport />} />
             <Route path="reports/supplier-tax" element={<SupplierTaxReport />} />
+            <Route path="reports/closing-stock" element={<ClosingStockReport />} />
             <Route path="inventory-adjustment" element={<InventoryAdjustment />} />
             <Route path="historical-data" element={<HistoricalData />} />
             <Route path="supplier-credit" element={<SupplierCredit />} />

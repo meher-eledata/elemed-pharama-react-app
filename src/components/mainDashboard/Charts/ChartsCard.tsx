@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { Card, Box, Typography, IconButton } from '@mui/material';
 import { LineChart } from '@mui/x-charts/LineChart';
-import { CSVLink } from 'react-csv';
 import DownloadSvg from '../../../assets/Download.svg';
 import { DASHBOARD_LABELS } from '../../../config/label/ChartsCard.labels';
 import { DASHBOARD_CONSTANTS } from '../../../config/constants/ChartsCard.constants';
+import { downloadCsv, CsvRecord } from '../../../utils/csv';
 
 interface ChartData {
   xAxis: string[];
@@ -24,7 +24,7 @@ interface ChartCardProps {
   chartData: ChartData;
   colors: { main: string; area: string; percentBg: string; percentText: string };
   yAxisConfig: YAxisConfig;
-  csvData: object[];
+  csvData: CsvRecord[];
   filename: string;
 }
 
@@ -37,9 +37,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
   csvData,
   filename,
 }) => {
-  const csvLinkRef = React.useRef<any>(null);
-
-  const handleDownload = () => csvLinkRef.current?.link?.click();
+  const handleDownload = () => downloadCsv(filename, csvData);
 
   const bandTickInterval = React.useMemo(() => {
     const n = chartData.xAxis.length;
@@ -157,8 +155,6 @@ const ChartCard: React.FC<ChartCardProps> = ({
           </Box>
         </Box>
       </Box>
-
-      <CSVLink data={csvData} filename={filename} ref={csvLinkRef} style={{ display: 'none' }} />
     </Card>
   );
 };

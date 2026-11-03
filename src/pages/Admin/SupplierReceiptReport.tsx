@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Grid } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import {
@@ -34,8 +33,8 @@ import {
   formatCount,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 
 type Tab = 'overview' | 'byReceipt' | 'detailed';
 
@@ -67,7 +66,6 @@ interface ByReceiptRow extends SupplierReceiptReportByReceiptRow {
 
 const SupplierReceiptReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
   const [tab, setTab] = useState<Tab>('overview');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
@@ -231,13 +229,13 @@ const SupplierReceiptReport: React.FC = () => {
   const csvData = useMemo(() => {
     if (tab === 'byReceipt') {
       return sortedByReceiptRows.map((r) => ({
-        [L.TABLE_BY_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
+        [L.TABLE_BY_RECEIPT.RECEIPT_NUMBER]: r.receipt_number,
         [L.TABLE_BY_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
-        [L.TABLE_BY_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_BY_RECEIPT.INVOICE_NUMBER]: r.invoice_number,
         [L.TABLE_BY_RECEIPT.INVOICE_DATE]: formatReportDate(r.invoice_date),
-        [L.TABLE_BY_RECEIPT.PO_NUMBER]: csvString(r.po_number),
-        [L.TABLE_BY_RECEIPT.SUPPLIER]: csvString(r.supplier_name),
-        [L.TABLE_BY_RECEIPT.GSTIN]: csvString(r.supplier_gst),
+        [L.TABLE_BY_RECEIPT.PO_NUMBER]: r.po_number,
+        [L.TABLE_BY_RECEIPT.SUPPLIER]: r.supplier_name,
+        [L.TABLE_BY_RECEIPT.GSTIN]: r.supplier_gst,
         [L.TABLE_BY_RECEIPT.LINES]: String(r.lineCountN),
         [L.TABLE_BY_RECEIPT.PRODUCTS]: String(r.productCountN),
         [L.TABLE_BY_RECEIPT.QTY]: r.qtyN.toFixed(2),
@@ -250,16 +248,16 @@ const SupplierReceiptReport: React.FC = () => {
       }));
     }
     return sortedRows.map((r) => ({
-      [L.TABLE.RECEIPT_NUMBER]: csvString(r.receipt_number),
+      [L.TABLE.RECEIPT_NUMBER]: r.receipt_number,
       [L.TABLE.RECEIPT_DATE]: formatReportDate(r.receipt_date),
-      [L.TABLE.INVOICE_NUMBER]: csvString(r.invoice_number),
+      [L.TABLE.INVOICE_NUMBER]: r.invoice_number,
       [L.TABLE.INVOICE_DATE]: formatReportDate(r.invoice_date),
-      [L.TABLE.PO_NUMBER]: csvString(r.po_number),
-      [L.TABLE.SUPPLIER]: csvString(r.supplier_name),
-      [L.TABLE.GSTIN]: csvString(r.supplier_gst),
-      [L.TABLE.PRODUCT]: csvString(r.product_name),
-      [L.TABLE.PRODUCT_CODE]: csvString(r.product_code),
-      [L.TABLE.HSN]: csvString(r.hsn_code),
+      [L.TABLE.PO_NUMBER]: r.po_number,
+      [L.TABLE.SUPPLIER]: r.supplier_name,
+      [L.TABLE.GSTIN]: r.supplier_gst,
+      [L.TABLE.PRODUCT]: r.product_name,
+      [L.TABLE.PRODUCT_CODE]: r.product_code,
+      [L.TABLE.HSN]: r.hsn_code,
       [`${L.TABLE.MRP} (₹)`]: r.mrpN.toFixed(2),
       [`${L.TABLE.PURCHASE_PRICE} (₹)`]: r.purchasePriceN.toFixed(2),
       [L.TABLE.RECEIVED_QTY]: r.qtyN.toFixed(2),
@@ -277,7 +275,7 @@ const SupplierReceiptReport: React.FC = () => {
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Supplier Receipt Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
@@ -452,7 +450,6 @@ const SupplierReceiptReport: React.FC = () => {
         </TableShell>
       )}
 
-      <CSVLink data={csvData} filename={csvFilename} ref={csvLinkRef} style={{ display: 'none' }} />
     </Box>
   );
 };

@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { CSVLink } from 'react-csv';
 import { Dayjs } from 'dayjs';
 import { ReusableTable, TableColumn } from '../../components/PharmaTable';
 import {
@@ -34,8 +33,8 @@ import {
   formatCount,
   formatReportDate,
   defaultDateRange,
-  csvString,
 } from '../../utils/reportFormat';
+import { downloadCsv } from '../../utils/csv';
 
 // Parsed row shapes (numeric-strings parsed to numbers).
 interface ReceiptViewRow extends SupplierTaxReceiptRow {
@@ -63,7 +62,6 @@ interface SupplierViewRow extends SupplierTaxSupplierRow {
 
 const SupplierTaxReport: React.FC = () => {
   const navigate = useNavigate();
-  const csvLinkRef = useRef<any>(null);
   const [logDownload] = useLogDownloadMutation();
   const [level, setLevel] = useState<SupplierTaxLevel>('receipt');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(defaultDateRange());
@@ -208,12 +206,12 @@ const SupplierTaxReport: React.FC = () => {
   const csvData = useMemo(() => {
     if (level === 'receipt') {
       return sortedReceiptRows.map((r) => ({
-        [L.TABLE_RECEIPT.RECEIPT_NUMBER]: csvString(r.receipt_number),
+        [L.TABLE_RECEIPT.RECEIPT_NUMBER]: r.receipt_number,
         [L.TABLE_RECEIPT.RECEIPT_DATE]: formatReportDate(r.receipt_date),
-        [L.TABLE_RECEIPT.INVOICE_NUMBER]: csvString(r.invoice_number),
+        [L.TABLE_RECEIPT.INVOICE_NUMBER]: r.invoice_number,
         [L.TABLE_RECEIPT.INVOICE_DATE]: formatReportDate(r.invoice_date),
-        [L.TABLE_RECEIPT.SUPPLIER]: csvString(r.supplier_name),
-        [L.TABLE_RECEIPT.GST]: csvString(r.supplier_gst),
+        [L.TABLE_RECEIPT.SUPPLIER]: r.supplier_name,
+        [L.TABLE_RECEIPT.GST]: r.supplier_gst,
         [`${L.TABLE_RECEIPT.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
         [`${L.TABLE_RECEIPT.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
         ['CGST (₹)']: r.cgstN.toFixed(2),
@@ -225,9 +223,9 @@ const SupplierTaxReport: React.FC = () => {
       }));
     }
     return sortedSupplierRows.map((r) => ({
-      [L.TABLE_SUPPLIER.SUPPLIER]: csvString(r.supplier_name),
-      [L.TABLE_SUPPLIER.GST]: csvString(r.supplier_gst),
-      [L.TABLE_SUPPLIER.RECEIPTS]: csvString(r.receipt_count),
+      [L.TABLE_SUPPLIER.SUPPLIER]: r.supplier_name,
+      [L.TABLE_SUPPLIER.GST]: r.supplier_gst,
+      [L.TABLE_SUPPLIER.RECEIPTS]: r.receipt_count,
       [`${L.TABLE_SUPPLIER.TAXABLE_VALUE} (₹)`]: r.taxableN.toFixed(2),
       [`${L.TABLE_SUPPLIER.DISCOUNT} (₹)`]: r.discountN.toFixed(2),
       ['CGST (₹)']: r.cgstN.toFixed(2),
@@ -243,7 +241,7 @@ const SupplierTaxReport: React.FC = () => {
     end ? end.format('YYYY-MM-DD') : ''
   }.csv`;
   const handleDownloadCsv = () => {
-    csvLinkRef.current?.link?.click();
+    downloadCsv(csvFilename, csvData);
     logDownload({ category: 'report', name: 'Supplier Tax Report', format: 'csv', count: csvData.length }).catch(() => {});
   };
 
@@ -348,7 +346,6 @@ const SupplierTaxReport: React.FC = () => {
         </>
       )}
 
-      <CSVLink data={csvData} filename={csvFilename} ref={csvLinkRef} style={{ display: 'none' }} />
     </Box>
   );
 };

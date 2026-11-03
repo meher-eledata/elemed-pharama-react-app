@@ -131,7 +131,59 @@ describe('ProductDetailsModalContent', () => {
       expect(screen.queryByText(/Unit Price/i)).not.toBeInTheDocument();
       expect(screen.getByText(/Batch Number/i)).toBeInTheDocument();
       expect(screen.getByText(/MRP/i)).toBeInTheDocument();
+      expect(screen.getByText(PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.SELLING_PRICE)).toBeInTheDocument();
       expect(screen.getByText(/Purchase Price/i)).toBeInTheDocument();
+    });
+
+    it('shows the recorded selling price as currency and "-" when it was not recorded', () => {
+      const data: OrderReceiveRow = {
+        ...mockProductData,
+        products: [
+          { ...mockProductData.products[0], sellingPrice: 1234.5 },
+          { ...mockProductData.products[1], sellingPrice: null },
+        ],
+      };
+      renderWithProviders(
+        <ProductDetailsModalContent
+          productData={data}
+          onUpdateProduct={mockOnUpdateProduct}
+          onDeleteProduct={mockOnDeleteProduct}
+        />
+      );
+
+      const recordedRow = screen.getByText('Product 1').closest('tr')!;
+      expect(recordedRow).toHaveTextContent('₹1,234.50');
+      // A NULL selling price (every pre-existing receipt) is never shown as a price.
+      const unrecordedRow = screen.getByText('Product 2').closest('tr')!;
+      const cells = Array.from(unrecordedRow.querySelectorAll('td')).map((td) => td.textContent);
+      expect(cells).toEqual(['Product 2', 'Medicine', '20', 'HSN002', 'BATCH002', '₹2,000.00', '-', '₹1,600.00']);
+    });
+
+    it('sorts unrecorded selling prices last in both directions', () => {
+      const [p1, p2, p3] = mockProductData.products;
+      const data: OrderReceiveRow = {
+        ...mockProductData,
+        products: [
+          { ...p1, productName: 'Unpriced', sellingPrice: null },
+          { ...p2, productName: 'Cheap', sellingPrice: 50 },
+          { ...p3, productName: 'Dear', sellingPrice: 200 },
+        ],
+      };
+      renderWithProviders(
+        <ProductDetailsModalContent
+          productData={data}
+          onUpdateProduct={mockOnUpdateProduct}
+          onDeleteProduct={mockOnDeleteProduct}
+        />
+      );
+      const order = () =>
+        screen.getAllByRole('row').slice(1).map((r) => r.querySelector('td')!.textContent);
+      const header = screen.getByText(PRODUCT_DETAILS_MODAL_LABELS.TABLE_HEADERS.SELLING_PRICE);
+
+      fireEvent.click(header);
+      expect(order()).toEqual(['Cheap', 'Dear', 'Unpriced']);
+      fireEvent.click(header);
+      expect(order()).toEqual(['Dear', 'Cheap', 'Unpriced']);
     });
 
     it('should render product data in table', () => {

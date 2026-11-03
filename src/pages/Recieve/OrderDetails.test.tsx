@@ -692,12 +692,99 @@ describe('OrderDetails', () => {
       });
       
       renderWithProviders(<OrderDetails labels={orderLabels} />);
-      
+
       await waitFor(() => {
         // Receipt lines should be loaded
         expect(global.fetch).toHaveBeenCalled();
       });
     });
+
+    it('loads a NULL selling price as blank — never falls back to purchase price or MRP', async () => {
+      mockLocation.state = { isEditMode: true, receiptId: 1, receiptNumber: 'RA1' };
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('receipt-lines')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [
+              // Every receipt saved before selling price was captured has NULL here.
+              { receipt_line_id: 1, product_name: 'Product 1', received_qty: 10, free_qty: 0,
+                expiry_date: '2027-12-31', purchase_price: '100', unit_price: '100', mrp: '150',
+                selling_price: null },
+              { receipt_line_id: 2, product_name: 'Product 2', received_qty: 5, free_qty: 0,
+                expiry_date: '2027-12-31', purchase_price: '80', unit_price: '80', mrp: '120',
+                selling_price: '110.00' },
+            ],
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => [] });
+      });
+
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+
+      expect(await screen.findByTestId('cell-sp-1')).toHaveTextContent('110');
+      expect(screen.getByTestId('cell-sp-0').textContent).toBe('-');
+      expect(screen.getByTestId('cell-pp-0')).toHaveTextContent('100');
+      expect(screen.getByTestId('cell-mrp-0')).toHaveTextContent('150');
+    });
+
+    // A historical line whose batch has no MRP: shown blank (never the purchase price),
+    // and — per the edit-validation rule — it only has to be fixed once it is edited.
+    const loadLineWithoutMrp = () => {
+      mockLocation.state = {
+        isEditMode: true,
+        receiptId: 1,
+        receiptNumber: 'RA1',
+        selectedOrder: {
+          receiptId: 1, reNo: 'RA1', poNo: 'PO001', supplier: 'Supplier A', received: 'Jan 15, 2024',
+          status: 'received', reBy: 'John Doe', amt: 5000, products: [],
+        },
+      };
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('receipt-lines')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [
+              { receipt_line_id: 1, product_name: 'Product 1', invoice_number: 'INV-1', batch_number: 'B1',
+                pack_qty: '10x10', received_qty: 10, free_qty: 0, expiry_date: '2027-12-31',
+                purchase_price: '100', unit_price: '100', mrp: null, selling_price: null },
+            ],
+          });
+        }
+        if (url.includes('unique-supplier-names')) {
+          return Promise.resolve({ ok: true, json: async () => [{ supplier_name: 'Supplier A', supplier_id: 1 }] });
+        }
+        return Promise.resolve({ ok: true, json: async () => [] });
+      });
+      renderWithProviders(<OrderDetails labels={orderLabels} />);
+    };
+
+    it('shows a line without a stored MRP as blank, and an untouched one does not block a header-only save', async () => {
+      const user = userEvent.setup();
+      const mockEdit = jest.fn((_body: any) => ({ unwrap: () => Promise.resolve({ receipt_id: 1 }) }));
+      mockUseEditReceiptMutation.mockReturnValue(createMockMutation(mockEdit as any));
+      loadLineWithoutMrp();
+
+      expect(await screen.findByTestId('cell-mrp-0')).toHaveTextContent('-');
+      const saveButton = screen.getByText('Save').closest('button')!;
+      await waitFor(() => expect(saveButton).not.toBeDisabled());
+      await user.click(saveButton);
+
+      await waitFor(() => expect(mockEdit).toHaveBeenCalledTimes(1));
+      expect(mockEdit.mock.calls[0][0]).toMatchObject({ Edited: [], Added: [] });
+    }, 20000);
+
+    it('once that line is edited, saving the row requires an MRP', async () => {
+      const user = userEvent.setup();
+      loadLineWithoutMrp();
+
+      const actions = await screen.findByTestId('cell-actions-0');
+      await user.click(within(actions).getAllByRole('button')[0]); // edit
+      const qty = within(screen.getByTestId('cell-qtyReceived-0')).getByRole('spinbutton');
+      fireEvent.change(qty, { target: { value: '12' } });
+      await user.click(within(screen.getByTestId('cell-actions-0')).getAllByRole('button')[0]); // tick
+
+      expect(await screen.findByText(orderLabels.mandatoryFieldsForItem)).toBeInTheDocument();
+    }, 20000);
   });
 
   describe('Delete Functionality', () => {

@@ -1,6 +1,7 @@
 import React from "react";
 import { TableRow, TableCell } from "@mui/material";
 import { OrderReceiveRow } from "../types";
+import { formatWholeCurrency } from "../../../utils/reportFormat";
 
 interface OrderReceiveFooterProps {
   sortedData: OrderReceiveRow[];
@@ -54,7 +55,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{Math.round(totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        {formatWholeCurrency(totalAmount)}
       </TableCell>
 
       <TableCell
@@ -68,7 +69,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{Math.round(totalAmountPaid).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        {formatWholeCurrency(totalAmountPaid)}
       </TableCell>
 
       <TableCell
@@ -82,7 +83,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{Math.round(totalPendingAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        {formatWholeCurrency(totalPendingAmount)}
       </TableCell>
 
       <TableCell
@@ -96,7 +97,7 @@ const OrderReceiveFooter: React.FC<OrderReceiveFooterProps> = ({ sortedData, act
           color: '#1A212B',
         }}
       >
-        ₹{Math.round(totalCreditAvailable).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        {formatWholeCurrency(totalCreditAvailable)}
       </TableCell>
 
       <TableCell sx={{ padding: '12px 16px' }} />

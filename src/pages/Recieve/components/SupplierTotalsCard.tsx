@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
 import { SupplierTotals } from "../types";
+import { formatWholeCurrency } from "../../../utils/reportFormat";
 
 interface SupplierTotalsCardProps {
   supplierTotals: SupplierTotals;
@@ -12,10 +13,6 @@ const SupplierTotalsCard: React.FC<SupplierTotalsCardProps> = ({
   supplierName,
 }) => {
   if (!supplierName) return null;
-
-  const formatCurrency = (value: number) => {
-    return `₹${Math.round(value).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  };
 
   return (
     <Box
@@ -48,7 +45,7 @@ const SupplierTotalsCard: React.FC<SupplierTotalsCardProps> = ({
             color: "#10B981",
           }}
         >
-          {formatCurrency(supplierTotals.amountPaid)}
+          {formatWholeCurrency(supplierTotals.amountPaid)}
         </Typography>
       </Box>
 
@@ -71,7 +68,7 @@ const SupplierTotalsCard: React.FC<SupplierTotalsCardProps> = ({
             color: "#F59E0B",
           }}
         >
-          {formatCurrency(supplierTotals.pendingAmount)}
+          {formatWholeCurrency(supplierTotals.pendingAmount)}
         </Typography>
       </Box>
 
@@ -94,7 +91,7 @@ const SupplierTotalsCard: React.FC<SupplierTotalsCardProps> = ({
             color: "#3B82F6",
           }}
         >
-          {formatCurrency(supplierTotals.creditAvailable)}
+          {formatWholeCurrency(supplierTotals.creditAvailable)}
         </Typography>
       </Box>
     </Box>

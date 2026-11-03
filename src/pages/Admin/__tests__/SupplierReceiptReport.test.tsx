@@ -21,7 +21,7 @@ jest.mock('react-router-dom', () => ({
 
 // Stub heavy deps so the render is stable and free of ESM/canvas dependencies.
 // - MUI x-charts BarChart (via ReportBarChart) and the DateRangeFilter (x-date-pickers)
-//   are replaced with trivial markers; react-csv with a no-op link.
+//   are replaced with trivial markers; the CSV download with a capture.
 jest.mock('../../../components/AdminReports/ReportBarChart', () => ({
   __esModule: true,
   default: () => <div data-testid="report-bar-chart" />,
@@ -31,21 +31,31 @@ jest.mock('../../../components/mainDashboard/DateRangeFilter/DateRangeFilter', (
   default: () => <div data-testid="date-range-filter" />,
 }));
 // The CSV export is a SEPARATE code path from the table columns, so the mock captures
-// the rows handed to CSVLink and the tests assert on them directly.
+// the rows handed to downloadCsv and the tests assert on them directly.
 const mockCsvRows: Record<string, string>[] = [];
 const mockCsvMeta = { filename: '' };
-jest.mock('react-csv', () => ({
+jest.mock('../../../utils/csv', () => ({
   __esModule: true,
-  CSVLink: ({ data, filename }: { data: Record<string, string>[]; filename?: string }) => {
+  ...jest.requireActual('../../../utils/csv'),
+  downloadCsv: (filename: string, data: Record<string, string>[]) => {
     mockCsvRows.length = 0;
     mockCsvRows.push(...data);
-    mockCsvMeta.filename = filename ?? '';
-    return <div data-testid="csv-link" />;
+    mockCsvMeta.filename = filename;
   },
 }));
+// The export is built on click: press Download CSV, then read what was handed to downloadCsv.
+const exportedRows = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+  return [...mockCsvRows];
+};
 
 // Mock the RTK Query slices wholesale, keeping real exports (types, the api object)
 // but overriding the hooks the page consumes.
+jest.mock('../../../redux/slices/activityApi', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../redux/slices/activityApi'),
+  useLogDownloadMutation: () => [() => ({ catch: () => {} }), { isLoading: false }],
+}));
 jest.mock('../../../redux/slices/reportsApi', () => {
   const actual = jest.requireActual('../../../redux/slices/reportsApi');
   return { __esModule: true, ...actual, useGetSupplierReceiptReportQuery: jest.fn() };
@@ -218,7 +228,7 @@ describe('SupplierReceiptReport page', () => {
     const row = screen.getByText('GRN-000501').closest('tr')!;
     expect(within(row).getByText('₹120.00')).toBeInTheDocument(); // mrp '120.00'
     expect(within(row).queryByText('120.00')).not.toBeInTheDocument(); // no unformatted copy
-    expect(mockCsvRows[0]['MRP (₹)']).toBe('120.00');
+    expect(exportedRows()[0]['MRP (₹)']).toBe('120.00');
   });
 
   // feature/receipt-date: the SUPPLIER's own Invoice Date is a distinct column from
@@ -231,8 +241,9 @@ describe('SupplierReceiptReport page', () => {
     // invoice_date '2026-06-08' -> 08/06/2026; receipt_date '2026-06-10' -> 10/06/2026.
     expect(within(row).getByText('08/06/2026')).toBeInTheDocument();
     expect(within(row).getByText('10/06/2026')).toBeInTheDocument();
-    expect(mockCsvRows[0]['Invoice Date']).toBe('08/06/2026');
-    expect(mockCsvRows[0]['Receipt Date']).toBe('10/06/2026');
+    const [csvRow] = exportedRows();
+    expect(csvRow['Invoice Date']).toBe('08/06/2026');
+    expect(csvRow['Receipt Date']).toBe('10/06/2026');
   });
 
   // The "Receipt #" column used to render receipt_id (the internal PK). It must show the
@@ -246,7 +257,8 @@ describe('SupplierReceiptReport page', () => {
 
   it('exports the generated receipt number in the CSV, not the internal PK', () => {
     renderPage();
-    expect(mockCsvRows[0]['Receipt #']).toBe('GRN-000501');
+    fireEvent.click(screen.getByText('Detailed Table'));
+    expect(exportedRows()[0]['Receipt #']).toBe('GRN-000501');
   });
 
   it('renders a custom-template receipt number verbatim', () => {
@@ -259,7 +271,7 @@ describe('SupplierReceiptReport page', () => {
     renderPage();
     fireEvent.click(screen.getByText('Detailed Table'));
     expect(screen.getByText('GRN/26-27/000042')).toBeInTheDocument();
-    expect(mockCsvRows[0]['Receipt #']).toBe('GRN/26-27/000042');
+    expect(exportedRows()[0]['Receipt #']).toBe('GRN/26-27/000042');
   });
 });
 
@@ -344,24 +356,26 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     renderPage();
 
     fireEvent.click(screen.getByText('Detailed Table'));
+    const detailed = exportedRows();
     expect(mockCsvMeta.filename).toMatch(
       /^supplier_receipt_report_detailed_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/
     );
-    expect(mockCsvRows).toHaveLength(1);
-    expect(mockCsvRows[0]['Product']).toBe('Amoxicillin 500mg');
-    expect(mockCsvRows[0]['Discount (%)']).toBe('5.00'); // PERCENT on the detail export
+    expect(detailed).toHaveLength(1);
+    expect(detailed[0]['Product']).toBe('Amoxicillin 500mg');
+    expect(detailed[0]['Discount (%)']).toBe('5.00'); // PERCENT on the detail export
 
     fireEvent.click(screen.getByText('By Receipt'));
+    const byReceipt = exportedRows();
     expect(mockCsvMeta.filename).toMatch(
       /^supplier_receipt_report_by_receipt_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/
     );
-    expect(mockCsvRows).toHaveLength(2);
+    expect(byReceipt).toHaveLength(2);
     // Sorted date-desc, so the newest receipt exports first.
-    expect(mockCsvRows[0]['Receipt #']).toBe('GRN-000501');
-    expect(mockCsvRows[0]['Lines']).toBe('1');
-    expect(mockCsvRows[0]['Products']).toBe('1');
-    expect(mockCsvRows[0]['Discount (₹)']).toBe('250.00'); // RUPEE AMOUNT on the rollup export
-    expect(mockCsvRows[1]['Receipt #']).toBe('GRN-000400');
+    expect(byReceipt[0]['Receipt #']).toBe('GRN-000501');
+    expect(byReceipt[0]['Lines']).toBe('1');
+    expect(byReceipt[0]['Products']).toBe('1');
+    expect(byReceipt[0]['Discount (₹)']).toBe('250.00'); // RUPEE AMOUNT on the rollup export
+    expect(byReceipt[1]['Receipt #']).toBe('GRN-000400');
   });
 
   // feature/receipt-date: the By Receipt tab also carries the supplier Invoice Date
@@ -371,9 +385,10 @@ describe('SupplierReceiptReport — By Receipt tab', () => {
     fireEvent.click(screen.getByText('By Receipt'));
     const row501 = screen.getByText('GRN-000501').closest('tr')!;
     expect(within(row501).getByText('08/06/2026')).toBeInTheDocument();
-    expect(mockCsvRows[0]['Invoice Date']).toBe('08/06/2026');
+    const rows = exportedRows();
+    expect(rows[0]['Invoice Date']).toBe('08/06/2026');
     // GRN-000400 has a null invoice_date -> '-'.
-    expect(mockCsvRows[1]['Invoice Date']).toBe('-');
+    expect(rows[1]['Invoice Date']).toBe('-');
   });
 
   it('download control: absent on Overview, enabled on both table tabs', () => {

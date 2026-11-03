@@ -6,6 +6,7 @@ import dayjs, { Dayjs } from "dayjs";
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import "dayjs/locale/en-gb";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import { useTheme } from "@mui/material/styles";
 
 dayjs.extend(customParseFormat);
 
@@ -40,6 +41,8 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  // One error red app-wide: the theme's (MUI default — the theme sets no palette).
+  const errorRed = useTheme().palette.error.main;
 
   useEffect(() => {
     // We removed the global scroll listener that was closing the picker prematurely 
@@ -152,8 +155,12 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
           border-width: 1px !important;
         }
         .MuiPickersInputBase-root.MuiPickersOutlinedInput-root.Mui-error.Mui-focused fieldset {
-          border-color: #EF4444 !important;
+          border-color: ${errorRed} !important;
           border-width: 2px !important;
+        }
+        /* An invalid text field keeps the error red while focused (the rule above greys every focused field) */
+        [class*="MuiFormControl-root"][class*="MuiTextField-root"] .MuiOutlinedInput-root.Mui-error.Mui-focused fieldset {
+          border-color: ${errorRed} !important;
         }
         /* Height for MuiFormControl-root-MuiPickersTextField-root .MuiPickersInputBase-root */
         .MuiFormControl-root.MuiPickersTextField-root .MuiPickersInputBase-root,
@@ -548,7 +555,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                     fontSize: typeof height === 'number' && height <= 32 ? "12px !important" : "14px !important",
                   },
                   "& fieldset": {
-                    borderColor: error ? "#EF4444" : "#D1D5DB",
+                    borderColor: error ? errorRed : "#D1D5DB",
                     borderWidth: "1px",
                     borderRadius: "18px",
                   },
@@ -563,14 +570,14 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                     outline: "none !important",
                   },
                   "&:hover fieldset": {
-                    borderColor: error ? "#EF4444" : "#D1D5DB",
+                    borderColor: error ? errorRed : "#D1D5DB",
                     borderWidth: "1px",
                     borderRadius: "18px",
                     outline: "none !important",
                     boxShadow: "none !important",
                   },
                   "&.Mui-focused fieldset": {
-                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                    borderColor: error ? `${errorRed} !important` : "#D1D5DB !important",
                     borderWidth: "1px !important",
                     borderRadius: "18px",
                     outline: "none !important",
@@ -579,7 +586,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                     outline: "none !important",
                   },
                   "&.Mui-error fieldset": {
-                    borderColor: "#EF4444",
+                    borderColor: errorRed,
                     borderWidth: "1px",
                     borderRadius: "18px",
                   },
@@ -620,7 +627,7 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                     boxShadow: "none !important",
                   },
                   "&.Mui-focused fieldset": {
-                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                    borderColor: error ? `${errorRed} !important` : "#D1D5DB !important",
                     borderWidth: "1px !important",
                   },
                   "& input": {
@@ -633,12 +640,12 @@ const PharmaDatePicker: React.FC<PharmaDatePickerProps> = ({
                 },
                 "& .MuiPickersInputBase-colorPrimary": {
                   "&.Mui-focused fieldset": {
-                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                    borderColor: error ? `${errorRed} !important` : "#D1D5DB !important",
                   },
                 },
                 "& .MuiPickersInputBase-root.MuiPickersOutlinedInput-root.MuiPickersInputBase-colorPrimary": {
                   "&.Mui-focused fieldset": {
-                    borderColor: error ? "#EF4444 !important" : "#D1D5DB !important",
+                    borderColor: error ? `${errorRed} !important` : "#D1D5DB !important",
                     borderWidth: "1px !important",
                   },
                 },

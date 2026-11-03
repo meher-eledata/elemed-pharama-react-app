@@ -460,3 +460,217 @@ describe("useOrderDetailsSubmit — receipt_date / invoice_date payload", () => 
     expect(body.receipt_date).toBe("");
   });
 });
+
+// ===========================================================================
+// selling_price (per pack, GST-inclusive; optional — null = not recorded)
+//
+// A blank SP cell (0) must go out as null on every path, never as a price, and a
+// row whose SP is above its MRP must never reach the API.
+// ===========================================================================
+describe("useOrderDetailsSubmit — selling_price", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const blankSpRow: PharmaTableRow = { ...row, id: "r2", productId: "NAZOMAC-M", product_id: 20, sp: 0 };
+
+  it("CREATE: sends the typed SP and null for a blank SP on all three save paths", async () => {
+    mockSubmitReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 42 }) });
+    const params = { ...makeParams(), pharmaTableData: [row, blankSpRow] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+      await result.current.handleProceedToPayment();
+      await result.current.handleSaveAndPayLater();
+    });
+
+    expect(mockSubmitReceipt).toHaveBeenCalledTimes(3);
+    for (const [body] of mockSubmitReceipt.mock.calls) {
+      expect(body.lines.map((l: any) => l.selling_price)).toEqual([12, null]);
+    }
+  });
+
+  it("EDIT: Added and Edited lines send null for a blank SP; an SP-only change is detected", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const clearedOriginal = { ...row, id: "11", sp: 12 };
+    const historicalOriginal = { ...row, id: "12", sp: 0 }; // pre-existing receipt: NULL SP
+    const untouched = { ...row, id: "13", sp: 0 };
+    const params = {
+      ...makeParams(),
+      isEditMode: true,
+      receiptId: 5,
+      originalReceiptLines: [clearedOriginal, historicalOriginal, untouched],
+      pharmaTableData: [
+        { ...clearedOriginal, sp: 0 }, // user blanked the SP
+        { ...historicalOriginal, sp: 15 }, // user recorded an SP for the first time
+        untouched,
+        { ...blankSpRow, id: "1700000000000" }, // newly added row, SP left blank
+      ],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    const [body] = mockEditReceipt.mock.calls[0];
+    expect(body.Edited.map((l: any) => [l.receipt_line_id, l.selling_price])).toEqual([
+      [11, null],
+      [12, 15],
+    ]);
+    expect(body.Added).toHaveLength(1);
+    expect(body.Added[0].selling_price).toBeNull();
+  });
+
+  it.each([
+    ["create", {}, mockSubmitReceipt],
+    ["edit", { isEditMode: true, receiptId: 5 }, mockEditReceipt],
+  ])("%s: blocks the save when a row's SP is above its MRP", async (_mode, override, mutation) => {
+    const params = { ...makeParams(), ...override, pharmaTableData: [{ ...row, sp: 25 }] }; // mrp 20
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith(
+      'Selling Price cannot be more than MRP for "Paracetamol 500"'
+    );
+    expect(mutation).not.toHaveBeenCalled();
+  });
+
+  it("validateForm allows an SP equal to the MRP or left blank", () => {
+    const params = { ...makeParams(), pharmaTableData: [{ ...row, sp: 20 }, blankSpRow] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+    expect(result.current.validateForm()).toBeNull();
+  });
+});
+
+describe("useOrderDetailsSubmit — mandatory-field message", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const requireMrp = (r: PharmaTableRow) => !!r.productId.trim() && r.mrp > 0;
+
+  it("names the first incomplete line so it can be found across pages", async () => {
+    const params = {
+      ...makeParams(),
+      isProductRowComplete: requireMrp,
+      pharmaTableData: [row, { ...row, id: "r2", productId: "NAZOMAC-M", mrp: 0 }],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith(
+      'Please complete all mandatory fields for "NAZOMAC-M" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
+    );
+    expect(mockSubmitReceipt).not.toHaveBeenCalled();
+  });
+
+  it("falls back to 'all products' for a line with no product name yet", () => {
+    const params = {
+      ...makeParams(),
+      isProductRowComplete: requireMrp,
+      pharmaTableData: [{ ...row, productId: "" }],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+    expect(result.current.validateForm()).toBe(
+      "Please complete all mandatory fields for all products (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)"
+    );
+  });
+});
+
+// ===========================================================================
+// EDIT-mode validation covers only the lines the save sends (Added + Edited).
+// ===========================================================================
+describe("useOrderDetailsSubmit — edit validation scope and negative SP", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // A historical line whose batch has no MRP (loaded as 0) and no recorded SP.
+  const oldLine: PharmaTableRow = { ...row, id: "21", productId: "Old Syrup", mrp: 0, sp: 0 };
+  const requireMrp = (r: PharmaTableRow) => !!r.productId.trim() && r.mrp > 0;
+  const editParams = (current: PharmaTableRow[]) => ({
+    ...makeParams(),
+    isEditMode: true,
+    receiptId: 5,
+    isProductRowComplete: requireMrp,
+    originalReceiptLines: [oldLine],
+    pharmaTableData: current,
+  });
+
+  it("an untouched incomplete line does not block a header-only edit save", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const params = { ...editParams([oldLine]), invoiceNumber: "INV-CORRECTED" };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).not.toHaveBeenCalledWith(expect.any(String));
+    expect(mockEditReceipt).toHaveBeenCalledTimes(1);
+    const [body] = mockEditReceipt.mock.calls[0];
+    expect(body.invoice_number).toBe("INV-CORRECTED");
+    expect(body.Edited).toEqual([]);
+    expect(body.Added).toEqual([]);
+  });
+
+  it("the same line is checked once it is edited", async () => {
+    const params = editParams([{ ...oldLine, qtyReceived: 6 }]);
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith(
+      'Please complete all mandatory fields for "Old Syrup" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
+    );
+    expect(mockEditReceipt).not.toHaveBeenCalled();
+  });
+
+  it("CREATE still checks every row", () => {
+    const params = { ...makeParams(), isProductRowComplete: requireMrp, pharmaTableData: [row, oldLine] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+    expect(result.current.validateForm()).toBe(
+      'Please complete all mandatory fields for "Old Syrup" (Batch, Expiry, Package Info, Received Packs, Purchase Price, MRP)'
+    );
+  });
+
+  it("a historical NULL-SP line edited for quantity only sends selling_price: null", async () => {
+    mockEditReceipt.mockReturnValue({ unwrap: () => Promise.resolve({ receipt_id: 5 }) });
+    const historical = { ...row, id: "22", sp: 0 }; // complete line, SP never recorded
+    const params = {
+      ...makeParams(),
+      isEditMode: true,
+      receiptId: 5,
+      originalReceiptLines: [historical],
+      pharmaTableData: [{ ...historical, qtyReceived: 9 }],
+    };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    const [body] = mockEditReceipt.mock.calls[0];
+    expect(body.Edited).toHaveLength(1);
+    expect(body.Edited[0]).toMatchObject({ receipt_line_id: 22, received_qty: 9, selling_price: null });
+  });
+
+  it.each([
+    ["create", {}, mockSubmitReceipt],
+    ["edit", { isEditMode: true, receiptId: 5 }, mockEditReceipt],
+  ])("%s: a typed negative SP blocks the save instead of going out as null", async (_mode, override, mutation) => {
+    const params = { ...makeParams(), ...override, pharmaTableData: [{ ...row, sp: -3 }] };
+    const { result } = renderHook(() => useOrderDetailsSubmit(params));
+
+    await act(async () => {
+      await result.current.proceedWithSave();
+    });
+
+    expect(params.setSaveError).toHaveBeenCalledWith('Selling Price cannot be negative for "Paracetamol 500"');
+    expect(mutation).not.toHaveBeenCalled();
+  });
+});

@@ -8,6 +8,7 @@ export const PRODUCT_DETAILS_MODAL_LABELS = {
     HSN_CODE: 'HSN code',
     BATCH_NUMBER: 'Batch Number',
     MRP: 'MRP',
+    SELLING_PRICE: 'Selling Price',
     PURCHASE_PRICE: 'Purchase Price',
   },
   DIALOG: {

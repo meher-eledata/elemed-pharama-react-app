@@ -9,6 +9,7 @@ import {
 import { useIdempotencyKey } from "../../../hooks/useIdempotencyKey";
 import { duplicateDocumentNumberMessage, extractErrorMessage } from "../../../utils/errorUtils";
 import { PharmaTableRow, SupplierOption, ProductOption } from "../types";
+import { orderLabels } from "../../../config/label/OrderDetail.labels";
 
 // Every submit/edit failure surfaces through setSaveError. The 409 DUPLICATE_RECEIPT_NUMBER
 // is a retryable counter anomaly rather than bad input, so it is named ahead of the generic
@@ -62,6 +63,13 @@ const toEditApiDate = (val?: string): string | undefined => {
   if (!val.trim()) return "";
   const d = dayjs(val, "DD/MM/YYYY");
   return d.isValid() ? d.format("YYYY-MM-DD") : undefined;
+};
+
+// Selling price is optional: a blank (0) cell is sent as null ("not recorded"),
+// never as a price.
+const toApiSellingPrice = (sp: unknown): number | null => {
+  const n = Number(sp);
+  return n > 0 ? n : null;
 };
 
 interface SubmitHookParams {
@@ -211,7 +219,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
         igst: Number(row.igst) || 0,
         discount: Number(row.disc) || 0,
         mrp: Number(row.mrp) || 0,
-        selling_price: Number(row.sp) || 0,
+        selling_price: toApiSellingPrice(row.sp),
         pack_qty: row.pack || ""
       };
     });
@@ -254,14 +262,44 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     return payload;
   };
 
-  const detectChanges = () => {
-    const originalIds = new Set(originalReceiptLines.map(row => row.id));
-    const currentIds = new Set(pharmaTableData.map(row => row.id));
+  // Edit saves send only Added and Edited lines; these decide which lines those are.
+  const isDatabaseId = (id: string | undefined) => {
+    if (!id) return false;
+    return /^\d+$/.test(id) && parseInt(id) < 1000000000000;
+  };
 
-    const isDatabaseId = (id: string | undefined) => {
-      if (!id) return false;
-      return /^\d+$/.test(id) && parseInt(id) < 1000000000000;
-    };
+  const isAddedLine = (row: PharmaTableRow) =>
+    !originalReceiptLines.some(orig => orig.id === row.id) || (!!row.id && !isDatabaseId(row.id));
+
+  const isEditedLine = (currentRow: PharmaTableRow) => {
+    if (!isDatabaseId(currentRow.id)) return false;
+    const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
+    if (!originalRow) return false;
+
+    const expiryDateChanged =
+      (originalRow.expiryDate === null && currentRow.expiryDate !== null) ||
+      (originalRow.expiryDate !== null && currentRow.expiryDate === null) ||
+      (originalRow.expiryDate && currentRow.expiryDate &&
+        !originalRow.expiryDate.isSame(currentRow.expiryDate, 'day'));
+
+    return (
+      originalRow.productId !== currentRow.productId ||
+      originalRow.qtyReceived !== currentRow.qtyReceived ||
+      originalRow.qtyFree !== currentRow.qtyFree ||
+      originalRow.pp !== currentRow.pp ||
+      originalRow.cgst !== currentRow.cgst ||
+      originalRow.sgst !== currentRow.sgst ||
+      originalRow.igst !== currentRow.igst ||
+      originalRow.disc !== currentRow.disc ||
+      originalRow.mrp !== currentRow.mrp ||
+      originalRow.sp !== currentRow.sp ||
+      (originalRow.pack || '') !== (currentRow.pack || '') ||
+      !!expiryDateChanged
+    );
+  };
+
+  const detectChanges = () => {
+    const currentIds = new Set(pharmaTableData.map(row => row.id));
 
     const formatExpiryDate = (row: PharmaTableRow): string => {
       if (row.expiryDate && dayjs.isDayjs(row.expiryDate) && row.expiryDate.isValid()) {
@@ -275,11 +313,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
       .map(row => ({ receipt_line_id: parseInt(row.id || '0') }));
 
     const added = pharmaTableData
-      .filter(currentRow => {
-        if (!originalIds.has(currentRow.id)) return true;
-        if (currentRow.id && !isDatabaseId(currentRow.id)) return true;
-        return false;
-      })
+      .filter(isAddedLine)
       .map(row => {
         const productId = row.product_id || getProductIdFromName(row.productId);
         return {
@@ -295,38 +329,13 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           igst: Number(row.igst) || 0,
           discount: Number(row.disc) || 0,
           mrp: row.mrp,
-          selling_price: row.sp,
+          selling_price: toApiSellingPrice(row.sp),
           pack_qty: row.pack
         };
       });
 
     const edited = pharmaTableData
-      .filter(currentRow => {
-        if (!isDatabaseId(currentRow.id)) return false;
-        const originalRow = originalReceiptLines.find(orig => orig.id === currentRow.id);
-        if (!originalRow) return false;
-
-        const expiryDateChanged =
-          (originalRow.expiryDate === null && currentRow.expiryDate !== null) ||
-          (originalRow.expiryDate !== null && currentRow.expiryDate === null) ||
-          (originalRow.expiryDate && currentRow.expiryDate &&
-            !originalRow.expiryDate.isSame(currentRow.expiryDate, 'day'));
-
-        return (
-          originalRow.productId !== currentRow.productId ||
-          originalRow.qtyReceived !== currentRow.qtyReceived ||
-          originalRow.qtyFree !== currentRow.qtyFree ||
-          originalRow.pp !== currentRow.pp ||
-          originalRow.cgst !== currentRow.cgst ||
-          originalRow.sgst !== currentRow.sgst ||
-          originalRow.igst !== currentRow.igst ||
-          originalRow.disc !== currentRow.disc ||
-          originalRow.mrp !== currentRow.mrp ||
-          originalRow.sp !== currentRow.sp ||
-          (originalRow.pack || '') !== (currentRow.pack || '') ||
-          expiryDateChanged
-        );
-      })
+      .filter(isEditedLine)
       .map(row => {
         const originalRow = originalReceiptLines.find(orig => orig.id === row.id);
         const productId = row.product_id || originalRow?.product_id || getProductIdFromName(row.productId);
@@ -348,7 +357,7 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
           igst: (Number(row.igst) || 0).toString(),
           discount: (Number(row.disc) || 0).toString(),
           mrp: row.mrp.toString(),
-          selling_price: row.sp.toString(),
+          selling_price: toApiSellingPrice(row.sp),
           pack_qty: (row.pack || '').toString()
         };
       });
@@ -404,10 +413,25 @@ export const useOrderDetailsSubmit = (params: SubmitHookParams) => {
     if (!supplierName.trim()) return 'Please fill in the Supplier Name';
     if (pharmaTableData.length === 0) return 'Please add at least one product to the table';
 
-    const incompleteProducts = pharmaTableData.filter(row => !isProductRowComplete(row));
-    if (incompleteProducts.length > 0) {
-      return 'Please complete all mandatory fields for all products (Batch, Expiry, Pack Info, Qty, Purchase Price, MRP)';
-    }
+    // An edit save sends only Added and Edited lines, so untouched history (e.g. an old
+    // line whose batch has no MRP) never blocks a header-only save. Create checks all.
+    const linesToCheck = isEditMode && receiptId
+      ? pharmaTableData.filter(row => isAddedLine(row) || isEditedLine(row))
+      : pharmaTableData;
+
+    // Name the first offending line (rows are paginated, 5 per page).
+    const incomplete = linesToCheck.find(row => !isProductRowComplete(row));
+    if (incomplete) return orderLabels.mandatoryFieldsForReceipt(incomplete.productId.trim());
+
+    const negativeSp = linesToCheck.find(row => (Number(row.sp) || 0) < 0);
+    if (negativeSp) return orderLabels.sellingPriceNegative(negativeSp.productId.trim());
+
+    const spAboveMrp = linesToCheck.find(row => {
+      const sp = Number(row.sp) || 0;
+      const mrp = Number(row.mrp) || 0;
+      return mrp > 0 && sp > mrp;
+    });
+    if (spAboveMrp) return orderLabels.sellingPriceAboveMrp(spAboveMrp.productId.trim());
     return null;
   };
 

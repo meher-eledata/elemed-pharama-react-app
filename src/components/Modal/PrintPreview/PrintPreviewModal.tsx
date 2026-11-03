@@ -4,7 +4,7 @@ import { StandardButton } from '../../Common';
 import html2pdf from 'html2pdf.js';
 import { SALES_RECEIPT_LABELS } from '../../../config/label/SalesReceipt.labels';
 import { formatSchedule } from '../../../config/constants/product.constants';
-import { formatInvoiceDateForDisplay, OrgPrintHeader } from '../../../pages/Sales/SalesReceipt.utils';
+import { formatInvoiceDateForDisplay, formatReceiptMrp, OrgPrintHeader } from '../../../pages/Sales/SalesReceipt.utils';
 
 interface SalesReceiptItem {
   id: string;
@@ -482,7 +482,7 @@ const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                       <Box>{item.pack || 'N/A'}</Box>
                       <Box>{formattedExp}</Box>
                       <Box>{item.quantity}</Box>
-                      <Box>{item.mrp || 'N/A'}</Box>
+                      <Box>{formatReceiptMrp(item.mrp)}</Box>
                       <Box>{gstTotal}</Box>
                       <Box sx={{ fontWeight: 600 }}>{item.amount}</Box>
                     </Box>

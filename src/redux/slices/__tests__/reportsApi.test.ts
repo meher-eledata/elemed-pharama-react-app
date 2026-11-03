@@ -258,12 +258,80 @@ describe('Reports API Endpoints', () => {
     });
   });
 
+  describe('POST reports/closingStock/get-closing-stock-report (getClosingStockReport)', () => {
+    const body = { as_of_date: '2026-10-15', brand_id: 3, search: 'amox', include_zero_stock: false };
+
+    it('should fetch closing stock rows + summary (numeric fields as pg strings)', async () => {
+      const mockResponse = {
+        as_of_date: '2026-10-15',
+        rows: [
+          {
+            product_id: 11,
+            product_name: 'Amoxicillin 500mg',
+            product_code: 'AMX-500',
+            brand_id: 3,
+            brand_name: 'Cipla',
+            quantity: '110.00',
+            value_cost_ex_gst: '900.00',
+            value_cost_inc_gst: '1008.00',
+            value_mrp: null,
+            cost_basis: 'RECEIPT' as const,
+            uncosted_quantity: '0',
+            has_negative_batches: false,
+          },
+        ],
+        summary: {
+          product_count: 1,
+          total_quantity: '110.00',
+          total_value_cost_ex_gst: '900.00',
+          total_value_cost_inc_gst: '1008.00',
+          total_value_mrp: '0.00',
+          uncosted_product_count: 0,
+          uncosted_quantity: '0',
+          unpriced_mrp_product_count: 1,
+          negative_batch_count: 0,
+          ambiguous_movement_count: 0,
+          unattributed_movement_count: 0,
+          receipt_line_deletions_after_cutoff: 0,
+          unknown_type_movement_count: 0,
+        },
+      };
+      mockBaseQuery.mockResolvedValueOnce({
+        data: mockResponse,
+        meta: mockMeta(200, 'OK', 'reports/closingStock/get-closing-stock-report'),
+      });
+
+      const store = makeStore();
+      const result = await store.dispatch(reportsApi.endpoints.getClosingStockReport.initiate(body));
+
+      expect(result.data).toEqual(mockResponse);
+      expect(mockBaseQuery).toHaveBeenCalledWith(
+        { url: 'reports/closingStock/get-closing-stock-report', method: 'POST', body },
+        apiObject,
+        undefined
+      );
+    });
+
+    it('should surface a 400 validation error', async () => {
+      mockBaseQuery.mockResolvedValueOnce({
+        error: { status: 400, data: { error: 'as_of_date cannot be in the future' } },
+        meta: mockMeta(400, 'Bad Request', 'reports/closingStock/get-closing-stock-report'),
+      });
+
+      const store = makeStore();
+      const result = await store.dispatch(reportsApi.endpoints.getClosingStockReport.initiate(body));
+
+      expect(result.error).toEqual({ status: 400, data: { error: 'as_of_date cannot be in the future' } });
+    });
+  });
+
   describe('Endpoint Configuration', () => {
     it('should have all endpoints defined', () => {
       expect(reportsApi.endpoints.getDailySalesReport).toBeDefined();
       expect(reportsApi.endpoints.getWeeklyBillCounts).toBeDefined();
       expect(reportsApi.endpoints.getDailySalesTable).toBeDefined();
       expect(reportsApi.endpoints.getSalesTaxReport).toBeDefined();
+      expect(reportsApi.endpoints.getClosingStockReport).toBeDefined();
     });
 
     it('should export correct hooks', () => {
@@ -271,6 +339,7 @@ describe('Reports API Endpoints', () => {
       expect(reportsApi.useGetWeeklyBillCountsQuery).toBeDefined();
       expect(reportsApi.useGetDailySalesTableQuery).toBeDefined();
       expect(reportsApi.useGetSalesTaxReportQuery).toBeDefined();
+      expect(reportsApi.useGetClosingStockReportQuery).toBeDefined();
     });
   });
 });

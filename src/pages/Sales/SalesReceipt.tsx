@@ -455,10 +455,6 @@ const SalesReceipt: React.FC = () => {
               }
 
               const mappedSalesItems = lines.length > 0 ? lines.map((line: any) => {
-                const unitPrice = parseFloat(line.rate || line.unit_price || '0');
-                const quantity = parseFloat(line.quantity || '1');
-                const baseAmount = unitPrice * quantity;
-
                 // Calculate discount percentage
                 let discountPercentValue = '0';
                 const rawDisc = line.discount_percent ?? line.discountPercent ?? line.discount ?? 0;
@@ -468,42 +464,20 @@ const SalesReceipt: React.FC = () => {
                 // Otherwise use as is (already 0-100)
                 discountPercentValue = discValue.toString();
 
-                // ROBUST TAX PERCENTAGE DERIVATION:
-                // Trust the stored value if it looks like a percentage (0-30)
-                // Only fall back to math derivation for old invoices storing absolute amounts
-                const deriveTaxPercent = (storedVal: any, base: number, defaultVal: string) => {
-                  const val = parseFloat(storedVal || '0');
-
-                  // Priority 1: If value is already a reasonable percentage (>30%), or looks like a fraction (0-1), 
-                  if (val > 0) return val.toString();
-
-                  // Priority 2: If value is 0, check if we should use the mandatory default
-                  if (val === 0) return defaultVal;
-
-                  if (base === 0) return defaultVal;
-
-                  // Priority 3: Fallback for OLD invoices storing absolute amounts
-                  const calcPercent = (val / base) * 100;
-                  const commonPercents = [2.5, 5, 6, 9, 12, 14, 18, 28];
-                  const foundCommon = commonPercents.find(p => Math.abs(calcPercent - p) < 0.1);
-
-                  if (foundCommon) {
-                    return foundCommon.toString();
-                  }
-
-                  // If it's a small amount that looks like a percentage when calculated
-                  if (calcPercent > 0.1 && calcPercent <= 30) return calcPercent.toFixed(1);
-
-                  return defaultVal;
+                // invoice_lines.cgst/sgst/igst are stored as PERCENTS (every backend write path
+                // and its totals math treat them so), so show exactly what is stored: a 0% or
+                // IGST-only line stays 0, never a guessed 9. A legacy row holding an absolute tax
+                // amount cannot be told apart by shape (any positive number is a plausible rate),
+                // the backend computes it as a percent too, and the old "absolute amount" guess
+                // only ever ran for non-positive values — so mirroring the stored value keeps the
+                // screen matching the stored totals.
+                const storedTaxPercent = (stored: unknown) => {
+                  const pct = parseFloat(String(stored ?? ''));
+                  return Number.isFinite(pct) ? pct.toString() : '0';
                 };
-
-                const discountedAmountPerUnit = baseAmount / quantity - (parseFloat(line.discount || '0') / quantity);
-                const lineBaseForTax = baseAmount - parseFloat(line.discount || '0');
-
-                // Apply defaults: CGST=9, SGST=9, IGST=0
-                let cgstPercent = deriveTaxPercent(line.cgst || line.cgst_percent, lineBaseForTax, '9');
-                let sgstPercent = deriveTaxPercent(line.sgst || line.sgst_percent, lineBaseForTax, '9');
-                let igstPercent = deriveTaxPercent(line.igst || line.igst_percent, lineBaseForTax, '0');
+                const cgstPercent = storedTaxPercent(line.cgst ?? line.cgst_percent);
+                const sgstPercent = storedTaxPercent(line.sgst ?? line.sgst_percent);
+                const igstPercent = storedTaxPercent(line.igst ?? line.igst_percent);
 
                 const originalQty = parseFloat(line.quantity || '0');
                 const returnedQty = parseFloat(line.returned_quantity || '0');
@@ -526,7 +500,7 @@ const SalesReceipt: React.FC = () => {
                   type: line.product_type || line.type || 'N/A',
                   quantity: netQty.toString(),
                   unitPrice: line.amount ? (parseFloat(line.amount) / parseFloat(line.quantity || '1')).toFixed(8) : (line.rate?.toString() || line.unit_price?.toString() || '0'), // Base unit price with high precision
-                  mrp: line.mrp ? Number(parseFloat(line.mrp) * parseFloat(line.quantity || '1')).toFixed(2).replace(/\.00$/, '') : '0', // Calculate aggregate MRP for historic invoices
+                  mrp: line.mrp ? Number(parseFloat(line.mrp)).toFixed(2).replace(/\.00$/, '') : '0',
                   discount: line.discount?.toString() || '0',
                   discountPercent: discountPercentValue,
                   cgst: line.cgst?.toString() || '0',
@@ -550,8 +524,10 @@ const SalesReceipt: React.FC = () => {
                 // Per the API contract the free-text detail lives on invoice.customer_details (string | null)
                 customerDetails: result.invoice?.customer_details || '',
                 doctorName: result.doctor_name || result.invoice?.doctor_name || editModeData.doctorName || '',
-                doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || editModeData.doctorMobile || '',
-                doctorEmail: result.doctor_email || result.invoice?.doctor_email || editModeData.doctorEmail || '',
+                // The invoice stores only doctor_id; the contact comes from the doctor master
+                // (result.doctor) — the same values the doctor auto-fill writes after load.
+                doctorMobile: result.doctor_mobile || result.invoice?.doctor_mobile || result.doctor?.phone || editModeData.doctorMobile || '',
+                doctorEmail: result.doctor_email || result.invoice?.doctor_email || result.doctor?.email || editModeData.doctorEmail || '',
                 // Invoice table has no payment_mode column — derive it from the payments array.
                 // 1 payment → that payment's method (mapped to dropdown casing).
                 // 2+ payments → 'Multiple' (multi-payment UI handles the breakdown separately).
@@ -715,6 +691,10 @@ const SalesReceipt: React.FC = () => {
               const originalItems = invoiceData.salesItems && Array.isArray(invoiceData.salesItems) && invoiceData.salesItems.length > 0
                 ? invoiceData.salesItems.map((item: SalesReceiptItem) => recalculateSalesItemAmount(item))
                 : [];
+              // Snapshot the summary the same way the form state derives it (from the items), not
+              // from the raw invoice strings ("0.0000", no tax field) — otherwise hasChanges() is
+              // true on an untouched invoice and Save is enabled before any edit.
+              const originalSummary = originalItems.length > 0 ? calculateFinancialSummary(originalItems) : null;
 
               setOriginalInvoiceData({
                 customerName: invoiceData.customerName || '',
@@ -730,10 +710,10 @@ const SalesReceipt: React.FC = () => {
                 invoiceNumber: invoiceData.invoiceNumber || '',
                 invoiceDate: invoiceData.invoiceDate || '',
                 salesItems: originalItems,
-                totalValue: invoiceData.totalValue || '0',
-                totalDiscount: invoiceData.totalDiscount || '0',
-                taxAmount: invoiceData.taxAmount || '0',
-                totalPayableAmount: invoiceData.totalPayableAmount || '0',
+                totalValue: originalSummary?.totalValue ?? (invoiceData.totalValue || '0'),
+                totalDiscount: originalSummary?.totalDiscount ?? (invoiceData.totalDiscount || '0'),
+                taxAmount: originalSummary?.taxAmount ?? (invoiceData.taxAmount || '0'),
+                totalPayableAmount: originalSummary?.totalPayableAmount ?? (invoiceData.totalPayableAmount || '0'),
               });
 
               return; // Exit early if API call succeeded
@@ -1477,6 +1457,7 @@ const SalesReceipt: React.FC = () => {
         current.mrp !== original.mrp ||
         current.discountPercent !== original.discountPercent ||
         current.discount !== original.discount ||
+        current.discountAuthorizedBy !== original.discountAuthorizedBy ||
         current.batch !== original.batch ||
         current.type !== original.type ||
         current.cgstPercent !== original.cgstPercent ||
