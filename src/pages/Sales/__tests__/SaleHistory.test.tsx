@@ -643,6 +643,49 @@ describe('SaleHistory', () => {
     });
   });
 
+  describe('search by product name', () => {
+    // ids run opposite to date order, so the result order proves the
+    // invoice_date-desc default sort (the id tiebreak would invert it).
+    const productInvoices = [
+      { ...mockInvoices[0], id: 2003, invoice_number: 2003, invoice_date: '2026-01-10', product_names: ['Calpol 650', 'Keto-B'] },
+      { ...mockInvoices[0], id: 2002, invoice_number: 2002, invoice_date: '2026-01-15', product_names: ['Pulmoclear Syp'] },
+      { ...mockInvoices[0], id: 2001, invoice_number: 2001, invoice_date: '2026-01-20', product_names: ['CALPOL 500'] },
+      { ...mockInvoices[0], id: 2004, invoice_number: 2004, invoice_date: '2026-01-25', product_names: [] },
+    ];
+
+    const search = (term: string) =>
+      fireEvent.change(screen.getByPlaceholderText(SALES_HISTORY_LABELS.SEARCH_PLACEHOLDER), {
+        target: { value: term },
+      });
+
+    it('shows only invoices with a matching product (case-insensitive, partial), newest first', async () => {
+      useInvoices(productInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv2004/i)).toBeInTheDocument());
+
+      search('calp');
+
+      await waitFor(() => {
+        expect(screen.queryByText(/inv2002/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/inv2004/i)).not.toBeInTheDocument();
+      });
+      const rendered = screen.getAllByText(/^INV200\d$/).map(el => el.textContent);
+      expect(rendered).toEqual(['INV2001', 'INV2003']);
+    });
+
+    it('shows no invoices when no product matches', async () => {
+      useInvoices(productInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv2004/i)).toBeInTheDocument());
+
+      search('zzz-no-such-product');
+
+      await waitFor(() => {
+        expect(screen.queryByText(/^INV200\d$/)).not.toBeInTheDocument();
+      });
+    });
+  });
+
   // =========================================================================
   // Print-to-PDF activity logging (2026-08-16): handlePrintToPDF fire-and-forgets
   // POST /api/activity/log-download with category 'sales' / format 'pdf' and an

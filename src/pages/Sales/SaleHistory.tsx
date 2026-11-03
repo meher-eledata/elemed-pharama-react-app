@@ -124,6 +124,7 @@ export interface SalesHistoryItem {
   totalReturnedAmount: number;
   paymentMode: string;
   splitPayments: any[];
+  productNames: string[]; // Distinct product names on the invoice (search target)
   // Return information (populated directly from backend list)
   hasReturn: boolean;
   lastReturnStatus: string | null;
@@ -282,6 +283,9 @@ export default function SaleHistory() {
         ? item.splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ')
         : (item.paymentMode || 'Cash'),
       splitPayments: item.splitPayments || [],
+      productNames: Array.isArray(item.items)
+        ? item.items.map((line: any) => line?.productName).filter(Boolean)
+        : [],
       hasReturn: false,
       lastReturnStatus: null,
     }));
@@ -377,6 +381,7 @@ export default function SaleHistory() {
         lastReturnStatus: rawReturnStatus,
         paymentMode: paymentMode,
         splitPayments: splitPayments,
+        productNames: Array.isArray(invoice.product_names) ? invoice.product_names : [],
         createdAt: invoice.created_at,
         recordStatus: invoice.record_status || (invoice.deleted_at ? 'DELETED' : 'ACTIVE'),
         deletionReason: invoice.deletion_reason || undefined,
@@ -746,7 +751,8 @@ export default function SaleHistory() {
       filtered = filtered.filter(item =>
         (item.invoiceNumber || '').toLowerCase().includes(searchLower) ||
         (item.customerName || '').toLowerCase().includes(searchLower) ||
-        (item.customerMobile || '').toLowerCase().includes(searchLower)
+        (item.customerMobile || '').toLowerCase().includes(searchLower) ||
+        (item.productNames || []).some(n => (n || '').toLowerCase().includes(searchLower))
       );
     }
 
