@@ -491,10 +491,11 @@ describe('Settings — Document Numbering', () => {
 
   // The sales_invoice scheme is annual anchored 1 April, so {YY} is the FINANCIAL
   // year's — computed here independently of the util so the assertion cannot flip in
-  // January (calendar-year expectations were only right from April to December).
+  // January (calendar-year expectations were only right from April to December). Read in
+  // IST (+05:30) like the server and the util, so it cannot disagree on a boundary day.
   const currentFyYy = () => {
-    const now = new Date();
-    const fy = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+    const ist = new Date(Date.now() + (5 * 60 + 30) * 60 * 1000);
+    const fy = ist.getUTCMonth() + 1 >= 4 ? ist.getUTCFullYear() : ist.getUTCFullYear() - 1;
     return String(fy % 100).padStart(2, '0');
   };
 
