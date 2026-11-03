@@ -376,6 +376,8 @@ export interface EditSaleResponse {
 // (null when never set / blank).
 export interface Invoice {
   customer_details: string | null;
+  // Distinct product names on the invoice ([] when none); drives Sales History search.
+  product_names?: string[] | null;
   [key: string]: any;
 }
 

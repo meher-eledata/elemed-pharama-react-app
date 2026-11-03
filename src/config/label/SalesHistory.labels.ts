@@ -4,7 +4,7 @@ export const SALES_HISTORY_LABELS = {
     INVOICES: 'Sales',
     RETURNS: 'Returns',
   },
-  SEARCH_PLACEHOLDER: 'Search by Sale Number, Customer Name, or Phone Number',
+  SEARCH_PLACEHOLDER: 'Search by Sale Number, Customer, Phone, or Product',
   SHOW_FILTERS: 'Show filters',
   HIDE_FILTERS: 'Hide filters',
   FILTER_DOCTOR_NAME: 'Doctor Name',
