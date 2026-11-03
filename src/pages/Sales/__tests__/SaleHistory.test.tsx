@@ -6,6 +6,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SaleHistory from '../SaleHistory';
 import * as salesApi from '../../../redux/slices/salesApi';
+import * as cartStorage from '../../../utils/cartStorage';
 import { SALES_HISTORY_LABELS } from '../../../config/label/SalesHistory.labels';
 
 const theme = createTheme();
@@ -682,6 +683,50 @@ describe('SaleHistory', () => {
 
       await waitFor(() => {
         expect(screen.queryByText(/^INV200\d$/)).not.toBeInTheDocument();
+      });
+    });
+
+    describe('locally saved history', () => {
+      // cartStorage is module-mocked above, so the saved history (normally
+      // localStorage['pharma_sales_history']) is fed via its getter. Shape per
+      // SalesReceipt.saveHandler.ts historyItem: line items carry productName.
+      const savedSale = (invoiceNumber: string, productName: string) => ({
+        id: 9001,
+        invoiceNumber,
+        invoiceDate: '25 Jan 2026',
+        customerName: 'Saved Customer',
+        customerMobile: '9999999999',
+        totalAmount: 120,
+        items: [{ id: 'line-1', productName, batch: 'B1', quantity: '1', type: 'Syrup', unitPrice: '120' }],
+      });
+      const getSaved = cartStorage.getSalesHistoryFromStorage as jest.Mock;
+
+      afterEach(() => getSaved.mockReturnValue([]));
+
+      it('matches a saved-only sale by its stored line items', async () => {
+        getSaved.mockReturnValue([savedSale('INV9001', 'Zinc Syrup')]);
+        useInvoices(productInvoices);
+        renderComponent();
+        await waitFor(() => expect(screen.getByText('INV9001')).toBeInTheDocument());
+
+        search('zinc');
+        await waitFor(() => expect(screen.queryByText(/^INV200\d$/)).not.toBeInTheDocument());
+        expect(screen.getByText('INV9001')).toBeInTheDocument();
+
+        search('pulmo');
+        await waitFor(() => expect(screen.queryByText('INV9001')).not.toBeInTheDocument());
+        expect(screen.getByText('INV2002')).toBeInTheDocument();
+      });
+
+      it('falls back to saved product names when the API row has none', async () => {
+        getSaved.mockReturnValue([savedSale('INV2004', 'Zinc Syrup')]);
+        useInvoices(productInvoices);
+        renderComponent();
+        await waitFor(() => expect(screen.getByText('INV2004')).toBeInTheDocument());
+
+        search('zinc');
+        await waitFor(() => expect(screen.queryByText('INV2001')).not.toBeInTheDocument());
+        expect(screen.getAllByText(/^INV200\d$/).map(el => el.textContent)).toEqual(['INV2004']);
       });
     });
   });

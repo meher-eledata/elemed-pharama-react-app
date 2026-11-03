@@ -426,6 +426,8 @@ export default function SaleHistory() {
             splitPayments: (item.splitPayments && item.splitPayments.length > 0)
               ? item.splitPayments
               : (savedItem.splitPayments && savedItem.splitPayments.length > 0 ? savedItem.splitPayments : []),
+            // Older backends omit product_names; fall back to the saved line items' names.
+            productNames: item.productNames.length ? item.productNames : savedItem.productNames,
           });
         } else {
           resultMap.set(item.invoiceNumber, item);
@@ -752,7 +754,7 @@ export default function SaleHistory() {
         (item.invoiceNumber || '').toLowerCase().includes(searchLower) ||
         (item.customerName || '').toLowerCase().includes(searchLower) ||
         (item.customerMobile || '').toLowerCase().includes(searchLower) ||
-        (item.productNames || []).some(n => (n || '').toLowerCase().includes(searchLower))
+        (item.productNames || []).some(n => n.toLowerCase().includes(searchLower))
       );
     }
 
