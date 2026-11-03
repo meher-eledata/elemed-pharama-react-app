@@ -284,6 +284,27 @@ describe('SaleHistory', () => {
     expect(screen.queryByText(/INVSI-EL/i)).not.toBeInTheDocument();
   });
 
+  // Scheme OFF: a stored invoice_number that is not a bare number used to fall through to a
+  // fabricated `INV<index + 1000>` (the fallback read a non-existent invoice.id). The displayed
+  // number is also the return lookup key, so it must be the stored value, never one derived
+  // from the db id (bugs.md 2026-08-14).
+  it('shows a non-numeric legacy invoice_number verbatim when the scheme is disabled', async () => {
+    useInvoices([{ ...mockInvoices[0], id: undefined, invoice_id: 42, invoice_number: 'INV-2026-000007' }]);
+    renderComponent();
+
+    expect(await screen.findByText('INV-2026-000007')).toBeInTheDocument();
+    expect(screen.queryByText('INV1000')).not.toBeInTheDocument();
+    expect(screen.queryByText('INV42')).not.toBeInTheDocument();
+  });
+
+  it('falls back to INV<invoice_id> only when the invoice has no number at all', async () => {
+    useInvoices([{ ...mockInvoices[0], id: undefined, invoice_id: 42, invoice_number: null }]);
+    renderComponent();
+
+    expect(await screen.findByText('INV42')).toBeInTheDocument();
+    expect(screen.queryByText('INV1000')).not.toBeInTheDocument();
+  });
+
   it('opens invoice modal when eye icon is clicked', async () => {
     renderComponent();
 

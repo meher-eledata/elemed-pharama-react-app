@@ -346,8 +346,14 @@ export default function SaleHistory() {
         // Enabled: show invoice_number verbatim. Disabled: legacy "INV<n>" cosmetic
         // (decorateInvoiceNumber re-prepends after the numericPart strip, matching before).
         formattedInvoiceNumber = decorateInvoiceNumber(schemeEnabled ? invoiceNumStr : numericPart, schemeEnabled);
-      } else if (invoice.id) {
-        formattedInvoiceNumber = decorateInvoiceNumber(invoice.id, schemeEnabled);
+      } else if (invoiceNumStr && invoiceNumStr.toLowerCase() !== 'null') {
+        // Legacy (scheme off) stored value that is not a bare number, e.g. "INV-2026-000007":
+        // show it verbatim. It is a lookup key (return resolves by invoice_number) and the merge
+        // key below, so it must never be replaced by a number derived from the db id.
+        formattedInvoiceNumber = decorateInvoiceNumber(invoiceNumStr, schemeEnabled);
+      } else if (databaseId) {
+        // Last resort: no stored invoice_number at all (the server assigns one on every sale).
+        formattedInvoiceNumber = decorateInvoiceNumber(databaseId, schemeEnabled);
       } else {
         formattedInvoiceNumber = decorateInvoiceNumber(index + 1000, schemeEnabled);
       }
