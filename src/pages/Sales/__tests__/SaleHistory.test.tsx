@@ -6,6 +6,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import SaleHistory from '../SaleHistory';
 import * as salesApi from '../../../redux/slices/salesApi';
+import * as cartStorage from '../../../utils/cartStorage';
 import { SALES_HISTORY_LABELS } from '../../../config/label/SalesHistory.labels';
 
 const theme = createTheme();
@@ -281,6 +282,27 @@ describe('SaleHistory', () => {
     expect(await screen.findByText('SI-EL-26-002296')).toBeInTheDocument();
     // Never the legacy "INV<custom>" mangling.
     expect(screen.queryByText(/INVSI-EL/i)).not.toBeInTheDocument();
+  });
+
+  // Scheme OFF: a stored invoice_number that is not a bare number used to fall through to a
+  // fabricated `INV<index + 1000>` (the fallback read a non-existent invoice.id). The displayed
+  // number is also the return lookup key, so it must be the stored value, never one derived
+  // from the db id (bugs.md 2026-08-14).
+  it('shows a non-numeric legacy invoice_number verbatim when the scheme is disabled', async () => {
+    useInvoices([{ ...mockInvoices[0], id: undefined, invoice_id: 42, invoice_number: 'INV-2026-000007' }]);
+    renderComponent();
+
+    expect(await screen.findByText('INV-2026-000007')).toBeInTheDocument();
+    expect(screen.queryByText('INV1000')).not.toBeInTheDocument();
+    expect(screen.queryByText('INV42')).not.toBeInTheDocument();
+  });
+
+  it('falls back to INV<invoice_id> only when the invoice has no number at all', async () => {
+    useInvoices([{ ...mockInvoices[0], id: undefined, invoice_id: 42, invoice_number: null }]);
+    renderComponent();
+
+    expect(await screen.findByText('INV42')).toBeInTheDocument();
+    expect(screen.queryByText('INV1000')).not.toBeInTheDocument();
   });
 
   it('opens invoice modal when eye icon is clicked', async () => {
@@ -639,6 +661,93 @@ describe('SaleHistory', () => {
         expect(screen.getByText(/inv1001/i)).toBeInTheDocument();
         expect(screen.getByText(/inv1015/i)).toBeInTheDocument();
         expect(screen.queryByText(/inv1020/i)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('search by product name', () => {
+    // ids run opposite to date order, so the result order proves the
+    // invoice_date-desc default sort (the id tiebreak would invert it).
+    const productInvoices = [
+      { ...mockInvoices[0], id: 2003, invoice_number: 2003, invoice_date: '2026-01-10', product_names: ['Calpol 650', 'Keto-B'] },
+      { ...mockInvoices[0], id: 2002, invoice_number: 2002, invoice_date: '2026-01-15', product_names: ['Pulmoclear Syp'] },
+      { ...mockInvoices[0], id: 2001, invoice_number: 2001, invoice_date: '2026-01-20', product_names: ['CALPOL 500'] },
+      { ...mockInvoices[0], id: 2004, invoice_number: 2004, invoice_date: '2026-01-25', product_names: [] },
+    ];
+
+    const search = (term: string) =>
+      fireEvent.change(screen.getByPlaceholderText(SALES_HISTORY_LABELS.SEARCH_PLACEHOLDER), {
+        target: { value: term },
+      });
+
+    it('shows only invoices with a matching product (case-insensitive, partial), newest first', async () => {
+      useInvoices(productInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv2004/i)).toBeInTheDocument());
+
+      search('calp');
+
+      await waitFor(() => {
+        expect(screen.queryByText(/inv2002/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/inv2004/i)).not.toBeInTheDocument();
+      });
+      const rendered = screen.getAllByText(/^INV200\d$/).map(el => el.textContent);
+      expect(rendered).toEqual(['INV2001', 'INV2003']);
+    });
+
+    it('shows no invoices when no product matches', async () => {
+      useInvoices(productInvoices);
+      renderComponent();
+      await waitFor(() => expect(screen.getByText(/inv2004/i)).toBeInTheDocument());
+
+      search('zzz-no-such-product');
+
+      await waitFor(() => {
+        expect(screen.queryByText(/^INV200\d$/)).not.toBeInTheDocument();
+      });
+    });
+
+    describe('locally saved history', () => {
+      // cartStorage is module-mocked above, so the saved history (normally
+      // localStorage['pharma_sales_history']) is fed via its getter. Shape per
+      // SalesReceipt.saveHandler.ts historyItem: line items carry productName.
+      const savedSale = (invoiceNumber: string, productName: string) => ({
+        id: 9001,
+        invoiceNumber,
+        invoiceDate: '25 Jan 2026',
+        customerName: 'Saved Customer',
+        customerMobile: '9999999999',
+        totalAmount: 120,
+        items: [{ id: 'line-1', productName, batch: 'B1', quantity: '1', type: 'Syrup', unitPrice: '120' }],
+      });
+      const getSaved = cartStorage.getSalesHistoryFromStorage as jest.Mock;
+
+      afterEach(() => getSaved.mockReturnValue([]));
+
+      it('matches a saved-only sale by its stored line items', async () => {
+        getSaved.mockReturnValue([savedSale('INV9001', 'Zinc Syrup')]);
+        useInvoices(productInvoices);
+        renderComponent();
+        await waitFor(() => expect(screen.getByText('INV9001')).toBeInTheDocument());
+
+        search('zinc');
+        await waitFor(() => expect(screen.queryByText(/^INV200\d$/)).not.toBeInTheDocument());
+        expect(screen.getByText('INV9001')).toBeInTheDocument();
+
+        search('pulmo');
+        await waitFor(() => expect(screen.queryByText('INV9001')).not.toBeInTheDocument());
+        expect(screen.getByText('INV2002')).toBeInTheDocument();
+      });
+
+      it('falls back to saved product names when the API row has none', async () => {
+        getSaved.mockReturnValue([savedSale('INV2004', 'Zinc Syrup')]);
+        useInvoices(productInvoices);
+        renderComponent();
+        await waitFor(() => expect(screen.getByText('INV2004')).toBeInTheDocument());
+
+        search('zinc');
+        await waitFor(() => expect(screen.queryByText('INV2001')).not.toBeInTheDocument());
+        expect(screen.getAllByText(/^INV200\d$/).map(el => el.textContent)).toEqual(['INV2004']);
       });
     });
   });

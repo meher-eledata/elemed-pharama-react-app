@@ -124,6 +124,7 @@ export interface SalesHistoryItem {
   totalReturnedAmount: number;
   paymentMode: string;
   splitPayments: any[];
+  productNames: string[]; // Distinct product names on the invoice (search target)
   // Return information (populated directly from backend list)
   hasReturn: boolean;
   lastReturnStatus: string | null;
@@ -282,6 +283,9 @@ export default function SaleHistory() {
         ? item.splitPayments.map((p: any) => p.paymentMethod || p.payment_method || 'Cash').join(' / ')
         : (item.paymentMode || 'Cash'),
       splitPayments: item.splitPayments || [],
+      productNames: Array.isArray(item.items)
+        ? item.items.map((line: any) => line?.productName).filter(Boolean)
+        : [],
       hasReturn: false,
       lastReturnStatus: null,
     }));
@@ -342,8 +346,14 @@ export default function SaleHistory() {
         // Enabled: show invoice_number verbatim. Disabled: legacy "INV<n>" cosmetic
         // (decorateInvoiceNumber re-prepends after the numericPart strip, matching before).
         formattedInvoiceNumber = decorateInvoiceNumber(schemeEnabled ? invoiceNumStr : numericPart, schemeEnabled);
-      } else if (invoice.id) {
-        formattedInvoiceNumber = decorateInvoiceNumber(invoice.id, schemeEnabled);
+      } else if (invoiceNumStr && invoiceNumStr.toLowerCase() !== 'null') {
+        // Legacy (scheme off) stored value that is not a bare number, e.g. "INV-2026-000007":
+        // show it verbatim. It is a lookup key (return resolves by invoice_number) and the merge
+        // key below, so it must never be replaced by a number derived from the db id.
+        formattedInvoiceNumber = decorateInvoiceNumber(invoiceNumStr, schemeEnabled);
+      } else if (databaseId) {
+        // Last resort: no stored invoice_number at all (the server assigns one on every sale).
+        formattedInvoiceNumber = decorateInvoiceNumber(databaseId, schemeEnabled);
       } else {
         formattedInvoiceNumber = decorateInvoiceNumber(index + 1000, schemeEnabled);
       }
@@ -377,6 +387,7 @@ export default function SaleHistory() {
         lastReturnStatus: rawReturnStatus,
         paymentMode: paymentMode,
         splitPayments: splitPayments,
+        productNames: Array.isArray(invoice.product_names) ? invoice.product_names : [],
         createdAt: invoice.created_at,
         recordStatus: invoice.record_status || (invoice.deleted_at ? 'DELETED' : 'ACTIVE'),
         deletionReason: invoice.deletion_reason || undefined,
@@ -421,6 +432,8 @@ export default function SaleHistory() {
             splitPayments: (item.splitPayments && item.splitPayments.length > 0)
               ? item.splitPayments
               : (savedItem.splitPayments && savedItem.splitPayments.length > 0 ? savedItem.splitPayments : []),
+            // Older backends omit product_names; fall back to the saved line items' names.
+            productNames: item.productNames.length ? item.productNames : savedItem.productNames,
           });
         } else {
           resultMap.set(item.invoiceNumber, item);
@@ -746,7 +759,8 @@ export default function SaleHistory() {
       filtered = filtered.filter(item =>
         (item.invoiceNumber || '').toLowerCase().includes(searchLower) ||
         (item.customerName || '').toLowerCase().includes(searchLower) ||
-        (item.customerMobile || '').toLowerCase().includes(searchLower)
+        (item.customerMobile || '').toLowerCase().includes(searchLower) ||
+        (item.productNames || []).some(n => n.toLowerCase().includes(searchLower))
       );
     }
 

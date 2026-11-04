@@ -5,8 +5,8 @@ import {
   invoiceLookupKey,
 } from '../invoiceNumberPreview';
 
-// A fixed date so {YY}/{YYYY}/{MM} assertions are deterministic (July 2026).
-const D = new Date(2026, 6, 4);
+// A fixed instant so {YY}/{YYYY}/{MM} assertions are deterministic (noon IST, 4 July 2026).
+const D = new Date(Date.UTC(2026, 6, 4, 6, 30));
 
 describe('renderInvoiceNumberPreview — faithful mirror of backend renderInvoiceNumber', () => {
   it('renders the contract example: SI-EL-{YY}-{SEQ:6} + 2296 → SI-EL-26-002296', () => {
@@ -31,31 +31,31 @@ describe('renderInvoiceNumberPreview — faithful mirror of backend renderInvoic
 });
 
 // The year/month tokens render the PERIOD BUCKET's year (backend periodTokensFor), so
-// the preview can never disagree with the number the allocator issues. Dates are built
-// with the LOCAL Date constructor on purpose: an ISO 'YYYY-MM-DD' string parses as UTC
-// midnight and would slide the bucket by a day in a negative-offset timezone.
+// the preview can never disagree with the number the allocator issues. Dates are
+// 'YYYY-MM-DD' strings (IST calendar days, like the backend) or `Date.UTC` instants —
+// never a local-part `new Date(y, m, d)`, which is a different instant per machine TZ.
 describe('renderInvoiceNumberPreview — period-bucket year/month tokens', () => {
   const FY = { cycle: 'annual', anchorMonth: 4, anchorDay: 1 };
   const T = 'SI-EL-{YY}-{SEQ:6}';
 
   it('annual + 1-April anchor: 31 March belongs to the PREVIOUS financial year', () => {
-    expect(renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), FY)).toBe('SI-EL-25-000001');
+    expect(renderInvoiceNumberPreview(T, 1, '2026-03-31', FY)).toBe('SI-EL-25-000001');
   });
 
   it('annual + 1-April anchor: 1 April opens the new financial year', () => {
-    expect(renderInvoiceNumberPreview(T, 1, new Date(2026, 3, 1), FY)).toBe('SI-EL-26-000001');
+    expect(renderInvoiceNumberPreview(T, 1, '2026-04-01', FY)).toBe('SI-EL-26-000001');
   });
 
   it('annual keeps the DOCUMENT month in {MM} (the bucket spans 12 months)', () => {
     expect(
-      renderInvoiceNumberPreview('{YYYY}/{MM}/{SEQ:3}', 9, new Date(2026, 1, 15), FY),
+      renderInvoiceNumberPreview('{YYYY}/{MM}/{SEQ:3}', 9, '2026-02-15', FY),
     ).toBe('2025/02/009');
   });
 
   // LEGACY IDENTITY — migrated reset='yearly' orgs must render exactly as before.
   it('annual anchored 1 January is byte-identical to document-date rendering', () => {
     const jan = { cycle: 'annual', anchorMonth: 1, anchorDay: 1 };
-    for (const date of [new Date(2026, 0, 1), new Date(2026, 2, 31), new Date(2026, 11, 31)]) {
+    for (const date of ['2026-01-01', '2026-03-31', '2026-12-31']) {
       expect(renderInvoiceNumberPreview('{YYYY}-{MM}-{SEQ:4}', 5, date, jan)).toBe(
         renderInvoiceNumberPreview('{YYYY}-{MM}-{SEQ:4}', 5, date),
       );
@@ -64,7 +64,7 @@ describe('renderInvoiceNumberPreview — period-bucket year/month tokens', () =>
 
   it('monthly renders the document year/month, anchor ignored', () => {
     expect(
-      renderInvoiceNumberPreview('{YY}{MM}-{SEQ:3}', 2, new Date(2026, 2, 31), {
+      renderInvoiceNumberPreview('{YY}{MM}-{SEQ:3}', 2, '2026-03-31', {
         cycle: 'monthly',
         anchorMonth: 4,
         anchorDay: 1,
@@ -74,25 +74,75 @@ describe('renderInvoiceNumberPreview — period-bucket year/month tokens', () =>
 
   it("cycle 'none' renders the document year/month", () => {
     expect(
-      renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), { cycle: 'none', anchorMonth: 4, anchorDay: 1 }),
+      renderInvoiceNumberPreview(T, 1, '2026-03-31', { cycle: 'none', anchorMonth: 4, anchorDay: 1 }),
     ).toBe('SI-EL-26-000001');
   });
 
   it('omitting the period context renders from the document date (unchanged callers)', () => {
-    expect(renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31))).toBe('SI-EL-26-000001');
+    expect(renderInvoiceNumberPreview(T, 1, '2026-03-31')).toBe('SI-EL-26-000001');
   });
 
   it('falls back to the 1-April default anchor when the anchor is absent or out of range', () => {
     expect(
-      renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), { cycle: 'annual' }),
+      renderInvoiceNumberPreview(T, 1, '2026-03-31', { cycle: 'annual' }),
     ).toBe('SI-EL-25-000001');
     expect(
-      renderInvoiceNumberPreview(T, 1, new Date(2026, 2, 31), {
+      renderInvoiceNumberPreview(T, 1, '2026-03-31', {
         cycle: 'annual',
         anchorMonth: NaN,
         anchorDay: 0,
       }),
     ).toBe('SI-EL-25-000001');
+  });
+});
+
+// IST calendar basis (backend periodKey.js): the period is the document's calendar date
+// in India, whatever the browser timezone. 18:30:00Z on 31 March is 00:00 IST on 1 April,
+// so these instants pin both sides of the FY / month boundary. Expectations are
+// TZ-independent; with browser-local getters the 18:30:00Z case read 31 March west of IST.
+describe('renderInvoiceNumberPreview — IST period basis', () => {
+  const FY = { cycle: 'annual', anchorMonth: 4, anchorDay: 1 };
+  const MONTHLY = { cycle: 'monthly', anchorMonth: 4, anchorDay: 1 };
+  const T = '{YYYY}/{MM}/{SEQ:3}';
+  const LAST_IST_SECOND_OF_MARCH = new Date(Date.UTC(2026, 2, 31, 18, 29, 59));
+  const IST_MIDNIGHT_1_APRIL = new Date(Date.UTC(2026, 2, 31, 18, 30, 0));
+
+  it('annual: the last IST second of 31 March is still the previous financial year', () => {
+    expect(renderInvoiceNumberPreview(T, 1, LAST_IST_SECOND_OF_MARCH, FY)).toBe('2025/03/001');
+  });
+
+  it('annual: IST midnight on 1 April opens the new financial year', () => {
+    expect(renderInvoiceNumberPreview(T, 1, IST_MIDNIGHT_1_APRIL, FY)).toBe('2026/04/001');
+  });
+
+  it('monthly: the bucket month flips at IST midnight', () => {
+    expect(renderInvoiceNumberPreview(T, 1, LAST_IST_SECOND_OF_MARCH, MONTHLY)).toBe('2026/03/001');
+    expect(renderInvoiceNumberPreview(T, 1, IST_MIDNIGHT_1_APRIL, MONTHLY)).toBe('2026/04/001');
+  });
+
+  it('no period context: the calendar year flips at IST midnight on 1 January', () => {
+    expect(renderInvoiceNumberPreview(T, 1, new Date(Date.UTC(2025, 11, 31, 18, 29, 59)))).toBe(
+      '2025/12/001',
+    );
+    expect(renderInvoiceNumberPreview(T, 1, new Date(Date.UTC(2025, 11, 31, 18, 30, 0)))).toBe(
+      '2026/01/001',
+    );
+  });
+
+  it("a 'YYYY-MM-DD' string is that IST calendar day (backend toDate)", () => {
+    expect(renderInvoiceNumberPreview(T, 1, '2026-03-31', FY)).toBe('2025/03/001');
+    expect(renderInvoiceNumberPreview(T, 1, '2026-04-01', FY)).toBe('2026/04/001');
+  });
+
+  it('an invalid or empty date falls back to now, like the backend', () => {
+    jest.useFakeTimers().setSystemTime(IST_MIDNIGHT_1_APRIL);
+    try {
+      for (const bad of [new Date(NaN), 'not-a-date', '']) {
+        expect(renderInvoiceNumberPreview(T, 1, bad, FY)).toBe('2026/04/001');
+      }
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

@@ -101,39 +101,60 @@ export interface PeriodContext {
 const DEFAULT_ANCHOR_MONTH = 4;
 const DEFAULT_ANCHOR_DAY = 1;
 
+// CALENDAR BASIS — IST (UTC+05:30, no DST), whatever the browser's timezone, exactly
+// like the backend `periodKey.js`: a document's day/month/year are its calendar date in
+// India. Browser-local getters made the preview disagree with the server's bucket on a
+// boundary day outside IST (and flag the Settings example as "pending" for no reason).
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Mirror of backend `toDate`: a 'YYYY-MM-DD' string is that day's IST midnight; an
+// absent/unparseable value falls back to now.
+function toDate(value: Date | string | null | undefined): Date {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? new Date() : value;
+  if (value === null || value === undefined || value === '') return new Date();
+  const parsed = new Date(DATE_ONLY_RE.test(value) ? `${value}T00:00:00+05:30` : value);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+// The IST calendar date of `d` (month 1-12).
+function istParts(d: Date): { year: number; month: number; day: number } {
+  const ist = new Date(d.getTime() + IST_OFFSET_MS);
+  return { year: ist.getUTCFullYear(), month: ist.getUTCMonth() + 1, day: ist.getUTCDate() };
+}
+
 // Mirror of backend `periodTokensFor`: the year/month the tokens must render for a
 // document drawing its number from THIS cycle's bucket — the PERIOD's year, not the
 // document's calendar year. Under the default 'annual' cycle anchored 1 April,
 // 2026-02-15 buckets to FY2025 while its calendar year is 2026; rendering {YY} from
 // the calendar year made two independent counters emit the same '26' prefix. Anchored
 // 1 January the bucket year IS the calendar year, so output is byte-identical to the
-// legacy rendering. All getters are LOCAL-time (never UTC), exactly like the backend.
+// legacy rendering. All parts are IST (see above).
 function periodTokens(d: Date, period?: PeriodContext): { year: number; month: number } {
-  const year = d.getFullYear();
-  const month = d.getMonth() + 1;
+  const { year, month, day } = istParts(d);
   // 'monthly' and 'none' both render the document's own year/month.
   if (!period || period.cycle !== 'annual') return { year, month };
 
   const m = Number(period.anchorMonth);
-  const day = Number(period.anchorDay);
+  const dd = Number(period.anchorDay);
   const aMonth = Number.isInteger(m) && m >= 1 && m <= 12 ? m : DEFAULT_ANCHOR_MONTH;
-  const aDay = Number.isInteger(day) && day >= 1 && day <= 31 ? day : DEFAULT_ANCHOR_DAY;
-  const onOrAfterAnchor = month > aMonth || (month === aMonth && d.getDate() >= aDay);
+  const aDay = Number.isInteger(dd) && dd >= 1 && dd <= 31 ? dd : DEFAULT_ANCHOR_DAY;
+  const onOrAfterAnchor = month > aMonth || (month === aMonth && day >= aDay);
   return { year: onOrAfterAnchor ? year : year - 1, month };
 }
 
 // Mirror of the backend renderer, for any doc type. `seq` is the sequence value; `date`
-// is the DOCUMENT date. `period` is the scheme's reset-period context — omit it (no
-// bucket, e.g. settings-time validation) and the tokens render from the document date,
-// which is what the backend does for an absent `period`.
+// is the DOCUMENT date (a timestamp, or a 'YYYY-MM-DD' IST calendar day). `period` is the
+// scheme's reset-period context — omit it (no bucket, e.g. settings-time validation) and
+// the tokens render from the document date, which is what the backend does for an absent
+// `period`.
 export function renderInvoiceNumberPreview(
   template: string,
   seq: number | string,
-  date: Date = new Date(),
+  date: Date | string = new Date(),
   period?: PeriodContext,
 ): string {
-  const d = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
-  const { year, month } = periodTokens(d, period);
+  const { year, month } = periodTokens(toDate(date), period);
 
   return template.replace(TOKEN_RE, (whole, token: string) => {
     if (token === 'YY') return two(year % 100);
